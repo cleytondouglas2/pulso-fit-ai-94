@@ -89,7 +89,7 @@ function showInAppVideo(item,stage){
  player.id="pf-class-youtube-frame";
  player.name="pf-class-youtube-frame";
  player.loading="eager";
- player.referrerPolicy="origin-when-cross-origin";
+ player.referrerPolicy="strict-origin-when-cross-origin";
  player.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
  player.allowFullscreen=true;
  player.setAttribute("allowfullscreen","");
