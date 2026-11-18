@@ -132,6 +132,34 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_GEMINI_MODE
  };
  // Preload catalog without using any customer photo or invoking generation.
  const key=configuredKeys.map(k=>process.env[k]).find(Boolean);
- if(key)void availableModels(key);
+ if(key){
+  // Minimal live smoke test checks actual generation eligibility; models.list
+  // alone cannot prove access. No user text/images, no secrets in logs.
+  void (async()=>{
+   const models=await availableModels(key);
+   const first=rankAvailable(models,"")[0];
+   if(!first){console.warn("[pulso-ai] Live smoke test: no compatible model returned.");return}
+   try{
+    const r=await globalThis.fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(first)+":generateContent",{
+       method:"POST",redirect:"error",signal:AbortSignal.timeout(28000),
+       headers:{"x-goog-api-key":key,"Content-Type":"application/json"},
+       body:JSON.stringify({contents:[{role:"user",parts:[{text:"Responda somente OK, sem explicações."}]}],
+        generationConfig:{temperature:0,maxOutputTokens:256}})
+      });
+    let returnedText=false;
+    if(r.ok){
+     const data=await r.json().catch(()=>({}));
+     returnedText=Boolean((data.candidates||[]).some(c=>(c.content?.parts||[]).some(p=>typeof p.text==="string"&&p.text.trim())));
+    }
+    console.log("[pulso-ai] Live generation test: http="+r.status+" hasText="+returnedText+
+      " successful="+Boolean(r.ok&&returnedText)+"; test uses no customer data.");
+   }catch(e){
+    console.warn("[pulso-ai] Live generation test unavailable ("+
+     String(e.name||"error").replace(/[^a-zA-Z]/g,"").slice(0,25)+")");
+   }
+  })();
+ }
+
  console.log("[pulso-ai] Gemini 404 model fallback installed for Coach and Performance.");
 }
