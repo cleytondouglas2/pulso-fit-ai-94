@@ -8,6 +8,9 @@
  */
 import {Server} from "node:http";
 import {basename} from "node:path";
+import {createMisticPayBilling} from "./misticpay-billing.mjs";
+import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
+import {createMisticPayStore} from "./misticpay-pg-store.mjs";
 
 if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTICPAY_PRELOAD__) {
   globalThis.__PULSO_MISTICPAY_PRELOAD__ = true;
@@ -21,6 +24,8 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
   const dbVar = ["PULSO_BILLING_DATABASE_URL","DATABASE_URL","PULSO_DATABASE_URL","POSTGRES_URL","PG_CONNECTION_STRING"].find(k=>!!process.env[k]);
   let dbDetected = !!dbVar, databaseReachable=false, driverAvailable=false;
   let pgProbeStarted = false;
+  let activeBillingHandler = null;
+  const billingFlagsApproved = process.env.PULSO_BILLING_ENABLE_PAYMENTS==="1" && process.env.PULSO_BILLING_DURABLE_ACK==="1";
   const json=(res,code,obj)=>{
     if(res.writableEnded)return;
     res.writeHead(code,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
@@ -44,10 +49,20 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
       finally {await pool.end();}
     }catch{databaseReachable=false;}
     console.log("[pulso-billing] Database probe: driver="+driverAvailable+" reachable="+databaseReachable);
+    if(billingFlagsApproved && databaseReachable && credsPresent){
+      try{
+        const store=await createMisticPayStore({connectionString:process.env[dbVar],migrate:process.env.PULSO_BILLING_SCHEMA_MIGRATE==="1"});
+        await store.revokeExpired();
+        activeBillingHandler=createMisticPayBilling({authenticate,store,origin,gateway:createMisticPayAdapter()});
+        const sweep=setInterval(()=>store.revokeExpired().catch(()=>{}),900000);
+        sweep.unref?.();
+        console.log("[pulso-billing] Full MisticPay Pix API enabled with persistent entitlement storage.");
+      }catch(e){console.error("[pulso-billing] Billing stayed DISABLED: "+e.message);}
+    }
     // Não criar tabelas nem alterar o banco durante o diagnóstico.
   }
   void probe();
-  const ready=()=>false; // Não ativar até garantir liberação de plano no backend e banco durável.
+  const ready=()=>Boolean(activeBillingHandler); // Ativar somente após dois flags explícitos e store SQL validado.
   const supported=()=>ready()?["pix"]:[];
   function status(){
     return {
@@ -73,6 +88,7 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
     }catch{return null}
   }
   async function handle(req,res,pathname){
+    if(activeBillingHandler && pathname!=="/api/billing/health")return activeBillingHandler(req,res);
     if(req.method==="GET"&&publicPaths.has(pathname)){
       return json(res,200,status());
     }
