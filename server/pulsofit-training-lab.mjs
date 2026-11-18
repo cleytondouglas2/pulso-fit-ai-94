@@ -31,7 +31,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_TREINO_VIVO
    ready=true;condition="ready";
   }catch(e){condition="db_unavailable";console.warn("[pulso-treino] training history store unavailable: "+String(e.code||"init").replace(/[^a-zA-Z0-9]/g,"").slice(0,24));}
  }
- const startup=initialize();
+ const startup=initialize().then(()=>{console.log("[pulso-treino] Histórico privado PostgreSQL="+(ready?"ready":"unavailable")+"; sem dados pessoais em logs.");});
  async function currentUser(req){
   const auth=String(req.headers.authorization||"");
   if(!auth.startsWith("Bearer ")||auth.length>4096)return null;
