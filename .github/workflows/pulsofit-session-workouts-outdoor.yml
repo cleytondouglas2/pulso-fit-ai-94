@@ -9,6 +9,8 @@ on:
       - "server/pulsofit-outdoor-ui.js"
       - "server/pulsofit-outdoor-api.mjs"
       - "server/pulsofit-session-workouts-outdoor.test.mjs"
+      - "server/pulsofit-training-lab.test.mjs"
+      - "server/pulsofit-outdoor.test.mjs"
       - ".github/workflows/pulsofit-session-workouts-outdoor.yml"
   pull_request:
     paths:
