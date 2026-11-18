@@ -32,10 +32,12 @@ jobs:
         run: |
           node --check server/misticpay-adapter.mjs
           node --check server/misticpay-billing.mjs
+          node --check server/pulsofit-plans-stable.js
+          node --check server/misticpay-runtime.mjs
           node --check server/pulsofit-test-offer.mjs
           node --check server/pulsofit-plans-stable.js
           node --check server/pulsofit-push-ui.js
           node --check server/misticpay-postgres-store.mjs
           node --check server/mount-misticpay.mjs
       - name: Run adapter tests without creating charges
-        run: node --test server/misticpay-adapter.test.mjs server/pulsofit-test-offer.test.mjs
+        run: node --test server/misticpay-adapter.test.mjs server/pulsofit-test-offer.test.mjs server/misticpay-recovery.test.mjs
