@@ -199,11 +199,41 @@ final class TraditionalQuickPix
             return ['status'=>'unavailable','provider_http_status'=>null];
         } catch(\Throwable){return ['status'=>'unavailable','provider_http_status'=>null];}
     }
+    private static function expiresEpoch(array $row):int {
+        $created=strtotime((string)($row['created_at']??'').' UTC');
+        return $created===false?0:$created+1800;
+    }
+    /**
+     * User-visible QR expiry is NOT an assertion that the provider settled/voided
+     * payment. Never overwrite a verified paid status after the 30-minute window.
+     */
+    private static function displayStatus(array $row,?int $at=null):string {
+        $status=(string)($row['status']??'unknown');
+        if(in_array($status,['paid','failed','cancelled','refunded'],true))return $status;
+        $expiry=self::expiresEpoch($row);
+        if($expiry>0&&($at??time())>=$expiry)return 'expired';
+        return $status;
+    }
     private static function publicCharge(array $row):array {
+        $display=self::displayStatus($row);
+        $expires=self::expiresEpoch($row);
         return ['id'=>$row['id'],'amount_cents'=>(int)$row['amount_cents'],
             'pix_copy_paste'=>$row['qr_copy'],'status'=>$row['status'],
+            'display_status'=>$display,'expires_at_epoch'=>$expires,
+            'can_view_qr'=>is_string($row['qr_copy'])&&$row['qr_copy']!==''&&$display!=='expired',
+            'can_reconcile'=>in_array($display,['pending','unknown'],true)&&str_starts_with((string)($row['provider_id']??''),'tr_'),
             'created_at'=>$row['created_at'],'provider'=>'MisticPay tradicional',
-            'recipient'=>'Conta MisticPay vinculada'];
+            'recipient'=>'Conta ARGUS Pay'];
+    }
+    private static function publicSummary(array $row):array {
+        $display=self::displayStatus($row);
+        return ['id'=>$row['id'],'amount_cents'=>(int)$row['amount_cents'],
+            'status'=>$row['status'],'display_status'=>$display,
+            'created_at'=>$row['created_at'],'checked_at'=>$row['checked_at']??null,
+            'expires_at_epoch'=>self::expiresEpoch($row),
+            'can_view_qr'=>is_string($row['qr_copy'])&&$row['qr_copy']!==''&&$display!=='expired',
+            'can_reconcile'=>in_array($display,['pending','unknown'],true)&&str_starts_with((string)($row['provider_id']??''),'tr_'),
+            'provider_id'=>(string)($row['provider_id']??'')];
     }
     private static function known(Database $db,string $id,array $actor):array {
         $charge=$db->one('SELECT * FROM admin_quick_pix WHERE id=?',[$id]);
@@ -225,7 +255,9 @@ final class TraditionalQuickPix
                 'provider'=>'traditional','payer_fields_required'=>true,'split'=>false]);
         }
         if($method==='GET'&&$path==='/api/admin/quick-pix') {
-            self::reply($db->all('SELECT id,amount_cents,provider_id,status,created_at,checked_at FROM admin_quick_pix ORDER BY created_at DESC LIMIT 150'));
+            // List only this authenticated actor's charges; do not expose raw QR text.
+            $rows=$db->all('SELECT id,amount_cents,provider_id,qr_copy,status,created_at,checked_at FROM admin_quick_pix WHERE actor_id=? ORDER BY created_at DESC LIMIT 150',[$actor['id']]);
+            self::reply(array_map([self::class,'publicSummary'],$rows));
         }
         if($method==='POST'&&$path==='/api/admin/quick-pix'){
             if(!in_array($db->driver(),['pgsql','mysql'],true))self::fail('Banco persistente indisponível',503);
@@ -278,10 +310,17 @@ final class TraditionalQuickPix
             $row=self::known($db,$m[1],$actor);
             if($method==='GET'&&empty($m[2]))self::reply(self::publicCharge($row));
             if($method==='POST'&&!empty($m[2])){
-                $p=(string)$row['provider_id'];
-                if(!str_starts_with($p,'tr_'))self::fail('Esta cobrança não foi emitida pela API tradicional e não pode ser conciliada nessa integração',409);
+                $display=self::displayStatus($row);
+                // Paid state is already authenticated; an expired QR is never
+                // rechecked automatically or used to issue a new payment.
+                if($display==='paid'||$display==='expired'||in_array($display,['failed','cancelled','refunded'],true))
+                    self::reply(['charge'=>self::publicCharge($row),'status'=>$display,
+                        'message'=>$display==='expired'?'QR Code expirado após 30 minutos. Nenhuma nova cobrança foi emitida.':'Situação registrada na ARGUS Pay.']);
+                $p=(string)($row['provider_id']??'');
+                if(!str_starts_with($p,'tr_'))self::fail('Esta cobrança antiga pertence a outra integração; consulte o histórico do provedor sem repetir a emissão.',409);
                 $fresh=self::reconcileRow($db,$row);
-                self::reply(['charge'=>self::publicCharge($fresh),'status'=>$fresh['status']]);
+                self::reply(['charge'=>self::publicCharge($fresh),'status'=>self::displayStatus($fresh),
+                    'message'=>'Consulta autenticada concluída.']);
             }
         }
         self::fail('Rota indisponível',404);
