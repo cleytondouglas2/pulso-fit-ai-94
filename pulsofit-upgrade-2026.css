@@ -1,0 +1,67 @@
+
+/* Pulso Fit mobile, Coach IA, nutrição e planos — 2026-11-18 */
+@media(max-width:850px){
+ .mobile-nav.pf2026-nav{position:fixed!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;align-items:end!important;padding:11px 6px calc(13px + env(safe-area-inset-bottom))!important;overflow:visible!important;background:rgba(14,19,31,.97)!important;border-top:1px solid rgba(183,199,231,.13)!important;z-index:1200!important;backdrop-filter:blur(18px);}
+ .mobile-nav.pf2026-nav .pf2026-tab{display:flex!important;flex-direction:column!important;gap:5px!important;align-items:center!important;justify-content:center!important;width:100%!important;min-width:0!important;min-height:52px!important;padding:7px 1px!important;border-radius:14px;color:#a8b8ca!important;font-size:10px!important;white-space:nowrap!important;transition:transform .23s ease,color .23s ease!important;}
+ .mobile-nav.pf2026-nav .pf2026-tab.active:not(.pf-coach-center){color:#c4ff83!important}
+ .mobile-nav.pf2026-nav .pf2026-ico{display:flex;justify-content:center;align-items:center}
+ .mobile-nav.pf2026-nav .pf2026-ico svg{width:22px!important;height:22px!important}
+ .mobile-nav.pf2026-nav .pf2026-tab-label{font:700 10px/1.1 system-ui,sans-serif!important;white-space:nowrap!important;color:inherit!important}
+ .mobile-nav.pf2026-nav .pf-coach-center{width:65px!important;height:65px!important;min-height:65px!important;max-width:100%!important;margin:-22px auto 0!important;padding:10px 3px!important;position:relative!important;border-radius:24px!important;background:linear-gradient(140deg,#a855f7,#7028db)!important;color:white!important;border:1px solid #d8b4fe!important;box-shadow:0 12px 29px rgba(135,56,230,.52),0 0 0 5px rgba(159,77,233,.13)!important;transform:none!important;animation:pf2026-pulse 3s ease-in-out infinite!important}
+ .mobile-nav.pf2026-nav .pf-coach-center .pf2026-tab-label{color:#fff!important;font-size:10px!important}
+ .mobile-nav.pf2026-nav .pf-coach-center .pf2026-ico svg{width:23px!important;height:23px!important;fill:none}
+ .mobile-nav.pf2026-nav .pf2026-ia-stamp{position:absolute;right:-10px;top:-10px;display:grid;place-items:center;min-width:29px;height:21px;padding:0 4px;border-radius:99px;background:#c4ff83;color:#15240a;font:900 10px/1 system-ui,sans-serif;border:2px solid #101827;box-shadow:0 3px 12px #121821}
+ .main{padding-bottom:calc(118px + env(safe-area-inset-bottom))!important;max-width:100vw!important;overflow-x:clip!important}
+}
+@keyframes pf2026-pulse{0%,100%{box-shadow:0 12px 29px rgba(135,56,230,.5),0 0 0 5px rgba(159,77,233,.10)}50%{box-shadow:0 12px 35px rgba(135,56,230,.77),0 0 0 8px rgba(159,77,233,.22)}}
+@media(prefers-reduced-motion:no-preference){
+ ::view-transition-old(root){animation:.14s ease-in both pf2026-out}
+ ::view-transition-new(root){animation:.3s cubic-bezier(.16,1,.3,1) both pf2026-in}
+ .pf-page-enter{animation:pf2026-in .32s cubic-bezier(.16,1,.3,1) both!important}
+ .pf2026-journeys button,.pf2026-price-card,.pfai-suggestions button{transition:transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+ .pf2026-journeys button:active,.pfai-suggestions button:active{transform:scale(.97)}
+}
+@keyframes pf2026-in{from{opacity:.2;transform:translateY(12px) scale(.992)}to{opacity:1;transform:none}}
+@keyframes pf2026-out{from{opacity:1}to{opacity:0}}
+@media(prefers-reduced-motion:reduce){.mobile-nav.pf2026-nav .pf-coach-center{animation:none!important}}
+.pf2026-coach-hero{background:radial-gradient(circle at 85% 15%,rgba(152,68,240,.27),transparent 46%),linear-gradient(145deg,#141c31,#1b1740);border:1px solid rgba(184,152,255,.3);border-radius:26px;padding:25px;margin-bottom:17px;display:flex;align-items:center;gap:22px;box-shadow:0 14px 36px rgba(7,6,26,.15)}
+.pf2026-coach-hero h1{font-size:clamp(25px,4.2vw,44px);line-height:1.12;margin:9px 0 12px;color:#fff}
+.pf2026-coach-hero h1 em{color:#c3a7ff;font-style:normal}
+.pf2026-coach-hero p{color:#c3cce1;line-height:1.5;max-width:650px}
+.pf2026-overline{font-size:10px;letter-spacing:.16em;color:#c7a4ff;font-weight:800}
+.pf2026-coach-orb{flex:none;width:93px;height:93px;position:relative;border-radius:30px;background:linear-gradient(140deg,#9c5cfc,#4c20ab);display:grid;place-items:center;color:white;font-size:54px;box-shadow:0 0 37px #a15afb54}
+.pf2026-coach-orb span{position:absolute;bottom:3px;right:-5px;border-radius:30px;background:#c4ff83;padding:5px 8px;color:#192c10;font-size:12px;font-weight:900}
+.pf2026-status{display:inline-flex;margin-top:12px;border:1px solid #946dcd;border-radius:99px;padding:7px 12px;color:#d5caff;font-size:11px;font-weight:700}
+.pf2026-journeys{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 18px}
+.pf2026-journeys button{border-radius:14px;border:1px solid #404264;background:#1a2437;color:#f4f1ff;padding:14px 10px;font-weight:700;cursor:pointer}
+.pf2026-journeys button:hover{border-color:#aa83ef;box-shadow:0 8px 20px #0003}
+.pf2026-chat-tools{display:flex;align-items:center;justify-content:space-between;gap:8px;color:#bec8de;font-size:12px;font-weight:750;margin:12px 0 5px}
+.pf2026-chat-tools button{border:1px solid #8e74c7;background:rgba(142,116,199,.14);border-radius:99px;padding:7px 11px;color:#e3d2ff;cursor:pointer}
+.pf2026-chat-foot{font-size:11px;color:#91a2bc;padding:4px 0 8px}
+.pf2026-taco{display:block;color:#bffaad;font-size:11px;margin-top:5px}
+.pf2026-portion{display:block!important;color:#d4f8b9!important;font-size:11px!important;margin-top:5px!important;line-height:1.3!important}
+.pf2026-billing-hero{padding:28px;border-radius:25px;border:1px solid #3d415f;background:linear-gradient(135deg,#151e32,#291647);margin:0 0 20px}
+.pf2026-billing-hero h1{font-size:clamp(26px,4vw,43px);color:white;margin:10px 0}
+.pf2026-billing-hero h1 em{color:#c2a2ff;font-style:normal}
+.pf2026-billing-hero p{color:#bbc8d9}
+.pf2026-billing-status{margin-top:16px;border:1px solid #73609d;background:#291f3d;padding:11px 15px;border-radius:12px;color:#e4daf7;font-size:13px;line-height:1.5}
+.pf2026-price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pf2026-price-card{background:#151e2f;border-radius:23px;border:1px solid #354359;padding:24px;color:#e9f0ff;display:flex;flex-direction:column;gap:11px}
+.pf2026-price-card.highlighted{border-color:#a986fa;box-shadow:0 0 0 1px #a986fa49,0 16px 34px #0003}
+.pf2026-price-card>span{color:#c1a1f8;font-size:11px;letter-spacing:.14em;font-weight:850}
+.pf2026-price-card h2{margin:0;font-size:24px}
+.pf2026-price{font-size:34px;font-weight:900;color:#f3fbff}
+.pf2026-price small{font-size:13px;color:#b2c2d5;font-weight:500}
+.pf2026-price-card p{color:#b6c4d6;font-size:13px;line-height:1.45}
+.pf2026-price-card ul{padding-left:18px;margin:4px 0 15px;line-height:2;flex:1}
+.pf2026-trial{border:1px solid #475e58;border-radius:20px;padding:21px;background:#162a2a;margin-top:16px}
+.pf2026-trial p{font-size:13px;color:#cbd9d5}
+.pf2026-billing-note{font-size:12px;color:#aebaca;margin:16px 0;line-height:1.5}
+@media(max-width:700px){
+ .pf2026-coach-hero{padding:20px;gap:14px}
+ .pf2026-coach-orb{width:58px;height:58px;border-radius:20px;font-size:37px}
+ .pf2026-coach-orb span{font-size:9px}
+ .pf2026-journeys{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .pf2026-journeys button{font-size:12px}
+ .pf2026-price-grid{grid-template-columns:1fr}
+}
