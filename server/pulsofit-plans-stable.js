@@ -22,6 +22,8 @@
  '#pf-stable-modal .pf-stable-card.best{border:2px solid #b083fb;background:#302345}'+
  '#pf-stable-modal .pf-stable-card.promo{border:2px solid #83e8ba;background:linear-gradient(130deg,#153e42,#1d2540);grid-column:1/-1}'+
  '#pf-stable-modal .pf-stable-card.promo .pf-stable-price{color:#baffcb}'+
+ '#pf-stable-modal #pf-stable-test-offer[hidden]{display:none!important}'+
+ '#pf-stable-modal #pf-stable-test-offer button:disabled{opacity:.65;cursor:not-allowed}'+
  '#pf-stable-modal .pf-stable-card b{font-size:18px}'+
  '#pf-stable-modal .pf-stable-price{font-size:30px;color:#b0ffca;font-weight:900}'+
  '#pf-stable-modal .pf-stable-card small{font-size:12px;color:#ded5f0}'+
