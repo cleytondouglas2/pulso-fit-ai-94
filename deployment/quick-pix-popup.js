@@ -46,7 +46,7 @@
  }
  function openPopup(data){
    if(!valid(data?.id)||typeof data?.pix_copy_paste!=='string'||!data.pix_copy_paste)return;
-   if(data.status==='paid')return;
+   if(data.status==='paid'&&data._fromHistory!==true)return;
    const receipt=byId('charge-receipt');
    if(!receipt)return;
    ensurePopup();
@@ -120,7 +120,7 @@
    const wrapped=function(data){
      if(valid(data?.id)&&data?.pix_copy_paste)activeId=data.id;
      const output=original.apply(this,arguments);
-     if(valid(data?.id)&&data?.pix_copy_paste&&data.status!=='paid')openPopup(data);
+     if(valid(data?.id)&&data?.pix_copy_paste&&(data.status!=='paid'||data._fromHistory===true))openPopup(data);
      return output;
    };
    wrapped.__argusPopupV1=true;
@@ -134,6 +134,10 @@
    });
    // The event originates only from the authenticated server payment reconciliation.
    window.addEventListener('argus:pix-paid',event=>showSuccess(event.detail?.chargeId));
+   // Close the original modal when its 30-minute viewing window has elapsed.
+   window.addEventListener('argus:pix-qr-expired',event=>{
+     if(valid(event.detail?.id)&&event.detail.id===activeId)closePopup();
+   });
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',attach);
  else attach();
