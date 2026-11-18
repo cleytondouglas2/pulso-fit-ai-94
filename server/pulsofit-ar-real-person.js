@@ -9,14 +9,14 @@ if(window.__PULSO_REAL_PERSON_AR__)return;
 window.__PULSO_REAL_PERSON_AR__=true;
 const $=id=>document.getElementById(id);
 const footage=Object.freeze({
- squat:{file:"Squats Wikipedia.webm",title:"Agachamento — pessoa real",creator:"CRiles23",license:"CC BY-SA 3.0",licenseUrl:"https://creativecommons.org/licenses/by-sa/3.0/"},
- lunge:{file:"Strength Training Circuit- Forward Lunge.webm",title:"Afundo frontal — pessoa real",creator:"U.S. Army / Army Combat Fitness Test",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"},
- pushup:{file:"Muscle Strengthening at Home - Push-ups.webm",title:"Flexão — pessoa real",creator:"Centers for Disease Control and Prevention (CDC)",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"},
- jumping_jack:{file:"Jumping jacks and burpees.webm",title:"Polichinelos e burpees — demonstração mista",creator:"Taco Fleur / Cavemantraining",license:"CC BY-SA 4.0",licenseUrl:"https://creativecommons.org/licenses/by-sa/4.0/"},
- curl:{file:"Muscle Strengthening at Home - Bicep Curls.webm",title:"Rosca bíceps — pessoa real",creator:"Centers for Disease Control and Prevention (CDC)",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"}
+ squat:{file:"Squats Wikipedia.webm",src:"https://upload.wikimedia.org/wikipedia/commons/2/21/Squats_Wikipedia.webm",title:"Agachamento — pessoa real",creator:"CRiles23",license:"CC BY-SA 3.0",licenseUrl:"https://creativecommons.org/licenses/by-sa/3.0/"},
+ lunge:{file:"Strength Training Circuit- Forward Lunge.webm",src:"https://upload.wikimedia.org/wikipedia/commons/5/57/Strength_Training_Circuit-_Forward_Lunge.webm",title:"Afundo frontal — pessoa real",creator:"U.S. Army / Army Combat Fitness Test",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"},
+ pushup:{file:"Muscle Strengthening at Home - Push-ups.webm",src:"https://upload.wikimedia.org/wikipedia/commons/1/18/Muscle_Strengthening_at_Home_-_Push-ups.webm",title:"Flexão — pessoa real",creator:"Centers for Disease Control and Prevention (CDC)",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"},
+ jumping_jack:{file:"Jumping jacks and burpees.webm",src:"https://upload.wikimedia.org/wikipedia/commons/5/57/Jumping_jacks_and_burpees.webm",title:"Polichinelos e burpees — demonstração mista",creator:"Taco Fleur / Cavemantraining",license:"CC BY-SA 4.0",licenseUrl:"https://creativecommons.org/licenses/by-sa/4.0/"},
+ curl:{file:"Muscle Strengthening at Home - Bicep Curls.webm",src:"https://upload.wikimedia.org/wikipedia/commons/4/44/Muscle_Strengthening_at_Home_-_Bicep_Curls.webm",title:"Rosca bíceps — pessoa real",creator:"Centers for Disease Control and Prevention (CDC)",license:"Domínio público (governo dos EUA)",licenseUrl:"https://commons.wikimedia.org/wiki/Commons:Licensing"}
 });
 function page(f){return "https://commons.wikimedia.org/wiki/File:"+encodeURIComponent(f).replace(/%20/g,"_")}
-function videoURL(f){return "https://commons.wikimedia.org/wiki/Special:Redirect/file/"+encodeURIComponent(f)}
+// Media URLs come from the original-file links on the cited Commons pages.
 const model="https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
 const moduleUrl="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/vision_bundle.mjs";
 const wasmUrl="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.3/wasm";
@@ -49,7 +49,7 @@ function applyMode(){
  const selector=$("pf-real-person-mode");if(selector)selector.value=kind;
  const cut=$("pf-real-cutout");
  if(cut)cut.hidden=kind!=="real"||!segActive;
- if(clip)clip.hidden=kind!=="real"||segActive;
+ if(clip){clip.hidden=kind!=="real";clip.style.opacity=segActive?"0":"1";}
  updateModes();
 }
 function updateModes(){
@@ -99,7 +99,7 @@ function changeFootage(){
   return;
  }
  broken=false;clip.crossOrigin="anonymous";
- clip.src=videoURL(source.file);clip.hidden=false;clip.load();
+ clip.src=source.src;clip.hidden=false;clip.load();
  void playVideo();
 }
 function setLocal(file){
