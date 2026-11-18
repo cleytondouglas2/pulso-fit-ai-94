@@ -54,6 +54,7 @@ function openMenu(){
   ["performance","📸","Performance IA","Análise corporal por foto"],
   ["meal","🥗","Avaliar meu prato","Foto, calorias, proteínas e dicas da IA"],
    ["playlist","🎵","Playlist de treino","Trilhas originais e músicas do aparelho"],
+   ["camera-ar","🕶️","Treino com câmera 3D","Veja um avatar demonstrar o exercício no ambiente"],
   ["assessment","📈","Avaliação e progresso","Método da IA e evolução"],
   ["account","☁️","Conta online","Dados, sincronização e plano"],
    ["subscription","💎","Renovação e upgrade","Gerencie seu plano no Meu Perfil"],
@@ -130,6 +131,7 @@ async function act(action){
  if(action==="notifications"){closeMenu();window.dispatchEvent(new Event("pulso-open-push-settings"));return}
  if(action==="meal"){closeMenu();window.dispatchEvent(new Event("pulso-open-meal"));return}
   if(action==="playlist"){closeMenu();window.dispatchEvent(new Event("pulso-open-playlist"));return}
+  if(action==="camera-ar"){closeMenu();window.dispatchEvent(new Event("pulso-open-camera-ar"));return}
   if(action==="subscription"){goTo("profile");return}
  if(action==="performance"||action==="assessment")return openFeature(action);
  var allowed=new Set(["profile","account","subscription","goals","workouts","coach"]);
