@@ -141,6 +141,8 @@
   }
   function removeGate(){var old=document.getElementById("pf-trial-gate");if(old)old.remove()}
   function enhanceGate(root){
+    // Não bloqueie contas enquanto não existir checkout/validação do gateway.
+    if(!window.PULSO_BILLING_ENFORCED){removeGate();return}
     var allowed=["subscription","account","admin"].indexOf(activeRoute())>=0;
     if(!expired()||entitlement.valid||allowed){removeGate();return}
     var old=document.getElementById("pf-trial-gate");if(old)return;
@@ -177,6 +179,9 @@
     }
   });
   function init(){
+    window.PULSO_BILLING_ENFORCED=false;
+    // Esta rota deverá retornar billingEnforced:true somente após webhooks e cobrança ativa.
+    fetch('/api/subscription/status',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(data){if(data&&data.billingEnforced===true){window.PULSO_BILLING_ENFORCED=true;enhance()}}).catch(function(){});
     var root=document.getElementById("app");if(!root)return;
     enhance();checkToken();
     var observer=new MutationObserver(function(){enhance();checkToken()});
