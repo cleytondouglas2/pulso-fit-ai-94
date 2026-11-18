@@ -84,7 +84,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
   // controle premium real nas APIs antes de transacionar dinheiro.
   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&
-    state.credentialsConfigured&&state.providerAuth!=="denied"&&requiredFlags());
+    state.credentialsConfigured&&state.providerAuth==="verified"&&requiredFlags());
   state.ready=configured;
   if(configured)state.supportedMethods=["pix"];
   console.log("[pulso-billing] Integration: postgres="+state.databaseReachable+
