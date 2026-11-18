@@ -32,6 +32,8 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const outdoorCSS=readFileSync(new URL("./pulsofit-outdoor.css",import.meta.url),"utf8");
   const pushUI=readFileSync(new URL("./pulsofit-push-ui.js",import.meta.url),"utf8");
   const pushCSS=readFileSync(new URL("./pulsofit-push.css",import.meta.url),"utf8");
+  const companionJS=readFileSync(new URL("./pulsofit-live-companion.js",import.meta.url),"utf8");
+  const companionCSS=readFileSync(new URL("./pulsofit-live-companion.css",import.meta.url),"utf8");
   // Preflight: abort the new visual overlay if its JavaScript is invalid.
   new JavaScriptSyntax(html5AccessibilityJS,{filename:"pulsofit-html5-accessibility.js"});
   new JavaScriptSyntax(trainingLabJS,{filename:"pulsofit-training-lab-ui.js"});
@@ -42,6 +44,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   if(!authJS.includes("pulsofit-session-remember-v1"))throw Error("PULSO_PERSISTENT_LOGIN_MISSING");
   new JavaScriptSyntax(socialJS,{filename:"pulsofit-social-ui.js"});
   new JavaScriptSyntax(pushUI,{filename:"pulsofit-push-ui.js"});
+  new JavaScriptSyntax(companionJS,{filename:"pulsofit-live-companion.js"});
   if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
   if(!trainingLabCSS.includes("#pf-tv-overlay")||!trainingLabCSS.includes("#app .pf-tv-launch"))throw Error("PULSO_TRAINING_LAB_STYLES_INCOMPLETE");
@@ -65,7 +68,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-home-greeting-20261118">'+homeGreetingJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-outdoor-ui-20261118">'+outdoorJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-push-style-20261118">'+pushCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
-   '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>";
+   '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>"
+   '<style id="pf-live-companion-css">'+companionCSS.replace(/<\/style/gi,"<\\/style")+'</style>'+
+   '<script id="pf-live-companion-js">'+companionJS.replace(/<\/script/gi,"<\\/script")+'</script>';
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
