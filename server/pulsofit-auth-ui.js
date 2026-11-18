@@ -19,6 +19,49 @@ var css=[
 'body.pf-account-locked{overflow:hidden!important}',
 'body.pf-account-locked #app{pointer-events:none!important;filter:blur(5px)!important;user-select:none!important}',
 'body.pf-account-locked #pf-stable-open,body.pf-account-locked #pf-plans-shortcut{display:none!important}',
+'#pf-account-lock.pf-auth-landing-lock{align-items:flex-start!important;background:radial-gradient(circle at 80% 4%,#3c2456 0,transparent 37%),linear-gradient(140deg,#080e1c,#11142d 65%,#101b28)!important;padding:clamp(13px,3vw,32px)!important;scrollbar-gutter:stable;overflow-y:auto}',
+'#pf-auth-landing{box-sizing:border-box;width:min(100%,1120px);max-width:1120px;margin:0 auto 32px;position:relative;overflow:hidden;border:1px solid #8071a855;border-radius:clamp(19px,3vw,30px);background:linear-gradient(155deg,#181b36,#111b31);box-shadow:0 22px 80px #02061299;padding:clamp(19px,4vw,34px);min-height:min(90dvh,940px)}',
+'#pf-auth-landing:before{content:"";position:absolute;width:340px;height:340px;right:-145px;top:55px;background:#a74bff28;filter:blur(50px);border-radius:50%;pointer-events:none}',
+'#pf-auth-landing .pf-land-nav{position:relative;display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 clamp(24px,5vw,48px)}',
+'#pf-auth-landing .pf-land-brand{display:flex;align-items:center;gap:10px;color:#fff;font:900 clamp(15px,3vw,19px) system-ui,sans-serif;letter-spacing:.11em}',
+'#pf-auth-landing .pf-land-brand img{width:43px;height:43px;object-fit:contain;border-radius:14px;background:#ffffff10;padding:6px;box-sizing:border-box}',
+'#pf-auth-landing button{font-family:system-ui,sans-serif;cursor:pointer}',
+'#pf-auth-landing .pf-land-navlogin{border:1px solid #8f83b4;border-radius:13px;padding:10px 15px;background:#242645;color:#f0e4ff;font:800 12px system-ui,sans-serif;white-space:nowrap}',
+'#pf-auth-landing .pf-land-cols{position:relative;display:grid;grid-template-columns:minmax(0,1.04fr) minmax(0,.96fr);align-items:center;gap:clamp(20px,4vw,48px)}',
+'#pf-auth-landing .pf-land-eyebrow{display:inline-flex;align-items:center;gap:7px;border:1px solid #68e4ca77;background:#183e4155;border-radius:100px;padding:8px 12px;color:#b4ffe6;font:800 11px system-ui,sans-serif;letter-spacing:.08em}',
+'#pf-auth-landing h1{font:900 clamp(35px,6.5vw,68px)/.99 system-ui,sans-serif;letter-spacing:-.055em;color:#fff;max-width:650px;margin:20px 0 15px}',
+'#pf-auth-landing h1 em{font-style:normal;background:linear-gradient(100deg,#82f6db,#a6b3ff,#cb7aff);background-clip:text;-webkit-background-clip:text;color:transparent}',
+'#pf-auth-landing .pf-land-sub{color:#d4cee6;font:clamp(14px,2vw,17px)/1.6 system-ui,sans-serif;max-width:560px}',
+'#pf-auth-landing .pf-land-actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 17px}',
+'#pf-auth-landing .pf-land-cta{border:0;border-radius:14px;padding:15px 19px;min-height:50px;background:linear-gradient(115deg,#8d50dd,#b662ef);color:#fff;font:850 14px system-ui,sans-serif;box-shadow:0 8px 30px #913bd433}',
+'#pf-auth-landing .pf-land-cta-secondary{background:#272e4b;color:#eee7ff;border:1px solid #7a739f;box-shadow:none}',
+'#pf-auth-landing .pf-land-mini{font:11px/1.4 system-ui,sans-serif;color:#b4accd;margin:0}',
+'#pf-auth-landing .pf-land-preview{border:1px solid #8373b5;border-radius:25px;padding:clamp(15px,3.1vw,23px);background:linear-gradient(165deg,#2d2651,#18243e 70%);box-shadow:0 24px 65px #080b1b80;position:relative;max-width:440px;width:100%;box-sizing:border-box;justify-self:center}',
+'#pf-auth-landing .pf-land-preview-head{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#d4e7ff;font:800 12px system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-preview-head strong{color:#9cffcf;font:900 12px system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-simulation{border:1px solid #9aeaca55;background:#173a3c6e;border-radius:15px;padding:15px;margin:17px 0 13px}',
+'#pf-auth-landing .pf-land-simulation b{display:block;font:800 14px system-ui,sans-serif;color:#fff}',
+'#pf-auth-landing .pf-land-simulation p{margin:6px 0 0;font:12px/1.5 system-ui,sans-serif;color:#c9efe6}',
+'#pf-auth-landing .pf-land-goal-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;background:#121b33;border-radius:13px;padding:5px}',
+'#pf-auth-landing .pf-land-goal-tabs button{padding:10px 5px;border-radius:9px;border:0;background:transparent;color:#c9c7dc;font:800 11px system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-goal-tabs button[aria-pressed="true"]{background:#683f9c;color:#fff}',
+'#pf-auth-landing .pf-land-session{padding:13px 0;border-bottom:1px solid #ffffff1a;display:flex;align-items:center;gap:12px}',
+'#pf-auth-landing .pf-land-session span:first-child{width:35px;height:35px;border-radius:12px;background:#7551a748;display:grid;place-items:center;font-size:19px}',
+'#pf-auth-landing .pf-land-session p{margin:0;flex:1;color:#f3efff;font:750 12px/1.3 system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-session small{display:block;color:#acaecb;font:11px/1.6 system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-top:clamp(24px,5vw,44px)}',
+'#pf-auth-landing .pf-land-feature{padding:17px;border:1px solid #60628780;border-radius:18px;background:#1b2440;min-width:0}',
+'#pf-auth-landing .pf-land-feature>span{font-size:25px;display:block;margin-bottom:7px}',
+'#pf-auth-landing .pf-land-feature strong{font:850 13px system-ui,sans-serif;display:block;margin:0 0 6px;color:#fff}',
+'#pf-auth-landing .pf-land-feature p{font:11px/1.55 system-ui,sans-serif;margin:0;color:#c7c6de}',
+'#pf-auth-landing .pf-land-footer{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-top:1px solid #65598490;padding-top:18px;margin-top:24px;color:#aaaaca;font:11px/1.55 system-ui,sans-serif}',
+'#pf-account-lock .pf-auth-dialog:not(.pf-land){width:min(100%,450px);max-height:calc(100dvh - 32px);overflow:auto;background:linear-gradient(145deg,#2e2551,#171f3a);border:1px solid #8f7ac6;border-radius:24px}',
+'#pf-account-lock .pf-auth-dialog:not(.pf-land):before{content:"✦ PULSOFIT AI";display:block;color:#b9ffec;font:900 12px system-ui,sans-serif;letter-spacing:.12em;margin-bottom:10px}',
+'#pf-account-lock .pf-auth-dialog:not(.pf-land) h2{font-size:clamp(24px,5vw,31px);letter-spacing:-.04em}',
+'#pf-account-lock .pf-auth-dialog:not(.pf-land) button{min-height:44px}',
+'@media(max-width:770px){#pf-auth-landing .pf-land-cols{grid-template-columns:1fr}#pf-auth-landing .pf-land-preview{max-width:100%}#pf-auth-landing .pf-land-features{grid-template-columns:1fr 1fr}}',
+'@media(max-width:440px){#pf-auth-landing{border-radius:19px}#pf-auth-landing .pf-land-brand img{width:36px;height:36px}#pf-auth-landing .pf-land-brand{font-size:13px}#pf-auth-landing .pf-land-features{grid-template-columns:1fr}#pf-auth-landing .pf-land-actions button{flex:1 1 100%}#pf-auth-landing .pf-land-navlogin{font-size:11px;padding:9px}}',
+'@media(prefers-reduced-motion:reduce){#pf-auth-landing *{animation:none!important;transition:none!important}}',
 '[data-pro-action="offline-continue"]{display:none!important}'
 ].join("\n");
 function token(){try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}}
@@ -32,6 +75,55 @@ function overlay(){
 function show(mode,notice){
  valid=false;
  var el=overlay();if(!el)return;
+ if(mode==="landing"){
+  el.classList.add("pf-auth-landing-lock");
+  el.innerHTML='<section id="pf-auth-landing" role="region" aria-label="Conheça o PulsoFit AI">'+
+  '<nav class="pf-land-nav"><div class="pf-land-brand"><img src="/pulsofit-brand.svg" alt=""> PULSOFIT <span style="color:#86f3df">AI</span></div>'+
+  '<button type="button" class="pf-land-navlogin" data-pf-auth-go="login">Já tenho conta</button></nav>'+
+  '<div class="pf-land-cols"><div><div class="pf-land-eyebrow">✦ SUA EVOLUÇÃO COMEÇA AGORA</div>'+
+  '<h1>Seu corpo.<br>Seu ritmo.<br><em>Seu próximo nível.</em></h1>'+
+  '<p class="pf-land-sub">Treinos para casa, academia e CrossFit, Coach com inteligência artificial, análise do prato, metas e acompanhamento da sua evolução. Tudo organizado para você treinar com mais direção.</p>'+
+  '<div class="pf-land-actions"><button class="pf-land-cta" type="button" data-pf-auth-go="register">Começar meus 7 dias grátis</button>'+
+  '<button class="pf-land-cta pf-land-cta-secondary" type="button" data-pf-auth-go="login">Entrar na minha conta</button></div>'+
+  '<p class="pf-land-mini">Crie sua conta gratuitamente. Os 7 dias de teste estão vinculados ao cadastro; sem pagamento automático.</p></div>'+
+  '<div class="pf-land-preview"><div class="pf-land-preview-head"><span>✺ MEU PLANO INTELIGENTE</span><strong>EXEMPLO INTERATIVO</strong></div>'+
+  '<section class="pf-land-simulation"><b>Uma jornada personalizada</b><p>Escolha onde prefere treinar para ver como o aplicativo organiza exemplos de treino.</p></section>'+
+  '<div class="pf-land-goal-tabs" aria-label="Ver ambientes de treino">'+
+  '<button type="button" data-pf-demo="casa" aria-pressed="true">Em casa</button>'+
+  '<button type="button" data-pf-demo="academia" aria-pressed="false">Academia</button>'+
+  '<button type="button" data-pf-demo="crossfit" aria-pressed="false">CrossFit</button></div>'+
+  '<div id="pf-land-exercises"></div>'+
+  '<p style="font-size:11px;color:#c5bddd;margin:13px 0 0">Exemplos ilustrativos. A indicação real depende de sua avaliação, experiência e limitações.</p></div></div>'+
+  '<div class="pf-land-features">'+
+  '<article class="pf-land-feature"><span>🧠</span><strong>Coach IA que orienta</strong><p>Converse sobre sua rotina e receba sugestões de métodos e progressão conforme os dados que informar.</p></article>'+
+  '<article class="pf-land-feature"><span>📸</span><strong>Performance e alimentação</strong><p>Envie fotos com autorização para observações visuais e estimativas alimentares, com limites explicados.</p></article>'+
+  '<article class="pf-land-feature"><span>📈</span><strong>Resultados que você acompanha</strong><p>Registre treinos, metas, peso voluntário e evolução. Compare sua consistência ao longo das semanas.</p></article>'+
+  '</div><footer class="pf-land-footer"><span>1. Crie sua conta → 2. Conte seu objetivo → 3. Receba orientação → 4. Salve seu progresso</span>'+
+  '<span>Resultados individuais variam. O app não substitui avaliação profissional.</span></footer>'+
+  '</section>';
+  el.querySelectorAll("[data-pf-auth-go]").forEach(function(button){button.addEventListener("click",function(){show(button.dataset.pfAuthGo)})});
+  var demos={
+   casa:[["🏠","Força sem aparelhos","Agachamento, flexões adaptadas e ponte"],["⚡","Condicionamento","Circuito de movimentos com intensidade progressiva"],["🧘","Mobilidade","Alongamento leve e consciência corporal"]],
+   academia:[["🏋️","Treino de força","Exercícios com máquinas e pesos ajustados"],["💪","Divisão muscular","Treinos por grupos com recuperação planejada"],["🚶","Condicionamento","Cardio de acordo com seu nível"]],
+   crossfit:[["🔥","Movimento funcional","Técnica de agachar, puxar e empurrar"],["⏱️","Metcon adaptado","Circuitos com carga e tempo graduais"],["🧎","Recuperação ativa","Mobilidade, respiração e descanso"]]
+  };
+  function renderDemo(which){
+   var list=el.querySelector("#pf-land-exercises");if(!list)return;
+   list.replaceChildren();
+   el.querySelectorAll("[data-pf-demo]").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.pfDemo===which)));
+   (demos[which]||demos.casa).forEach(function(item){
+    var row=document.createElement("div");row.className="pf-land-session";
+    var ico=document.createElement("span");ico.textContent=item[0];
+    var txt=document.createElement("p");txt.textContent=item[1];
+    var small=document.createElement("small");small.textContent=item[2];txt.appendChild(small);
+    row.appendChild(ico);row.appendChild(txt);list.appendChild(row);
+   });
+  }
+  el.querySelectorAll("[data-pf-demo]").forEach(function(b){b.addEventListener("click",function(){renderDemo(b.dataset.pfDemo)})});
+  renderDemo("casa");
+  return;
+ }
+ el.classList.remove("pf-auth-landing-lock");
  var register=mode!=="login";
  el.innerHTML='<section class="pf-auth-dialog">'+
  '<small style="color:#b3ffdd;font-weight:900;letter-spacing:.1em">PULSOFIT AI • CONTA OBRIGATÓRIA</small>'+
@@ -71,7 +163,7 @@ async function verify(){
  if(busy||!document.body)return;
  var current=token();
  if(valid&&current===verifiedToken)return;
- if(!current){valid=false;verifiedToken="";if(!document.getElementById("pf-auth-required-form"))show("register");return}
+ if(!current){valid=false;verifiedToken="";if(!document.getElementById("pf-auth-required-form")&&!document.getElementById("pf-auth-landing"))show("landing");return}
  busy=true;
  var el=overlay();el.innerHTML='<section class="pf-auth-dialog"><h2>Validando sua conta…</h2><p>Consultando a sessão segura.</p></section>';
  try{
