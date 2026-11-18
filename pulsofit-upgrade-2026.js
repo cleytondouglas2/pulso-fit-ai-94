@@ -61,7 +61,7 @@ function bootPulsoUpgrade(){
   function fixMobileNavigation(){
     var nav=document.querySelector(".mobile-nav");if(!nav)return;
     var page=currentSection();
-    var entries=[["home","Início","home"],["workouts","Treinos","dumbbell"],["coach","Coach IA","bolt"],["goals","Metas","star"],["profile","Perfil","user"]];
+    var entries=[["home","Início","home"],["workouts","Treinos","dumbbell"],["coach","Coach IA","bolt"],["goals","Metas","star"],["profile","Mais","menu"]];
     nav.classList.add("pf2026-nav");
     nav.innerHTML=entries.map(function(x){
       var active=(page===x[0]||(x[0]==="coach"&&["ai-plan","ai-meals","ai-report"].includes(page)));
