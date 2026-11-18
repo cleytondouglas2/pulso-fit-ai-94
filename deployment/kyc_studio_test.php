@@ -15,7 +15,7 @@ foreach(['CNH','senha','arquivo_externo'] as $type)
 
 putenv('ARGUS_DOC_HMAC_KEY='.str_repeat('K',64)); // test key is never used in live Render
 $db=new D(require '/var/www/html/config.php');
-$db->installAndSeed();K::install($db);
+$db->installAndSeed();\ArgusPayments\Portal::install($db);K::install($db);
 $id='arguskyctest'.bin2hex(random_bytes(10));
 $fake=['id'=>$id,'account_type'=>'PF','status'=>'documents_required','merchant_id'=>null];
 $result=K::summary($db,$fake);
