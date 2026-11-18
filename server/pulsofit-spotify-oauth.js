@@ -26,24 +26,40 @@ async function challenge(verifier){
  const bytes=new TextEncoder().encode(verifier);
  return toBase64URL(await crypto.subtle.digest("SHA-256",bytes));
 }
-async function getConfig(){
- if(config)return config;
+async function getConfig(force=false){
+ if(config&&!force)return config;
  const r=await fetch("/api/music/spotify/config",{cache:"no-store",signal:AbortSignal.timeout(9000)});
- if(!r.ok)throw Error("Configuração do Spotify temporariamente indisponível.");
- config=await r.json();
- if(config?.redirectUri!=="https://pulso-fit-ai-95-online.onrender.com/")throw Error("O servidor não possui o retorno HTTPS esperado do Spotify.");
+ if(!r.ok)throw Error("Não foi possível verificar a conexão oficial com o Spotify.");
+ const incoming=await r.json();
+ if(incoming?.redirectUri!=="https://pulso-fit-ai-95-online.onrender.com/")throw Error("O endereço de retorno Spotify não coincide com a URL do PulsoFit.");
+ config=incoming;
  return config;
+}
+function configurationStatus(cfg,reason=""){
+ const missing=cfg?.enabled!==true||!cfg.clientId;
+ const box=$("pf-spotify-setup-needed"),connect=$("pf-spotify-connect"),retry=$("pf-spotify-retry");
+ if(box)box.hidden=!missing;
+ if(retry)retry.hidden=!missing;
+ if(connect){
+  connect.disabled=missing||busy;
+  connect.textContent=missing?"Spotify aguardando configuração":"Conectar minha conta Spotify";
+  connect.setAttribute("aria-disabled",String(missing));
+ }
+ if(missing){
+  storeAuth(null);playlists=[];results=[];
+  $("pf-spotify-embed")?.replaceChildren();
+  const connected=$("pf-spotify-connected");if(connected)connected.hidden=true;
+  say(reason||"A conexão Spotify ainda não foi ativada no PulsoFit. É necessário cadastrar o Client ID do aplicativo Spotify no servidor. Não informe sua senha nem cole links.");
+ }
+ return !missing;
 }
 async function connect(){
  if(!sessionToken()){say("Entre na sua conta PulsoFit antes de conectar seu Spotify.");return}
  if(!window.isSecureContext||!crypto?.subtle){say("A autorização Spotify exige HTTPS e um navegador atualizado.");return}
  if(busy)return;busy=true;
  try{
-  const cfg=await getConfig();
-  if(!cfg.enabled||!cfg.clientId){
-   say("Conexão oficial ainda não configurada: o administrador precisa cadastrar o Client ID do aplicativo Spotify no servidor. Nenhum link ou senha deve ser informado aqui.");
-   return;
-  }
+  const cfg=await getConfig(true);
+  if(!configurationStatus(cfg))return;
   const verifier=randomString(64),state=randomString(34),codeChallenge=await challenge(verifier);
   const pending={verifier,state,createdAt:Date.now(),returnTo:String(location.hash||"#/home").slice(0,100)};
   sessionStorage.setItem(pendingKey,JSON.stringify(pending));
@@ -112,6 +128,7 @@ async function identity(){
 }
 function escapeID(item){return /^[A-Za-z0-9]{22}$/.test(item?.id||"")?item.id:null}
 function selectedPlaylist(p){
+ if(!config?.enabled){configurationStatus(config);return}
  const id=escapeID(p);
  if(!id){say("Playlist inválida. Escolha outro resultado.");return}
  const url="https://open.spotify.com/playlist/"+id;
@@ -181,9 +198,9 @@ function disconnect(){
  updateControls();say("Spotify desconectado deste navegador. Você pode conectar novamente quando quiser.");
 }
 function updateControls(){
- const connected=Boolean(oauthSession()||authRaw()?.refresh_token);
+ const connected=Boolean(config?.enabled&&(oauthSession()||authRaw()?.refresh_token));
  const login=$("pf-spotify-connect"),end=$("pf-spotify-logout"),connectedArea=$("pf-spotify-connected");
- if(login){login.hidden=connected;login.disabled=busy}
+ if(login){login.hidden=connected;login.disabled=busy||config?.enabled!==true}
  if(end){end.hidden=!connected;end.disabled=busy}
  if(connectedArea)connectedArea.hidden=!connected;
 }
@@ -216,11 +233,12 @@ function mount(){
  const modal=$("pf-companion-modal");if(!modal||dialog===modal&&$("pf-spotify-native"))return;
  dialog=modal;
  const old=$("pf-provider-section");
- if(old)old.hidden=true;
+ if(old){old.hidden=true;old.replaceChildren()}
  const section=document.createElement("section");section.id="pf-spotify-native";
  section.innerHTML='<div class="pf-spotify-header"><div><small>SPOTIFY • INTEGRAÇÃO OFICIAL</small><h3>Escolha músicas direto do Spotify</h3></div><span>♫</span></div>'+
   '<p>Conecte sua conta Spotify, veja suas playlists e pesquise outras. Não precisa copiar links.</p>'+
-  '<button type="button" id="pf-spotify-connect">Conectar minha conta Spotify</button>'+
+  '<button type="button" id="pf-spotify-connect" disabled>Verificando conexão oficial…</button>'+
+  '<div id="pf-spotify-setup-needed" class="pf-spotify-setup" hidden><strong>Configuração Spotify pendente</strong><p>O PulsoFit precisa de um aplicativo cadastrado no Spotify for Developers. Enquanto o Client ID não for configurado, não abriremos páginas de autenticação incompletas.</p><p>Endereço de retorno: <code>https://pulso-fit-ai-95-online.onrender.com/</code></p><button type="button" id="pf-spotify-retry">↻ Verificar ativação</button></div>'+
   '<div id="pf-spotify-connected" hidden><div class="pf-spotify-actions"><button type="button" id="pf-spotify-refresh">↻ Atualizar minhas playlists</button><button type="button" id="pf-spotify-logout">Desconectar</button></div>'+
   '<h4>Minhas playlists</h4><div id="pf-spotify-owned" class="pf-spotify-grid"></div>'+
   '<form id="pf-spotify-search"><label for="pf-spotify-query">Buscar playlists no Spotify</label><div class="pf-spotify-search-row"><input id="pf-spotify-query" type="search" minlength="2" placeholder="Ex.: treino, cardio, corrida" autocomplete="off"><button type="submit">Buscar</button></div></form>'+
@@ -232,6 +250,13 @@ function mount(){
  if(anchor)anchor.insertAdjacentElement("beforebegin",section);
  else modal.querySelector(".pf-companion-card")?.appendChild(section);
  section.querySelector("#pf-spotify-connect").addEventListener("click",()=>void connect());
+ section.querySelector("#pf-spotify-retry").addEventListener("click",()=>void (async()=>{
+  say("Verificando novamente a configuração do Spotify…");
+  try{
+   const cfg=await getConfig(true);
+   if(configurationStatus(cfg)){say("Spotify ativado! Agora toque em Conectar minha conta Spotify.");updateControls()}
+  }catch(err){say(String(err?.message||"Não foi possível verificar a ativação."))}
+ })());
  section.querySelector("#pf-spotify-refresh").addEventListener("click",()=>void loadMine());
  section.querySelector("#pf-spotify-logout").addEventListener("click",disconnect);
  section.querySelector("#pf-spotify-search").addEventListener("submit",search);
@@ -240,13 +265,14 @@ function mount(){
   updateControls();
   const callbackError=sessionStorage.getItem("pf-spotify-callback-error");
   if(callbackError){sessionStorage.removeItem("pf-spotify-callback-error");say(callbackError)}
-  if(oauthSession()||authRaw()?.refresh_token){await loadMine()}
-  else{
-   try{
-    const cfg=await getConfig();
-    if(!cfg.enabled)say("Para conectar, o administrador precisa ativar o Spotify Client ID no servidor e registrar o endereço de retorno no Spotify for Developers.");
-   }catch(e){say(String(e.message||"Spotify não configurado"))}
-  }
+  try{
+   const cfg=await getConfig(true);
+   if(configurationStatus(cfg)){
+    updateControls();
+    if(oauthSession()||authRaw()?.refresh_token)await loadMine();
+    else say("Spotify pronto para conectar. Toque em Conectar minha conta Spotify para autorizar suas playlists.");
+   }
+  }catch(e){configurationStatus(null,String(e.message||"Spotify indisponível."));updateControls()}
  })();
 }
 function schedule(){if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;mount()})}
@@ -264,6 +290,11 @@ function boot(){
  "#pf-spotify-native button{background:#1f9a61!important;color:white!important;border:1px solid #83e5ad;border-radius:11px;min-height:44px;font:850 13px system-ui;padding:10px}"+
  "#pf-spotify-native button:disabled{opacity:.5}"+
  "#pf-spotify-native #pf-spotify-connect{background:linear-gradient(100deg,#1db954,#147443)!important;font-size:15px}"+
+ "#pf-spotify-native .pf-spotify-setup{display:grid;gap:10px;background:#22324c;border:1px solid #e6bb79;border-radius:12px;padding:14px}"+
+ "#pf-spotify-native .pf-spotify-setup[hidden],#pf-spotify-native #pf-spotify-retry[hidden]{display:none!important}"+
+ "#pf-spotify-native .pf-spotify-setup strong{color:#ffdaa7;font:850 15px system-ui}"+
+ "#pf-spotify-native .pf-spotify-setup code{color:#a8ffe3;font:12px/1.6 monospace;overflow-wrap:anywhere}"+
+ "#pf-spotify-native .pf-spotify-setup button{background:#3c5070!important}"+
  "#pf-spotify-native #pf-spotify-connected[hidden],#pf-spotify-native #pf-spotify-connect[hidden],#pf-spotify-native #pf-spotify-logout[hidden]{display:none!important}"+
  "#pf-spotify-native .pf-spotify-actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}"+
  "#pf-spotify-native .pf-spotify-actions button{flex:1 1 125px}"+
