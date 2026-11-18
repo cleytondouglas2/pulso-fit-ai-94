@@ -198,12 +198,25 @@ function show(mode,notice){
    var r=await fetch("/api/auth/"+(register?"register":"login"),{method:"POST",cache:"no-store",
     headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
    var j=await r.json().catch(()=>({}));
-   if(!r.ok||!j.token)throw Error(j.error||"Cadastro ou login indisponível");
-   sessionStorage.setItem("pulso-fit-token",j.token);
-   var check=await fetch("/api/me",{cache:"no-store",headers:{"Authorization":"Bearer "+j.token}});
-   if(!check.ok)throw Error("Sessão não confirmada. Entre novamente.");
-   saveRemember(j.token);
+   if(!r.ok)throw Error(j.error||"Cadastro ou login indisponível");
+   var accessToken=typeof j.token==="string"?j.token:"";
+   // Complete account creation with a login when registration did not issue a token.
+   if(register&&!accessToken){
+    status.textContent="Conta criada! Entrando automaticamente...";
+    var loginResponse=await fetch("/api/auth/login",{method:"POST",cache:"no-store",
+     headers:{"Content-Type":"application/json"},body:JSON.stringify({email:data.email,password:data.password})});
+    var loginData=await loginResponse.json().catch(()=>({}));
+    if(!loginResponse.ok||typeof loginData.token!=="string"||!loginData.token)
+     throw Error("Cadastro concluído, mas a sessão automática não foi confirmada. Entre com os dados que acabou de cadastrar.");
+    accessToken=loginData.token;
+   }
+   if(!accessToken)throw Error(j.error||"Login indisponível.");
+   var check=await fetch("/api/me",{cache:"no-store",headers:{"Authorization":"Bearer "+accessToken}});
+   if(!check.ok)throw Error("Não foi possível confirmar sua sessão. Tente entrar novamente.");
+   sessionStorage.setItem("pulso-fit-token",accessToken);
+   saveRemember(accessToken);
    status.textContent="Conta conectada. Abrindo seu aplicativo...";
+   window.dispatchEvent(new Event("pulso-auth-ready"));
    location.reload();
   }catch(err){status.textContent=String(err.message||err);button.disabled=false}
  });
