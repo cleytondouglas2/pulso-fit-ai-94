@@ -68,7 +68,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-home-greeting-20261118">'+homeGreetingJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-outdoor-ui-20261118">'+outdoorJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-push-style-20261118">'+pushCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
-   '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>"
+   '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-live-companion-css">'+companionCSS.replace(/<\/style/gi,"<\\/style")+'</style>'+
    '<script id="pf-live-companion-js">'+companionJS.replace(/<\/script/gi,"<\\/script")+'</script>';
   const found=[];
