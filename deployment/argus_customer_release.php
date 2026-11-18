@@ -16,6 +16,10 @@ argusReplace($gateway,"// Real-operation console: legacy demo pages, test checko
 argusReplace($gateway,"// Only authenticated administrator API and provider-backed Pix API remain exposed.",
 "// Customer portal and merchant API are isolated from administrative sessions.\n            if (str_starts_with(\$path, '/api/portal/') || str_starts_with(\$path, '/api/v1/')) {\n                \$portalDb = new Database(self::\$config);\n                \$portalDb->installAndSeed();\n                Portal::handle(\$portalDb,\$method,\$path);\n            }\n            // Only authenticated administrator API and provider-backed Pix API remain exposed.",'portal routes');
 $admin="$root/src/Admin.php";
+
+argusReplace($admin,"if(!\$actor['mfa_secret_cipher']||(int)\$actor['mfa_verified_at']<=0)self::fail('Verifique o autenticador 2FA antes de continuar',403);",
+"if(!\$actor['mfa_secret_cipher']||(int)\$actor['mfa_verified_at']<=0)self::fail('Verifique o autenticador 2FA antes de continuar',403);\n        if(str_starts_with(\$path,'/api/admin/portal/')){self::writeAllowed(\$actor,true);Portal::admin(\$db,\$method,\$path);}",'superadmin customer review endpoint');
+
 argusReplace($admin,"'ready'=>LivePix::readiness(\$db)['ready'], 'min_cents'=>100,'max_cents'=>10000,",
 "'ready'=>\$configured && \$access['status']==='verified' && in_array(\$db->driver(),['pgsql','mysql'],true) && (LivePix::readiness(\$db)['checks']['storage_policy'] ?? false), 'min_cents'=>100,'max_cents'=>10000,",'dedicated finance QR availability');
 argusReplace($admin,"if(!LivePix::readiness(\$db)['ready'])self::fail('Pix temporariamente indisponível',503);",
@@ -29,6 +33,19 @@ argusReplace($html,'<div class="workspace-switch"><div class="workspace-switch-i
 argusReplace($html,'<div class="two-col"><div class="panel">','<div class="two-col super-only"><div class="panel">','superadmin internal panels');
 argusReplace($html,str_replace('\\n',"\n",'</form>\n  <p class="auth-foot">'),
 str_replace('\\n',"\n",'</form><p class="muted" style="margin-top:20px">Quer receber pagamentos com a ARGUS? <a href="/cadastro">Criar conta PF ou PJ</a> · <a href="/documentacao-api">Conhecer a API</a></p>\n  <p class="auth-foot">'),'registration link');
+
+$src=file_get_contents($html);
+$src=str_replace('<button class="menu-item super-only" data-nav="users">',
+'<button class="menu-item super-only" data-nav="applications"><span>▤</span> Verificação de clientes</button><button class="menu-item super-only" data-nav="users">',$src);
+$applicationHtml=<<<'HTML'
+<section class="page" id="page-applications" hidden>
+<div class="section-top"><div><p class="eyebrow">ANÁLISE RESTRITA</p><h1>Validação de clientes</h1><p>Área exclusiva do Super Admin. Revise documentos e autorizações antes da liberação financeira.</p></div><button id="reload-applications" type="button" class="btn secondary">Atualizar</button></div>
+<div class="panel table-container"><table><thead><tr><th>Cliente</th><th>Tipo</th><th>Documento</th><th>Situação</th><th>Arquivos</th><th>Ação</th></tr></thead><tbody id="application-rows"></tbody></table></div>
+</section>
+HTML;
+$src=str_replace('<section class="page" id="page-users" hidden>', $applicationHtml.'<section class="page" id="page-users" hidden>', $src);
+file_put_contents($html,$src);
+
 $src=file_get_contents($html);
 $src=str_replace(['MisticPay','Sem dados demonstrativos','PIX REAL · PILOTO','Pix real · piloto','Pix real piloto','PILOTO PIX','Registros reais da ARGUS','Operações reais · ARGUS'],['processamento financeiro','','','Pix autorizado','Pix autorizado','', 'Registros financeiros','Transações registradas'],$src);
 $src=str_replace(['Operação Pix real · 2FA obrigatório · ','Encerramento do piloto','As cobranças estão sujeitas às regras do piloto Pix temporário da ARGUS.','Piloto: limite de R$ 100 por envio e R$ 500 por dia.','O banco compartilhado é temporário. Faça backups externos e migre antes do vencimento.'],
@@ -68,6 +85,38 @@ $script=str_replace([
     'ARGUS Payments'
 ],$script);
 $script .= <<<'JS'
+
+/* Super Admin client onboarding actions; no customer-facing administrative data. */
+let clientApplications=[];
+const previousLoadPage=loadPage;
+loadPage=async function(page){if(page==='applications')return loadApplications();return previousLoadPage(page)};
+const previousNavigate=navigate;
+navigate=function(page){if(page==='applications'&&state.user?.role!=='superadmin')return;return previousNavigate(page)};
+async function loadApplications(){
+ if(state.user?.role!=='superadmin')return;
+ const list=await api('/api/admin/portal/applications');clientApplications=list;
+ const target=document.getElementById('application-rows');
+ target.innerHTML=list.map(a=>{
+  const docs=a.documents||[];
+  return '<tr><td><b>'+esc(a.display_name)+'</b><small>'+esc(a.email)+'</small></td><td>'+esc(a.account_type)+'</td><td>•••• '+esc(a.document_last4)+'</td><td>'+esc(a.status)+'</td><td>'+docs.map(d=>'<a class="mini" href="/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/documents/'+encodeURIComponent(d.id)+'" target="_blank" rel="noopener">'+esc(d.document_type)+'</a>').join(' ')+'</td><td><button class="mini" type="button" data-review="'+esc(a.id)+'">Analisar</button></td></tr>';
+ }).join('')||empty(6,'Nenhum pedido de cadastro');
+}
+document.getElementById('reload-applications').onclick=()=>loadApplications().catch(err=>toast(err.message,true));
+document.getElementById('application-rows').onclick=e=>{
+ const b=e.target.closest('button[data-review]');if(!b)return;
+ const a=clientApplications.find(x=>x.id===b.dataset.review);if(!a)return;
+ dialog('Analisar cadastro: '+a.display_name, '<p class="subtle-warning">Aprovação exige análise real dos arquivos, contrato e verificação do recebedor. Nunca marque sem confirmação.</p><form id="application-review-form" class="modal-form"><label>Decisão<select name="decision" id="review-decision"><option value="approve">Validar cadastro</option><option value="reject">Rejeitar</option><option value="suspend">Suspender</option></select></label>'+ (a.account_type==='PJ'?'<label>CNPJ original confirmado<input name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00"></label><label>E-mail do recebedor habilitado<input name="recipient_email" type="email"></label>':'<p class="muted">Para PF, a identidade poderá ser verificada, mas pagamentos exigem homologação individual do recebedor.</p>') +[['kyc_verified','Documentos e identidade conferidos'],['provider_approved','Prestador aprovou o recebedor'],['contract_signed','Contrato assinado'],['split_direction_confirmed','Regras de recebimento verificadas']].map(([k,label])=>'<label class="checkline"><input name="'+k+'" type="checkbox"><span>'+label+'</span></label>').join('') + '<label>Motivo (rejeição ou suspensão)<input name="reason" placeholder="Justificativa"></label><div class="modal-actions"><button type="submit" class="btn primary">Registrar decisão</button></div></form>','ANÁLISE DOCUMENTAL');
+ document.getElementById('application-review-form').onsubmit=async ev=>{
+  ev.preventDefault();const form=ev.target,data=formValues(form),decision=data.decision;
+  if(decision==='approve'){
+   for(const k of ['kyc_verified','provider_approved','contract_signed','split_direction_confirmed'])if(data[k]!=='on'){toast('Confirme todas as verificações antes de liberar',true);return}
+   for(const k of ['kyc_verified','provider_approved','contract_signed','split_direction_confirmed'])data[k]=true;
+  }
+  if(!confirm('Registrar esta decisão para '+a.display_name+'?'))return;
+  try{const result=await post('/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/decision',data);closeDialog();await loadApplications();toast(result.message||'Decisão registrada: '+result.status)}
+  catch(err){toast(err.message,true)}
+ };
+};
 
 /* ARGUS visual QR receipts; local QR renderer, no external API leaks payment payload. */
 (function(){
