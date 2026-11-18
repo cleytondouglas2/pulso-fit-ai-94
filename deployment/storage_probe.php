@@ -68,6 +68,29 @@ try {
     }
 
 
+    // Read-only Groq authentication probe; never sends a conversation or exposes the key.
+    $groqKey=trim((string)(getenv('GROQ_API_KEY')?:''));
+    error_log('ARGUS_GROQ_CONFIG status='.($groqKey!==''?'configured':'missing'));
+    if($groqKey!==''){
+        try{
+            if(!function_exists('curl_init'))throw new RuntimeException('curl_unavailable');
+            $ch=curl_init('https://api.groq.com/openai/v1/models/openai/gpt-oss-20b');
+            curl_setopt_array($ch,[
+                CURLOPT_RETURNTRANSFER=>true,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$groqKey,'Accept: application/json'],
+                CURLOPT_CONNECTTIMEOUT=>3,CURLOPT_TIMEOUT=>7,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_MAXREDIRS=>0,
+                CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+            ]);
+            $body=curl_exec($ch);
+            $code=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            $valid=($code===200 && is_string($body) && strlen($body)<150000);
+            error_log('ARGUS_GROQ_AUTH_TEST http='.$code.' model_ready='.($valid?'yes':'no'));
+        }catch(Throwable $e){
+            error_log('ARGUS_GROQ_AUTH_TEST http=0 model_ready=no error_type='.get_class($e));
+        }
+    }
+
+
 } catch (Throwable $error) {
     error_log('ARGUS_STORAGE_PROBE status=unavailable driver='.$driver.' shared='.($shared?'yes':'no').' error_type='.get_class($error));
     // Keep the web server running so /health can report a precise HTTP 503 status.
