@@ -157,6 +157,9 @@ final class ArgusAI
     }
     public static function worker(Database $db):void {
         if(getenv('ARGUS_AI_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
+        // Optional account tables may not exist on a freshly migrated environment.
+        Portal::install($db);
+        Notifications::install($db);
         foreach($db->all("SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' LIMIT 20") as $actor){
             try{self::notifyAlerts($db,'admin',$actor['id'],self::analyze(self::rows($db,'admin',$actor)));}
             catch(\Throwable $e){error_log('ARGUS AI admin advisory unavailable: '.get_class($e));}
