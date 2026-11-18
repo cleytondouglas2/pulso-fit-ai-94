@@ -39,6 +39,21 @@ try {
     $financeSecret = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET') ?: ''));
     $financeConfigured = strlen($financeId) >= 8 && strlen($financeSecret) >= 12;
     error_log('ARGUS_FINANCE_QR_CONFIG status='.($financeConfigured ? 'configured' : 'missing'));
+
+    // Only public credential category and boolean diagnostics, never raw values.
+    $shape=static function(string $value):string {
+        if(preg_match('/^(pk_|sk_|ci_|cs_)/D',$value))return 'legacy_misticpay';
+        if(str_starts_with(strtolower($value),'basic ')||str_starts_with(strtolower($value),'bearer '))return 'full_auth_header_pasted';
+        if(str_starts_with($value,'$'.'{')||str_starts_with($value,'$('))return 'env_reference';
+        if((str_starts_with($value,'"')&&str_ends_with($value,'"'))||(str_starts_with($value,"'")&&str_ends_with($value,"'")))return 'quoted';
+        return $value===''?'empty':'other';
+    };
+    $rawId=(string)(getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:'');
+    $rawSecret=(string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:'');
+    error_log('ARGUS_FINANCE_QR_SHAPE id_type='.$shape($financeId).' secret_type='.$shape($financeSecret).
+        ' id_padding='.(trim($rawId)===$rawId?'no':'yes').
+        ' secret_padding='.(trim($rawSecret)===$rawSecret?'no':'yes').
+        ' same_value='.($financeId!==''&&hash_equals($financeId,$financeSecret)?'yes':'no'));
     // Safe one-shot, read-only API check. A random nonexistent charge must return
     // CHARGE_NOT_FOUND/404 if these credentials can read QRCODES; never creates Pix.
     if ($financeConfigured) {
@@ -62,6 +77,24 @@ try {
             $errorCode=is_array($parsed)?(string)($parsed['code']??'none'):'none';
             if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$errorCode))$errorCode='unclassified';
             error_log('ARGUS_FINANCE_QR_AUTH_TEST http='.$http.' code='.$errorCode.' authenticated='.($http===404?'yes':'unknown'));
+
+            // Compare standard cURL Basic with the PHP stream implementation, without issuing charges.
+            if(function_exists('curl_init')){
+                $ch=curl_init($probeUrl);
+                curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>true,
+                    CURLOPT_USERPWD=>$financeId.':'.$financeSecret,CURLOPT_HTTPAUTH=>CURLAUTH_BASIC,
+                    CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,CURLOPT_FOLLOWLOCATION=>false,
+                    CURLOPT_MAXREDIRS=>0,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+                    CURLOPT_HTTPHEADER=>['Accept: application/json']]);
+                $r=curl_exec($ch);
+                $curlHttp=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                $j=is_string($r)?json_decode(substr($r,0,8000),true):null;
+                $curlCode=is_array($j)?(string)($j['code']??'none'):'none';
+                if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$curlCode))$curlCode='unclassified';
+                error_log('ARGUS_FINANCE_QR_CURL_TEST http='.$curlHttp.' code='.$curlCode.
+                    ' matches_stream='.($curlHttp===$http?'yes':'no'));
+            }
         } catch (Throwable $e) {
             error_log('ARGUS_FINANCE_QR_AUTH_TEST http=0 code=PROBE_EXCEPTION error_type='.get_class($e));
         }
