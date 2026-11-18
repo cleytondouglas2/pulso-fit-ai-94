@@ -59,6 +59,38 @@ try {
         ' storage='.($payoutPersistent?'ready':'blocked').
         ' request_ready='.($payoutReady?'yes':'no').
         ' provider_scopes=unverified');
+    // Authoritative read-only BALANCE_READ permission check using the dedicated
+    // payout keys. Never log balances, account data, response bodies or credentials.
+    if($payoutShape&&function_exists('curl_init')){
+        $scopeHttp=0;$scopeCode='none';
+        try{
+            $ch=curl_init('https://api.misticpay.com/api/users/balance');
+            curl_setopt_array($ch,[
+                CURLOPT_RETURNTRANSFER=>true,
+                CURLOPT_HTTPHEADER=>['Authorization: Basic '.base64_encode($payoutPk.':'.$payoutSk),'Accept: application/json'],
+                CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,CURLOPT_FOLLOWLOCATION=>false,
+                CURLOPT_MAXREDIRS=>0,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2
+            ]);
+            $response=curl_exec($ch);
+            $scopeHttp=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if($scopeHttp>=400&&is_string($response)){
+                $failure=json_decode(substr($response,0,2500),true);
+                $scopeCode=is_array($failure)?strtoupper((string)($failure['code']??'none')):'none';
+                if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$scopeCode))$scopeCode='unclassified';
+            }
+            unset($response,$failure);
+        }catch(Throwable $error){
+            $scopeCode='probe_exception';
+        }
+        $scopeStatus=$scopeHttp===200?'verified':
+            ($scopeHttp===403&&$scopeCode==='API_SCOPE_DENIED'?'denied':'unverified');
+        error_log('ARGUS_PAYOUT_BALANCE_SCOPE status='.$scopeStatus.
+            ' http='.$scopeHttp.' code='.$scopeCode.
+            ' withdraw_create=unverified');
+    }else{
+        error_log('ARGUS_PAYOUT_BALANCE_SCOPE status=not_tested withdraw_create=unverified');
+    }
     unset($payoutPk,$payoutSk);
 
     // Show only whether Finance QR credentials are syntactically present, not their values.
