@@ -155,7 +155,7 @@ function showInAppVideo(item,stage,hostIndex=0){
  const warning=$("pf-class-video-alert");if(warning)warning.hidden=true;
  frameErrorTimer=setTimeout(()=>{
   if(activeFrame!==player||playerReady)return;
-  videoWarning("Não foi possível confirmar o carregamento neste aparelho. Toque no vídeo; se estiver indisponível, tente outra aula aqui no PulsoFit.");
+  videoWarning("Não foi possível confirmar o carregamento neste aparelho. Toque no vídeo ou use “Testar outro player nesta tela”. Se não funcionar, tente outra aula aqui no PulsoFit.");
  },14000);
  announce("Vídeo incorporado. Toque em ▶ no próprio vídeo para começar, sem abrir outro aplicativo.");
 }
@@ -180,7 +180,8 @@ function drawPlayer(item){
  pad.appendChild(play);
  const warning=txt("p","","pf-class-video-alert");warning.id="pf-class-video-alert";warning.hidden=true;
  pad.appendChild(warning);
- pad.appendChild(button("↻ Reiniciar vídeo nesta tela","pf-class-inline-action",()=>showInAppVideo(item,stage)));
+ pad.appendChild(button("↻ Reiniciar vídeo nesta tela","pf-class-inline-action",()=>showInAppVideo(item,stage,playerHost)));
+ pad.appendChild(button("⇄ Testar outro player nesta tela","pf-class-inline-action",()=>showInAppVideo(item,stage,playerHost===0?1:0)));
  pad.appendChild(button("⤻ Tentar outra aula aqui","pf-class-inline-action",()=>nextLesson(item)));
  mount.appendChild(pad);
  const row=document.createElement("div");row.className="pf-class-actions";
