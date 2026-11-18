@@ -53,14 +53,108 @@
  function hide(){
   opened=false;var el=document.getElementById("pf-stable-modal");if(el)el.remove();
  }
+ var paymentPoll=null;
+ function stopPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}
  function select(code){
-  hide();
-  // O botão temporário usa a rotina de checkout já implementada e autenticada
-  // no aplicativo. Não criar ou inventar um segundo gateway.
-  var target=document.createElement("button");
-  target.type="button";target.dataset.pfSelectPlan=code;
-  target.style.display="none";document.body.appendChild(target);
-  target.click();target.remove();
+  var plan=code==="mensal"?{code:"mensal",name:"Mensal",price:"R$ 24,90",days:30}:
+           code==="quinzenal"?{code:"quinzenal",name:"Quinzenal",price:"R$ 14,90",days:15}:null;
+  if(!plan)return;
+  stopPolling();
+  var outer=document.getElementById("pf-stable-modal");
+  if(!outer){show();outer=document.getElementById("pf-stable-modal")}
+  if(!outer)return;
+  opened=true;closedOnRoute=false;
+  var body=outer.querySelector(".pf-stable-body");
+  if(!body)return;
+  body.innerHTML='<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • PIX MISTICPAY</small>'+
+   '<h2>Contratar Plano '+plan.name+'</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
+   '<section class="pf-stable-trial"><strong>'+plan.price+' • '+plan.days+' dias de acesso</strong>'+
+   '<p>Pagamento único por Pix, sem renovação automática.</p></section>'+
+   '<form id="pf-stable-checkout-form" autocomplete="on">'+
+   '<label style="display:block;margin:12px 0;font-weight:700">Nome completo do pagador'+
+   '<input name="payerName" required minlength="3" maxlength="120" autocomplete="name" placeholder="Nome completo" style="display:block;box-sizing:border-box;width:100%;padding:13px;margin-top:5px;background:#0d1429;color:#fff;border:1px solid #8077ac;border-radius:10px;font:16px system-ui,sans-serif"></label>'+
+   '<label style="display:block;margin:12px 0;font-weight:700">CPF do pagador'+
+   '<input name="payerDocument" required inputmode="numeric" maxlength="14" autocomplete="off" placeholder="000.000.000-00" style="display:block;box-sizing:border-box;width:100%;padding:13px;margin-top:5px;background:#0d1429;color:#fff;border:1px solid #8077ac;border-radius:10px;font:16px system-ui,sans-serif"></label>'+
+   '<p id="pf-stable-payment-status" role="status" aria-live="polite" style="color:#efe3ff">Verificando a disponibilidade do Pix...</p>'+
+   '<button type="submit" id="pf-stable-pay-button" disabled style="display:block;width:100%;background:#8a49db;color:#fff;border:0;padding:14px;border-radius:12px;font-weight:850;cursor:pointer">Gerar QR Code Pix</button>'+
+   '</form>'+
+   '<div id="pf-stable-pix-result" hidden style="padding-top:15px;text-align:center">'+
+   '<strong style="display:block;font-size:17px">Pague usando o QR Code ou o Pix copia e cola</strong>'+
+   '<img id="pf-stable-pix-image" alt="QR Code Pix para pagamento" hidden style="display:block;max-width:250px;width:85%;margin:16px auto;border-radius:10px;border:10px solid white;background:white">'+
+   '<label for="pf-stable-pix-code" style="display:block;margin:10px 0">Código Pix copia e cola</label>'+
+   '<textarea id="pf-stable-pix-code" readonly rows="4" style="box-sizing:border-box;width:100%;background:#0d1429;color:white;border:1px solid #8077ac;border-radius:10px;padding:12px;overflow-wrap:anywhere"></textarea>'+
+   '<button type="button" id="pf-stable-pix-copy" style="margin:12px 5px 4px;background:#8a49db;color:white;border:0;padding:12px;border-radius:10px;font-weight:800">Copiar código Pix</button>'+
+   '<button type="button" id="pf-stable-pix-check" style="margin:12px 5px 4px;background:#33405e;color:white;border:1px solid #8174b6;padding:12px;border-radius:10px;font-weight:800">Verificar pagamento</button>'+
+   '</div>'+
+   '<button type="button" id="pf-stable-back-plans" style="margin-top:16px;width:100%;background:transparent;color:#e9d7ff;border:1px solid #7966ac;padding:10px;border-radius:10px;font-weight:700">Voltar aos planos</button>'+
+   '<p class="pf-stable-foot">O QR Code só é apresentado após a validação da cobrança no servidor. Seus dados de pagamento são enviados por HTTPS; nunca informe sua senha neste formulário.</p>';
+  var form=body.querySelector("#pf-stable-checkout-form");
+  var btn=body.querySelector("#pf-stable-pay-button");
+  var status=body.querySelector("#pf-stable-payment-status");
+  var result=body.querySelector("#pf-stable-pix-result");
+  var reference=null,processing=false;
+  body.querySelector(".pf-stable-close").addEventListener("click",function(){closedOnRoute=true;stopPolling();hide()});
+  body.querySelector("#pf-stable-back-plans").addEventListener("click",function(){stopPolling();hide();show()});
+  body.querySelector("#pf-stable-pix-copy").addEventListener("click",function(){
+   var area=body.querySelector("#pf-stable-pix-code");
+   var text=area.value;
+   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(function(){status.textContent="Código Pix copiado!"}).catch(function(){area.select();status.textContent="Código selecionado. Use Copiar no celular."});
+   else{area.select();status.textContent="Código selecionado. Use Copiar no celular."}
+  });
+  function verify(){
+   if(processing||!reference||!body.isConnected)return;
+   processing=true;
+   fetch("/api/billing/payment?reference="+encodeURIComponent(reference),{cache:"no-store",
+    headers:{Authorization:"Bearer "+token()}})
+   .then(function(r){return r.json().then(function(j){if(!r.ok)throw Error(j.error||"Consulta indisponível");return j})})
+   .then(function(j){
+    if(j.paid){stopPolling();status.textContent="Pagamento confirmado! Seu plano foi ativado. Atualize o aplicativo para consultar a validade.";load(true)}
+    else if(["DEVOLVIDO","DEVOLVIDO_PARCIAL","CANCELADO","FALHA"].includes(j.status)){stopPolling();status.textContent="Pagamento não concluído: "+j.status}
+    else status.textContent="Aguardando o pagamento do Pix...";
+   }).catch(function(e){status.textContent="Consulta temporariamente indisponível: "+e.message})
+    .finally(function(){processing=false});
+  }
+  body.querySelector("#pf-stable-pix-check").addEventListener("click",verify);
+  var loggedIn=token();
+  if(!loggedIn){
+   status.textContent="Entre ou crie uma conta para gerar seu Pix.";
+   var login=document.createElement("button");login.type="button";login.textContent="Entrar ou criar conta";
+   login.style.cssText="display:block;width:100%;margin:12px 0;background:#41517e;color:#fff;padding:12px;border-radius:10px;border:0;font-weight:800";
+   login.addEventListener("click",function(){stopPolling();hide();location.hash="#/account"});
+   form.appendChild(login);
+  }else{
+   fetch("/api/billing/config",{cache:"no-store"})
+   .then(function(r){if(!r.ok)throw Error("Servidor de pagamentos indisponível");return r.json()})
+   .then(function(config){if(!config.ready||!config.supportedMethods?.includes("pix"))throw Error("Pix temporariamente indisponível");
+    if(body.isConnected){btn.disabled=false;status.textContent="Informe seu nome e CPF e toque em Gerar QR Code Pix."}})
+   .catch(function(e){status.textContent=e.message+". Nenhuma cobrança foi efetuada."});
+  }
+  form.addEventListener("submit",function(e){
+   e.preventDefault();
+   if(btn.disabled||processing||!token())return;
+   var name=form.elements.payerName.value.trim();
+   var cpf=form.elements.payerDocument.value.replace(/\D/g,"");
+   if(name.length<3||cpf.length!==11){status.textContent="Informe nome completo e CPF com 11 dígitos.";return}
+   btn.disabled=true;processing=true;status.textContent="Gerando Pix seguro na MisticPay...";
+   fetch("/api/billing/checkout",{method:"POST",cache:"no-store",
+    headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},
+    body:JSON.stringify({planCode:plan.code,paymentMethod:"pix",payerName:name,payerDocument:cpf})})
+   .then(function(r){return r.json().then(function(j){if(!r.ok)throw Error(j.error||"Não foi possível gerar o Pix");return j})})
+   .then(function(j){
+    if(!j.reference||!j.copyPaste)throw Error("Cobrança sem código Pix válido");
+    reference=j.reference;result.hidden=false;form.hidden=true;
+    body.querySelector("#pf-stable-pix-code").value=j.copyPaste;
+    var img=body.querySelector("#pf-stable-pix-image");
+    var raw=String(j.qrCodeBase64||"").trim();
+    var data=/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(raw)?raw:
+      /^[A-Za-z0-9+/=]{200,}$/.test(raw)?"data:image/png;base64,"+raw:"";
+    if(data){img.src=data;img.hidden=false;img.style.display="block"}
+    status.textContent=data?"QR Code Pix gerado. Aguardando pagamento...":
+       "Pix gerado. Use o código copia e cola abaixo no aplicativo do seu banco.";
+    stopPolling();paymentPoll=setInterval(verify,12000);
+   }).catch(function(e){status.textContent="Não foi possível gerar Pix: "+e.message;btn.disabled=false})
+    .finally(function(){processing=false});
+  });
  }
  function show(){
   if(!document.body)return;opened=true;
@@ -80,9 +174,9 @@
   });
   document.body.appendChild(outer);paint();
  }
- async function load(){
+ async function load(force){
   var key=token();
-  if(lastToken===key)return;
+  if(!force&&lastToken===key)return;
   lastToken=key;details=null;paint();
   if(!key)return;
   try{
