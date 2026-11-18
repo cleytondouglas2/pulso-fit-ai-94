@@ -7,6 +7,8 @@ const SQL=[
   "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference UUID PRIMARY KEY, user_id TEXT NOT NULL, plan_code TEXT NOT NULL CHECK (plan_code IN ('quinzenal','mensal','teste7d')), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), currency TEXT NOT NULL CHECK(currency='BRL'), provider_payment_id TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'PENDENTE', created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
   "DO $body$ BEGIN IF EXISTS(SELECT 1 FROM pg_constraint WHERE conname='pf_billing_orders_plan_code_check' AND conrelid='pf_billing_orders'::regclass) THEN ALTER TABLE pf_billing_orders DROP CONSTRAINT pf_billing_orders_plan_code_check; END IF; ALTER TABLE pf_billing_orders ADD CONSTRAINT pf_billing_orders_plan_code_check CHECK (plan_code IN ('quinzenal','mensal','teste7d')); END $body$",
   "CREATE INDEX IF NOT EXISTS pf_billing_orders_user_idx ON pf_billing_orders(user_id,created_at DESC)",
+  "ALTER TABLE pf_billing_orders ADD COLUMN IF NOT EXISTS last_check_at TIMESTAMPTZ",
+  "CREATE INDEX IF NOT EXISTS pf_billing_orders_reconcile_idx ON pf_billing_orders(status,last_check_at,created_at) WHERE provider_payment_id IS NOT NULL",
   "CREATE TABLE IF NOT EXISTS pf_billing_entitlements (user_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL DEFAULT '-infinity', blocked BOOLEAN NOT NULL DEFAULT false, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS pf_billing_events (provider_payment_id TEXT NOT NULL, kind TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(provider_payment_id,kind))",
   "CREATE TABLE IF NOT EXISTS pf_billing_trials (user_id TEXT PRIMARY KEY, started_at TIMESTAMPTZ NOT NULL DEFAULT now())"
@@ -43,6 +45,22 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
   },
   async getByReference(ref){
    const r=await pool.query("SELECT * FROM pf_billing_orders WHERE reference=$1",[String(ref)]);return rowToOrder(r.rows[0]);
+  },
+  async claimPendingForVerification(limit=10){
+   // Atomic reservation: concurrent app workers never claim the same order.
+   // This only reads already-created charges; it never creates a new PIX.
+   const count=Math.min(15,Math.max(1,Math.trunc(Number(limit)||10)));
+   const r=await pool.query(`UPDATE pf_billing_orders AS orders
+    SET last_check_at=now()
+    WHERE orders.reference IN (
+     SELECT reference FROM pf_billing_orders
+     WHERE status='PENDENTE' AND provider_payment_id IS NOT NULL
+      AND created_at>now()-interval '48 hours'
+      AND (last_check_at IS NULL OR last_check_at<now()-interval '75 seconds')
+     ORDER BY last_check_at ASC NULLS FIRST,created_at ASC
+     LIMIT $1 FOR UPDATE SKIP LOCKED)
+    RETURNING orders.*`,[count]);
+   return r.rows.map(rowToOrder);
   },
   async getLatestUserOrder(userId){
    // Recovery can only reveal an order owned by the signed-in user.
