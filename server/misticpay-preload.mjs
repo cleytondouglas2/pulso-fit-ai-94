@@ -38,7 +38,7 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
       const pool=new Pool({connectionString:process.env[dbVar],connectionTimeoutMillis:3500,max:1});
       try {
         await pool.query("SELECT 1");databaseReachable=true;
-        const schema=await pool.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('users','accounts','pulso_users','pro_users','subscriptions') ORDER BY table_name,column_name LIMIT 70");
+        const schema=await pool.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND (table_name ILIKE '%user%' OR table_name ILIKE '%account%' OR table_name ILIKE '%profile%' OR table_name ILIKE '%subscr%' OR table_name ILIKE '%member%') ORDER BY table_name,column_name LIMIT 100");
         console.log("[pulso-billing] Available account table field names: "+JSON.stringify(schema.rows.map(r=>r.table_name+"."+r.column_name+" ("+r.data_type+")")));
       }
       finally {await pool.end();}
