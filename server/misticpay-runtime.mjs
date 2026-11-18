@@ -206,8 +206,28 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
    return respond(res,200,{...state,nextAction:state.ready?"Conectado":"Aguardando banco permanente e proteção de acesso no servidor."});
   }
-  if(path==="/api/subscription/status"&&!configured){
-   return respond(res,200,{billingEnforced:false,checkoutEnabled:false,trialDays:7});
+  // Mostrar o trial da conta no servidor, mesmo com bloqueio automático desligado.
+  if(path==="/api/subscription/status"){
+   const user=await authenticate(req);
+   if(!user?.id)return respond(res,401,{error:"Entre na sua conta para consultar seus 7 dias grátis."});
+   if(!store)return respond(res,503,{error:"Consulta do período grátis indisponível no servidor."});
+   const [startedAt,entitlement]=await Promise.all([
+    store.firstTrialUse(String(user.id)),store.getEntitlement(String(user.id))
+   ]);
+   const start=new Date(startedAt);
+   if(!Number.isFinite(start.getTime()))return respond(res,503,{error:"Data do período grátis inválida."});
+   const until=new Date(start.getTime()+7*86400000);
+   const trialActive=until.getTime()>Date.now();
+   const paid=Boolean(entitlement?.active);
+   const enforce=configured&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1";
+   return respond(res,200,{
+     provider:"misticpay",billingEnforced:enforce,checkoutEnabled:configured,
+     trialDays:7,trialStartedAt:start.toISOString(),trialEndsAt:until.toISOString(),
+     trialActive,remainingTrialDays:Math.max(0,Math.ceil((until.getTime()-Date.now())/86400000)),
+     planActive:paid,planExpiresAt:entitlement?.expiresAt||null,
+     hasAccess:user.role==="admin"||trialActive||paid,
+     accessEnforcementActive:enforce
+   });
   }
   if(path==="/api/admin/billing/config"&&!configured){
    const user=await authenticate(req);
