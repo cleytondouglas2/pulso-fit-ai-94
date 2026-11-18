@@ -2292,6 +2292,32 @@ const QUICK_FOODS = [
 const TBCA_EGG_NUTRIENTS={kcal:125,protein:10.4,carbs:1.38,fat:8.7,fiber:0,sugar:null,sodium:128};
 const tbcaEggQuick=QUICK_FOODS.find(food=>food.id==='egg');
 if(tbcaEggQuick){tbcaEggQuick.grams=50;tbcaEggQuick.per100={...TBCA_EGG_NUTRIENTS};tbcaEggQuick.description='TBCA BRC0010J — ovo de galinha inteiro cozido, Brasil';}
+function calibrateKnownFood(analysis){
+ if(!analysis||!Array.isArray(analysis.foods))return analysis;
+ const egg=QUICK_FOODS.find(x=>x.id==='egg');
+ let revised=0;
+ for(const food of analysis.foods){
+  const normalized=String(food.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const boiled=/(ovos?\s+(?:de\s+galinha\s+)?cozid|ovos?\s+duros?|hard[\s-]*boiled|boiled\s+eggs?)/.test(normalized);
+  if(!boiled)continue;
+  const numberMatch=normalized.match(/(?:^|\s)([1-9])\s*(?:ovos?|unidades?)(?:\s|$)/);
+  const count=numberMatch?Number(numberMatch[1]):(/(?:\bdois\b|\bduas\b)/.test(normalized)?2:1);
+  const grams=Number(food.grams);
+  if(!Number.isFinite(grams)||grams<=0||(count===1&&grams>75)||(count>1&&grams>count*75)){
+   food.grams=count*50;
+  }
+  food.reference={...(food.reference||{}),matched:true,source:'USDA FoodData Central — ovo cozido',description:egg.description,fdcId:egg.fdcId,per100:{...egg.per100}};
+  food.category='protein';
+  food.certainty=food.certainty==='manual'?'manual':'medium';
+  revised++;
+ }
+ if(revised){
+  if(!Array.isArray(analysis.uncertainties))analysis.uncertainties=[];
+  const warning='Ovo cozido calibrado pela composição USDA (155 kcal por 100 g; ~78 kcal por unidade de 50 g sem casca). A IA não mede o peso da foto: confira a quantidade antes de salvar.';
+  if(!analysis.uncertainties.includes(warning))analysis.uncertainties.unshift(warning);
+ }
+ return analysis;
+}
 function quickFoodEntry(food,grams){return {id:'food-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),name:food.name,grams,category:food.category,certainty:'manual',reference:{matched:true,source:food.tacoCode?'TACO / NEPA-Unicamp':'USDA FoodData Central — referência local',description:food.description,fdcId:food.fdcId,tacoCode:food.tacoCode||null,per100:{...food.per100}}};}
 // A versão HTML de visualização não inclui servidor. Fotos jamais são enviadas
 // à origem da plataforma que hospeda a prévia (ChatGPT ou arquivo local).
@@ -2467,7 +2493,7 @@ async function handleNutritionAction(action,el){
      const image=await compressImage(selectedFile);
      const answer=await apiRequest('/api/ai/meal/recognize',{image,consent:true});
      if(!answer.analysis||!Array.isArray(answer.analysis.foods))throw Error('Análise incompleta.');
-     current=answer.analysis;
+     current=calibrateKnownFood(answer.analysis);
      for(const food of current.foods){
        const n=String(food.name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
        if(/\b(ovo|egg|ovos|eggs)\b/.test(n)&&/cozid|boil|hard/.test(n)){
@@ -3225,6 +3251,89 @@ pfPolishMobileNavigation();
  };
 })();
 
+/* PULSO FIT 9.8 LIVE IMPROVEMENTS */
+(function applyPulsoImprovements(){
+ // Mantém a navegação atual e o CSS de design sem alterar o hook do build.
+ const style=document.createElement('style');
+ style.id='pf98-live-design';
+ style.textContent=`
+ @media(max-width:850px){
+ .mobile-nav{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:end!important;overflow:visible!important;padding:9px 6px calc(12px + env(safe-area-inset-bottom))!important;min-height:79px!important}
+ .mobile-nav button[data-route="coach"]{position:relative!important;isolation:isolate;width:clamp(54px,14vw,68px)!important;height:clamp(54px,14vw,68px)!important;min-height:54px!important;max-width:68px!important;margin:0 auto!important;padding:5px 2px!important;transform:translateY(-12px)!important;border-radius:999px!important;border:2px solid #b999fa!important;background:linear-gradient(145deg,#a855f7,#6028ce)!important;color:#fff!important;box-shadow:0 7px 20px #8b44fc9c,0 0 0 5px #b576ff26!important;animation:pf98-glow 3s ease-in-out infinite}
+ .mobile-nav button[data-route="coach"] svg{width:24px!important;height:24px!important;color:white!important}
+ .mobile-nav button[data-route="coach"] span{font-size:0!important;white-space:nowrap!important}
+ .mobile-nav button[data-route="coach"] span::after{content:"Coach IA";display:block!important;font:900 9px/1.1 system-ui,sans-serif;letter-spacing:-.35px;color:white}
+ .mobile-nav button[data-route="coach"]::before{content:"IA";z-index:3;position:absolute;right:-9px;top:-9px;width:28px;height:22px;display:grid;place-items:center;border:2px solid #121829;border-radius:13px;background:linear-gradient(130deg,#74ffbf,#68d4fa);color:#08202d;font:900 11px/1 system-ui,sans-serif}
+ .mobile-nav .nav-link{min-width:0!important;max-width:100%!important;flex:initial!important;overflow:visible!important}
+ .main{padding-bottom:calc(109px + env(safe-area-inset-bottom))!important}
+ }
+ @keyframes pf98-glow{0%,100%{box-shadow:0 7px 20px #8b44fc9c,0 0 0 5px #b576ff26}50%{box-shadow:0 8px 28px #8b44fc,0 0 0 8px #b576ff28}}
+ .pf-page-enter{animation:pf98-page-in .32s cubic-bezier(.2,.65,.3,1) both!important}
+ @keyframes pf98-page-in{from{opacity:.35;transform:translate3d(0,11px,0);filter:blur(1.8px)}to{opacity:1;transform:translate3d(0,0,0);filter:blur(0)}}
+ .pf98-coach-hero{position:relative;isolation:isolate;overflow:hidden;display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:clamp(18px,3vw,31px);border:1px solid #6552ac;border-radius:24px;background:radial-gradient(circle at 90% 10%,#8d4cde7d,transparent 46%),linear-gradient(145deg,#1b1a46,#101f38);margin:0 0 15px}
+ .pf98-coach-hero .eyebrow{color:#c4f9e7}.pf98-coach-hero h1{font-size:clamp(25px,5vw,40px);line-height:1.12;margin:8px 0;color:#fff}.pf98-coach-hero p{font-size:13px;line-height:1.6;color:#d9d7ef;max-width:48rem}
+ .pf98-coach-avatar{width:clamp(64px,12vw,112px);height:clamp(64px,12vw,112px);display:grid;place-items:center;border:1px solid #ba92ff;border-radius:30px;background:linear-gradient(150deg,#9d61ff,#4539b4);box-shadow:0 0 42px #9561ff6b;font-size:clamp(27px,6vw,51px);animation:pf98-orb 5s ease-in-out infinite}
+ @keyframes pf98-orb{50%{transform:translateY(-6px) rotate(3deg)}}
+ .pf98-coach-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(270px,.75fr);gap:15px;align-items:start}
+ .pf98-chat{min-width:0;overflow:hidden;border:1px solid #4f4e8f;border-radius:23px;background:linear-gradient(180deg,#161e36,#11182b);box-shadow:0 12px 46px #060b1b5e}
+ .pf98-chat-top{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:17px 18px;border-bottom:1px solid #333e63}
+ .pf98-chat-top h2{font-size:17px;margin:4px 0}.pf98-chat-top p{font-size:11px;color:#a8b6d7;margin:0}.pf98-status{font-size:10px;border:1px solid #3d7a70;color:#b7fae0;background:#163a40;border-radius:99px;padding:6px 9px;max-width:46%;line-height:1.3}
+ .pf98-messages{display:flex;flex-direction:column;gap:16px;overflow-y:auto;height:min(56vh,450px);min-height:270px;padding:20px 16px;scroll-behavior:smooth;overscroll-behavior:contain}
+ .pf98-message{display:flex;gap:9px;max-width:94%;align-items:flex-end}
+ .pf98-message.user{align-self:flex-end;flex-direction:row-reverse}.pf98-message-avatar{display:grid;place-items:center;border-radius:11px;flex:0 0 31px;height:31px;background:#6843c4;font-size:17px}.pf98-message.user .pf98-message-avatar{background:#183f54}
+ .pf98-message-body{padding:12px 14px;min-width:0;border:1px solid #435173;border-radius:17px 17px 17px 4px;background:#202c47;color:#f0f3ff}
+ .pf98-message.user .pf98-message-body{border-color:#427b88;border-radius:17px 17px 4px 17px;background:#164458}
+ .pf98-message-label{display:block;color:#c3b7ff;font-size:10px;font-weight:850;margin-bottom:7px}.pf98-message.user .pf98-message-label{color:#99f1e5}
+ .pf98-message-text{font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+ .pf98-suggestions{padding:13px 15px 7px;display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin}
+ .pf98-suggestions button{flex:0 0 auto;border-radius:99px;border:1px solid #53618c;background:#222d4c;color:#e7e9fa;padding:9px 12px;cursor:pointer;font:700 11px/1.35 system-ui,sans-serif}
+ .pf98-chat-compose{display:flex;gap:8px;align-items:end;padding:13px 15px 15px}
+ .pf98-chat-compose textarea{flex:1;min-width:0;min-height:47px;max-height:140px;resize:vertical;border:1px solid #58658d;border-radius:15px;padding:12px 13px;background:#10182b;color:#fff;font:13px/1.4 system-ui,sans-serif}
+ .pf98-chat-compose button{min-height:47px;border-radius:14px;padding:8px 16px}
+ .pf98-chat-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;padding:0 16px 15px;font-size:10px;color:#9daecd}
+ .pf98-chat-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:7px;min-height:225px;padding:18px;color:#e5edff}
+ .pf98-chat-welcome .pf98-glyph{font-size:42px}.pf98-chat-welcome h3{font-size:21px;margin:0}.pf98-chat-welcome p{font-size:12px;line-height:1.6;max-width:340px;color:#aab9d7}
+ .pf98-panel{border:1px solid #3d4568;border-radius:20px;background:#172239;padding:19px;margin-bottom:13px}
+ .pf98-panel h3{margin:6px 0 8px;font-size:17px}.pf98-panel p{font-size:12px;color:#bcc7db;line-height:1.6}
+ .pf98-panel button[data-route]{display:block;width:100%;margin-top:9px;padding:11px;border-radius:11px;border:1px solid #4e5b83;background:#212c48;color:#e8f2ff;text-align:left;cursor:pointer}
+ .pf98-connect{margin-top:12px}.pf98-connect summary{cursor:pointer;font-size:12px;font-weight:800;color:#a9eae8}
+ .pf98-connect input[type=url]{width:100%;min-height:42px;padding:9px;border-radius:10px;background:#111a2e;color:#fff;border:1px solid #475a76;margin:9px 0}
+ .pf98-trial-banner{padding:17px 20px;border:1px solid #5676ab;background:linear-gradient(100deg,#213a5a,#281f52);border-radius:18px;margin:14px 0;line-height:1.7}
+ .pf98-trial-banner strong{display:block;color:#e4f7ff;font-size:17px}.pf98-trial-banner p{margin:4px 0;color:#c8d4ec;font-size:12px}
+ .pf98-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin:16px 0}.pf98-price-card{padding:22px;border:1px solid #4e567f;border-radius:22px;background:linear-gradient(160deg,#1d2544,#141a31)}
+ .pf98-price-card.featured{border-color:#a38df9;box-shadow:0 0 26px #8d5bdf26}.pf98-price-card h2{font-size:21px;margin:8px 0}.pf98-money{font-size:36px;font-weight:900;color:#b6fae0}.pf98-money small{font-size:12px;font-weight:500;color:#b9c9da}.pf98-price-card p{color:#b8c6dd;font-size:13px;line-height:1.55}
+ @media(max-width:920px){.pf98-coach-grid{grid-template-columns:1fr}.pf98-coach-side{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pf98-panel{margin-bottom:0}}
+ @media(max-width:630px){.pf98-coach-side{grid-template-columns:1fr}.pf98-coach-hero{border-radius:19px;padding:18px}.pf98-coach-avatar{border-radius:18px}.pf98-chat-top{padding:13px}.pf98-messages{height:47vh;min-height:260px;padding:14px}.pf98-prices{grid-template-columns:1fr}.pf98-message{max-width:100%}}
+ @media(prefers-reduced-motion:reduce){.pf-page-enter,.mobile-nav button[data-route="coach"],.pf98-coach-avatar{animation:none!important;filter:none!important}}
+ `;
+ document.head.appendChild(style);
+ const statusLabel=()=>pfai.connected?(pfai.consent?'IA generativa conectada':'IA conectada · autorize o uso'):'Guia local · IA indisponível';
+ // Interfaces conectadas aos handlers já existentes de mensagens e navegação.
+ pfaiChatMarkup=function(){
+   const messages=pfai.messages.length?pfai.messages.map(m=>`<article class="pf98-message ${m.role==='user'?'user':'assistant'}"><div class="pf98-message-avatar">${m.role==='user'?'👤':'✦'}</div><div class="pf98-message-body"><span class="pf98-message-label">${m.role==='user'?'Você':m.source==='cloud'?'Pulso Coach • IA':'Pulso Coach • guia local'}</span><div class="pf98-message-text">${esc(m.text)}</div></div></article>`).join(''):`<div class="pf98-chat-welcome"><span class="pf98-glyph">✦</span><h3>Oi! Vamos cuidar das suas metas?</h3><p>Conte seu objetivo e receba orientações para planejar treinos, organizar refeições e acompanhar sua evolução.</p></div>`;
+   return `<section class="pf98-chat" aria-label="Chat com Coach IA"><header class="pf98-chat-top"><div><span class="eyebrow">CONVERSA INTELIGENTE</span><h2>Pulso Coach IA</h2><p>Seu espaço para perguntas sobre treinos e alimentação</p></div><span class="pf98-status">${esc(statusLabel())}</span></header><div class="pf98-messages" id="pfaiChatLog" role="log" aria-live="polite">${messages}${pfaiSending?'<div class="pfai-typing">Preparando resposta...</div>':''}</div><div class="pf98-suggestions">${['Monte um treino em casa','Quero ganhar massa muscular','Analise minha rotina de descanso','O que comer depois do treino?'].map(x=>`<button type="button" data-pf-action="suggest" data-message="${esc(x)}">${esc(x)}</button>`).join('')}</div><form id="pfaiChatForm" class="pf98-chat-compose"><textarea id="pfaiChatInput" rows="2" maxlength="1200" required aria-label="Digite sua mensagem" placeholder="Pergunte qualquer coisa sobre treino, metas ou alimentação..."></textarea><button type="submit" class="btn" ${pfaiSending?'disabled':''}>${pfaiSending?'...':'Enviar'}</button></form><div class="pf98-chat-foot"><span>${pfaiIsAvailable()?'Mensagens processadas pela IA configurada.':'Respostas locais pré-programadas até conectar a IA.'}</span><button type="button" class="text-btn" data-pf-action="clear-chat">Limpar conversa</button></div></section>`;
+ };
+ renderCoachAI=function(){
+  return `<section class="pf98-coach-hero"><div><span class="eyebrow">✦ PULSO FIT • INTELIGÊNCIA</span><h1>Seu Coach IA.<br>Uma conversa de cada vez.</h1><p>Pergunte, ajuste seu plano e transforme dúvidas em hábitos saudáveis. Personalização baseada nos dados que você decidir informar.</p><span class="pfai-badge">${esc(statusLabel())}</span></div><div class="pf98-coach-avatar" aria-hidden="true">✦</div></section>${pfaiMenuLink()}<div class="pf98-coach-grid">${pfaiChatMarkup()}<aside class="pf98-coach-side"><section class="pf98-panel"><span class="eyebrow">SEUS PRÓXIMOS PASSOS</span><h3>O que você quer fazer?</h3><p>Escolha uma ação ou converse pelo chat.</p><button data-route="ai-plan">🏋️ Criar plano de treino</button><button data-route="nutrition">🥗 Analisar minha refeição</button><button data-route="ai-meals">🍲 Planejar alimentação</button><button data-route="ai-report">📊 Ver minha evolução</button></section><section class="pf98-panel"><span class="eyebrow">SOBRE AS RESPOSTAS</span><h3>IA real ou guia local?</h3><p>${pfaiIsAvailable()?'Seu Coach está configurado para responder usando o serviço de IA.':'O guia local usa respostas pré-programadas. Para uma conversa generativa, conecte um servidor de IA compatível e autorize o processamento.'}</p><details class="pf98-connect"><summary>Configurar conexão com IA</summary><label class="pfai-check" style="display:flex;align-items:start;gap:9px;margin:12px 0;font-size:12px"><input type="checkbox" id="pfaiConsent" ${pfai.consent?'checked':''}/> Autorizo enviar minhas mensagens e objetivo ao serviço de IA conectado.</label><label style="display:block;font-size:12px">URL HTTPS do servidor<input id="pfaiServer" type="url" placeholder="https://seu-servidor.com" value="${esc(pfai.endpoint||'')}" autocomplete="url"></label><button type="button" class="btn-alt wide" data-pf-action="connect">Testar conexão de IA</button></details><p>Estimativas e orientações não substituem profissionais de saúde.</p></section></aside></div>`;
+ };
+ const renderOldSubscription=renderSubscription;
+ renderSubscription=function(){
+  const user=pro.me;
+  const dateRaw=user&&(user.createdAt||user.created_at||user.created||user.registeredAt);
+  const since=dateRaw?new Date(dateRaw).getTime():NaN;
+  const remaining=Number.isFinite(since)?Math.max(0,Math.ceil((since+7*86400000-Date.now())/86400000)):null;
+  const premium=!!(user&&user.plan&&user.plan!=='free'&&(!user.expires||new Date(user.expires).getTime()>Date.now()));
+  return `<section class="pf98-coach-hero"><div><span class="eyebrow">PULSO FIT • PLANOS</span><h1>Seu ritmo. Seu plano.</h1><p>Conheça as opções para manter seus treinos, IA e alimentação organizados.</p></div><div class="pf98-coach-avatar" aria-hidden="true">💎</div></section><section class="pf98-trial-banner"><strong>🎁 Proposta: 7 dias grátis para novos alunos</strong><p>${premium?'Seu plano já possui liberação administrativa.':remaining!==null?`Sua conta foi criada há menos ou mais de sete dias; ${remaining} dia(s) no período inicial calculado pelo cadastro.`:'A contagem segura dos 7 dias será iniciada pelo servidor quando a ativação de assinatura estiver configurada.'} Não há cobrança automática ativada neste site.</p></section><div class="pf98-prices"><article class="pf98-price-card"><span class="eyebrow">FLEXIBILIDADE</span><h2>Plano Quinzenal</h2><div class="pf98-money">R$ 14,90 <small>/ 15 dias</small></div><p>✓ Treinos em casa, academia e CrossFit</p><p>✓ Metas e acompanhamento</p><p>✓ Coach IA quando configurado</p><button class="btn-alt wide" data-route="account">Ver minha conta</button></article><article class="pf98-price-card featured"><span class="eyebrow">MAIS ECONÔMICO</span><h2>Plano Mensal</h2><div class="pf98-money">R$ 24,90 <small>/ 30 dias</small></div><p>✓ Todos os recursos do quinzenal</p><p>✓ Relatórios de progresso e Meu Prato</p><p>✓ Melhor custo por dia</p><button class="btn wide" data-route="account">Ver minha conta</button></article></div><div class="pro-alert"><strong>Assinatura em preparação</strong><p>Esses são os valores propostos para o PulsoFit. Ainda não existe checkout, cobrança automática ou bloqueio seguro por vencimento. Ativar o bloqueio sem um meio de contratação impediria a recuperação do acesso. O mecanismo definitivo exige integração de pagamento e validação de assinatura no servidor.</p></div>${serverNotice()}`;
+ };
+ const oldSend=pfaiSendChat;
+ pfaiSendChat=async function(message){
+  await oldSend(message);
+  if(routeParts()[0]==='coach'){
+   const area=document.getElementById('pfaiChatLog');
+   if(area)area.scrollTop=area.scrollHeight;
+  }
+ };
+})();
 window.setInterval(tick,500);
 render();
 initPro({render,navigate,flash,getSnapshot:()=>state,restoreSnapshot:replaceState,getProfile:()=>state.profile});
