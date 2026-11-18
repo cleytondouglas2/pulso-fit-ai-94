@@ -190,3 +190,98 @@
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
+
+
+/* Identidade e configuração do gateway — sem chaves no frontend. */
+(function(){
+  "use strict";
+  if(window.__PULSO_BILLING_UI_2026__)return;
+  window.__PULSO_BILLING_UI_2026__=true;
+  var checkedToken=null,isAdmin=false,apiReady=false,busy=false,observer=null;
+  function getToken(){try{return sessionStorage.getItem("pulso-fit-token")||""}catch(e){return ""}}
+  function route(){return (location.hash||"#/home").replace(/^#\/?/,"").split("/")[0]}
+  function brand(){
+    var root=document.getElementById("app");if(!root)return;
+    var aside=root.querySelector(".sidebar");
+    if(aside&&!aside.querySelector(".pf-new-brand")){
+      var a=document.createElement("button");
+      a.type="button";a.className="pf-new-brand";
+      a.dataset.route="home";a.setAttribute("aria-label","PulsoFit AI, ir para o início");
+      a.innerHTML='<img src="./pulsofit-brand.svg" alt="" loading="eager"><strong>Pulso<b>Fit</b><span class="pf-brand-ai">AI</span></strong>';
+      var first=aside.firstElementChild;
+      if(first && (/logo|brand/i).test(first.className||""))first.style.display="none";
+      aside.insertBefore(a,aside.firstChild);
+    }
+    var top=root.querySelector(".topbar");
+    if(top&&!top.querySelector(".pf-top-logo")){
+      var img=document.createElement("img");img.className="pf-top-logo";img.src="./pulsofit-brand.svg";img.alt="PulsoFit AI";
+      img.width=34;img.height=34;img.style.cssText="height:34px;width:34px;object-fit:contain;flex:none";
+      top.insertBefore(img,top.firstChild);
+    }
+  }
+  function escapeHtml(value){return String(value||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+  function gatewayPanel(){
+    var root=document.getElementById("app");if(!root||!isAdmin)return;
+    if(!["subscription","admin","account"].includes(route()))return;
+    var main=root.querySelector(".main");if(!main||main.querySelector(".pf-gateway-admin"))return;
+    var panel=document.createElement("section");
+    panel.className="pf-gateway-admin";
+    panel.setAttribute("aria-label","Configurar gateway de pagamentos");
+    panel.innerHTML='<h3>⚙️ Gateway de pagamentos</h3>'+
+      '<p>Configuração exclusiva de administrador. As credenciais devem ser salvas no servidor, nunca no navegador. Checkout e webhooks só podem ser ativados depois de conectar o provedor.</p>'+
+      '<form class="pf-gateway-form" autocomplete="off">'+
+      '<label>Gateway<select name="provider" required><option value="">Selecione</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option><option value="pagarme">Pagar.me</option><option value="stripe">Stripe</option><option value="other">Outro gateway</option></select></label>'+
+      '<label>Ambiente<select name="environment"><option value="sandbox">Homologação (teste)</option><option value="production">Produção</option></select></label>'+
+      '<label class="pf-gateway-full">URL da API (https)<input type="url" name="apiBaseUrl" placeholder="https://api.seu-gateway.com" autocomplete="off"></label>'+
+      '<label>API Key secreta<input type="password" name="apiKey" placeholder="Inserir somente quando o servidor estiver preparado" autocomplete="new-password" spellcheck="false" disabled></label>'+
+      '<label>Webhook secret<input type="password" name="webhookSecret" placeholder="Segredo para verificar notificações" autocomplete="new-password" spellcheck="false" disabled></label>'+
+      '<label class="pf-gateway-full">URL prevista para webhook<input type="text" name="webhookUrl" readonly></label>'+
+      '<div class="pf-gateway-full"><button type="submit" class="pf-gateway-save" disabled>Salvar configuração protegida</button></div>'+
+      '</form><small class="pf-checkout-warning">Aguardando definição do gateway e implementação do endpoint de credenciais. Nenhuma chave será armazenada neste navegador.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
+    main.appendChild(panel);
+    var f=panel.querySelector("form"),status=panel.querySelector(".pf-gateway-status");
+    function setWebhook(){f.elements.webhookUrl.value=location.origin+"/api/billing/webhooks/"+encodeURIComponent(f.elements.provider.value||"seu-gateway");}
+    f.elements.provider.addEventListener("change",setWebhook);setWebhook();
+    // O endpoint de status deve existir e confirmar explicitamente a disponibilidade do armazenamento seguro.
+    var token=getToken();
+    fetch("/api/admin/billing/config/status",{headers:{Authorization:"Bearer "+token},cache:"no-store"})
+    .then(function(r){if(!r.ok)throw Error("Ainda não configurado");return r.json()})
+    .then(function(data){
+      if(!data||data.secureStorageReady!==true||data.webhookVerificationReady!==true)throw Error("Armazenamento ou verificação do webhook ainda pendente");
+      apiReady=true;
+      f.elements.apiKey.disabled=false;f.elements.webhookSecret.disabled=false;
+      f.querySelector(".pf-gateway-save").disabled=false;
+      status.textContent="Servidor preparado para configuração segura.";
+    }).catch(function(){status.textContent="Configuração protegida ainda não disponível; informe o gateway para habilitar.";});
+    f.addEventListener("submit",function(ev){
+      ev.preventDefault();
+      if(!apiReady){status.textContent="O backend seguro ainda não está habilitado.";return}
+      var v=f.elements,body={provider:v.provider.value,environment:v.environment.value,apiBaseUrl:v.apiBaseUrl.value,apiKey:v.apiKey.value,webhookSecret:v.webhookSecret.value};
+      if(!body.provider||!body.apiKey||!body.webhookSecret){status.textContent="Preencha gateway, API Key e segredo do webhook.";return}
+      status.textContent="Enviando configuração ao servidor...";
+      fetch("/api/admin/billing/config",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+getToken()},body:JSON.stringify(body)})
+      .then(function(r){return r.json().then(function(data){if(!r.ok)throw Error(data.error||"Falha ao configurar");return data})})
+      .then(function(){v.apiKey.value="";v.webhookSecret.value="";status.textContent="Configuração recebida pelo servidor. Confirme o webhook com um evento de teste antes de liberar cobranças.";})
+      .catch(function(e){status.textContent="Não foi possível salvar: "+e.message});
+    });
+  }
+  function refreshRole(){
+    var token=getToken();
+    if(checkedToken===token)return;checkedToken=token;isAdmin=false;apiReady=false;
+    if(!token)return;
+    fetch("/api/me",{headers:{Authorization:"Bearer "+token},cache:"no-store"})
+    .then(function(r){return r.ok?r.json():null})
+    .then(function(data){isAdmin=!!(data&&data.user&&data.user.role==="admin");schedule()})
+    .catch(function(){});
+  }
+  function refresh(){if(busy)return;busy=true;try{brand();refreshRole();gatewayPanel()}finally{busy=false}}
+  var scheduled=false;
+  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(function(){scheduled=false;refresh()})}
+  function init(){
+    refresh();var root=document.getElementById("app");
+    if(root){observer=new MutationObserver(schedule);observer.observe(root,{childList:true,subtree:true})}
+    window.addEventListener("hashchange",schedule);
+    document.addEventListener("visibilitychange",function(){if(!document.hidden)schedule()});
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+})();
