@@ -7,6 +7,7 @@
  * Fail closed: NÃO aceita pagamentos até banco permanente e validação da
  * proteção de acesso. API keys nunca chegam ao navegador.
  */
+import "./pulsofit-js-boot-repair.mjs";
 import "./pulsofit-plans-patch.mjs";
 import "./pulsofit-private-features.mjs";
 import "./pulsofit-fitness-assessment.mjs";
