@@ -180,6 +180,7 @@ function initMotion(){
 }
 function companionEvent(action){
  if(!activity)return;
+ if(typeof CustomEvent!=="function"||typeof window.dispatchEvent!=="function")return;
  const step=stepsEstimated(),distance=nf(activity.distance/1000,2)+" km";
  window.dispatchEvent(new CustomEvent("pulso-live-activity",{detail:{
   action,sessionKey:activity.key,kind:activity.kind==="walk"?"walk":activity.kind==="run"?"run":"cycle",
