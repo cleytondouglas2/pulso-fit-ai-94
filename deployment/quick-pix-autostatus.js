@@ -4,6 +4,7 @@
 (()=>{
  'use strict';
  let chargeId='', timer=null, checking=false, autoStopped=false, resumeBusy=false;
+ let lastCelebratedCharge='';
  const note=()=>document.getElementById('charge-note');
  const badge=()=>document.getElementById('charge-receipt-state');
  const form=()=>document.getElementById('charge-create-form');
@@ -18,7 +19,14 @@
      b.className='status-badge paid';
      n.textContent='Pix confirmado pela consulta autenticada à MisticPay. O registro financeiro foi atualizado.';
      stop();
-     if(typeof toast==='function')toast('Pix recebido e confirmado pela MisticPay!');
+     // A celebration is only dispatched after the authenticated MisticPay payment
+     // status (or a verified stored charge) is "paid". No client-side payment spoof.
+     if(isValid(chargeId) && lastCelebratedCharge!==chargeId){
+       lastCelebratedCharge=chargeId;
+       window.dispatchEvent(new CustomEvent('argus:pix-paid',{detail:{chargeId}}));
+     }
+     if(typeof toast==='function' && !document.getElementById('argus-pix-success-overlay'))
+       toast('Pix recebido e confirmado pela MisticPay!');
      return;
    }
    if(['failed','cancelled','refunded','expired'].includes(status)){
