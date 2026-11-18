@@ -109,6 +109,7 @@
   void recoverPreviousPix(true);
  }
  function renderPaid(data){
+  autoWasConfirmed=true;autoPendingPix=false;
   var root=document.querySelector("#pf-stable-modal .pf-stable-body");
   if(!root)return;
   stopPolling();
