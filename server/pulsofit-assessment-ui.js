@@ -5,7 +5,7 @@
 "use strict";
 if(window.__PULSO_FITNESS_ASSESSMENT_UI__)return;
 window.__PULSO_FITNESS_ASSESSMENT_UI__=true;
-var tokenSeen="",account=null,subscription=null,evaluation=null,progress=[],checked=false,loading=false,modal=null,activeTab="form",requesting=false,runId=0;
+var tokenSeen="",account=null,subscription=null,evaluation=null,progress=[],checked=false,loading=false,modal=null,activeTab="form",requesting=false,runId=0,lastLoaded=0;
 var css=[
 '#pf-eval-overlay{position:fixed!important;inset:0!important;z-index:2147483200!important;background:#07081aef!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;box-sizing:border-box!important;overflow-y:auto!important;backdrop-filter:blur(11px)!important}',
 '#pf-eval-overlay .pf-eval-shell{box-sizing:border-box;width:min(100%,780px);max-height:calc(100dvh - 28px);overflow-y:auto;border:1px solid #8b77c3;border-radius:23px;background:linear-gradient(150deg,#2b2450,#131d35 60%);color:white;padding:clamp(18px,4vw,32px);font:14px/1.5 system-ui,-apple-system,sans-serif;box-shadow:0 18px 60px #000b}',
@@ -75,7 +75,8 @@ function modifyAccountCard(){
    var note=cover.querySelector(".pf-online-identity-note");
    if(!note){note=document.createElement("span");note.className="pf-online-identity-note";cover.appendChild(note)}
    var label=getPlanLabel();
-   note.textContent="✓ Conta online vinculada"+(label?" • "+label:"");
+   var noteLabel="✓ Conta online vinculada"+(label?" • "+label:"");
+   if(note.textContent!==noteLabel)note.textContent=noteLabel;
   }
   // A rotina local também deixa "Visitante" dentro do campo de preferências.
   app.querySelectorAll("input").forEach(function(input){
@@ -117,7 +118,7 @@ function renderResultsNotice(){
 async function loadIdentity(){
  if(!accountIsReady()||loading)return;
  var t=authToken(),current=++runId;
- if(t===tokenSeen&&checked)return;
+ if(t===tokenSeen&&checked&&Date.now()-lastLoaded<30000)return;
  loading=true;tokenSeen=t;checked=false;
  try{
   var me=await api("/api/me");
@@ -130,6 +131,7 @@ async function loadIdentity(){
   subscription=b.status==="fulfilled"?b.value:null;
   progress=c.status==="fulfilled"&&Array.isArray(c.value.items)?c.value.items:[];
   checked=a.status==="fulfilled";
+  lastLoaded=Date.now();
   modifyAccountCard();
   if(checked&&!evaluation&&!sessionStorage.getItem("pf-eval-dismissed-"+str(account.id)))openModal("form",true);
  }catch(e){checked=false;console.warn("[pulso-eval] Conta indisponível para avaliação.");}
@@ -324,7 +326,7 @@ function observe(){
   if(authToken()!==tokenSeen){tokenSeen="";account=null;subscription=null;evaluation=null;progress=[];checked=false;runId++}
   return;
  }
- if(authToken()!==tokenSeen)void loadIdentity();
+ if(authToken()!==tokenSeen||(checked&&Date.now()-lastLoaded>=30000))void loadIdentity();
  modifyAccountCard();
 }
 function boot(){
