@@ -426,3 +426,38 @@
 #app .pf-gateway-admin .pf-checkout-warning{color:#c7ddf5}
 @media(max-width:600px){#app .pf-gateway-form{grid-template-columns:1fr}#app .pf-new-brand strong{font-size:19px}}
 @media(prefers-reduced-motion:reduce){#pf-loading::before,#app .pf-logo-wait::before{animation:none}}
+
+
+/* PulsoFit checkout modal seguro — Pix ou cartão */
+.pf-checkout-backdrop {
+ position:fixed;inset:0;z-index:99999;
+ display:grid;place-items:center;padding:18px;
+ background:rgba(5,8,21,.82);backdrop-filter:blur(10px);
+}
+.pf-checkout-box {
+ position:relative;box-sizing:border-box;overflow-y:auto;max-height:min(92vh,800px);
+ width:min(100%,460px);padding:26px;border-radius:25px;
+ border:1px solid rgba(189,140,255,.55);
+ background:radial-gradient(circle at 88% 0%,rgba(147,51,234,.22),transparent 48%),#121a2f;
+ box-shadow:0 20px 80px rgba(0,0,0,.48);color:#f5f2ff;
+ font:14px/1.5 system-ui,-apple-system,sans-serif;
+}
+.pf-checkout-box h2 {font-size:26px;line-height:1.2;margin:7px 0 18px;color:#fff}
+.pf-checkout-box p {color:#d6d5e6;margin:12px 0}
+.pf-checkout-kicker {display:block;color:#b2f5e3;font-size:10px;letter-spacing:.14em;font-weight:900}
+.pf-checkout-logo {width:62px;height:62px;object-fit:contain;margin-bottom:10px;animation:pf-logo-breathe 2.4s ease-in-out infinite}
+.pf-checkout-close {position:absolute;right:12px;top:10px;display:grid;place-items:center;width:35px;height:35px;border:0;background:#333750;border-radius:999px;color:white;font-size:25px;cursor:pointer}
+.pf-checkout-summary {display:grid;grid-template-columns:1fr auto;gap:3px 9px;background:#202444;border-radius:15px;padding:17px}
+.pf-checkout-summary span{font-weight:800;font-size:16px}.pf-checkout-summary strong{color:#a6f6cf;font-size:20px}
+.pf-checkout-summary small{grid-column:1/-1;color:#bfc4dc}
+.pf-checkout-methods{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pf-checkout-methods label{display:flex;gap:9px;align-items:center;border:1px solid #515378;border-radius:13px;padding:12px;cursor:pointer;background:#1a2440;color:#f1ecff;font-weight:800}
+.pf-checkout-methods label:has(input:checked){border-color:#9e6ef3;background:#332458}
+.pf-checkout-methods input{accent-color:#a986fa}
+.pf-checkout-box .pf-checkout-hint,.pf-checkout-box .pf-checkout-status{font-size:12px;color:#c9d2e6}
+.pf-checkout-box .pf-checkout-status{min-height:36px;color:#9fe7d8}
+.pf-checkout-submit,.pf-checkout-login {width:100%;border:0;border-radius:13px;padding:13px;font:800 14px system-ui,sans-serif;cursor:pointer}
+.pf-checkout-submit{background:linear-gradient(120deg,#9d49ee,#6d28d9);color:white;margin-top:8px}
+.pf-checkout-submit:disabled{opacity:.50;cursor:not-allowed}
+.pf-checkout-login{background:transparent;color:#e0cdfb;margin-top:7px;border:1px solid #50416c}
+@media(prefers-reduced-motion:reduce){.pf-checkout-logo{animation:none}}
