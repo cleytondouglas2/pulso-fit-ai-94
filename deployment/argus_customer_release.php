@@ -27,8 +27,8 @@ argusReplace($html,'<link rel="icon" type="image/png" href="/static/assets/favic
 argusReplace($html,'<div class="workspace-switch"><div class="workspace-switch-icon">◈</div><div><strong>ARGUS Payments</strong><small>Meu espaço financeiro</small></div><span class="workspace-chev">⌄</span></div>',
 '<button type="button" class="workspace-switch" data-shortcut="dashboard" aria-label="Ir para visão geral ARGUS"><div class="workspace-switch-icon">◈</div><div><strong>ARGUS Payments</strong><small>Meu espaço financeiro</small></div><span class="workspace-chev">⌄</span></button>','functional workspace switch');
 argusReplace($html,'<div class="two-col"><div class="panel">','<div class="two-col super-only"><div class="panel">','superadmin internal panels');
-argusReplace($html,'</form>\n  <p class="auth-foot">',
-'</form><p class="muted" style="margin-top:20px">Quer receber pagamentos com a ARGUS? <a href="/cadastro">Criar conta PF ou PJ</a> · <a href="/documentacao-api">Conhecer a API</a></p>\n  <p class="auth-foot">','registration link');
+argusReplace($html,str_replace('\\n',"\n",'</form>\n  <p class="auth-foot">'),
+str_replace('\\n',"\n",'</form><p class="muted" style="margin-top:20px">Quer receber pagamentos com a ARGUS? <a href="/cadastro">Criar conta PF ou PJ</a> · <a href="/documentacao-api">Conhecer a API</a></p>\n  <p class="auth-foot">'),'registration link');
 $src=file_get_contents($html);
 $src=str_replace(['MisticPay','Sem dados demonstrativos','PIX REAL · PILOTO','Pix real · piloto','Pix real piloto','PILOTO PIX','Registros reais da ARGUS','Operações reais · ARGUS'],['processamento financeiro','','','Pix autorizado','Pix autorizado','', 'Registros financeiros','Transações registradas'],$src);
 $src=str_replace(['Operação Pix real · 2FA obrigatório · ','Encerramento do piloto','As cobranças estão sujeitas às regras do piloto Pix temporário da ARGUS.','Piloto: limite de R$ 100 por envio e R$ 500 por dia.','O banco compartilhado é temporário. Faça backups externos e migre antes do vencimento.'],
