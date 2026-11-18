@@ -562,7 +562,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @media(max-width:640px){.pfai-layout{display:flex!important;flex-direction:column!important}.pfai-chat-panel{width:100%!important}.pfai-chat-log{min-height:320px;max-height:55vh}.pfai-side{width:100%!important}.pfai-hero{padding:22px!important}.pfai-chat-header{padding:18px!important}.pfai-chat-form button{font-size:12px!important;padding:12px!important}}
 @media(prefers-reduced-motion:reduce){.mobile-nav .nav-link[data-route="coach"],.main.pf-page-enter,.pfai-bubble{animation:none!important}.pfai-chat-log{scroll-behavior:auto}}
 
-</style><link rel="stylesheet" href="./pulsofit-navigation.css?v=5" />
+</style><link rel="stylesheet" href="./pulsofit-navigation.css?v=20261118-9-8-1" />
 <style id="pf-nov-upgrade">
 @media(max-width:850px){
 .mobile-nav{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:end!important;overflow:visible!important;padding:9px 4px calc(11px + env(safe-area-inset-bottom))!important}
@@ -2319,19 +2319,19 @@ function calibrateKnownFood(analysis){
   if(!Number.isFinite(grams)||grams<=0||(count===1&&grams>75)||(count>1&&grams>count*75)){
    food.grams=count*50;
   }
-  food.reference={...(food.reference||{}),matched:true,source:'USDA FoodData Central — ovo cozido',description:egg.description,fdcId:egg.fdcId,per100:{...egg.per100}};
+  food.reference={...(food.reference||{}),matched:true,source:'TBCA / USP BRC0010J — ovo cozido',description:egg.description,fdcId:egg.fdcId,per100:{...egg.per100}};
   food.category='protein';
   food.certainty=food.certainty==='manual'?'manual':'medium';
   revised++;
  }
  if(revised){
   if(!Array.isArray(analysis.uncertainties))analysis.uncertainties=[];
-  const warning='Ovo cozido calibrado pela composição USDA (155 kcal por 100 g; ~78 kcal por unidade de 50 g sem casca). A IA não mede o peso da foto: confira a quantidade antes de salvar.';
+  const warning='Ovo cozido calculado pela TBCA/USP BRC0010J (125 kcal por 100 g; cerca de 62 kcal e 5,2 g de proteína por unidade de 50 g sem casca). A IA não mede o peso da foto: confira a quantidade antes de salvar.';
   if(!analysis.uncertainties.includes(warning))analysis.uncertainties.unshift(warning);
  }
  return analysis;
 }
-function quickFoodEntry(food,grams){return {id:'food-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),name:food.name,grams,category:food.category,certainty:'manual',reference:{matched:true,source:food.tacoCode?'TACO / NEPA-Unicamp':'USDA FoodData Central — referência local',description:food.description,fdcId:food.fdcId,tacoCode:food.tacoCode||null,per100:{...food.per100}}};}
+function quickFoodEntry(food,grams){return {id:'food-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),name:food.name,grams,category:food.category,certainty:'manual',reference:{matched:true,source:food.id==='egg'?'TBCA / USP BRC0010J':(food.tacoCode?'TACO / NEPA-Unicamp':'USDA FoodData Central — referência local'),description:food.description,fdcId:food.fdcId,tacoCode:food.tacoCode||null,per100:{...food.per100}}};}
 // A versão HTML de visualização não inclui servidor. Fotos jamais são enviadas
 // à origem da plataforma que hospeda a prévia (ChatGPT ou arquivo local).
 function isPreviewHost(){const host=typeof location!=='undefined'?location.hostname||'':'';return typeof location==='undefined'||!/^https?:$/.test(location.protocol||'')||/(^|\.)(chatgpt\.com|chatgptusercontent\.com|openai\.com)$/.test(host);}
@@ -2479,7 +2479,7 @@ async function handleNutritionAction(action,el){
    if(!food||!Number.isFinite(grams)||grams<1||grams>1200)return fail('Informe um alimento e uma quantidade entre 1 e 1200 g.');
    if(!current)current={kind:'manual_usda',foods:[],uncertainties:['Foto não interpretada automaticamente; alimentos selecionados manualmente pelo usuário.'],source:'USDA FoodData Central'};
    current.foods.push(quickFoodEntry(food,grams));
-   status=`${food.name} (${grams} g) calculado a partir de registro ${food.tacoCode?'TACO':'USDA'}. Foto não analisada por IA.`;error='';
+   status=`${food.name} (${grams} g) calculado a partir de registro ${food.id==='egg'?'TBCA':(food.tacoCode?'TACO':'USDA')}. Foto não analisada por IA.`;error='';
    env.render();return;
  }
  if(action==='camera'||action==='gallery'){
