@@ -26,7 +26,7 @@ try {
     $ownerEmail = strtolower((string)getenv('ARGUS_SUPERADMIN_BOOTSTRAP_EMAIL'));
     $owner = $database->one('SELECT role,status FROM admin_users WHERE email=?', [$ownerEmail]);
     error_log('ARGUS_OWNER_BOOTSTRAP status='.(($owner && $owner['role']==='superadmin' && $owner['status']==='active')?'ready':'missing'));
-    require '/var/www/html/src/LivePix.php';
+    require_once '/var/www/html/src/LivePix.php';
     $report = \ArgusPayments\LivePix::readiness($database);
     $missing = [];
     foreach ($report['checks'] as $label => $passed) {
