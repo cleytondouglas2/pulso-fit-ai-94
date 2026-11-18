@@ -20,6 +20,7 @@ const exerciseLabels={
 };
 let source=null,overlay=null,THREE=null,renderer=null,scene=null,camera=null,actor=null,raf=0,resizeObserver=null;
 let selected="pipo",freeze=false,freezeAt=0,offset=0,startAt=0,queued=false;
+let equipmentGroup=null,gearFor="",motionFor="";
 function report(msg){const t=$("pf-ar-cartoon-status");if(t)t.textContent=msg}
 function mesh(g,color){return new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:.65,metalness:0}))}
 function ball(radius,color){return mesh(new THREE.SphereGeometry(radius,20,15),color)}
@@ -100,11 +101,14 @@ function createCharacter(name){
   shoe.rotation.x=.05;
   arms.push(shoulder);elbows.push(elbow);legs.push(hip);knees.push(knee);
  }
- root.userData={body,arms,elbows,legs,knees,name};
+ root.userData={body,head,arms,elbows,legs,knees,name};
  return root;
 }
 function pose(ms){
  if(!actor)return;
+ const activeExercise=$("pf-ar-exercise")?.value||"body_squat";
+ if(window.PulsoARMotions?.apply(actor.userData,activeExercise,ms))return;
+ // Legacy quick-gesture fallback only when the motion engine is unavailable.
  const {body,arms,elbows,legs,knees}=actor.userData;
  const exercise=$("pf-ar-exercise")?.value||"squat";
  const speed={squat:1680,lunge:2100,jumping_jack:1240,curl:1800,arm_raise:1650,march:1200,pushup:2040,plank:3000,bridge:2150}[exercise]||1750;
@@ -147,6 +151,37 @@ function pose(ms){
   body.rotation.z=-.83;body.position.set(-.34,-.33+.28*phase,0);
   legs.forEach(p=>p.rotation.x=-.28);knees.forEach(p=>p.rotation.x=.87);
  }
+}
+function updateEquipment(id){
+ if(!scene||!THREE||!id||id===gearFor)return;
+ gearFor=id;
+ if(equipmentGroup){
+  scene.remove(equipmentGroup);
+  equipmentGroup.traverse?.(child=>{
+   child.geometry?.dispose?.();
+   if(child.material?.dispose)child.material.dispose();
+  });
+  equipmentGroup=null;
+ }
+ if(window.PulsoARMotions?.equipment){
+  equipmentGroup=window.PulsoARMotions.equipment(THREE,id);
+  if(equipmentGroup)scene.add(equipmentGroup);
+ }
+}
+function selectMotion(id,label){
+ if(!$("pf-ar-overlay"))return;
+ const entry=window.PulsoARExercises?.byId(id);
+ const name=label||entry?.label||String(id||"");
+ if(window.PulsoARMotions&&!window.PulsoARMotions.supported(id)){
+  report("Não existe uma animação específica para "+name+". Escolha outro exercício da lista.");
+  return;
+ }
+ motionFor=id;
+ updateEquipment(id);
+ if(startAt){startAt=performance.now();offset=0;freezeAt=startAt}
+ const msg=$("pf-ar-cartoon-exercise");
+ if(msg)msg.textContent="🎯 Executando: "+name;
+ report("Treinador animado demonstrando: "+name+". Movimento ilustrativo, sem substituição de orientação profissional.");
 }
 function frame(){
  if(!renderer||!source||!$("pf-ar-overlay"))return;
@@ -194,6 +229,7 @@ async function begin(){
   const shadow=mesh(new THREE.CircleGeometry(.85,40),0x8efbd6);
   shadow.rotation.x=-Math.PI/2;shadow.position.y=-.07;shadow.material.transparent=true;shadow.material.opacity=.20;scene.add(shadow);
   actor=createCharacter(selected);scene.add(actor);
+  selectMotion($("pf-ar-exercise")?.value||"body_squat");
   if("ResizeObserver" in window){resizeObserver=new ResizeObserver(resize);resizeObserver.observe(layer)}
   resize();startAt=performance.now();offset=0;freeze=false;frame();
   $("pf-ar-fallback")?.setAttribute("hidden","");
@@ -209,6 +245,12 @@ function pause(){
 }
 function destroy(){
  cancelAnimationFrame(raf);raf=0;
+ if(equipmentGroup){
+  scene?.remove(equipmentGroup);
+  equipmentGroup.traverse?.(child=>{child.geometry?.dispose?.();child.material?.dispose?.()});
+  equipmentGroup=null;
+ }
+ gearFor="";motionFor="";
  resizeObserver?.disconnect();resizeObserver=null;
  if(renderer){renderer.dispose();renderer.domElement.remove()}
  renderer=null;scene=null;actor=null;source=null;THREE=null;
@@ -226,12 +268,13 @@ function mount(){
   '<select id="pf-ar-character">'+Object.entries(looks).map(([key,look])=>'<option value="'+key+'">'+look.label+'</option>').join("")+'</select>'+
   '<div class="pf-ar-cartoon-tools"><button id="pf-ar-cartoon-pause" type="button">⏸ Pausar avatar</button>'+
   '<label for="pf-ar-cartoon-y">Altura no ambiente<input id="pf-ar-cartoon-y" type="range" min="-1.5" max="1.5" value="0" step=".05"></label></div>'+
-  '<p id="pf-ar-cartoon-name"></p><p id="pf-ar-cartoon-status" role="status" aria-live="polite"></p>'+
+  '<p id="pf-ar-cartoon-name"></p><p id="pf-ar-cartoon-exercise" aria-live="polite"></p><p id="pf-ar-cartoon-status" role="status" aria-live="polite"></p>'+
   '<small>Personagens originais inspirados no estilo de animações clássicas; não são versões de personagens de estúdios. A câmera do navegador faz sobreposição 3D com posicionamento manual, não rastreamento espacial nativo.</small>';
  controls.insertBefore(banner,controls.firstChild);
  const heading=modal.querySelector(".pf-ar-header h2");if(heading)heading.textContent="Treino com personagem animado";
  banner.querySelector("#pf-ar-character").addEventListener("change",e=>setAvatar(e.target.value));
  banner.querySelector("#pf-ar-cartoon-pause").addEventListener("click",pause);
+ modal.querySelector("#pf-ar-exercise")?.addEventListener("change",e=>selectMotion(e.target.value));
  modal.querySelector("#pf-ar-close")?.addEventListener("click",destroy);
  const basePause=modal.querySelector("#pf-ar-pause");
  if(basePause){basePause.hidden=true}
@@ -262,6 +305,7 @@ function boot(){
   else if(!element&&overlay){destroy();overlay=null}
  }).observe(document.body,{childList:true,subtree:false});
  window.addEventListener("pulso-open-camera-ar",()=>setTimeout(mount,0));
+ window.addEventListener("pulso-ar-exercise-selected",e=>selectMotion(e.detail?.id,e.detail?.label));
  window.addEventListener("pagehide",destroy);
  mount();
 }
