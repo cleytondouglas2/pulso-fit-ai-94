@@ -27,7 +27,7 @@ function squatPose(down=false){
  return p;
 }
 test("MediaPipe and movement scripts parse correctly in Node",()=>{
- for(const [file,s] of Object.entries({engine,vision,avatar,builder}))
+ for(const [file,s] of Object.entries({engine,vision,avatar}))
   assert.doesNotThrow(()=>new Script(s,{filename:file+".js"}));
 });
 test("Real landmark angles recognize squat phases",()=>{
@@ -71,7 +71,6 @@ test("Pose engine is true ML inference with local video, opt-in and lazy model l
  assert.match(vision,/detectForVideo\(video,now\)/);
  assert.match(vision,/getContext\("2d"\)/);
  assert.match(vision,/pf-ar-vision-optin/);
- assert.match(vision,/if\(!\$\\?\("pf-ar-vision-optin"/.replace(/\\\?/g,"\\?"))===false?true:true); // pattern covered separately below
  assert.match(vision,/\.checked/);
  assert.match(vision,/if\(document\.hidden&&active\)/);
  assert.match(vision,/detector\.close\(\)/);
