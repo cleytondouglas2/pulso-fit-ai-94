@@ -7,7 +7,8 @@ const PERIOD=Object.freeze({quinzenal:15,mensal:30});
 const DDL=[
  "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES pf_users(id) ON DELETE RESTRICT,plan_code text NOT NULL CHECK(plan_code IN ('quinzenal','mensal')),amount_cents integer NOT NULL CHECK(amount_cents>0),currency text NOT NULL DEFAULT 'BRL',provider_payment_id text UNIQUE,state text NOT NULL DEFAULT 'pending',created_at timestamptz NOT NULL DEFAULT now(),confirmed_at timestamptz,updated_at timestamptz NOT NULL DEFAULT now())",
  "CREATE TABLE IF NOT EXISTS pf_billing_entitlements (user_id uuid PRIMARY KEY REFERENCES pf_users(id) ON DELETE RESTRICT,plan_code text NOT NULL,expires_at timestamptz NOT NULL,last_payment_id text,updated_at timestamptz NOT NULL DEFAULT now())",
- "CREATE TABLE IF NOT EXISTS pf_billing_events (provider_payment_id text NOT NULL,event_type text NOT NULL,processed_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(provider_payment_id,event_type))"
+ "CREATE TABLE IF NOT EXISTS pf_billing_events (provider_payment_id text NOT NULL,event_type text NOT NULL,processed_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(provider_payment_id,event_type))",
+ "CREATE TABLE IF NOT EXISTS pf_billing_trials (user_id uuid PRIMARY KEY REFERENCES pf_users(id) ON DELETE RESTRICT,started_at timestamptz NOT NULL DEFAULT now())"
 ];
 async function transaction(pool,fn){
  const c=await pool.connect();try{await c.query("BEGIN");const r=await fn(c);await c.query("COMMIT");return r}
@@ -21,7 +22,7 @@ export async function createMisticPayStore({connectionString,migrate=false}={}){
  try{
   await pool.query("SELECT id,plan FROM pf_users LIMIT 0");
   if(migrate){for(const sql of DDL)await pool.query(sql)}
-  for(const table of ["pf_billing_orders","pf_billing_entitlements","pf_billing_events"]){
+  for(const table of ["pf_billing_orders","pf_billing_entitlements","pf_billing_events","pf_billing_trials"]){
    const r=await pool.query("SELECT to_regclass($1) AS tab",[table]);
    if(!r.rows[0].tab)throw Error("Migração pendente: "+table);
   }
@@ -77,9 +78,17 @@ export async function createMisticPayStore({connectionString,migrate=false}={}){
    const r=await pool.query("UPDATE pf_users u SET plan='free',updated_at=now() FROM pf_billing_entitlements e WHERE e.user_id=u.id AND e.expires_at<=now() AND u.plan IN ('quinzenal','mensal')");
    return r.rowCount;
   },
+  async firstTrialUse(userId){
+   const id=String(userId);
+   await pool.query("INSERT INTO pf_billing_trials(user_id) VALUES($1) ON CONFLICT(user_id) DO NOTHING",[id]);
+   const r=await pool.query("SELECT started_at FROM pf_billing_trials WHERE user_id=$1",[id]);
+   if(!r.rows[0])throw Error("Registro de período grátis indisponível");
+   return r.rows[0].started_at;
+  },
   async getEntitlement(userId){
-   const r=await pool.query("SELECT plan_code AS \"planCode\",expires_at AS \"expiresAt\" FROM pf_billing_entitlements WHERE user_id=$1",[userId]);
-   return r.rows[0]||null;
+   const r=await pool.query("SELECT plan_code AS \"planCode\",expires_at AS \"expiresAt\" FROM pf_billing_entitlements WHERE user_id=$1",[String(userId)]);
+   const row=r.rows[0];
+   return row?{...row,active:new Date(row.expiresAt)>new Date()}:{active:false,expiresAt:null,planCode:null};
   },
   close:()=>pool.end()
  };
