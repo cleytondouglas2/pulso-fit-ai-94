@@ -107,10 +107,11 @@ function bootPulsoUpgrade(){
   loadStyle.textContent="#pf-route-loading{position:fixed;inset:0;z-index:199999998;background:#090e22eb;color:#bffff0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;font:850 14px system-ui;pointer-events:none}"+
    "#pf-route-loading .pf-spin{width:32px;height:32px;border:3px solid #7256ad;border-top-color:#9effdb;border-radius:50%;animation:pf-rotate .75s linear infinite}"+
    "@keyframes pf-rotate{to{transform:rotate(360deg)}}"+
-   "#app .pf-page-enter,#app [class*=page-enter]{animation:none!important;transition:none!important}"+
    "@media(prefers-reduced-motion:reduce){#pf-route-loading .pf-spin{animation:none}}";
   document.head.appendChild(loadStyle);
   function loading(on){
+   // O guard controla a transição; o loader legado é um fallback.
+   if(window.__PF_NAVIGATION_GUARD__){document.getElementById("pf-route-loading")?.remove();return;}
    var el=document.getElementById("pf-route-loading");
    if(on&&!el){el=document.createElement("div");el.id="pf-route-loading";el.setAttribute("role","status");
     el.innerHTML='<span class="pf-spin" aria-hidden="true"></span><span>Carregando…</span>';document.body.appendChild(el)}
