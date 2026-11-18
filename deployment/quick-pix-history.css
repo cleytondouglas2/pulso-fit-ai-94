@@ -1,0 +1,43 @@
+/* ARGUS compact recent QR ledger, confined to the existing charge-result panel. */
+#page-charge-create .charge-result.argus-pix-has-recents #charge-placeholder{display:none!important}
+#page-charge-create #argus-pix-recent{margin:0;padding:0 0 4px;max-width:100%;min-width:0}
+#page-charge-create .argus-pix-recent-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 15px}
+#page-charge-create .argus-pix-recent-heading h3{color:#f9dfb4;font-size:18px;margin:0 0 5px}
+#page-charge-create .argus-pix-recent-heading p{color:#a7a9b3;font-size:12px;margin:0;line-height:1.4}
+#page-charge-create .argus-pix-recent-heading button{min-height:36px!important;padding:6px 10px!important;font-size:12px!important;border-radius:10px}
+#page-charge-create .argus-pix-recent-list{display:flex;flex-direction:column;gap:10px;max-width:100%}
+#page-charge-create .argus-pix-recent-item{display:flex;align-items:center;min-width:0;gap:12px;padding:13px 12px;
+ border:1px solid rgba(210,174,113,.24);border-radius:13px;background:linear-gradient(110deg,rgba(37,39,45,.96),rgba(21,25,33,.96))}
+#page-charge-create .argus-pix-recent-symbol{flex:0 0 38px;width:38px;height:38px;display:grid;place-items:center;
+ border-radius:10px;background:rgba(217,168,99,.13);color:#e3b877;font-size:22px}
+#page-charge-create .argus-pix-recent-info{flex:1;min-width:0}
+#page-charge-create .argus-pix-recent-main{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+#page-charge-create .argus-pix-recent-main strong{color:#f9e4bb;font-size:16px;font-variant-numeric:tabular-nums}
+#page-charge-create .argus-pix-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 9px;border-radius:20px;
+ background:#4d3e27;color:#f5cc88;white-space:nowrap}
+#page-charge-create .argus-pix-pill:before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+#page-charge-create .argus-pix-pill.paid{background:#234733;color:#a6edba}
+#page-charge-create .argus-pix-pill.expired,#page-charge-create .argus-pix-pill.failed,
+#page-charge-create .argus-pix-pill.cancelled{background:#47414a;color:#c2b9c0}
+#page-charge-create .argus-pix-recent-info p{font-size:12px;color:#d0c6b6;line-height:1.4;margin:5px 0 3px;overflow-wrap:anywhere}
+#page-charge-create .argus-pix-recent-info small{font-size:11px;color:#999fae}
+#page-charge-create .argus-pix-recent-actions{display:flex;flex:none;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+#page-charge-create .argus-pix-recent-actions button{min-height:34px;padding:7px 10px;border-radius:9px;
+ border:1px solid rgba(225,180,103,.48);background:#302a26;color:#f0cf96;font-size:12px;font-weight:700;cursor:pointer}
+#page-charge-create .argus-pix-recent-actions button:disabled{opacity:.55}
+#page-charge-create .argus-pix-expired-label{font-size:11px;color:#b4acb2;padding:7px;border:1px solid #48434a;border-radius:8px}
+#page-charge-create .argus-pix-empty,#page-charge-create .argus-pix-loading{margin:14px 0;color:#aeb2bf;line-height:1.5;text-align:center}
+.argus-pix-expired-detail{padding:12px 0}
+.argus-pix-expired-detail strong{font-size:27px;color:#e9c58b}
+.argus-pix-expired-detail p{margin:15px 0;color:#d6d1c9;line-height:1.5}
+.argus-pix-expired-detail small{color:#acaebb}
+@media(max-width:650px){
+ #page-charge-create .argus-pix-recent-item{gap:9px;align-items:flex-start;flex-wrap:wrap;padding:12px 10px}
+ #page-charge-create .argus-pix-recent-symbol{flex-basis:34px;width:34px;height:34px;font-size:20px}
+ #page-charge-create .argus-pix-recent-info{flex-basis:calc(100% - 48px)}
+ #page-charge-create .argus-pix-recent-actions{width:100%;justify-content:flex-end;gap:8px}
+ #page-charge-create .argus-pix-recent-actions button{flex:1;max-width:140px;min-height:36px}
+ #page-charge-create .argus-pix-recent-heading h3{font-size:16px}
+ #page-charge-create .argus-pix-recent-heading button{font-size:11px!important}
+}
+@media(prefers-reduced-motion:reduce){#page-charge-create .argus-pix-recent-item{transition:none}}
