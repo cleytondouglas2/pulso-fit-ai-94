@@ -13,4 +13,17 @@ $r=T::readChecked(['transaction'=>['transactionState'=>'COMPLETO','value'=>3.5]]
 if($r['status']!=='paid')throw new RuntimeException('Provider paid not recognized');
 try{T::readChecked(['transaction'=>['transactionState'=>'COMPLETO','value'=>8.5]],350);throw new RuntimeException('Amount mismatch ignored');}catch(RuntimeException){}
 if(T::status('INDEFINIDO')==='paid')throw new RuntimeException('Unknown marked paid');
+$html=file_get_contents('/var/www/html/public/static/admin.html');
+$js=file_get_contents('/var/www/html/public/static/admin.js');
+if(!is_string($html)||!is_string($js))throw new RuntimeException('Missing client assets');
+if(!str_contains($html,'id="argus-payer-details" class="argus-payer-details">'))
+    throw new RuntimeException('Payer form must be visible on iPhone without requiring JS to unhide it');
+foreach(['id="argus-payer-name"','id="argus-payer-cpf"','name="payer_document"','admin.js?v=12'] as $token){
+    if(!str_contains($html,$token))throw new RuntimeException('Missing payer UI or asset version: '.$token);
+}
+if(!str_contains($js,'payerPane.hidden=!window.argusQuickPixTraditional')||
+   !str_contains($js,'payload.payer_document=')||
+   !str_contains($js,'payload.payer_name='))
+    throw new RuntimeException('Client form is not wired to traditional Pix payment request');
+echo "PASS: iPhone traditional Pix form has visible name + CPF fields and fresh admin JS.\n";
 echo "PASS: Traditional MisticPay amount, real CPF, QR, idempotent request shape, status and payment amount safeguards.\n";
