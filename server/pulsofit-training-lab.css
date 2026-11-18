@@ -134,3 +134,19 @@
 #pf-tv-overlay .pf-tv-smart-tip strong {font-size:13px!important;font-weight:850!important;color:#d2ffe8!important}
 #pf-tv-overlay .pf-tv-smart-tip p {font-size:12px!important;line-height:1.55!important;color:#e5e8f4!important;margin:0!important}
 #pf-tv-overlay .pf-tv-smart-tip button {background:#214e52!important;border:1px solid #72d7cc!important;color:#f3fffc!important;padding:9px 12px!important;border-radius:10px!important;font-size:12px!important;font-weight:800!important;margin-top:3px!important}
+
+
+/* Manual daily workout editor */
+#pf-tv-overlay .pf-tv-edit-buttons{display:flex!important;flex-direction:column!important;gap:6px!important;min-width:96px!important;align-self:start!important}
+#pf-tv-overlay .pf-tv-edit-buttons .pf-tv-swap{width:100%!important;min-height:33px!important;white-space:normal!important}
+#pf-tv-overlay .pf-tv-edit-buttons .pf-tv-remove{background:#51334d!important;color:#ffe1ef!important;border-color:#ad7c91!important}
+#pf-tv-overlay .pf-tv-pick-items{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:14px 0!important}
+#pf-tv-overlay .pf-tv-pick-card{display:flex!important;flex-direction:column!important;gap:6px!important;align-items:flex-start!important;text-align:left!important;padding:13px!important;min-height:78px!important;background:#252f4e!important;border:1px solid #8175af!important;color:#fff!important;border-radius:13px!important}
+#pf-tv-overlay .pf-tv-pick-card strong{font-size:13px!important;line-height:1.35!important}
+#pf-tv-overlay .pf-tv-pick-card small{font-size:11px!important;line-height:1.5!important;color:#cdd9ed!important}
+#pf-tv-overlay .pf-tv-pick-card:hover{border-color:#c6a0ff!important;background:#3d3165!important}
+@media(max-width:680px){
+ #pf-tv-overlay .pf-tv-edit-buttons{grid-column:2!important;flex-direction:row!important;flex-wrap:wrap!important;min-width:0!important}
+ #pf-tv-overlay .pf-tv-edit-buttons .pf-tv-swap{width:auto!important;flex:1 1 85px!important}
+ #pf-tv-overlay .pf-tv-pick-items{grid-template-columns:minmax(0,1fr)!important}
+}
