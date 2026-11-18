@@ -285,6 +285,8 @@ html{scroll-padding-bottom:calc(100px + var(--pf-layout-safe-bottom))}
  #app .mobile-nav>:where(button,.nav-link,[data-route])>span{max-width:100%!important;min-width:0!important;text-align:center!important}
  #app .mobile-nav button[data-route="coach"]{box-sizing:border-box!important;justify-self:center!important;align-self:center!important;width:clamp(53px,14vw,63px)!important;max-width:63px!important;min-width:53px!important;height:clamp(53px,14vw,63px)!important;min-height:53px!important;margin:-10px auto 0!important;transform:none!important;flex:none!important;border-radius:50%!important}
  #app .mobile-nav button[data-route="coach"]::before{right:-7px!important;top:-8px!important}
+ /* Older navigation layers also draw an IA badge with ::after. Show exactly one badge. */
+ #app .mobile-nav button[data-route="coach"]::after{content:none!important;display:none!important}
  #app .mobile-nav button[data-route="coach"] :where(svg,.pf2026-ico svg){width:22px!important;height:22px!important;min-width:22px!important;min-height:22px!important}
  #app .main,#app main{padding-bottom:calc(112px + var(--pf-layout-safe-bottom))!important;max-width:100%!important;overflow-x:clip!important}
  #app .pro-cols,#app .pro-price-grid,#app .pf2026-price-grid{grid-template-columns:minmax(0,1fr)!important}
