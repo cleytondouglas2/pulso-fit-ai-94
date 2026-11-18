@@ -7,13 +7,13 @@ $css=file_get_contents("$root/quick-pix-popup.css");
 $auto=file_get_contents("$root/quick-pix-autostatus.js");
 if(!is_string($html)||!is_string($js)||!is_string($css)||!is_string($auto))
     throw new RuntimeException('Pix modal assets missing');
-foreach(['quick-pix-popup.js?v=1','quick-pix-popup.css?v=1','quick-pix-receipt.js?v=3'] as $str)
+foreach(['quick-pix-popup.js?v=2','quick-pix-popup.css?v=1','quick-pix-receipt.js?v=3'] as $str)
     if(substr_count($html,$str)!==1)throw new RuntimeException('Pix dialog script missing or duplicated: '.$str);
 foreach(['window.showChargeReceipt=wrapped','original.apply(this,arguments)',
           "host.appendChild(receipt)","receiptHome.appendChild(receipt)",
           'argus-pix-modal-receipt-host','argus-pix-popup-overlay',
           'argus:pix-paid','argus-pix-success-overlay','Parabéns! 🎉',
-          'Seu Pix foi recebido e confirmado pela MisticPay.',
+          'Seu Pix foi recebido e confirmado pela ARGUS Pay.',
           'argus-pix-success-ok','OK'] as $s)
     if(!str_contains($js,$s))throw new RuntimeException('Pix modal or congratulation regression: '.$s);
 if(str_contains($js,'/api/admin/quick-pix')||str_contains($js,'fetch(')||str_contains($js,"status='paid'"))
