@@ -77,7 +77,8 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
     state.providerAuth="verified";
    }catch(error){
     const code=String(error.code||"");
-    state.providerAuth=["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?"denied":"checked";
+    state.providerAuth=["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?"denied":(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR"].includes(code)?"verified":"checked");
+    console.log("[pulso-billing] Provider read-only probe code="+(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR","INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?code:"OTHER")+"; no charge created.");
    }
   }
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
