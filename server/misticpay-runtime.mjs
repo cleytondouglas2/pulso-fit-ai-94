@@ -78,6 +78,29 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    state.accountSchemaVerified=r.rows.some(x=>x.column_name==="id"&&x.data_type==="uuid")&&r.rows.some(x=>x.column_name==="plan");
    if(!state.accountSchemaVerified)throw Error("Account schema mismatch");
    store=await createMisticPayPostgresStore(pool,{initialize:true});
+   // One-time scoped reactivation of seven free days; never modifies paid Pix.
+   const resetEmail=String(process.env.PULSO_TRIAL_RESET_EMAIL_ONCE||"").trim();
+   const resetId=String(process.env.PULSO_TRIAL_RESET_ID_ONCE||"").trim();
+   if(resetEmail&&resetEmail.length<255&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetEmail)&&
+      /^[a-zA-Z0-9-]{16,90}$/.test(resetId)){
+    const db=await pool.connect();
+    try{
+     await db.query("BEGIN");
+     await db.query("CREATE TABLE IF NOT EXISTS pf_trial_admin_reset_events (reset_id text PRIMARY KEY,user_id uuid NOT NULL,reset_at timestamptz NOT NULL DEFAULT now())");
+     const r=await db.query(`INSERT INTO pf_trial_admin_reset_events(reset_id,user_id)
+      SELECT $1,id FROM pf_users WHERE lower(email)=lower($2)
+      ON CONFLICT(reset_id) DO NOTHING RETURNING user_id`,[resetId,resetEmail]);
+     if(r.rowCount){
+      await db.query(`INSERT INTO pf_billing_trials(user_id,started_at) VALUES($1,now())
+       ON CONFLICT(user_id) DO UPDATE SET started_at=EXCLUDED.started_at`,[String(r.rows[0].user_id)]);
+     }
+     await db.query("COMMIT");
+     console.log("[pulso-trial] One-time free trial reactivation "+(r.rowCount?"applied":"already_used_or_account_not_found")+"; paid orders unchanged.");
+    }catch(e){
+     await db.query("ROLLBACK").catch(()=>{});
+     console.warn("[pulso-trial] Free trial reset failed code="+String(e.code||"database").replace(/[^a-z0-9_]/gi,"").slice(0,32));
+    }finally{db.release()}
+   }
    state.storageReady=true;
    billing=createMisticPayBilling({authenticate,store,origin,gateway});
   }catch(error){
