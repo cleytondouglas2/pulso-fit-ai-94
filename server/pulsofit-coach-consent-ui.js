@@ -72,6 +72,7 @@ function hideLegacy(){
  }
 }
 function mount(){
+ document.body.classList.toggle("pf-coach-active",route()==="coach");
  if(route()!=="coach"||!token())return;
  const app=$("app"),main=app?.querySelector(".main")||app?.querySelector("main");
  if(!main)return;
@@ -110,7 +111,15 @@ function boot(){
  '#pf-coach-secure form>button{width:100%}#pf-coach-secure #pf-coach-log{display:grid;gap:9px;max-height:45vh;overflow-y:auto}'+
  '#pf-coach-secure .pf-coach-line{padding:12px;border-radius:11px;background:#313d60;color:#fff}#pf-coach-secure .pf-coach-line.user{background:#165067}'+
  '#pf-coach-secure .pf-coach-line p{white-space:pre-wrap;margin:5px 0;overflow-wrap:anywhere}#pf-coach-secure .pf-coach-suggestions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}'+
- '#pf-coach-secure .pf-coach-suggestions button{background:#36445f;flex:1 1 130px}#app [data-pf-worker],#app [data-pf-legacy-chat]{display:none!important}';
+ '#pf-coach-secure .pf-coach-suggestions button{background:#36445f;flex:1 1 130px}'+
+ '#pf-coach-secure .pf-coach-line{display:block!important;box-sizing:border-box!important;max-width:100%!important;min-width:0!important;overflow-wrap:anywhere!important;word-break:normal!important;white-space:normal!important}'+
+ '#pf-coach-secure .pf-coach-line p{white-space:pre-wrap!important;overflow-wrap:anywhere!important;word-break:normal!important;line-height:1.6!important;max-width:100%!important}'+
+ '#pf-coach-secure #pf-coach-input,#app #pfaiChatInput{font-size:16px!important;line-height:1.5!important;transform:none!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}'+
+ '#app form:has(#pfaiChatInput){display:flex!important;flex-wrap:wrap!important;gap:10px!important;max-width:100%!important;min-width:0!important}'+
+ '#app form:has(#pfaiChatInput)>*{max-width:100%!important;min-width:0!important}'+
+ '#app [class*="pfai-bubble"],#app [class*="pfai-message"],#app [class*="pfai-chat-msg"]{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;word-break:normal!important;white-space:pre-wrap!important}'+
+ 'body.pf-coach-active #app{overflow-x:clip!important}'+
+ '#app [data-pf-worker],#app [data-pf-legacy-chat]{display:none!important}';
  document.head.appendChild(style);
  const app=$("app");if(app)new MutationObserver(schedule).observe(app,{childList:true,subtree:true});
  window.addEventListener("hashchange",schedule);window.addEventListener("pageshow",schedule);
