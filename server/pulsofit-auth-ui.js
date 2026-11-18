@@ -71,7 +71,7 @@ async function verify(){
  if(busy||!document.body)return;
  var current=token();
  if(valid&&current===verifiedToken)return;
- if(!current){valid=false;verifiedToken="";show("register");return}
+ if(!current){valid=false;verifiedToken="";if(!document.getElementById("pf-auth-required-form"))show("register");return}
  busy=true;
  var el=overlay();el.innerHTML='<section class="pf-auth-dialog"><h2>Validando sua conta…</h2><p>Consultando a sessão segura.</p></section>';
  try{
