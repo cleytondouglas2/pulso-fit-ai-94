@@ -181,7 +181,7 @@ function open(exercise){
  '<form id="pf-ar-ai-form"><label for="pf-ar-ai-text">Escolher exercício com IA (opcional)</label>'+
  '<div class="pf-ar-ai-row"><input id="pf-ar-ai-text" maxlength="170" placeholder="Ex.: quero aprender agachamento búlgaro" type="text">'+
  '<button type="submit">✨ Sugerir</button></div><label class="pf-ar-ai-consent"><input type="checkbox" id="pf-ar-ai-consent"> Autorizo enviar somente o nome do exercício à IA</label></form>'+
- '<p role="status" id="pf-ar-status" aria-live="polite"></p><small class="pf-ar-foot">Prévia com câmera e avatar 3D. No Safari/iPhone, o chão é ajustado manualmente e não há ancoragem espacial ARKit. A câmera fica no aparelho e nenhuma imagem é enviada à IA. As animações são ilustrativas, não substituem orientação técnica.</small></div>';
+ '<p role="status" id="pf-ar-status" aria-live="polite"></p><small class="pf-ar-foot">A pessoa real aparece por vídeo licenciado ou autorizado; o fundo pode ser recortado por IA no aparelho. No Safari, o posicionamento é manual, sem ancoragem espacial ARKit. A análise corporal da câmera é opcional e as demonstrações não substituem orientação técnica.</small></div>';
  document.body.appendChild(modal);document.body.classList.add("pf-ar-open");
  modal.querySelector("#pf-ar-close").addEventListener("click",close);
  modal.querySelector("#pf-ar-camera").addEventListener("click",()=>void startCamera());
