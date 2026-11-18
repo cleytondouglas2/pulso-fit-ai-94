@@ -71,7 +71,7 @@ final class TraditionalQuickPix
         $name=trim(preg_replace('/\s+/u',' ',$name)??'');
         if(mb_strlen($name)<3||mb_strlen($name)>120)throw new \InvalidArgumentException('Informe o nome completo do pagador');
         $cpf=preg_replace('/\D/','',$cpf);
-        if(!self::cpfValid($cpf))throw new \InvalidArgumentException('Informe um CPF válido do pagador');
+        if(!self::cpfValid($cpf)&&!IdentityProfile::validCnpj($cpf))throw new \InvalidArgumentException('CPF ou CNPJ cadastrado inválido');
         if(!preg_match('/^qpx_[a-f0-9]{32}$/D',$id))throw new \InvalidArgumentException('ID inválido');
         return ['amount'=>$cents/100,'payerName'=>$name,'payerDocument'=>$cpf,
             'transactionId'=>$id,'description'=>$description];
@@ -232,8 +232,11 @@ final class TraditionalQuickPix
             if(!is_array($data))self::fail('JSON inválido');
             $cents=$data['amount_cents']??null;
             if(!is_int($cents))self::fail('Valor em centavos inválido');
-            $name=trim((string)($data['payer_name']??''));
-            $cpf=preg_replace('/\D/','',(string)($data['payer_document']??''));
+            // The payer's legal identity is obtained exclusively from the MFA-protected
+            // server-side profile, never accepted from browser-supplied payment fields.
+            $identity=IdentityProfile::forPayment($db,(string)$actor['id']);
+            $name=$identity['legal_name'];
+            $cpf=$identity['document_number'];
             $uuid=(string)($data['idempotency_key']??'');
             if(!preg_match('/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/iD',$uuid))self::fail('Chave de idempotência inválida');
             $id='qpx_'.bin2hex(random_bytes(16));$desc='Cobrança ARGUS '.$id;
