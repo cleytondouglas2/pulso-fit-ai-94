@@ -11,6 +11,21 @@
     {code:"mensal",title:"Plano Mensal",price:"R$ 24,90",duration:"30 dias",detail:"Mais economia e continuidade na rotina.",featured:true}
   ];
   var entitlement={valid:false,token:"",checked:false};
+  function refreshBillingEntitlement(token){
+    if(!token){window.PULSO_BILLING_ENFORCED=false;removeGate();return;}
+    fetch('/api/subscription/status',{cache:'no-store',headers:{Authorization:'Bearer '+token}})
+      .then(function(r){if(!r.ok)throw Error('Consulta de assinatura indisponível');return r.json()})
+      .then(function(data){
+        if(token!==pendingToken)return;
+        window.PULSO_BILLING_ENFORCED=data.billingEnforced===true;
+        if(window.PULSO_BILLING_ENFORCED){
+          entitlement.valid=!!data.hasAccess;
+          entitlement.checked=true;
+        }
+        enhance();
+      }).catch(function(){window.PULSO_BILLING_ENFORCED=false;enhance()});
+  }
+
   var pendingToken="";
   var observerBusy=false;
   function firstUse(){
@@ -27,6 +42,7 @@
     try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
     if(token===pendingToken)return;
     pendingToken=token;entitlement={valid:false,token:token,checked:!token};
+    refreshBillingEntitlement(token);
     if(!token){enhance();return}
     fetch("/api/me",{headers:{"Authorization":"Bearer "+token},cache:"no-store"})
     .then(function(r){if(!r.ok)throw Error("Sessão inválida");return r.json()})
@@ -144,7 +160,7 @@
     // Não bloqueie contas enquanto não existir checkout/validação do gateway.
     if(!window.PULSO_BILLING_ENFORCED){removeGate();return}
     var allowed=["subscription","account","admin"].indexOf(activeRoute())>=0;
-    if(!expired()||entitlement.valid||allowed){removeGate();return}
+    if(entitlement.valid||allowed){removeGate();return}
     var old=document.getElementById("pf-trial-gate");if(old)return;
     var overlay=document.createElement("section");overlay.id="pf-trial-gate";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","Período de teste encerrado");
     overlay.innerHTML="<div class='pf-gate-box'><div class='pf-gate-icon'>✦</div>"+
@@ -255,7 +271,7 @@
   function init(){
     window.PULSO_BILLING_ENFORCED=false;
     // Esta rota deverá retornar billingEnforced:true somente após webhooks e cobrança ativa.
-    fetch('/api/subscription/status',{cache:'no-store'}).then(function(r){return r.ok?r.json():null}).then(function(data){if(data&&data.billingEnforced===true){window.PULSO_BILLING_ENFORCED=true;enhance()}}).catch(function(){});
+    // O estado de assinatura só é confiável quando consultado com token autenticado, via checkToken().
     var root=document.getElementById("app");if(!root)return;
     enhance();checkToken();
     var observer=new MutationObserver(function(){enhance();checkToken()});
