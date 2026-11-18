@@ -3,9 +3,9 @@
 "use strict";
 function bootPulsoUpgrade(){
   if(typeof render!=="function"||typeof app==="undefined"||typeof pfaiChatMarkup!=="function")return;
-  var revision="2026.11.18.3";
-  var eggData={kcal:145.7,protein:13.3,carbs:0.61,fat:9.5,fiber:null,sugar:null,sodium:145.9};
-  function eggRef(){return {matched:true,source:"Tabela TACO/UNICAMP, 4ª edição",description:"Ovo de galinha inteiro cozido, 10 minutos (por 100g)",fdcId:null,per100:Object.assign({},eggData)};}
+  var revision="2026.11.18.4";
+  var eggData={kcal:155,protein:12.58,carbs:1.12,fat:10.61,fiber:0,sugar:1.12,sodium:124};
+  function eggRef(){return {matched:true,source:"USDA FoodData Central",description:"Egg, whole, cooked, hard-boiled (por 100g)",fdcId:173424,per100:Object.assign({},eggData)};}
   function cleanText(v){return String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();}
   function normalizeFoodAnalysis(a){
     if(!a||!Array.isArray(a.foods))return a;
@@ -23,7 +23,7 @@ function bootPulsoUpgrade(){
   }
   if(typeof QUICK_FOODS!=="undefined"){
     var egg=QUICK_FOODS.find(function(x){return x.id==="egg";});
-    if(egg){egg.grams=50;egg.per100=Object.assign({},eggData);egg.description="Ovo inteiro cozido, TACO/UNICAMP, 100g";egg.fdcId=null;}
+    if(egg){egg.grams=50;egg.per100=Object.assign({},eggData);egg.description="Egg, whole, cooked, hard-boiled";egg.fdcId=173424;}
   }
   if(typeof quickFoodEntry==="function"){
     var oldQuick=quickFoodEntry;
@@ -50,11 +50,11 @@ function bootPulsoUpgrade(){
     if(typeof current==="undefined"||!current||!Array.isArray(current.foods))return;
     document.querySelectorAll(".nutri-food-row").forEach(function(row,i){
       var f=current.foods[i];
-      if(!f||!f.reference||!String(f.reference.source||"").includes("TACO"))return;
+      if(!f||!f.reference||Number(f.reference.fdcId)!==173424)return;
       var a=row.querySelector('a[href*="fdc.nal.usda.gov"]');
-      if(a){var label=document.createElement("span");label.className="pf2026-taco";label.textContent="Fonte: TACO/UNICAMP • ovo cozido";a.replaceWith(label);}
+      if(a){var label=document.createElement("span");label.className="pf2026-taco";label.textContent="Fonte: USDA FoodData Central • ovo cozido";a.replaceWith(label);}
       var info=row.querySelector(".nutri-food-name");
-      if(info&&!info.querySelector(".pf2026-portion")){var note=document.createElement("small");note.className="pf2026-portion";note.textContent="🥚 1 ovo médio ≈ 50 g (sem casca), cerca de 73 kcal e 6,7 g de proteína. Corrija o peso se necessário.";info.appendChild(note);}
+      if(info&&!info.querySelector(".pf2026-portion")){var note=document.createElement("small");note.className="pf2026-portion";note.textContent="🥚 1 ovo médio ≈ 50 g (sem casca), cerca de 78 kcal e 6,3 g de proteína. Corrija o peso se necessário.";info.appendChild(note);}
     });
   }
   function currentSection(){return String((location.hash||"#/home").replace(/^#\/?/,"").split("/")[0]||"home");}
