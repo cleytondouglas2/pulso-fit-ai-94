@@ -278,6 +278,27 @@ final class KycStudio {
         try{Notifications::accountUpdate($db,$id,'rejected');}catch(\Throwable){}
         self::send(['ok'=>true,'status'=>'rejected','message'=>'Cadastro reprovado com justificativa registrada.']);
     }
+    /** Sensitive full CPF/CNPJ is fetched separately, on demand and audited. */
+    private static function reviewIdentity(Database $db,array $actor,string $accountId):never{
+        self::account($db,$accountId);
+        $row=$db->one('SELECT document_sealed,document_digest FROM argus_account_identities WHERE owner_type=? AND owner_id=?',
+            ['portal',$accountId]);
+        if(!$row)self::fail('Documento do cadastro original ainda não confirmado',409);
+        $secret=(string)(getenv('ARGUS_DOC_HMAC_KEY')?:getenv('ARGUS_PAYER_HMAC_KEY')?:'');
+        if(strlen($secret)<32)self::fail('Proteção da identidade indisponível',503);
+        $decoded=base64_decode((string)$row['document_sealed'],true);
+        if(!is_string($decoded)||strlen($decoded)<=SODIUM_CRYPTO_SECRETBOX_NONCEBYTES+16)
+            self::fail('Dados cadastrais protegidos indisponíveis',503);
+        $identityKey=hash_hkdf('sha256',$secret,SODIUM_CRYPTO_SECRETBOX_KEYBYTES,'argus-identity-profile-2026-v1');
+        $doc=sodium_crypto_secretbox_open(substr($decoded,SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+            substr($decoded,0,SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),$identityKey);
+        if(!is_string($doc)||!hash_equals((string)$row['document_digest'],hash_hmac('sha256',$doc,$secret)))
+            self::fail('Integridade do CPF/CNPJ não confirmada',503);
+        $rep=$db->one('SELECT cpf_ciphertext FROM argus_kyc_representatives WHERE account_id=?',[$accountId]);
+        $cpf=$rep?self::decrypt((string)$rep['cpf_ciphertext']):null;
+        self::reviewLog($db,$actor,$accountId,'identity_viewed','Consulta de documento cadastral protegida');
+        self::send(['document_number'=>$doc,'representative_cpf'=>$cpf]);
+    }
     private static function fetchDocument(Database $db,array $actor,string $accountId,string $docId):never{
         $row=$db->one('SELECT p.*,x.payload_encrypted,x.sha256 FROM argus_portal_documents p JOIN argus_kyc_encrypted_documents x ON x.id=p.id AND x.account_id=p.account_id WHERE p.id=? AND p.account_id=?',[$docId,$accountId]);
         if(!$row)self::fail('Documento não encontrado ou fora deste cadastro',404);
@@ -312,6 +333,8 @@ final class KycStudio {
         }
         if($method==='GET'&&preg_match('~^/api/admin/kyc/applications/([a-f0-9]{32})$~D',$path,$m))
             self::send(['application'=>self::dossier($db,self::account($db,$m[1]))]);
+        if($method==='GET'&&preg_match('~^/api/admin/kyc/applications/([a-f0-9]{32})/identity$~D',$path,$m))
+            self::reviewIdentity($db,$actor,$m[1]);
         if($method==='GET'&&preg_match('~^/api/admin/kyc/applications/([a-f0-9]{32})/documents/([a-f0-9]{32})$~D',$path,$m))
             self::fetchDocument($db,$actor,$m[1],$m[2]);
         if($method==='POST'&&preg_match('~^/api/admin/kyc/applications/([a-f0-9]{32})/decision$~D',$path,$m))
