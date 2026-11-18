@@ -37,6 +37,10 @@ tradReplace($js,
     "const cfg=await api('/api/admin/quick-pix/config');\n   window.argusQuickPixTraditional=cfg.provider==='traditional';\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane){payerPane.hidden=!window.argusQuickPixTraditional; payerPane.querySelectorAll('input').forEach(el=>el.required=!!window.argusQuickPixTraditional);}",
     'provider option in configuration');
 tradReplace($js,
+    "financePixAccess=cfg.provider_access||'unavailable';",
+    "financePixAccess=cfg.provider_access||'unavailable';\n   if(window.argusQuickPixTraditional && cfg.transaction_read_scope==='denied'){\n    warning.textContent='A MisticPay reconhece sua chave para criar cobranças, mas recusou a consulta: falta a permissão TRANSACTION_READ. Ative este escopo em API → Chaves de Acesso para validar automaticamente os pagamentos.';\n    warning.hidden=false;\n    refreshPixButton();return;\n   }",
+    'missing read permission explained in payment screen');
+tradReplace($js,
     "\$('#charge-create-form').onsubmit=async event=>{",
     "\$('#charge-create-form').onsubmit=async event=>{\n  event.preventDefault();\n  if(window.argusQuickPixTraditional){\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane.hidden){\n    payerPane.hidden=false;\n    payerPane.querySelectorAll('input').forEach(el=>el.required=true);\n    const submit=document.getElementById('charge-submit');\n    submit.textContent='Confirmar dados e gerar Pix';\n    payerPane.scrollIntoView({behavior:'smooth',block:'nearest'}); payerPane.querySelector('input').focus();return;\n   }\n   const payerName=document.getElementById('argus-payer-name').value.trim();\n   const payerCpf=document.getElementById('argus-payer-cpf').value.replace(/\\D/g,'');\n   if(payerName.length<3||!/^\\d{11}$/.test(payerCpf)){toast('Preencha nome completo e CPF válido do pagador.',true);return;}\n  }",
     'two-stage form');
