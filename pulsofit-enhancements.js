@@ -20,7 +20,7 @@
         if(token!==pendingToken)return;
         window.PULSO_BILLING_ENFORCED=data.billingEnforced===true;
         verifiedServerAccess=window.PULSO_BILLING_ENFORCED?!!data.hasAccess:null;
-        billingServerStatus=window.PULSO_BILLING_ENFORCED?data:null;
+        billingServerStatus=data;
         if(window.PULSO_BILLING_ENFORCED){
           entitlement.valid=verifiedServerAccess;
           entitlement.checked=true;
@@ -146,18 +146,62 @@
     return d;
   }
   function enhancePlans(root){
-    var grid=root.querySelector(".pro-price-grid");if(!grid)return;
-    if(grid.dataset.pfPricing==="v1")return;
-    grid.dataset.pfPricing="v1";grid.replaceChildren(offerCard(prices[0]),offerCard(prices[1]));
-    var hero=root.querySelector(".pro-hero");if(hero){
-      var banner=document.createElement("div");banner.className="pf-trial-banner";
-      banner.innerHTML="<div><b>🎁 7 dias para conhecer o PulsoFit</b><p>Teste o aplicativo antes de escolher um plano. "+
-      (expired()?"Seu período demonstrativo terminou.":"Restam "+remain()+" dia(s) deste período neste navegador. Válido até "+formatDates()+".")+"</p></div>";
-      hero.parentNode.insertBefore(banner,hero.nextSibling);
+    var route=activeRoute();
+    var main=root.querySelector(".main");
+    if(route==="home"&&main&&!main.querySelector(".pf-home-pricing-entry")){
+      var intro=document.createElement("section");
+      intro.className="pf-home-pricing-entry";
+      intro.innerHTML='<div><strong>🎁 7 dias de teste grátis</strong><p>Acompanhe seu teste na conta online e escolha o melhor plano para você.</p></div>'+
+        '<button type="button" data-route="subscription">Ver planos e validade</button>';
+      main.insertBefore(intro,main.firstChild);
     }
+    if(route!=="subscription")return;
+    var grid=root.querySelector(".pro-price-grid");
+    if(!grid)return;
+    if(grid.dataset.pfPricing!=="v2"){
+      grid.dataset.pfPricing="v2";
+      grid.replaceChildren(offerCard(prices[0]),offerCard(prices[1]));
+    }
+    var state=billingServerStatus;
+    var token="";
+    try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
+    var detail="";
+    if(!token){
+      detail="Crie ou acesse sua conta para iniciar e acompanhar os seus 7 dias gratuitos. Não há cobrança automática.";
+    }else if(state&&state.planActive===true&&state.planExpiresAt){
+      var pEnd=new Date(state.planExpiresAt);
+      detail="Seu plano está ativo até "+(Number.isFinite(pEnd.getTime())?pEnd.toLocaleDateString("pt-BR"):"a data informada pelo servidor")+".";
+    }else if(state&&state.trialEndsAt){
+      var end=new Date(state.trialEndsAt);
+      if(Number.isFinite(end.getTime())){
+        var days=Math.max(0,Math.ceil((end.getTime()-Date.now())/86400000));
+        detail=days>0?"Restam "+days+" dia(s) de teste. Válido até "+end.toLocaleDateString("pt-BR")+".":"Seu período gratuito terminou em "+end.toLocaleDateString("pt-BR")+".";
+      }else detail="Não foi possível interpretar o prazo informado pelo servidor.";
+    }else{
+      detail="Consultando sua data de validade no servidor. O teste grátis é vinculado à sua conta.";
+    }
+    var hero=root.querySelector(".pf-commercial-hero, .pro-hero");
+    var banner=root.querySelector(".pf-trial-banner");
+    if(!banner){
+      banner=document.createElement("section");banner.className="pf-trial-banner";
+      banner.setAttribute("aria-label","Status do período gratuito");
+      if(hero)hero.insertAdjacentElement("afterend",banner);
+      else grid.insertAdjacentElement("beforebegin",banner);
+    }
+    var bannerMarkup='<div><b>🎁 Teste grátis de 7 dias</b><p>'+detail+'</p>'+
+       '<small>A validade é calculada no servidor quando há uma sessão autenticada. O bloqueio após o teste ainda está desativado.</small></div>'+
+       (!token?'<button type="button" data-route="account">Criar conta ou entrar</button>':'');
+    if(banner.innerHTML!==bannerMarkup)banner.innerHTML=bannerMarkup;
     var alert=root.querySelector(".pro-alert");
-    if(alert)alert.innerHTML="<strong>Pagamento não conectado.</strong><p>Os valores são propostas. Não há cobrança por Pix ou cartão nesta versão; liberação de planos depende de ativação pelo administrador. O controle de vencimento ainda precisa de validação no servidor.</p>";
-    var note=root.querySelector(".tiny-caption");if(note)note.textContent="*Recursos de IA online dependem do servidor configurado. Nenhuma cobrança ocorre ao selecionar um plano.";
+    if(alert){
+      var alertMarkup="<strong>Planos PulsoFit AI • Pix via MisticPay</strong><p>Selecione um plano para consultar a disponibilidade do pagamento. O Pix só é apresentado após a validação da cobrança pelo servidor. Cartão não está disponível neste gateway.</p>";
+      if(alert.innerHTML!==alertMarkup)alert.innerHTML=alertMarkup;
+    }
+    var note=root.querySelector(".tiny-caption");
+    if(note){
+      var label="Planos de 15 e 30 dias, sem renovação automática. O acesso será registrado após confirmação segura do Pix.";
+      if(note.textContent!==label)note.textContent=label;
+    }
   }
   function removeGate(){var old=document.getElementById("pf-trial-gate");if(old)old.remove()}
   function enhanceGate(root){
