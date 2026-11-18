@@ -28,7 +28,7 @@ COPY deployment/Portal.php /var/www/html/src/Portal.php
 COPY deployment/client.html deployment/docs.html deployment/portal.js deployment/portal.css deployment/qrcode.min.js /var/www/html/public/static/
 COPY deployment/argus_customer_release.php /tmp/argus_customer_release.php
 RUN php -l /tmp/argus_customer_release.php \
- && php /tmp/argus_customer_release.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_customer_release.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/src/Admin.php \
