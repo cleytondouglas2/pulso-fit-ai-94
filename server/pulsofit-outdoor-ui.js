@@ -108,6 +108,7 @@ function escapeKey(e){if(e.key==="Escape")close()}
 function dispose(){
  stopWatch();turnOffMotion();clearInterval(timer);timer=null;releaseWake();destroyMap();
  if(el){el.remove();el=null}document.removeEventListener("keydown",escapeKey);
+ if(activity&&["running","paused"].includes(activity.state))companionEvent("finish");
  activity=null;openedHistory=null;
 }
 function close(){
@@ -176,6 +177,15 @@ function initMotion(){
    if(result==="granted"&&activity?.state==="running"){activity.motionActive=true;window.addEventListener("devicemotion",motionEvent)}
   }).catch(()=>{});
  }else{activity.motionActive=true;window.addEventListener("devicemotion",motionEvent)}
+}
+function companionEvent(action){
+ if(!activity)return;
+ const step=stepsEstimated(),distance=nf(activity.distance/1000,2)+" km";
+ window.dispatchEvent(new CustomEvent("pulso-live-activity",{detail:{
+  action,sessionKey:activity.key,kind:activity.kind==="walk"?"walk":activity.kind==="run"?"run":"cycle",
+  title:labels[activity.kind]?.[1]||"Atividade ao ar livre",
+  detail:distance+(step&&step.value>0?" • ≈ "+step.value+" passos":"")
+ }}));
 }
 function liveNotice(title){
  if(!activity?.notify||typeof Notification==="undefined"||Notification.permission!=="granted"||!navigator.serviceWorker)return;
@@ -282,6 +292,7 @@ function startGPS(){
  activity.strideM=Number(document.getElementById("pf-outdoor-stride")?.value)||(activity.kind==="run"?1.05:.75);
  initMotion();
  activity.started=Date.now();activity.resumedAt=Date.now();activity.activeMs=0;activity.state="running";
+ companionEvent("start");
  activateWatch();
  timer=setInterval(updateStats,1000);
  updateControls();updateStats();void holdWake();
@@ -346,13 +357,13 @@ function onFix(fix){
 function pause(){
  if(!activity||activity.state!=="running")return;
  activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="paused";stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="paused";companionEvent("pause");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
  updateControls();updateStats();
  setStatus("Atividade pausada. O GPS não registra novas posições até você retomar.");
 }
 function resume(){
  if(!activity||activity.state!=="paused")return;
- activity.state="running";activity.resumedAt=Date.now();
+ activity.state="running";activity.resumedAt=Date.now();companionEvent("resume");
  // Break the route after any pause, even when points are geographically close.
  activity.segmentBreak=true;
  if(activity.motionActive)window.addEventListener("devicemotion",motionEvent);
@@ -362,7 +373,7 @@ function resume(){
 function finish(){
  if(!activity||!["running","paused"].includes(activity.state))return;
  if(activity.state==="running")activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="finished";stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="finished";companionEvent("finish");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
  if(activity.notify)liveNotice("🏁 Atividade finalizada • PulsoFit");
  showCompleted();
 }
@@ -381,6 +392,9 @@ function updateStats(){
  };
  Object.entries(boxes).forEach(([id,text])=>{const x=document.getElementById(id);if(x&&x.textContent!==text)x.textContent=text});
  refreshLiveSummary();
+ if(activity.state==="running"&&Date.now()-Number(activity.lastCompanionAt||0)>=60000){
+  activity.lastCompanionAt=Date.now();companionEvent("update");
+ }
  if(activity.state==="running"&&activity.lastFixAt&&Date.now()-activity.lastFixAt>35000)
   setStatus("Sinal GPS interrompido. Mantenha o Safari aberto, com a tela ligada e a localização ativada.",true);
 }
@@ -622,8 +636,8 @@ function boot(){
  window.addEventListener("pulso-auth-ready",schedule);
  window.addEventListener("pulso-open-outdoor",open);
  document.addEventListener("visibilitychange",()=>{
-  if(document.hidden&&activity?.state==="running"){
-   pause();setStatus("A atividade foi pausada ao sair da tela. O Safari não garante GPS em segundo plano. Toque em Retomar quando voltar.",true);
+  if(document.hidden&&activity?.state==="running"&&/iPad|iPhone|iPod/i.test(navigator.userAgent)){
+   pause();setStatus("O iOS pode suspender o GPS em segundo plano. Atividade pausada por segurança; retome quando voltar.",true);
   }
  });
  window.addEventListener("pagehide",()=>{if(activity?.state==="running")pause()});
