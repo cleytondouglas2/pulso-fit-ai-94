@@ -62,7 +62,9 @@ test("User-owned exercise videos have strict local-only size and type checks",()
  assert.match(real,/URL\.createObjectURL\(file\)/);
  assert.match(real,/URL\.revokeObjectURL\(userFileUrl\)/);
  assert.match(real,/160\*1024\*1024/);
- assert.match(real,/video\/(?:mp4|webm|quicktime/);
+ assert.ok(real.includes("quicktime"));
+ assert.ok(real.includes("webm"));
+ assert.ok(real.includes("mp4"));
  assert.match(real,/Nenhuma mídia pessoal é enviada ao servidor/);
  assert.match(real,/sem ancoragem espacial|não fixa a pessoa no chão/i);
 });
