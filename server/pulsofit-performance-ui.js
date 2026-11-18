@@ -78,7 +78,7 @@ async function loadAvatar(){
  try{
   var r=await fetch("/api/profile/photo",{headers:{Authorization:"Bearer "+token()},cache:"no-store"});
   if(!r.ok)throw Error("Foto indisponível");
-  var d=await r.json();avatar=d.hasPhoto?d.image:null;applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=document.getElementById("pf-avatar-preview");if(preview){preview.src=avatar||"";preview.style.display=avatar?"block":"none"}
+  var d=await r.json();avatar=d.hasPhoto?d.image:null;applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=document.getElementById("pf-avatar-preview");if(preview){preview.src=avatar||"";preview.style.display=avatar?"block":"none"}var placeholder=document.getElementById("pf-avatar-placeholder");if(placeholder)placeholder.style.display=avatar?"none":"grid"
  }catch{avatar=null}finally{photoBusy=false}
 }
 function avatarWidget(){
@@ -91,7 +91,8 @@ function avatarWidget(){
  if(target.querySelector("#pf-profile-photo-widget"))return;
  var box=document.createElement("section");box.id="pf-profile-photo-widget";
  box.innerHTML='<strong>📷 Foto do meu perfil</strong>'+ 
-  '<img id="pf-avatar-preview" alt="Minha foto do perfil" style="width:78px;height:78px;object-fit:cover;border-radius:50%;border:2px solid #aa88ee;display:none">'+
+  '<img id="pf-avatar-preview" alt="Minha foto do perfil" style="width:78px;height:78px;object-fit:cover;border-radius:20px;border:2px solid #aa88ee;display:none">'+
+  '<span id="pf-avatar-placeholder" aria-hidden="true" style="display:grid;place-items:center;width:74px;height:74px;border-radius:20px;background:#322c59;font-size:28px">📷</span>'+
   '<label>Adicionar ou trocar<input type="file" accept="image/*" aria-label="Enviar foto de perfil"></label>'+
   '<button type="button">Remover foto</button><small>Salva apenas na sua conta. Pode ser excluída a qualquer momento.</small>'+
   '<span role="status" aria-live="polite"></span>';
@@ -99,6 +100,7 @@ function avatarWidget(){
  else target.insertBefore(box,target.firstChild);
  var avatarPreview=box.querySelector("#pf-avatar-preview");
  if(avatarPreview&&avatar){avatarPreview.src=avatar;avatarPreview.style.display="block";}
+ var placeholder=box.querySelector("#pf-avatar-placeholder");if(placeholder)placeholder.style.display=avatar?"none":"grid";
  var notice=box.querySelector('[role="status"]');
  box.querySelector('input').addEventListener("change",async function(e){
   var f=e.target.files?.[0];if(!f)return;notice.textContent="Preparando foto...";
@@ -108,7 +110,7 @@ function avatarWidget(){
    var d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Erro ao salvar foto");
    avatar=image;
    document.querySelectorAll("#app [data-pf-avatar]").forEach(x=>delete x.dataset.pfAvatar);
-   applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src=avatar;preview.style.display="block"}notice.textContent="Foto atualizada na sua conta.";
+   applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src=avatar;preview.style.display="block"}var placeholder=box.querySelector("#pf-avatar-placeholder");if(placeholder)placeholder.style.display="none";notice.textContent="Foto atualizada na sua conta.";
   }catch(err){notice.textContent=String(err.message||err)}
  });
  box.querySelector("button").addEventListener("click",async function(){
@@ -116,7 +118,7 @@ function avatarWidget(){
   try{
    var r=await fetch("/api/profile/photo",{method:"DELETE",cache:"no-store",headers:{Authorization:"Bearer "+token()}});
    if(!r.ok)throw Error("Falha ao excluir");
-   avatar=null;window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:null}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src="";preview.style.display="none"}
+   avatar=null;window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:null}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src="";preview.style.display="none"}var placeholder=box.querySelector("#pf-avatar-placeholder");if(placeholder)placeholder.style.display="grid";
    document.querySelectorAll("#app [data-pf-avatar]").forEach(function(el){el.style.backgroundImage="none";el.style.color="";delete el.dataset.pfAvatar});
    notice.textContent="Foto removida.";
   }catch(err){notice.textContent=String(err.message||err)}
