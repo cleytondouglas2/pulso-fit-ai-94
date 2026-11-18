@@ -2425,6 +2425,24 @@ async function apiRequest(path,body){
  return data;
 }
 
+function normalizeEggNutrition(analysis){
+ if(!analysis||!Array.isArray(analysis.foods))return analysis;
+ const egg=QUICK_FOODS.find(f=>f.id==='egg');if(!egg)return analysis;
+ for(const food of analysis.foods){
+   const all=String(food.name||'')+' '+String(food.preparation||'')+' '+String(food.reference?.description||'');
+   const desc=all.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+   if(!/(ovo|egg)/.test(desc)||!/(cozid|boiled|hard.boil)/.test(desc)||/(frit|fried|omelet|mexid|scrambl|clara|gema|poach|poch)/.test(desc))continue;
+   food.reference={...(food.reference||{}),matched:true,source:'USDA FoodData Central',fdcId:173424,description:'Egg, whole, cooked, hard-boiled',per100:{kcal:155,protein:12.58,carbs:1.12,fat:10.61,fiber:0,sugar:1.12,sodium:124}};
+   food.name='Ovo cozido';food.category='protein';
+   const count=Number(food.units??food.quantity??food.count);
+   if(count===1&&(!Number.isFinite(Number(food.grams))||food.grams>70||food.grams<30)){
+      food.grams=50;
+      analysis.uncertainties=Array.isArray(analysis.uncertainties)?analysis.uncertainties:[];
+      analysis.uncertainties.push('Um ovo grande sem casca é estimado em 50 g. Corrija o peso se necessário.');
+   }
+ }
+ return analysis;
+}
 async function handleNutritionAction(action,el){
  if(action==='jump-guest'){
    document.getElementById('nutritionGuest')?.scrollIntoView?.({behavior:'smooth',block:'start'});
@@ -2463,7 +2481,7 @@ async function handleNutritionAction(action,el){
      const image=await compressImage(selectedFile);
      const answer=await apiRequest('/api/ai/meal/recognize',{image,consent:true});
      if(!answer.analysis||!Array.isArray(answer.analysis.foods))throw Error('Análise incompleta.');
-     current=answer.analysis;status='Análise recebida. Revise os pesos e ingredientes antes de salvar.';error='';
+     current=normalizeEggNutrition(answer.analysis);status='Análise recebida. Revise os pesos e ingredientes antes de salvar.';error='';
    }catch(err){error=err.message||'Falha na análise da imagem.';status='';}
    finally{busy=false;env.render();}
    return;
