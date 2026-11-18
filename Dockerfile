@@ -36,9 +36,11 @@ RUN php -l /tmp/argus_customer_release.php \
 # Crop the original ARGUS letter A without redraw: true transparency, lossless branding.
 RUN apt-get update && apt-get install -y --no-install-recommends imagemagick \
  && rm -rf /var/lib/apt/lists/* \
- && convert /var/www/html/public/static/assets/argus-symbol.png \
-    -crop 332x354+0+0 +repage -fuzz 5% -transparent black -trim +repage \
-    -filter Lanczos -resize 450x450 -gravity center -background none -extent 512x512 \
+ && convert /var/www/html/public/static/assets/argus-payments-logo-transparent.webp \
+    -crop 450x355+0+0 +repage \
+    \( -size 450x355 xc:none -fill white -draw 'polygon 0,0 360,0 370,120 375,180 390,230 414,275 442,325 442,336 245,336 245,355 0,355' \) \
+    -compose DstIn -composite \
+    -filter Lanczos -resize 470x470 -gravity center -background none -extent 512x512 \
     /var/www/html/public/static/assets/argus-icon-512.png \
  && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 192x192 \
     /var/www/html/public/static/assets/argus-icon-192.png \
