@@ -42,6 +42,25 @@ try {
     error_log('ARGUS_IDENTITY_ENCRYPTION status='.($identitySafe?'ready':'missing'));
     unset($identitySecret);
 
+    // Safely verify payout environment status after Render variable updates.
+    // Never log key material, lengths, identifiers, hashes or account balances.
+    // Presence/shape cannot establish provider-side BALANCE_READ or WITHDRAW_CREATE.
+    $payoutPk=trim((string)(getenv('ARGUS_MISTICPAY_PAYOUT_PK')?:''));
+    $payoutSk=trim((string)(getenv('ARGUS_MISTICPAY_PAYOUT_SK')?:''));
+    $payoutPresent=$payoutPk!==''&&$payoutSk!=='';
+    $payoutShape=preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$payoutPk)===1&&
+                 preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$payoutSk)===1;
+    $payoutEnabled=getenv('ARGUS_PAYOUTS_ENABLED')==='yes';
+    $payoutPersistent=in_array($database->driver(),['pgsql','mysql'],true);
+    $payoutReady=$payoutPresent&&$payoutShape&&$payoutEnabled&&$payoutPersistent;
+    error_log('ARGUS_PAYOUT_DIAGNOSTIC credentials='.($payoutPresent?'present':'missing').
+        ' format='.($payoutShape?'recognized':'unverified').
+        ' enabled='.($payoutEnabled?'yes':'no').
+        ' storage='.($payoutPersistent?'ready':'blocked').
+        ' request_ready='.($payoutReady?'yes':'no').
+        ' provider_scopes=unverified');
+    unset($payoutPk,$payoutSk);
+
     // Show only whether Finance QR credentials are syntactically present, not their values.
     $financeId = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_ID') ?: ''));
     $financeSecret = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET') ?: ''));
