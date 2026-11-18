@@ -3,11 +3,19 @@ on:
   push:
     paths:
       - 'server/misticpay-*.mjs'
+      - 'server/pulsofit-test-offer.mjs'
+      - 'server/pulsofit-test-offer.test.mjs'
+      - 'server/pulsofit-plans-stable.js'
+      - 'server/pulsofit-push-ui.js'
       - 'server/mount-misticpay.mjs'
       - '.github/workflows/misticpay-tests.yml'
   pull_request:
     paths:
       - 'server/misticpay-*.mjs'
+      - 'server/pulsofit-test-offer.mjs'
+      - 'server/pulsofit-test-offer.test.mjs'
+      - 'server/pulsofit-plans-stable.js'
+      - 'server/pulsofit-push-ui.js'
       - 'server/mount-misticpay.mjs'
       - '.github/workflows/misticpay-tests.yml'
 permissions:
@@ -24,7 +32,10 @@ jobs:
         run: |
           node --check server/misticpay-adapter.mjs
           node --check server/misticpay-billing.mjs
+          node --check server/pulsofit-test-offer.mjs
+          node --check server/pulsofit-plans-stable.js
+          node --check server/pulsofit-push-ui.js
           node --check server/misticpay-postgres-store.mjs
           node --check server/mount-misticpay.mjs
       - name: Run adapter tests without creating charges
-        run: node --test server/misticpay-adapter.test.mjs
+        run: node --test server/misticpay-adapter.test.mjs server/pulsofit-test-offer.test.mjs
