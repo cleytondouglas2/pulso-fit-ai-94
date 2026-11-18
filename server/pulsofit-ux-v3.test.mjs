@@ -35,7 +35,7 @@ test("IA exige consentimento explícito e sem URL do usuário",()=>{
  assert.match(s.chat,/\/api\/me/);
  assert.match(s.chat,/gemini-2\.5-flash:generateContent/);
  assert.match(s.chat,/consent!==true/);
- assert.ok(!s.coach.includes("localStorage.setItem(consentKey(),\"1\")||true); // explicit change handler examined below
+ assert.match(s.coach,/localStorage\.setItem\(consentKey\(\),"1"\)/);
  assert.match(s.coach,/addEventListener\("change"/);
  assert.match(s.runtime,/import "\.\/pulsofit-coach-chat\.mjs"/);
 });
