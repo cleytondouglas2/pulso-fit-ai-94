@@ -78,10 +78,11 @@ struct PulsoFitBrowser: UIViewRepresentable {
         private func send(event: String, data: [String: Any]) {
             guard let web, UIApplication.shared.applicationState == .active,
                   let bytes = try? JSONSerialization.data(withJSONObject: data),
-                  let payload = String(data: bytes, encoding: .utf8) else { return }
-            let js = "window.dispatchEvent(new CustomEvent(" +
-                String(data: try! JSONSerialization.data(withJSONObject: event, options: .fragmentsAllowed),
-                       encoding: .utf8)! + ",{detail:" + payload + "}));"
+                  let payload = String(data: bytes, encoding: .utf8),
+                  let eventBytes = try? JSONSerialization.data(withJSONObject: event, options: .fragmentsAllowed),
+                  let eventName = String(data: eventBytes, encoding: .utf8) else { return }
+            let js = "window.dispatchEvent(new CustomEvent(" + eventName +
+                ",{detail:" + payload + "}));"
             web.evaluateJavaScript(js, completionHandler: nil)
         }
 
