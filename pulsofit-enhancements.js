@@ -302,16 +302,16 @@
     panel.className="pf-gateway-admin";
     panel.setAttribute("aria-label","Configurar gateway de pagamentos");
     panel.innerHTML='<h3>⚙️ Gateway de pagamentos</h3>'+
-      '<p>Configuração exclusiva de administrador. As credenciais devem ser salvas no servidor, nunca no navegador. Checkout e webhooks só podem ser ativados depois de conectar o provedor.</p>'+
+      '<p>Configuração exclusiva de administrador. As credenciais devem ser salvas no servidor, nunca no navegador. Para MisticPay são necessários Client ID (pk_) e Client Secret (sk_) no Render; a API documentada oferece apenas Pix. O webhook deve ser confirmado por consulta autenticada.</p>'+
       '<form class="pf-gateway-form" autocomplete="off">'+
-      '<label>Gateway<select name="provider" required><option value="">Selecione</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option><option value="pagarme">Pagar.me</option><option value="stripe">Stripe</option><option value="other">Outro gateway</option></select></label>'+
+      '<label>Gateway<select name="provider" required><option value="">Selecione</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option><option value="pagarme">Pagar.me</option><option value="stripe">Stripe</option><option value="misticpay">MisticPay (Pix)</option><option value="other">Outro gateway</option></select></label>'+
       '<label>Ambiente<select name="environment"><option value="sandbox">Homologação (teste)</option><option value="production">Produção</option></select></label>'+
       '<label class="pf-gateway-full">URL da API (https)<input type="url" name="apiBaseUrl" placeholder="https://api.seu-gateway.com" autocomplete="off"></label>'+
       '<label>API Key secreta<input type="password" name="apiKey" placeholder="Inserir somente quando o servidor estiver preparado" autocomplete="new-password" spellcheck="false" disabled></label>'+
       '<label>Webhook secret<input type="password" name="webhookSecret" placeholder="Segredo para verificar notificações" autocomplete="new-password" spellcheck="false" disabled></label>'+
       '<label class="pf-gateway-full">URL prevista para webhook<input type="text" name="webhookUrl" readonly></label>'+
       '<div class="pf-gateway-full"><button type="submit" class="pf-gateway-save" disabled>Salvar configuração protegida</button></div>'+
-      '</form><small class="pf-checkout-warning">Aguardando definição do gateway e implementação do endpoint de credenciais. Nenhuma chave será armazenada neste navegador.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
+      '</form><small class="pf-checkout-warning">A MisticPay não documenta pagamentos por cartão nem assinatura de webhook. Configure pk_/sk_ diretamente nas variáveis protegidas do Render; nunca insira segredos nesta página.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
     main.appendChild(panel);
     var f=panel.querySelector("form"),status=panel.querySelector(".pf-gateway-status");
     function setWebhook(){f.elements.webhookUrl.value=location.origin+"/api/billing/webhook";}
