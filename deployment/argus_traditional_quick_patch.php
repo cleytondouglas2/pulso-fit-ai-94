@@ -73,7 +73,7 @@ tradReplace("$root/public/static/admin.html",
     'reload foreground Pix code on iPhone');
 tradReplace("$root/public/static/admin.html",
     '</body>',
-    '<script src="/static/quick-pix-autostatus.js?v=1" defer></script></body>',
+    '<script src="/static/quick-pix-autostatus.js?v=2" defer></script></body>',
     'poll confirmed Pix automatically while app is open');
 
 $css="$root/public/static/polish.css";
