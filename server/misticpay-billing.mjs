@@ -141,6 +141,35 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
      copyPaste:invoice.copyPaste,qrCodeBase64:invoice.qrCodeBase64});
     return true;
    }
+   if(path==="/api/billing/recover"&&req.method==="GET"){
+    const user=await authenticate(req);
+    if(!user?.id){reply(res,401,{error:"Entre na sua conta para consultar o Pix."});return true;}
+    if(!ready()){reply(res,503,{error:"Verificação temporariamente indisponível. Não faça outro pagamento."});return true;}
+    const order=await store.getLatestUserOrder(String(user.id));
+    if(!order){reply(res,200,{found:false,paid:false});return true;}
+    // Only a server-verified, persisted payment may activate access.
+    if(order.status==="COMPLETO"){
+     const entitlement=await store.getEntitlement(String(user.id));
+     reply(res,200,{found:true,reference:order.reference,planCode:order.planCode,
+      status:"COMPLETO",paid:true,planActive:!!entitlement?.active,
+      planExpiresAt:entitlement?.expiresAt||null});return true;
+    }
+    let state=order.status;
+    try{
+     const payment=await gateway.getTransaction(order.providerPaymentId);
+     state=await settle(order,payment);
+    }catch(e){
+     console.warn("[pulso-billing] Reconciliation provider-unavailable code="+String(e.code||"unavailable").replace(/[^A-Z0-9_]/gi,"").slice(0,40));
+     reply(res,200,{found:true,reference:order.reference,planCode:order.planCode,
+      status:"VERIFICATION_UNAVAILABLE",paid:false,retryable:true,
+      message:"O Pix já foi gerado. A MisticPay ainda não confirmou a consulta. Não pague novamente; toque em Verificar pagamento."});return true;
+    }
+    const entitlement=state==="COMPLETO"?await store.getEntitlement(String(user.id)):null;
+    reply(res,200,{found:true,reference:order.reference,planCode:order.planCode,
+     status:state,paid:state==="COMPLETO",planActive:!!entitlement?.active,
+     planExpiresAt:entitlement?.expiresAt||null});
+    return true;
+   }
    if(path==="/api/billing/payment"&&req.method==="GET"){
     const user=await authenticate(req);
     if(!user?.id){reply(res,401,{error:"Entre na sua conta"});return true;}
@@ -149,9 +178,17 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     const order=await store?.getByReference(ref);
     if(!order||String(order.userId)!==String(user.id)){reply(res,404,{error:"Pedido não encontrado"});return true;}
     if(!ready()||!order.providerPaymentId){reply(res,503,{error:"Cobrança não disponível"});return true;}
+    // An already verified payment remains confirmed even during a provider outage.
+    if(order.status==="COMPLETO"){
+     const entitlement=await store.getEntitlement(String(user.id));
+     reply(res,200,{reference:ref,status:"COMPLETO",paid:true,
+      planActive:!!entitlement?.active,planExpiresAt:entitlement?.expiresAt||null});return true;
+    }
     const payment=await gateway.getTransaction(order.providerPaymentId);
     const status=await settle(order,payment);
-    reply(res,200,{reference:ref,status,paid:status==="COMPLETO"});
+    const entitlement=status==="COMPLETO"?await store.getEntitlement(String(user.id)):null;
+    reply(res,200,{reference:ref,status,paid:status==="COMPLETO",
+     planActive:!!entitlement?.active,planExpiresAt:entitlement?.expiresAt||null});
     return true;
    }
    if(path==="/api/billing/webhook"&&req.method==="POST"){
