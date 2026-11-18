@@ -16,13 +16,15 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const authJS=readFileSync(new URL("./pulsofit-auth-ui.js",import.meta.url),"utf8");
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const assessmentJS=readFileSync(new URL("./pulsofit-assessment-ui.js",import.meta.url),"utf8");
+  const profilePolishJS=readFileSync(new URL("./pulsofit-profile-polish.js",import.meta.url),"utf8");
   const authFetchJS=readFileSync(new URL("./pulsofit-auth-fetch.js",import.meta.url),"utf8");
   const marker="pulsofit-stable-plans-20261118";
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
-   '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>";
+   '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>";
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
@@ -65,6 +67,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   }
   for(const d of roots)visit(d,0);
   console.log("[pulso-ui] Portal de assinatura no HTML servido: "+(found.length?found.join(", "):"nenhum HTML localizado"));
+  console.log("[pulso-ui] Carregados: autenticação, apresentação inicial, foto/perfil, Performance em Mais, planos e avaliação.");
  }catch(error){
   console.warn("[pulso-ui] Não foi possível integrar portal de assinatura: "+String(error.code||"init_error"));
  }
