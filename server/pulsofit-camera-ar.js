@@ -5,6 +5,7 @@
 (function(){
 "use strict";
 if(window.__PF_CAMERA_AR_STUDIO__)return;window.__PF_CAMERA_AR_STUDIO__=true;
+window.__PULSO_CARTOON_PREFERRED__=true;
 const exercises={
  squat:{label:"Agachamento",tempo:1.65},
  lunge:{label:"Afundo / passada",tempo:2.2},
@@ -64,7 +65,7 @@ async function startCamera(){
   if(!$("pf-ar-overlay")){stopMedia();return}
   const video=$("pf-ar-video");video.srcObject=stream;video.muted=true;video.playsInline=true;
   await video.play();cameraOpen=true;
-  status("Câmera ativa somente neste aparelho. Ajuste a posição e o tamanho do avatar. Não há detecção automática do chão no Safari.");
+  status("Câmera ativa. Posicione seu personagem animado sobre a imagem do ambiente; o iPhone não detecta o chão automaticamente.");
  }catch(e){
   status(e?.name==="NotAllowedError"?"Permissão de câmera negada. Libere em Ajustes e tente novamente.":"Não foi possível ligar a câmera. A prévia 3D continua sem câmera.");
  }
@@ -122,6 +123,7 @@ function animatePose(t){
  if(selected==="bridge"){person.rotation.z=-.83;person.position.set(-.35,-.30+.30*phase,0);legs[0].rotation.x=-.3;legs[1].rotation.x=-.3;knees[0].rotation.x=.85;knees[1].rotation.x=.85}
 }
 async function setup3D(){
+ if(window.__PULSO_CARTOON_AR__)return;
  const display=$("pf-ar-canvas");if(!display)return;
  try{
   // Original procedural model. Three.js is MIT-licensed, pinned for stability.
@@ -169,8 +171,8 @@ function updateExercise(choice){
 function open(exercise){
  if($("pf-ar-overlay")){if(exercise)updateExercise(keyFromName(exercise));return}
  if(!document.body)return;
- const modal=document.createElement("div");modal.id="pf-ar-overlay";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-label","Treino com câmera e avatar 3D");
- modal.innerHTML='<div class="pf-ar-header"><div><small>◈ PULSOFIT · CÂMERA 3D</small><h2>Seu treinador no ambiente</h2></div><button type="button" id="pf-ar-close" aria-label="Fechar câmera">×</button></div>'+
+ const modal=document.createElement("div");modal.id="pf-ar-overlay";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-label","Treino com personagem animado na câmera");
+ modal.innerHTML='<div class="pf-ar-header"><div><small>◈ PULSOFIT · CÂMERA 3D</small><h2>Personagem animado no seu ambiente</h2></div><button type="button" id="pf-ar-close" aria-label="Fechar câmera">×</button></div>'+
  '<div class="pf-ar-stage"><video id="pf-ar-video" playsinline muted autoplay></video><div id="pf-ar-canvas"></div><div id="pf-ar-fallback" hidden></div>'+
  '<span id="pf-ar-exercise-name" class="pf-ar-label">Agachamento</span></div>'+
  '<div class="pf-ar-controls"><label for="pf-ar-exercise">Exercício demonstrado</label><select id="pf-ar-exercise">'+
@@ -181,7 +183,7 @@ function open(exercise){
  '<form id="pf-ar-ai-form"><label for="pf-ar-ai-text">Escolher exercício com IA (opcional)</label>'+
  '<div class="pf-ar-ai-row"><input id="pf-ar-ai-text" maxlength="170" placeholder="Ex.: quero aprender agachamento búlgaro" type="text">'+
  '<button type="submit">✨ Sugerir</button></div><label class="pf-ar-ai-consent"><input type="checkbox" id="pf-ar-ai-consent"> Autorizo enviar somente o nome do exercício à IA</label></form>'+
- '<p role="status" id="pf-ar-status" aria-live="polite"></p><small class="pf-ar-foot">A pessoa real aparece por vídeo licenciado ou autorizado; o fundo pode ser recortado por IA no aparelho. No Safari, o posicionamento é manual, sem ancoragem espacial ARKit. A análise corporal da câmera é opcional; nenhuma imagem é enviada à IA remota. As demonstrações não substituem orientação técnica.</small></div>';
+ '<p role="status" id="pf-ar-status" aria-live="polite"></p><small class="pf-ar-foot">Um personagem original animado em 3D aparece sobre a câmera. No Safari, o posicionamento é manual, sem ancoragem espacial ARKit. A análise corporal da câmera é opcional; nenhuma imagem é enviada à IA remota. As demonstrações não substituem orientação técnica.</small></div>';
  document.body.appendChild(modal);document.body.classList.add("pf-ar-open");
  modal.querySelector("#pf-ar-close").addEventListener("click",close);
  modal.querySelector("#pf-ar-camera").addEventListener("click",()=>void startCamera());
