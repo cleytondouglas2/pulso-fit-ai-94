@@ -114,16 +114,16 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
     reminder_hour smallint NOT NULL DEFAULT 9,
     training boolean NOT NULL DEFAULT true,
     performance boolean NOT NULL DEFAULT true,
-    wellness boolean NOT NULL DEFAULT true,
-    tips_per_day smallint NOT NULL DEFAULT 3,
+    wellness boolean NOT NULL DEFAULT false,
+    tips_per_day smallint NOT NULL DEFAULT 1,
     first_name varchar(40) NOT NULL DEFAULT 'você',
     enabled boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     last_sent_at timestamptz
    )`);
-   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS wellness boolean NOT NULL DEFAULT true");
-   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS tips_per_day smallint NOT NULL DEFAULT 3");
+   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS wellness boolean NOT NULL DEFAULT false");
+   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS tips_per_day smallint NOT NULL DEFAULT 1");
    await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS first_name varchar(40) NOT NULL DEFAULT 'você'");
    await pool.query("CREATE INDEX IF NOT EXISTS pf_push_subscriptions_active ON pf_push_subscriptions(enabled,reminder_hour)");
    await pool.query(`CREATE TABLE IF NOT EXISTS pf_push_deliveries (
@@ -307,10 +307,10 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    return json(res,200,{subscribed:true,id:q.rows[0].id,reminderHour:opt.hour,timezone:opt.timezone,tipsPerDay:opt.tipsPerDay});
   }
   if(url.pathname===prefix+"/preferences"&&req.method==="POST"){
-   const data=await body(req),sub=verifySub(data),opt=parseOptions(data);
+   const data=await body(req),sub=verifySub(data),opt=parseOptions(data),firstName=await verifiedFirstName(req);
    const q=await pool.query(`UPDATE pf_push_subscriptions SET reminder_hour=$3,timezone=$4,training=$5,performance=$6,
-    wellness=$7,tips_per_day=$8,enabled=$9,updated_at=now() WHERE user_id=$1::uuid AND endpoint=$2 RETURNING id`,
-    [user,sub.endpoint,opt.hour,opt.timezone,opt.categories.training,opt.categories.performance,opt.categories.wellness,opt.tipsPerDay,data.enabled!==false]);
+    wellness=$7,tips_per_day=$8,enabled=$9,first_name=$10,updated_at=now() WHERE user_id=$1::uuid AND endpoint=$2 RETURNING id`,
+    [user,sub.endpoint,opt.hour,opt.timezone,opt.categories.training,opt.categories.performance,opt.categories.wellness,opt.tipsPerDay,data.enabled!==false,firstName]);
    if(!q.rowCount)return json(res,404,{error:"Este celular não tem inscrição ativa nesta conta."});
    return json(res,200,{saved:true});
   }
