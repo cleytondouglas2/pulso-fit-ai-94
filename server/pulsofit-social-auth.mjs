@@ -90,7 +90,7 @@ async function keyFor(provider,kid){
  }
  return entry.keys.find(k=>k.kid===kid&&k.kty==="RSA"&&k.use==="sig");
 }
-async function verifyIdentity(token,provider,nonce){
+export async function verifyIdentity(token,provider,nonce){
  if(typeof token!=="string"||token.length<100||token.length>12000)throw fail(401,"Resposta do provedor inválida.");
  const parts=token.split(".");
  if(parts.length!==3)throw fail(401,"Token incompleto.");
