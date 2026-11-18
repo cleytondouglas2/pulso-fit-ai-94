@@ -81,7 +81,7 @@ function createBody(THREE){
  const torso=capsule(THREE,.23,.5,"#9154e6");torso.position.y=1.60;
  const hips=new THREE.Mesh(new THREE.SphereGeometry(.25,18,12),material("#313c67"));hips.scale.set(1,.58,.7);hips.position.y=1.18;
  person.add(head,hair,torso,hips);
- const arms=[],legs=[],forearms=[];
+ const arms=[],legs=[],forearms=[],knees=[];
  for(const side of [-1,1]){
   const shoulder=new THREE.Group();shoulder.position.set(side*.30,1.84,0);
   const arm=capsule(THREE,.087,.39,"#c88f6f");arm.position.y=-.30;shoulder.add(arm);
@@ -90,32 +90,36 @@ function createBody(THREE){
   person.add(shoulder);arms.push(shoulder);forearms.push(elbow);
   const hip=new THREE.Group();hip.position.set(side*.15,1.08,0);
   const thigh=capsule(THREE,.115,.39,"#303a65");thigh.position.y=-.28;hip.add(thigh);
-  const shin=capsule(THREE,.085,.39,"#303a65");shin.position.y=-.82;hip.add(shin);
-  const shoe=new THREE.Mesh(new THREE.BoxGeometry(.20,.13,.34),material("#c6eeed"));shoe.position.set(0,-1.10,.06);hip.add(shoe);
-  person.add(hip);legs.push(hip);
+  // True knee joint: shin and foot articulate independently of the thigh.
+  const knee=new THREE.Group();knee.position.y=-.55;
+  const joint=new THREE.Mesh(new THREE.SphereGeometry(.10,12,10),material("#38496a"));knee.add(joint);
+  const shin=capsule(THREE,.083,.39,"#303a65");shin.position.y=-.28;knee.add(shin);
+  const shoe=new THREE.Mesh(new THREE.BoxGeometry(.20,.13,.34),material("#bdeeed"));shoe.position.set(0,-.57,.11);knee.add(shoe);
+  hip.add(knee);person.add(hip);legs.push(hip);knees.push(knee);
  }
- root.userData={person,arms,legs,forearms};
+ root.userData={person,arms,legs,forearms,knees};
  return root;
 }
 function animatePose(t){
  if(!actor)return;
- const {person,arms,legs,forearms}=actor.userData;
+ const {person,arms,legs,forearms,knees}=actor.userData;
  const speed=exercises[selected]?.tempo||2;
  const wave=Math.sin(t*Math.PI*2/speed);
  const phase=(1-Math.cos(t*Math.PI*2/speed))/2;
  person.position.set(0,0,0);person.rotation.set(0,0,0);
  for(const p of arms)p.rotation.set(0,0,0);
  for(const p of legs)p.rotation.set(0,0,0);
+  for(const p of knees)p.rotation.set(0,0,0);
  for(const p of forearms)p.rotation.set(0,0,0);
- if(selected==="squat"){person.position.y=-.30*phase;legs[0].rotation.x=-.50*phase;legs[1].rotation.x=-.50*phase;arms[0].rotation.x=-.70*phase;arms[1].rotation.x=-.70*phase}
- if(selected==="lunge"){person.position.y=-.22*phase;legs[0].rotation.x=.66*phase;legs[1].rotation.x=-.59*phase;arms[0].rotation.x=-.15;arms[1].rotation.x=.15}
+ if(selected==="squat"){person.position.y=-.36*phase;legs[0].rotation.x=-.65*phase;legs[1].rotation.x=-.65*phase;knees[0].rotation.x=1.15*phase;knees[1].rotation.x=1.15*phase;arms[0].rotation.x=-.70*phase;arms[1].rotation.x=-.70*phase}
+ if(selected==="lunge"){person.position.y=-.23*phase;legs[0].rotation.x=.72*phase;legs[1].rotation.x=-.62*phase;knees[0].rotation.x=1.1*phase;knees[1].rotation.x=.70*phase;arms[0].rotation.x=-.15;arms[1].rotation.x=.15}
  if(selected==="jumping_jack"){person.position.y=.12*Math.max(0,wave);legs[0].rotation.z=-.4*phase;legs[1].rotation.z=.4*phase;arms[0].rotation.z=-2.4*phase;arms[1].rotation.z=2.4*phase}
  if(selected==="curl"){forearms[0].rotation.x=-1.6*phase;forearms[1].rotation.x=-1.6*phase}
  if(selected==="arm_raise"){arms[0].rotation.z=-1.32*phase;arms[1].rotation.z=1.32*phase}
- if(selected==="march"){legs[0].rotation.x=.6*wave;legs[1].rotation.x=-.6*wave;arms[0].rotation.x=-.35*wave;arms[1].rotation.x=.35*wave}
+ if(selected==="march"){legs[0].rotation.x=.6*wave;legs[1].rotation.x=-.6*wave;knees[0].rotation.x=.45*Math.max(wave,0);knees[1].rotation.x=.45*Math.max(-wave,0);arms[0].rotation.x=-.35*wave;arms[1].rotation.x=.35*wave}
  if(selected==="pushup"){person.rotation.z=-Math.PI/2;person.position.set(-.95,-.18+phase*.14,0);arms[0].rotation.z=-.6*phase;arms[1].rotation.z=.6*phase}
  if(selected==="plank"){person.rotation.z=-Math.PI/2;person.position.set(-.95,-.10+Math.sin(t*2)*.02,0)}
- if(selected==="bridge"){person.rotation.z=-.83;person.position.set(-.35,-.30+.30*phase,0);legs[0].rotation.x=-.3;legs[1].rotation.x=-.3}
+ if(selected==="bridge"){person.rotation.z=-.83;person.position.set(-.35,-.30+.30*phase,0);legs[0].rotation.x=-.3;legs[1].rotation.x=-.3;knees[0].rotation.x=.85;knees[1].rotation.x=.85}
 }
 async function setup3D(){
  const display=$("pf-ar-canvas");if(!display)return;
@@ -149,7 +153,7 @@ async function setup3D(){
    renderer.render(scene,camera);
    raf=requestAnimationFrame(loop);
   };started=performance.now();loop();
-  status("Avatar 3D pronto. Autorize a câmera e ajuste escala e posição até parecer apoiado no seu ambiente.");
+  status("Treinador 3D articulado pronto. Para analisar seu movimento com IA real, abra a câmera e inicie a análise corporal abaixo.");
  }catch(err){
   showFallback(exercises[selected].label);
   status("Renderização 3D indisponível neste aparelho. Mostrando demonstração 2D; verifique a conexão e o suporte gráfico.");
