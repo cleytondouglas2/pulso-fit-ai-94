@@ -5,6 +5,7 @@
  */
 (function(){
 "use strict";
+if(window.__PULSO_CARTOON_PREFERRED__)return; // Legacy filmed-instructor mode disabled for cartoon AR.
 if(window.__PULSO_REAL_PERSON_AR__)return;
 window.__PULSO_REAL_PERSON_AR__=true;
 const $=id=>document.getElementById(id);
