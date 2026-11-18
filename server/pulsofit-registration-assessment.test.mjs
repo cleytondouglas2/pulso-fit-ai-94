@@ -48,7 +48,7 @@ test("Rascunho por conta preserva preenchimento e consentimento após recarregar
  assert.ok(assessment.includes('switchTab("plan",false)'));
 });
 function authContext(registerReply){
- const w={};const local=storage(),sess=storage(),feedback={textContent:""};
+ const w={dispatchEvent(){}};const local=storage(),sess=storage(),feedback={textContent:""};
  let submit=null,refresh=0;
  const button={disabled:false};
  const form={elements:{email:{value:"teste@example.com"},password:{value:"SenhaForte123!"},name:{value:"Pessoa Teste"}},
