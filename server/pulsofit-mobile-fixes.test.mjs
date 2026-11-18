@@ -27,7 +27,7 @@ test("A confirmação de Pix usa um marcador persistente por transação e não 
 });
 test("Botão de planos fica fora dos exercícios de contas com teste ou plano ativo",()=>{
  assert.ok(plans.includes('["workouts","coach","training-lab","outdoor","goals","profile","account"]'));
- assert.match(plans,/activePaid\|\|activeTrial/);
+ assert.match(plans,/b\.hidden=Boolean\(token\(\)\)/);
  assert.match(plans,/#pf-stable-open\[hidden\]/);
 });
 test("Foto da conta é exibida no lugar exato do símbolo do Coach IA",()=>{
