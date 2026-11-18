@@ -115,6 +115,76 @@ final class Portal
         self::out(['ok'=>true,'message'=>'Arquivo recebido, criptografado e submetido à análise. Nenhum pagamento foi liberado.'],201);
     }
 
+    /** Administrative KYC review: only called after Admin's full session, CSRF and TOTP checks. */
+    public static function admin(Database $db,string $method,string $path):never {
+        self::install($db);
+        if($method==='GET'&&$path==='/api/admin/portal/applications'){
+            $accounts=$db->all('SELECT id,account_type,display_name,email,document_last4,status,merchant_id,created_at,updated_at FROM argus_portal_accounts ORDER BY created_at DESC LIMIT 200');
+            foreach($accounts as &$a){
+                $a['documents']=$db->all('SELECT id,document_type,mime,review_status,created_at FROM argus_portal_documents WHERE account_id=? ORDER BY created_at DESC',[$a['id']]);
+            }unset($a);self::out($accounts);
+        }
+        if($method==='GET'&&preg_match('~^/api/admin/portal/applications/([a-f0-9]{32})/documents/([a-f0-9]{32})$~D',$path,$m)){
+            $d=$db->one('SELECT * FROM argus_portal_documents WHERE account_id=? AND id=?',[$m[1],$m[2]]);
+            if(!$d)self::fail('Documento não encontrado',404);
+            $root=(string)getenv('ARGUS_KYC_STORAGE_PATH');
+            $key=base64_decode((string)getenv('ARGUS_KYC_ENCRYPTION_KEY'),true);
+            if(!is_string($key)||strlen($key)!==SODIUM_CRYPTO_SECRETBOX_KEYBYTES||!preg_match('/^kyc_[a-f0-9]{32}\.enc$/D',$d['sealed_file']))self::fail('Armazenamento documental indisponível',503);
+            $pathOnDisk=rtrim($root,'/').'/'.$d['sealed_file'];
+            $bytes=is_file($pathOnDisk)?file_get_contents($pathOnDisk):false;
+            if(!is_string($bytes)||strlen($bytes)<SODIUM_CRYPTO_SECRETBOX_NONCEBYTES+16)self::fail('Arquivo indisponível',404);
+            $nonce=substr($bytes,0,SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+            $plain=sodium_crypto_secretbox_open(substr($bytes,SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),$nonce,$key);
+            if(!is_string($plain))self::fail('Arquivo não pôde ser verificado',503);
+            header('Content-Type: '.$d['mime']);header('Content-Disposition: attachment; filename="argus-documento-'.$d['id'].'.'.($d['mime']==='application/pdf'?'pdf':($d['mime']==='image/png'?'png':'jpg')).'"');
+            header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');echo $plain;exit;
+        }
+        if($method==='POST'&&preg_match('~^/api/admin/portal/applications/([a-f0-9]{32})/decision$~D',$path,$m)){
+            $a=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$m[1]]);
+            if(!$a)self::fail('Cadastro não encontrado',404);
+            $input=self::body();$decision=self::string($input,'decision',6,12);
+            if($decision==='reject'||$decision==='suspend'){
+                $reason=self::string($input,'reason',5,190);
+                $db->transaction(function(Database $db)use($a,$decision){
+                    $db->run('UPDATE argus_portal_accounts SET status=?,updated_at=? WHERE id=?',[$decision==='reject'?'rejected':'suspended',self::now(),$a['id']]);
+                    $db->run('UPDATE argus_portal_keys SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL',[self::now(),$a['id']]);
+                    if($a['merchant_id'])$db->run("UPDATE b2b_merchants SET status='suspended' WHERE id=? AND status='approved_live'",[$a['merchant_id']]);
+                });
+                error_log('ARGUS portal review action '.$decision.' account '.$a['id'].' reason recorded by operator');
+                self::out(['ok'=>true,'status'=>$decision]);
+            }
+            if($decision!=='approve')self::fail('Decisão inválida',422);
+            foreach(['kyc_verified','provider_approved','contract_signed','split_direction_confirmed'] as $key) {
+                if(($input[$key]??null)!==true)self::fail('Validação obrigatória: '.$key,422);
+            }
+            $docs=$db->all('SELECT document_type FROM argus_portal_documents WHERE account_id=?',[$a['id']]);
+            $types=array_fill_keys(array_column($docs,'document_type'),true);
+            if(!isset($types['identidade_frente'],$types['identidade_verso'],$types['selfie']))self::fail('Documentação obrigatória incompleta',422);
+            if($a['account_type']==='PJ'&&!isset($types['contrato_social']))self::fail('Contrato social ausente',422);
+            // A CPF-only account cannot be represented as a CNPJ merchant at this PSP. Do not impersonate a CNPJ.
+            if($a['account_type']==='PF'){
+                $db->run("UPDATE argus_portal_accounts SET status='identity_verified',updated_at=? WHERE id=?",[self::now(),$a['id']]);
+                self::out(['ok'=>true,'status'=>'identity_verified','message'=>'Identidade verificada. Liberação Pix de pessoa física depende de recebedor individual homologado.']);
+            }
+            if(!LivePix::readiness($db)['ready'])self::fail('Ativação financeira indisponível: configuração operacional pendente',503);
+            $cnpj=preg_replace('/\D/','',self::string($input,'cnpj',14,24));
+            if(!self::validCnpj($cnpj)||!hash_equals($a['document_digest'],self::digest($cnpj)))self::fail('CNPJ não corresponde ao cadastro original',422);
+            $recipient=strtolower(self::string($input,'recipient_email',5,190));
+            if(!filter_var($recipient,FILTER_VALIDATE_EMAIL))self::fail('E-mail do recebedor inválido',422);
+            $known=$db->one('SELECT id,email FROM b2b_merchants WHERE cnpj=?',[$cnpj]);
+            if($known&&strtolower($known['email'])!==strtolower($a['email']))self::fail('CNPJ já vinculado a outro cadastro',409);
+            $merchant=$known['id']??Database::uid('mer');
+            $db->transaction(function(Database $db)use($known,$merchant,$a,$cnpj,$recipient){
+                if(!$known)$db->run("INSERT INTO b2b_merchants(id,legal_name,cnpj,email,misticpay_email,commission_bps,status,created_at,reviewed_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                    [$merchant,$a['display_name'],$cnpj,$a['email'],$recipient,150,'approved_live',self::now(),self::now()]);
+                else $db->run("UPDATE b2b_merchants SET status='approved_live',reviewed_at=?,misticpay_email=? WHERE id=?", [self::now(),$recipient,$merchant]);
+                $db->run("UPDATE argus_portal_accounts SET status='approved',merchant_id=?,updated_at=? WHERE id=?",[$merchant,self::now(),$a['id']]);
+            });
+            self::out(['ok'=>true,'status'=>'approved','merchant_id'=>$merchant]);
+        }
+        self::fail('Rota administrativa de cadastro inexistente',404);
+    }
+
     public static function handle(Database $db,string $method,string $path):never {
         self::install($db);
         if(str_starts_with($path,'/api/v1/')){
