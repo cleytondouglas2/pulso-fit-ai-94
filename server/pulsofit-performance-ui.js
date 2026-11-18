@@ -5,8 +5,6 @@ if(window.__PULSO_PERFORMANCE_UI__)return;
 window.__PULSO_PERFORMANCE_UI__=true;
 var avatar=null,avatarFor="",photoBusy=false,working=false,selectedImage=null,photoStatus=null;
 var css=[
-'.mobile-nav.pf-performance-six{grid-template-columns:repeat(6,minmax(0,1fr))!important}',
-'.mobile-nav.pf-performance-six .nav-link{font-size:9px!important;min-width:0!important;width:100%!important;overflow:hidden!important;gap:2px!important;padding:6px 1px!important}',
 
 '#pf-performance-window{position:fixed!important;inset:0!important;z-index:2147482500!important;background:#050819ee!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;box-sizing:border-box!important;overflow-y:auto!important;color:white!important;font:14px/1.5 system-ui,sans-serif!important}',
 '#pf-performance-window .pf-perf-box{box-sizing:border-box;width:min(100%,790px);max-height:calc(100dvh - 28px);overflow-y:auto;border:1px solid #8a74bd;border-radius:23px;padding:clamp(18px,4vw,30px);background:linear-gradient(145deg,#2d244f,#111b32)}',
@@ -33,10 +31,15 @@ var css=[
 '#pf-profile-photo-widget label,#pf-profile-photo-widget button{padding:9px 12px;border-radius:10px;background:#8341d0;color:#fff;border:0;cursor:pointer;font:750 12px system-ui,sans-serif}',
 '#pf-profile-photo-widget button{background:#46355e}',
 '#pf-profile-photo-widget input{position:absolute;width:1px;height:1px;opacity:0}',
+'.pf-more-performance-card{display:flex;align-items:center;gap:14px;margin:16px 0;padding:16px;border:1px solid #8863ce;border-radius:18px;background:linear-gradient(110deg,#30244f,#172340);color:white}',
+'.pf-more-performance-card .pf-more-performance-copy{flex:1;min-width:0}',
+'.pf-more-performance-card strong{font:850 16px system-ui,sans-serif;color:#fff}',
+'.pf-more-performance-card p{font:12px/1.45 system-ui,sans-serif;color:#d7cbed;margin:5px 0 0}',
+'.pf-more-performance-card button{border:1px solid #ae82f4;border-radius:12px;padding:12px 14px;color:#fff;background:#7542b8;font:800 13px system-ui,sans-serif;cursor:pointer;white-space:nowrap}',
+'@media(max-width:430px){.pf-more-performance-card{flex-wrap:wrap}.pf-more-performance-card button{width:100%}}',
 '.pf-performance-launch{border:1px solid #936bce!important;color:#e0c8ff!important}',
 '#pf-performance-float{position:fixed!important;z-index:6100!important;left:12px!important;bottom:calc(92px + env(safe-area-inset-bottom,0px))!important;padding:11px 14px!important;background:linear-gradient(130deg,#30254f,#6744a3)!important;color:#fff!important;border:1px solid #a582e6!important;border-radius:14px!important;font:800 12px system-ui,sans-serif!important;cursor:pointer!important}',
 '@media(min-width:850px){#pf-performance-float{display:none!important}}',
-'@media(max-width:850px){.mobile-nav:has([data-route="performance"]){grid-template-columns:repeat(6,minmax(0,1fr))!important}.mobile-nav [data-route="performance"]{min-width:0!important;width:100%!important;font-size:9px!important}}',
 '[hidden]{display:none!important}'
 ].join("\n");
 function token(){try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}}
@@ -170,25 +173,34 @@ function openPerformance(e){
 function ensureNavigation(){
  if(!logged())return;
  var app=document.getElementById("app");if(!app)return;
- var side=app.querySelector(".sidebar .nav");
- if(side&&!side.querySelector("[data-pf-open-performance]")){
-  var item=document.createElement("button");item.type="button";item.className="nav-link pf-performance-launch";
-  item.setAttribute("data-pf-open-performance","1");item.innerHTML="📸 Performance";
-  item.addEventListener("click",openPerformance);side.appendChild(item);
- }
+ // Performance is a destination inside "Mais", not a sixth bottom tab.
  var mobile=app.querySelector(".mobile-nav");
  if(mobile){
-  mobile.classList.add("pf-performance-six");
-  var nativeTab=mobile.querySelector('[data-route="performance"]');
-  if(nativeTab){nativeTab.classList.add("pf-performance-launch");}
-  else if(!mobile.querySelector("[data-pf-open-performance]")){
-   var item=document.createElement("button");item.type="button";item.className="nav-link pf-performance-launch";
-   item.setAttribute("data-pf-open-performance","1");
-   item.innerHTML='<span aria-hidden="true">📈</span><span>Performance</span>';
-   item.addEventListener("click",openPerformance);mobile.appendChild(item);
-  }
-  document.getElementById("pf-performance-float")?.remove();
+  mobile.classList.remove("pf-performance-six");
+  mobile.querySelectorAll('[data-pf-open-performance], [data-route="performance"]').forEach(function(el){el.remove()});
  }
+ // The profile/account pages are opened from "Mais"; add the destination
+ // to that existing area, without changing the native five-item bar.
+ var route=String(location.hash||"").replace(/^#\/?/,"").split("/")[0].toLowerCase();
+ var morePages=["more","mais","profile","account","settings","menu","options"];
+ var moreSelected=mobile?Array.from(mobile.querySelectorAll("button,[data-route]")).some(function(button){
+  var t=String(button.textContent||"").trim();
+  return /^mais$/i.test(t)&&(button.matches(".active,.selected,[aria-current=page],[aria-selected=true]"));
+ }):false;
+ var inMore=morePages.includes(route)||moreSelected;
+ if(!inMore)return;
+ var main=app.querySelector(".main")||app.querySelector("main")||app;
+ if(main.querySelector(".pf-more-performance-card"))return;
+ var section=document.createElement("section");
+ section.className="pf-more-performance-card";
+ section.setAttribute("aria-label","Performance e análise corporal");
+ section.innerHTML='<span aria-hidden="true" style="font-size:29px">📸</span>'+
+ '<div class="pf-more-performance-copy"><strong>Performance IA</strong>'+
+ '<p>Envie uma foto corporal com sua autorização e receba observações e orientações de treino pela IA.</p></div>'+
+ '<button type="button" data-pf-open-performance="1">Abrir Performance</button>';
+ section.querySelector("button").addEventListener("click",openPerformance);
+ main.insertBefore(section,main.firstChild);
+ document.getElementById("pf-performance-float")?.remove();
 }
 function enhance(){
  if(!logged())return;
