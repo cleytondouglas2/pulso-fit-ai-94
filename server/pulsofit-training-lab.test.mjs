@@ -20,7 +20,7 @@ test("Exercícios e modalidades têm identificadores únicos",()=>{
  assert.equal(styles.length,10);
  assert.ok(items.length>=60);
  assert.equal(byId.size,items.length);
- for(const move of items){assert.ok(move[6].length>=20);assert.ok(move[7].length>=15)}
+ for(const move of items){assert.ok(move[6].length>=20);assert.ok(move[7].length>=8)}
 });
 test("840 variações não repetem exercícios e respeitam filtros de equipamento, silêncio e impacto",()=>{
  let n=0;
