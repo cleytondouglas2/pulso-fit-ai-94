@@ -78,7 +78,7 @@ async function loadAvatar(){
  try{
   var r=await fetch("/api/profile/photo",{headers:{Authorization:"Bearer "+token()},cache:"no-store"});
   if(!r.ok)throw Error("Foto indisponível");
-  var d=await r.json();avatar=d.hasPhoto?d.image:null;applyAvatar();var preview=document.getElementById("pf-avatar-preview");if(preview){preview.src=avatar||"";preview.style.display=avatar?"block":"none"}
+  var d=await r.json();avatar=d.hasPhoto?d.image:null;applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=document.getElementById("pf-avatar-preview");if(preview){preview.src=avatar||"";preview.style.display=avatar?"block":"none"}
  }catch{avatar=null}finally{photoBusy=false}
 }
 function avatarWidget(){
@@ -86,7 +86,8 @@ function avatarWidget(){
  var app=document.getElementById("app");if(!app)return;
  var page=String(location.hash||"").replace(/^#\/?/,"").split("/")[0];
  if(page!=="profile"&&page!=="account")return;
- var target=app.querySelector(".profile-cover")||app.querySelector(".pro-cols .pro-surface")||app.querySelector(".main")||app;
+ var hero=app.querySelector(".profile-cover");
+ var target=hero?.parentElement||app.querySelector(".pro-cols .pro-surface")||app.querySelector(".main")||app;
  if(target.querySelector("#pf-profile-photo-widget"))return;
  var box=document.createElement("section");box.id="pf-profile-photo-widget";
  box.innerHTML='<strong>📷 Foto do meu perfil</strong>'+ 
@@ -94,7 +95,8 @@ function avatarWidget(){
   '<label>Adicionar ou trocar<input type="file" accept="image/*" aria-label="Enviar foto de perfil"></label>'+
   '<button type="button">Remover foto</button><small>Salva apenas na sua conta. Pode ser excluída a qualquer momento.</small>'+
   '<span role="status" aria-live="polite"></span>';
- target.appendChild(box);
+ if(hero&&hero.parentElement===target)hero.insertAdjacentElement("afterend",box);
+ else target.insertBefore(box,target.firstChild);
  var avatarPreview=box.querySelector("#pf-avatar-preview");
  if(avatarPreview&&avatar){avatarPreview.src=avatar;avatarPreview.style.display="block";}
  var notice=box.querySelector('[role="status"]');
@@ -106,7 +108,7 @@ function avatarWidget(){
    var d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"Erro ao salvar foto");
    avatar=image;
    document.querySelectorAll("#app [data-pf-avatar]").forEach(x=>delete x.dataset.pfAvatar);
-   applyAvatar();var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src=avatar;preview.style.display="block"}notice.textContent="Foto atualizada na sua conta.";
+   applyAvatar();window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:avatar}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src=avatar;preview.style.display="block"}notice.textContent="Foto atualizada na sua conta.";
   }catch(err){notice.textContent=String(err.message||err)}
  });
  box.querySelector("button").addEventListener("click",async function(){
@@ -114,7 +116,7 @@ function avatarWidget(){
   try{
    var r=await fetch("/api/profile/photo",{method:"DELETE",cache:"no-store",headers:{Authorization:"Bearer "+token()}});
    if(!r.ok)throw Error("Falha ao excluir");
-   avatar=null;var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src="";preview.style.display="none"}
+   avatar=null;window.dispatchEvent(new CustomEvent("pulso-avatar-changed",{detail:{src:null}}));var preview=box.querySelector("#pf-avatar-preview");if(preview){preview.src="";preview.style.display="none"}
    document.querySelectorAll("#app [data-pf-avatar]").forEach(function(el){el.style.backgroundImage="none";el.style.color="";delete el.dataset.pfAvatar});
    notice.textContent="Foto removida.";
   }catch(err){notice.textContent=String(err.message||err)}
@@ -173,33 +175,29 @@ function openPerformance(e){
 function ensureNavigation(){
  if(!logged())return;
  var app=document.getElementById("app");if(!app)return;
- // Performance is a destination inside "Mais", not a sixth bottom tab.
+ // Keep the native five-item bottom navigation intact.
  var mobile=app.querySelector(".mobile-nav");
- if(mobile){
-  mobile.classList.remove("pf-performance-six");
-  mobile.querySelectorAll('[data-pf-open-performance], [data-route="performance"]').forEach(function(el){el.remove()});
- }
- // The profile/account pages are opened from "Mais"; add the destination
- // to that existing area, without changing the native five-item bar.
+ if(mobile)mobile.classList.remove("pf-performance-six");
+ // Render within the actual Mais/Profile content (stable sibling of profile card).
  var route=String(location.hash||"").replace(/^#\/?/,"").split("/")[0].toLowerCase();
- var morePages=["more","mais","profile","account","settings","menu","options"];
- var moreSelected=mobile?Array.from(mobile.querySelectorAll("button,[data-route]")).some(function(button){
-  var t=String(button.textContent||"").trim();
-  return /^mais$/i.test(t)&&(button.matches(".active,.selected,[aria-current=page],[aria-selected=true]"));
- }):false;
- var inMore=morePages.includes(route)||moreSelected;
+ var cover=app.querySelector(".profile-cover");
+ var inMore=["profile","more","mais","account","settings","menu","options"].includes(route)||
+   Boolean(cover)||Boolean(app.querySelector(".pro-auth-heading"));
  if(!inMore)return;
- var main=app.querySelector(".main")||app.querySelector("main")||app;
- if(main.querySelector(".pf-more-performance-card"))return;
+ var anchor=cover||app.querySelector(".pro-auth-heading")||app.querySelector(".main")||app.querySelector("main");
+ var holder=cover?.parentElement||anchor?.parentElement||app;
+ if(holder.querySelector(".pf-more-performance-card"))return;
  var section=document.createElement("section");
  section.className="pf-more-performance-card";
- section.setAttribute("aria-label","Performance e análise corporal");
- section.innerHTML='<span aria-hidden="true" style="font-size:29px">📸</span>'+
+ section.setAttribute("aria-label","Acessar Performance IA");
+ section.innerHTML='<span aria-hidden="true" style="font-size:28px">📸</span>'+
  '<div class="pf-more-performance-copy"><strong>Performance IA</strong>'+
- '<p>Envie uma foto corporal com sua autorização e receba observações e orientações de treino pela IA.</p></div>'+
- '<button type="button" data-pf-open-performance="1">Abrir Performance</button>';
+ '<p>Análise corporal por foto, recomendações e acompanhamento da sua evolução.</p></div>'+
+ '<button type="button" data-pf-open-performance="1">Abrir</button>';
  section.querySelector("button").addEventListener("click",openPerformance);
- main.insertBefore(section,main.firstChild);
+ if(cover)cover.insertAdjacentElement("afterend",section);
+ else if(anchor)anchor.insertAdjacentElement("afterend",section);
+ else holder.appendChild(section);
  document.getElementById("pf-performance-float")?.remove();
 }
 function enhance(){
