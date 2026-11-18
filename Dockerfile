@@ -23,6 +23,28 @@ RUN php -l /usr/local/share/argus/storage_probe.php && bash -n /usr/local/share/
 RUN printf '%s' 'PD9waHAKJGJhc2UgPSBnZXRlbnYoJ0FSR1VTX1JPT1QnKSA/OiAnL3Zhci93d3cvaHRtbCc7CiRzdGF0aWMgPSBydHJpbSgkYmFzZSwgJy8nKSAuICcvcHVibGljL3N0YXRpYy8nOwpmdW5jdGlvbiB1cGRhdGVFeGFjdChzdHJpbmcgJHBhdGgsIHN0cmluZyAkb2xkLCBzdHJpbmcgJG5ldyk6IHZvaWQgewogICAgJHNvdXJjZSA9IGZpbGVfZ2V0X2NvbnRlbnRzKCRwYXRoKTsKICAgIGlmICgkc291cmNlID09PSBmYWxzZSB8fCAoIXN0cl9jb250YWlucygkc291cmNlLCAkb2xkKSAmJiAhc3RyX2NvbnRhaW5zKCRzb3VyY2UsICRuZXcpKSkgewogICAgICAgIHRocm93IG5ldyBSdW50aW1lRXhjZXB0aW9uKCdBUkdVUyBwYXRjaDogc291cmNlIG1pc21hdGNoIGluICcuYmFzZW5hbWUoJHBhdGgpKTsKICAgIH0KICAgIGlmIChzdHJfY29udGFpbnMoJHNvdXJjZSwgJG9sZCkpIHsKICAgICAgICAkdXBkYXRlZCA9IHN0cl9yZXBsYWNlKCRvbGQsICRuZXcsICRzb3VyY2UpOwogICAgICAgIGlmIChmaWxlX3B1dF9jb250ZW50cygkcGF0aCwgJHVwZGF0ZWQpID09PSBmYWxzZSkgdGhyb3cgbmV3IFJ1bnRpbWVFeGNlcHRpb24oJ0FSR1VTIHBhdGNoOiB3cml0ZSBmYWlsZWQnKTsKICAgIH0KfQp1cGRhdGVFeGFjdCgkc3RhdGljLidhZG1pbi5odG1sJywgJ3BvbGlzaC5jc3M/dj00JywgJ3BvbGlzaC5jc3M/dj01Jyk7CnVwZGF0ZUV4YWN0KCRzdGF0aWMuJ2FkbWluLmh0bWwnLCAnYWRtaW4uanM/dj02JywgJ2FkbWluLmpzP3Y9NycpOwokb2xkID0gPDw8J0VORCcKY29uc3QgY3NyZj0oKT0+ZGVjb2RlVVJJQ29tcG9uZW50KChkb2N1bWVudC5jb29raWUubWF0Y2goLyg/Ol58O1xzKilhcmdfYWRtaW5fY3NyZj0oW147XSopLyl8fFtdKVsxXXx8JycpOwpFTkQ7CiRuZXcgPSA8PDwnRU5EJwpjb25zdCBjc3JmPSgpPT57dHJ5e3JldHVybiBkZWNvZGVVUklDb21wb25lbnQoKGRvY3VtZW50LmNvb2tpZS5tYXRjaCgvKD86Xnw7XHMqKWFyZ19hZG1pbl9jc3JmPShbXjtdKikvKXx8W10pWzFdfHwnJyl9Y2F0Y2h7cmV0dXJuICcnfX07CkVORDsKdXBkYXRlRXhhY3QoJHN0YXRpYy4nYWRtaW4uanMnLCAkb2xkLCAkbmV3KTsKJGNzcyA9IDw8PCdFTkQnCgovKiBJbXByb3ZlZCBuYXZpZ2F0aW9uIGNvbnRyYXN0IG9uIGRlc2t0b3AgYW5kIG1vYmlsZTsgYWN0aXZlIGl0ZW0gcmV0YWlucyBvcmlnaW5hbCBBUkdVUyBnb2xkLiAqLwouc2lkZWJhciAubWVudS1sYWJlbHtjb2xvcjojYmRiMDlhIWltcG9ydGFudH0KLnNpZGViYXIgLm1lbnUtaXRlbXtjb2xvcjojZDVkNGQxIWltcG9ydGFudH0KLnNpZGViYXIgLm1lbnUtaXRlbT5zcGFuOmZpcnN0LWNoaWxke2NvbG9yOiNlMGM2OWIhaW1wb3J0YW50fQouc2lkZWJhciAubWVudS1pdGVtLmFjdGl2ZXtjb2xvcjojZmZlMGE1IWltcG9ydGFudH0KLnNpZGViYXIgLm1lbnUtaXRlbTpob3Zlciwuc2lkZWJhciAubWVudS1pdGVtOmZvY3VzLXZpc2libGV7Y29sb3I6I2ZmZGQ5ZiFpbXBvcnRhbnR9CkVORDsKJHBhdGggPSAkc3RhdGljLidwb2xpc2guY3NzJzsKJHNvdXJjZSA9IGZpbGVfZ2V0X2NvbnRlbnRzKCRwYXRoKTsKaWYgKCRzb3VyY2UgPT09IGZhbHNlKSB0aHJvdyBuZXcgUnVudGltZUV4Y2VwdGlvbignQVJHVVMgcGF0Y2g6IG1pc3Npbmcgc3R5bGVzaGVldCcpOwppZiAoIXN0cl9jb250YWlucygkc291cmNlLCAnSW1wcm92ZWQgbmF2aWdhdGlvbiBjb250cmFzdCBvbiBkZXNrdG9wIGFuZCBtb2JpbGUnKSkgewogICAgZmlsZV9wdXRfY29udGVudHMoJHBhdGgsIHJ0cmltKCRzb3VyY2UsICJcbiIpLiJcbiIuJGNzcy4iXG4iKTsKfQpmb3JlYWNoIChbJ2FkbWluLmh0bWwnPT4ncG9saXNoLmNzcz92PTUnLCAnYWRtaW4uanMnPT4nY29uc3QgY3NyZj0oKT0+e3RyeXtyZXR1cm4gZGVjb2RlVVJJQ29tcG9uZW50JywgJ3BvbGlzaC5jc3MnPT4nLnNpZGViYXIgLm1lbnUtaXRlbXtjb2xvcjojZDVkNGQxIWltcG9ydGFudH0nXSBhcyAkZmlsZT0+JG5lZWRsZSkgewogICAgaWYgKCFzdHJfY29udGFpbnMoZmlsZV9nZXRfY29udGVudHMoJHN0YXRpYy4kZmlsZSksICRuZWVkbGUpKSB0aHJvdyBuZXcgUnVudGltZUV4Y2VwdGlvbignQVJHVVMgcGF0Y2ggdmVyaWZpY2F0aW9uIGZhaWxlZDogJy4kZmlsZSk7Cn0KZWNobyAiQVJHVVMgVUkgcmVsZWFzZSBwYXRjaCBhcHBsaWVkIGFuZCB2ZXJpZmllZFxuIjsK' | base64 -d > /tmp/argus_release_patch.php \
  && php /tmp/argus_release_patch.php \
  && rm /tmp/argus_release_patch.php
+# ARGUS customer release: independent client portal, self-registration and private merchant credentials.
+COPY deployment/Portal.php /var/www/html/src/Portal.php
+COPY deployment/client.html deployment/docs.html deployment/portal.js deployment/portal.css deployment/qrcode.min.js /var/www/html/public/static/
+COPY deployment/argus_customer_release.php /tmp/argus_customer_release.php
+RUN php -l /tmp/argus_customer_release.php \
+ && php /tmp/argus_customer_release.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php /var/www/html/tests/ui_contract.php
+# Crop the original ARGUS letter A without redraw: true transparency, lossless branding.
+RUN apt-get update && apt-get install -y --no-install-recommends imagemagick \
+ && rm -rf /var/lib/apt/lists/* \
+ && convert /var/www/html/public/static/assets/argus-symbol.png \
+    -crop 332x354+0+0 +repage -fuzz 5% -transparent black -trim +repage \
+    -filter Lanczos -resize 450x450 -gravity center -background none -extent 512x512 \
+    /var/www/html/public/static/assets/argus-icon-512.png \
+ && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 192x192 \
+    /var/www/html/public/static/assets/argus-icon-192.png \
+ && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 180x180 \
+    /var/www/html/public/static/assets/argus-icon-180.png \
+ && identify /var/www/html/public/static/assets/argus-icon-192.png
 RUN php -l src/Integrations/MisticPayFinance.php && php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/finance_qr_unit.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php && php tests/ui_contract.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
