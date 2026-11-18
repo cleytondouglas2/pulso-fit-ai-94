@@ -36,15 +36,24 @@ foreach($notPaid as $bad){
 $html=file_get_contents('/var/www/html/public/static/admin.html');
 $js=file_get_contents('/var/www/html/public/static/admin.js');
 if(!is_string($html)||!is_string($js))throw new RuntimeException('Missing client assets');
-if(!str_contains($html,'id="argus-payer-details" class="argus-payer-details">'))
-    throw new RuntimeException('Payer form must be visible on iPhone without requiring JS to unhide it');
-foreach(['id="argus-payer-name"','id="argus-payer-cpf"','name="payer_document"','admin.js?v=13'] as $token){
-    if(!str_contains($html,$token))throw new RuntimeException('Missing payer UI or asset version: '.$token);
+$accountBacked=str_contains($html,'account-profile.js?v=1');
+if(!$accountBacked){
+ if(!str_contains($html,'id="argus-payer-details" class="argus-payer-details">'))
+     throw new RuntimeException('Payer form must be visible on iPhone without requiring JS to unhide it');
+ foreach(['id="argus-payer-name"','id="argus-payer-cpf"','name="payer_document"','admin.js?v=13'] as $token){
+     if(!str_contains($html,$token))throw new RuntimeException('Missing legacy payer UI or asset version: '.$token);
+ }
+}else{
+ foreach(['id="argus-payer-summary"','account-profile.js?v=1','admin.js?v=14'] as $token){
+     if(!str_contains($html,$token))throw new RuntimeException('Missing protected identity UI: '.$token);
+ }
+ if(str_contains($html,'id="argus-payer-cpf"')||str_contains($html,'id="argus-payer-name"'))
+     throw new RuntimeException('Payer inputs must remain hidden after identity migration');
 }
 $auto=file_get_contents('/var/www/html/public/static/quick-pix-autostatus.js');
 $worker=file_get_contents('/usr/local/share/argus/notify_worker.php');
 if(!is_string($auto)||!is_string($worker))throw new RuntimeException('Missing auto-status assets');
-foreach(['quick-pix-autostatus.js?v=1','id="argus-payer-name"','id="argus-payer-cpf"'] as $x){
+foreach(['quick-pix-autostatus.js?v=1'] as $x){
  if(!str_contains($html,$x))throw new RuntimeException('Missing auto status or fields '.$x);
 }
 if(!str_contains($auto,"setInterval(check,20000)")||
@@ -54,9 +63,16 @@ if(!str_contains($auto,"setInterval(check,20000)")||
 if(!str_contains($worker,"TraditionalQuickPix::worker") ||
    !str_contains($worker,"getenv('ARGUS_QUICK_PIX_PROVIDER')!=='traditional' && MisticPayFinance::configured()"))
  throw new RuntimeException('Background Pix reconciliation not wired or Finance worker still enabled for traditional charge');
-if(!str_contains($js,'payerPane.hidden=!window.argusQuickPixTraditional')||
-   !str_contains($js,'payload.payer_document=')||
-   !str_contains($js,'payload.payer_name='))
-    throw new RuntimeException('Client form is not wired to traditional Pix payment request');
-echo "PASS: iPhone traditional Pix form has visible name + CPF fields and fresh admin JS.\n";
+if(!$accountBacked){
+ if(!str_contains($js,'payerPane.hidden=!window.argusQuickPixTraditional')||
+    !str_contains($js,'payload.payer_document=')||
+    !str_contains($js,'payload.payer_name='))
+     throw new RuntimeException('Old payer form not wired');
+ echo "PASS: iPhone traditional Pix form with payer fields and fresh JS.\n";
+}else{
+ if(str_contains($js,'payload.payer_document=')||str_contains($js,'payload.payer_name=')||
+    !str_contains($js,'window.argusProfileReady!==true'))
+     throw new RuntimeException('Server-side legal identity must replace all Pix payer input fields');
+ echo "PASS: iPhone registered PF/PJ automatically supplies payer data on the server.\n";
+}
 echo "PASS: Traditional MisticPay amount, real CPF, QR, idempotent request shape, status and payment amount safeguards.\n";
