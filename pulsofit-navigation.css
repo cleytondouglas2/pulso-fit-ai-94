@@ -475,3 +475,36 @@
 .pf-checkout-pix textarea{box-sizing:border-box;width:100%;resize:none;border-radius:10px;border:1px solid #586083;background:#121a2c;color:#eff7ff;padding:11px;font:12px/1.35 ui-monospace,monospace;overflow-wrap:anywhere}
 .pf-checkout-pix button{border:0;border-radius:12px;padding:11px 15px;font:800 13px system-ui,sans-serif;cursor:pointer;background:#7640d4;color:#fff}
 .pf-checkout-pix .pf-checkout-verify{background:#26314d;border:1px solid #8b77af}
+
+
+/* PulsoFit planos e validade do teste — 2026-11-18 */
+#app .pf-home-pricing-entry,
+#app .pf-trial-banner {
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:21px 23px;margin:0 0 22px;border-radius:20px;
+  color:#f9f7ff;background:linear-gradient(125deg,#442d80 0%,#30245b 56%,#172f3e 100%);
+  border:1px solid rgba(181,140,247,.6);box-shadow:0 12px 28px rgba(18,11,38,.2);
+}
+#app .pf-home-pricing-entry strong,
+#app .pf-trial-banner b{display:block;font-size:19px;line-height:1.35;color:#fff}
+#app .pf-home-pricing-entry p,
+#app .pf-trial-banner p{margin:7px 0 0;color:#e2dcf2;font-size:13px;line-height:1.6}
+#app .pf-trial-banner small{display:block;color:#bfc1db;font-size:11px;margin-top:8px}
+#app .pf-home-pricing-entry button,
+#app .pf-trial-banner button{flex-shrink:0;border:0;border-radius:13px;
+ padding:12px 15px;background:#c6f6df;color:#173329;font:800 13px system-ui,sans-serif;cursor:pointer}
+#app .pro-price-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:20px 0}
+#app .pro-price-card.pf-offer{border:1px solid rgba(159,137,229,.65);background:linear-gradient(155deg,#1b2543,#1a1c32);
+ border-radius:21px;padding:24px;box-shadow:0 12px 32px rgba(0,0,0,.17);color:#f7f4ff}
+#app .pro-price-card.pf-offer.featured{border-color:#ad7eff;background:linear-gradient(150deg,#372664,#1c2541)}
+#app .pro-price-card.pf-offer .pro-price{font-size:29px;color:#b3f4d8;font-weight:900;margin:11px 0}
+#app .pro-price-card.pf-offer .pro-price small{font-size:13px;color:#cfc4e5;font-weight:500}
+#app .pro-price-card.pf-offer h2{color:#fff;margin:8px 0;font-size:20px}
+#app .pro-price-card.pf-offer .pro-features{min-height:unset;margin:15px 0}
+#app .pro-price-card.pf-offer button{margin-top:11px}
+@media(max-width:720px){
+ #app .pf-home-pricing-entry,#app .pf-trial-banner{align-items:stretch;flex-direction:column;padding:17px 16px;gap:12px}
+ #app .pf-home-pricing-entry button,#app .pf-trial-banner button{width:100%}
+ #app .pro-price-grid{grid-template-columns:1fr!important}
+ #app .pro-price-card.pf-offer{padding:19px}
+}
