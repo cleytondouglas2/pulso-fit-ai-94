@@ -3,6 +3,10 @@
  'use strict';
  const portal=!!document.getElementById('argus-portal-ai');
  const admin=!!document.getElementById('page-argus-ai');
+ // Clean legacy payment/OTP query strings from browser history before further navigation.
+ if(admin && /(?:[?&])(?:otp|pix_key|password|api_secret|token)=/i.test(location.search)){
+   try{history.replaceState(history.state,'',location.pathname+location.hash)}catch{}
+ }
  if(!portal&&!admin)return;
  const root=document.getElementById(portal?'argus-portal-ai':'page-argus-ai');
  const prefix=portal?'/api/portal/ai':'/api/admin/ai';
