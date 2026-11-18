@@ -13,6 +13,8 @@ on:
       - "server/pulsofit-mais-menu.js"
       - "server/misticpay-runtime.mjs"
       - "server/pulsofit-ar-music.test.mjs"
+      - "server/pulsofit-ux-v3.test.mjs"
+      - "server/pulsofit-ui-touch-nav.test.mjs"
       - ".github/workflows/pulsofit-ar-music.yml"
   pull_request:
     paths:
