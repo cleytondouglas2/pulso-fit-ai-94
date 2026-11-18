@@ -48,6 +48,8 @@ test("O player é incorporado ao PulsoFit, nunca abre janela externa",()=>{
  assert.match(uiJS,/stage\.appendChild\(player\)/);
  assert.match(uiJS,/Assistir aqui no PulsoFit/);
  assert.match(uiJS,/Reiniciar vídeo nesta tela/);
+ assert.match(uiJS,/Testar outro player nesta tela/);
+ assert.match(uiJS,/showInAppVideo\(item,stage,playerHost===0\?1:0\)/);
 });
 test("Safari/iPhone: exige origem HTTPS, toque explícito e retorno dentro do app",()=>{
  assert.match(uiJS,/referrerPolicy="strict-origin-when-cross-origin"/);
