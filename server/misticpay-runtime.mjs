@@ -73,12 +73,12 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   if(state.credentialsConfigured){
    try{
     // Consulta autenticada de um ID inexistente: nenhum PIX é criado.
-    await gateway.getTransaction("pf-credential-probe-no-transaction-20261118");
+    await gateway.getTransaction("00000000-0000-4000-8000-000000000000");
     state.providerAuth="verified";
    }catch(error){
     const code=String(error.code||"");
     state.providerAuth=["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?"denied":(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR"].includes(code)?"verified":"checked");
-    console.log("[pulso-billing] Provider read-only probe code="+(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR","INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?code:"OTHER")+"; no charge created.");
+    console.log("[pulso-billing] Provider read-only probe: http="+(Number(error.status)||0)+" code="+code.replace(/[^A-Z0-9_]/g,"").slice(0,64)+" kind="+String(error.name||"").replace(/[^a-zA-Z]/g,"").slice(0,24)+"; no charge created.");
    }
   }
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
