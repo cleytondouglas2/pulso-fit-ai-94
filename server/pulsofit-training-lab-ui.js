@@ -432,7 +432,7 @@ function placeLaunch(){
  if(!["workouts","home"].includes(rt))return;
  if(area.querySelector("#pf-tv-launch"))return;
  const b=document.createElement("button");b.type="button";b.id="pf-tv-launch";b.className="pf-tv-launch";
- b.innerHTML='<span aria-hidden="true" class="pf-tv-launch-icon">⚡</span><span><strong>Treino Vivo <small>NOVO</small></strong><em>10 missões • treino adaptativo • cronômetro • histórico online</em></span><span class="pf-tv-launch-arrow" aria-hidden="true">›</span>';
+ b.innerHTML='<span aria-hidden="true" class="pf-tv-launch-icon">⚡</span><span><strong>Treino Vivo <small>NOVO</small></strong><em>Treino diário editável: adicione, remova ou troque exercícios • histórico online</em></span><span class="pf-tv-launch-arrow" aria-hidden="true">›</span>';
  b.addEventListener("click",open);
  const anchor=area.querySelector("h1")?.closest("section")||area.querySelector("h1");
  if(anchor?.parentNode&&anchor.parentNode!==area)anchor.parentNode.insertBefore(b,anchor.nextSibling);
