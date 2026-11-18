@@ -49,76 +49,115 @@ function txt(tag,content,className){
  if(className)el.className=className;
  return el;
 }
-let activeFrame=null,frameErrorTimer=0;
+let activeFrame=null,frameErrorTimer=0,playerHost=0,playerReady=false;
+const unavailableVideos=new Set();
 function stopVideo(){
  if(frameErrorTimer){clearTimeout(frameErrorTimer);frameErrorTimer=0}
- if(activeFrame){activeFrame.src="about:blank";activeFrame.remove();activeFrame=null}
+ const old=activeFrame;activeFrame=null;
+ if(old){old.removeAttribute("src");old.remove()}
 }
 function validVideo(item){return item&&/^[A-Za-z0-9_-]{11}$/.test(item.video||"")}
 function fallbackLesson(item){
- const others=(lib()?.list||[]).filter(x=>x.category===item.category&&x.id!==item.id&&validVideo(x));
- return others[0]||((lib()?.list||[]).find(x=>x.id!==item.id&&validVideo(x))||null);
+ const others=(lib()?.list||[]).filter(x=>x.id!==item.id&&validVideo(x)&&!unavailableVideos.has(x.id));
+ return others.find(x=>x.category===item.category)||others[0]||null;
 }
 function nextLesson(item){
  const alternative=fallbackLesson(item);
- if(!alternative){announce("Não há outra aula disponível no momento.");return}
- announce("Selecionando outra aula que pode reproduzir dentro do PulsoFit.");
+ if(!alternative){announce("Não há outra aula com reprodução disponível. Tente novamente mais tarde.");return}
+ announce("Selecionando outra aula sem sair do PulsoFit.");
  select(alternative);
+}
+function videoWarning(message){
+ const warning=$("pf-class-video-alert");
+ if(warning){warning.hidden=false;warning.textContent=message}
+ announce(message);
 }
 function videoPlayerMessage(event){
  if(!/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com$/.test(event.origin))return;
+ if(!activeFrame||event.source!==activeFrame.contentWindow||!screen?.isConnected)return;
  let data;try{data=typeof event.data==="string"?JSON.parse(event.data):event.data}catch{return}
- if(!activeFrame||!screen?.isConnected||!data)return;
- if(data.event==="onError"&&[2,5,100,101,150,153].includes(Number(data.info))){
-  const item=lib()?.byId(selectedLesson);
-  if(!item)return;
-  const message=$("pf-class-video-alert");
-  if(message){
-   message.hidden=false;
-   message.textContent="Este vídeo não permitiu reprodução incorporada (código "+Number(data.info)+"). Experimente outra aula nesta tela.";
-  }
-  announce("O YouTube bloqueou esta incorporação. Toque em Tentar outra aula; você permanece no PulsoFit.");
+ if(!data||typeof data!=="object")return;
+ if(data.event==="onReady"){
+  playerReady=true;
+  if(frameErrorTimer){clearTimeout(frameErrorTimer);frameErrorTimer=0}
+  announce("Player pronto. Toque no botão ▶ do vídeo para começar a aula.");
+  return;
  }
+ if(data.event==="onStateChange"&&Number(data.info)===1){
+  playerReady=true;
+  if(frameErrorTimer){clearTimeout(frameErrorTimer);frameErrorTimer=0}
+  const warning=$("pf-class-video-alert");if(warning)warning.hidden=true;
+  announce("▶ Aula reproduzindo dentro do PulsoFit.");
+  return;
+ }
+ if(data.event==="onAutoplayBlocked"){
+  announce("O celular bloqueou a reprodução automática. Toque em ▶ diretamente no vídeo.");
+  return;
+ }
+ if(data.event!=="onError")return;
+ const code=Number(data.info),item=lib()?.byId(selectedLesson);
+ if(!item||![2,5,100,101,150,153].includes(code))return;
+ // Erros transitórios do player podem ser resolvidos trocando o host oficial.
+ // Nunca contornamos proibições de incorporação do proprietário (101/150).
+ if([5,153].includes(code)&&playerHost===0){
+  const stage=$("pf-class-video-stage");
+  if(stage){
+   announce("Falha no player. Tentando a outra versão oficial nesta mesma tela…");
+   showInAppVideo(item,stage,1);
+   return;
+  }
+ }
+ if([2,100,101,150].includes(code))unavailableVideos.add(item.id);
+ const explanation=[101,150].includes(code)?"O criador não permite reproduzir esta aula dentro de outros aplicativos.":code===100?"Este vídeo foi removido ou está privado.":code===153?"O navegador não enviou a identificação exigida pelo YouTube.":code===5?"O vídeo não é compatível com o player deste aparelho.":"O player não conseguiu iniciar o vídeo.";
+ videoWarning(explanation+" Escolha Tentar outra aula para continuar dentro do PulsoFit (erro "+code+").");
 }
-function showInAppVideo(item,stage){
+function showInAppVideo(item,stage,hostIndex=0){
  if(!validVideo(item)||!stage?.isConnected)return;
  stopVideo();
+ playerHost=hostIndex;playerReady=false;
  stage.replaceChildren();
+ stage.id="pf-class-video-stage";
  const player=document.createElement("iframe");
- player.title="Aula "+item.title+" — player incorporado do YouTube";
+ player.title="Aula "+item.title+" — vídeo dentro do PulsoFit";
  player.id="pf-class-youtube-frame";
  player.name="pf-class-youtube-frame";
  player.loading="eager";
+ // A identificação HTTPS é exigida pelo YouTube inclusive no Safari/iOS.
  player.referrerPolicy="strict-origin-when-cross-origin";
  player.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
  player.allowFullscreen=true;
  player.setAttribute("allowfullscreen","");
+ player.setAttribute("webkitallowfullscreen","");
  player.setAttribute("playsinline","");
  player.style.cssText="width:100%;height:auto;aspect-ratio:16/9;border:0;display:block;border-radius:12px;background:#090b20";
- // Full HTTPS origin/referrer required by YouTube; keeps playback inline on iOS.
- const url=new URL("https://www.youtube-nocookie.com/embed/"+item.video);
+ const youtubeHost=hostIndex===0?"https://www.youtube.com":"https://www.youtube-nocookie.com";
+ const url=new URL(youtubeHost+"/embed/"+item.video);
  url.searchParams.set("playsinline","1");
- url.searchParams.set("autoplay","1");
+ // Autoplay de vídeo com som costuma ser bloqueado no iPhone: usuário dá play no iframe.
+ url.searchParams.set("autoplay","0");
  url.searchParams.set("rel","0");
  url.searchParams.set("controls","1");
  url.searchParams.set("enablejsapi","1");
- url.searchParams.set("origin",location.origin);
- url.searchParams.set("widget_referrer",location.href.split("#")[0].split("?")[0]);
+ if(/^https:\/\//.test(location.origin)){
+  url.searchParams.set("origin",location.origin);
+  url.searchParams.set("widget_referrer",location.origin+"/");
+ }
  activeFrame=player;
  player.addEventListener("load",()=>{
   if(activeFrame!==player)return;
-  try{
-   player.contentWindow?.postMessage(JSON.stringify({event:"listening",id:player.id}),"https://www.youtube-nocookie.com");
-  }catch{}
+  try{player.contentWindow?.postMessage(JSON.stringify({event:"listening",id:player.id}),url.origin)}catch{}
  });
  player.addEventListener("error",()=>{
-  if(activeFrame!==player)return;
-  const warning=$("pf-class-video-alert");if(warning){warning.hidden=false;warning.textContent="O player não carregou. Escolha outra aula sem sair do aplicativo.";}
+  if(activeFrame===player)videoWarning("Falha ao carregar o player. Tente outra aula sem sair do aplicativo.");
  });
  player.src=url.href;
  stage.appendChild(player);
- announce("Aula aberta dentro do PulsoFit. Aperte ▶ nos controles do vídeo para iniciar.");
  const warning=$("pf-class-video-alert");if(warning)warning.hidden=true;
+ frameErrorTimer=setTimeout(()=>{
+  if(activeFrame!==player||playerReady)return;
+  videoWarning("Não foi possível confirmar o carregamento neste aparelho. Toque no vídeo; se estiver indisponível, tente outra aula aqui no PulsoFit.");
+ },14000);
+ announce("Vídeo incorporado. Toque em ▶ no próprio vídeo para começar, sem abrir outro aplicativo.");
 }
 function drawPlayer(item){
  const mount=$("pf-class-player");if(!mount)return;
