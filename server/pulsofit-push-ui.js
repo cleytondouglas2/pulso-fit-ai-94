@@ -100,6 +100,17 @@ async function subscribe(){
  }catch(e){deviceEnabled=false;setState("Não foi possível ativar: "+String(e.message||e),true)}
  finally{loading=false;toggleButtons()}
 }
+async function activateAll(){
+ // A permissão do sistema exige um toque explícito. Não alteramos outras contas.
+ selectedTraining=true;selectedPerformance=true;selectedWellness=true;selectedFrequency=3;
+ for(const id of ["pf-push-training","pf-push-performance","pf-push-wellness"]){
+  const c=document.getElementById(id);if(c)c.checked=true;
+ }
+ const frequency=document.getElementById("pf-push-frequency");if(frequency)frequency.value="3";
+ setState("Ativando todos os avisos de treino, desempenho e saúde para este aparelho...");
+ if(!current||!deviceEnabled)await subscribe();
+ else await savePreferences();
+}
 async function savePreferences(){
  if(!current||!deviceEnabled){setState("Ative as notificações primeiro.",true);return}
  copyPreferences();loading=true;toggleButtons();
@@ -133,7 +144,7 @@ async function disable(){
  finally{loading=false;toggleButtons()}
 }
 function toggleButtons(){
- ["pf-push-activate","pf-push-save","pf-push-test","pf-push-disable"].forEach(id=>{
+ ["pf-push-activate-all","pf-push-activate","pf-push-save","pf-push-test","pf-push-disable"].forEach(id=>{
   const e=document.getElementById(id);if(e)e.disabled=loading;
  });
 }
@@ -179,13 +190,15 @@ function renderDialog(){
  '</select></label><p class="pf-push-info">Os avisos são enviados a partir do horário escolhido, com intervalos aproximados de quatro horas. Entre 6h e 21h, nunca à noite. A quantidade efetiva pode ser menor conforme o horário inicial e a disponibilidade do servidor.</p></div>'+
  '<div class="pf-push-actions">'+
  '<button type="button" id="pf-push-install" class="pf-push-secondary"'+(installed()?" hidden":"")+'>📲 '+(ANDROID?"Instalar no Android":"Como adicionar o ícone")+'</button>'+
- '<button type="button" id="pf-push-activate" class="pf-push-primary">'+(deviceEnabled?"✓ Reativar dispositivo":"🔔 Ativar notificações")+'</button>'+
+  '<button type="button" id="pf-push-activate-all" class="pf-push-primary">🔔 Ativar todas as notificações</button>'+
+ '<button type="button" id="pf-push-activate" class="pf-push-secondary">'+(deviceEnabled?"✓ Reativar dispositivo":"🔔 Ativar notificações")+'</button>'+
  '<button type="button" id="pf-push-save" class="pf-push-secondary"'+(!deviceEnabled?" hidden":"")+'>Salvar horário e preferências</button>'+
  '<button type="button" id="pf-push-test" class="pf-push-secondary"'+(!deviceEnabled?" hidden":"")+'>Enviar teste</button>'+
  '<button type="button" id="pf-push-disable" class="pf-push-muted"'+(!deviceEnabled?" hidden":"")+'>Desativar neste aparelho</button>'+
  '</div><p class="pf-push-live" role="status" aria-live="polite" id="pf-push-status">'+esc(lastStatus||"Ative apenas quando desejar. Você controla o horário e as permissões.")+'</p>'+
  '<p class="pf-push-limit"><b>Importante:</b> com o PulsoFit hospedado no Render gratuito, o servidor pode suspender ao ficar inativo. Por isso, lembretes programados podem atrasar ou não chegar até o servidor voltar. O sistema de push funciona com o app fechado quando o servidor envia uma mensagem e o celular está apto a recebê-la. A entrega também depende da internet e das configurações de bateria/notificações do aparelho.</p>';
  b.querySelector("#pf-push-install")?.addEventListener("click",promptInstall);
+  b.querySelector("#pf-push-activate-all")?.addEventListener("click",activateAll);
  b.querySelector("#pf-push-activate")?.addEventListener("click",subscribe);
  b.querySelector("#pf-push-save")?.addEventListener("click",savePreferences);
  b.querySelector("#pf-push-test")?.addEventListener("click",sendTest);
