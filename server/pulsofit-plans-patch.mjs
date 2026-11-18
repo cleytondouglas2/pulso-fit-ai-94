@@ -65,7 +65,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      // Bust only the script URL; the generated app.js itself is repaired
      // before this file is updated by pulsofit-js-boot-repair.mjs.
      const freshHtml=html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
-      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-preserve-nav-v2"+quote);
+      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-renderer-recovery-v3"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
      const lastBody=Array.from(freshHtml.matchAll(/<\/body\s*>/gi)).at(-1);
