@@ -16,8 +16,10 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const authJS=readFileSync(new URL("./pulsofit-auth-ui.js",import.meta.url),"utf8");
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const assessmentJS=readFileSync(new URL("./pulsofit-assessment-ui.js",import.meta.url),"utf8");
+  const authFetchJS=readFileSync(new URL("./pulsofit-auth-fetch.js",import.meta.url),"utf8");
   const marker="pulsofit-stable-plans-20261118";
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>";
@@ -32,6 +34,18 @@ if (basename(process.argv[1]||"")==="server.mjs") {
     if(entry.name.startsWith(".")||entry.name==="node_modules")continue;
     const full=join(dir,entry.name);
     if(entry.isDirectory()){if(depth<2)visit(full,depth+1);continue}
+    if(entry.isFile()&&/\.m?js$/.test(entry.name)&&entry.name!=="pulsofit-auth-fetch.js"){
+     try{
+      const bytes=statSync(full).size;
+      if(bytes>2000&&bytes<1500000){
+       const js=readFileSync(full,"utf8");
+       const foundRoutes=[...new Set([...js.matchAll(/\/api\/[a-z0-9/_-]{2,70}/gi)].map(m=>m[0]))].slice(0,35);
+       if(foundRoutes.some(v=>/coach|chat|gemini|ai|nutrition|meal/i.test(v)))
+        console.log("[pulso-ui] Frontend API paths in "+entry.name+": "+foundRoutes.join(","));
+      }
+     }catch{}
+     continue;
+    }
     if(!entry.isFile()||!entry.name.endsWith(".html"))continue;
     try{
      if(statSync(full).size>5500000)continue;
