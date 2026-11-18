@@ -1,0 +1,27 @@
+name: PulsoFit - Login somente email e senha
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-auth-ui.js"
+      - "server/pulsofit-social-ui.js"
+      - "server/pulsofit-auth-email-only.test.mjs"
+      - ".github/workflows/pulsofit-email-only-login.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-auth-ui.js"
+      - "server/pulsofit-auth-email-only.test.mjs"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check server/pulsofit-auth-ui.js
+          node --check server/pulsofit-social-ui.js
+      - run: node --test server/pulsofit-auth-email-only.test.mjs server/pulsofit-social-auth.test.mjs
