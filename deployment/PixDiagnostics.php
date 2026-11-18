@@ -15,9 +15,12 @@ final class PixDiagnostics
         if(($actor['role']??'')!=='superadmin')throw new ApiError('Somente administrador principal',403);
         $persistent=in_array($db->driver(),['pgsql','mysql'],true);
         $configured=\ArgusPayments\Integrations\MisticPayFinance::configured();
+        $idEnv=trim((string)getenv('ARGUS_FINANCE_QR_CLIENT_ID'));
+        $secretEnv=trim((string)getenv('ARGUS_FINANCE_QR_CLIENT_SECRET'));
+        $wrongFamily=\ArgusPayments\Integrations\MisticPayFinance::isLegacyKey($idEnv)||\ArgusPayments\Integrations\MisticPayFinance::isLegacyKey($secretEnv);
         $readiness=LivePix::readiness($db);
         $storage=(bool)($readiness['checks']['storage_policy']??false);
-        $provider='not_configured';
+        $provider=$wrongFamily?'legacy_misticpay_keys':'not_configured';
         $http=0;
         if($configured && $persistent && $storage){
             $id=trim((string)getenv('ARGUS_FINANCE_QR_CLIENT_ID'));
@@ -41,13 +44,15 @@ final class PixDiagnostics
         $message=match(true){
             !$persistent=>'Banco persistente indisponível. Configure PostgreSQL ou MySQL antes de emitir Pix.',
             !$storage=>'Política de armazenamento não está pronta. Revise a infraestrutura.',
-            !$configured=>'Credenciais da API QRCODES não configuradas. Atualize as variáveis protegidas no Render.',
+            $wrongFamily=>'Identifiquei credenciais da API MisticPay tradicional (pk/sk ou ci/cs) nos campos da MisticPay Finance. Elas podem ser válidas, mas pertencem a outro sistema. Gere um novo Client ID e Client Secret em MisticPay Finance → Configurações → API QR Codes e substitua as duas variáveis ARGUS_FINANCE_QR_* no Render.',
+            !$configured=>'Credenciais da API Finance QRCODES não configuradas. Atualize as variáveis protegidas no Render.',
             $provider==='credentials_rejected'=>'O provedor recusou as credenciais Pix (401/403). Confira Client ID, Client Secret, autorização QRCODES e restrições de IP no painel do provedor.',
             $provider==='authorized'=>'Consulta autenticada ao provedor aceita. A emissão ainda depende da autorização da conta e da operação.',
             default=>'Não foi possível confirmar a autenticação Pix agora. Nenhuma cobrança foi criada.'
         };
         self::out(['ready_to_attempt'=>$canTry,'provider'=>$provider,'provider_http'=>$http,
             'persistent_db'=>$persistent,'storage_ready'=>$storage,'credentials_present'=>$configured,
+            'wrong_credential_family'=>$wrongFamily,
             'message'=>$message,'read_only'=>true]);
     }
 }
