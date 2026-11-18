@@ -92,16 +92,32 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
    // Supply minimal placeholders ONLY for globals absent in that environment.
    // This keeps login and the main app available without exposing admin data.
    const globalRenderPrelude=";(function(){const names=[\"renderAdmin\",\"renderSubscription\"];for(const id of names){if(typeof globalThis[id]!==\"function\"){globalThis[id]=function(){return '<section class=\"pro-surface\" style=\"padding:18px;margin:16px 0\"><h2>'+(id===\"renderAdmin\"?\"Área administrativa indisponível\":\"Planos PulsoFit\")+'</h2><p>Esta seção está temporariamente indisponível. Use as opções do menu.</p></section>';};}}})();\n";
+   function missingRenderSymbols(source){
+    // Find bare renderer calls. If a symbol has no declaration anywhere in
+    // this generated JS, its reference will throw when that route is visited.
+    // Report and guard ONLY missing symbols. Do not override existing renderers.
+    const invoked=new Set([...source.matchAll(/(^|[^\w.$])\b(render[A-Z][A-Za-z0-9_]*)\s*\(/gm)].map(m=>m[2]));
+    const declared=new Set([
+      ...[...source.matchAll(/\b(?:function|const|let|var)\s+(render[A-Z][A-Za-z0-9_]*)\b/g)].map(m=>m[1]),
+      ...[...source.matchAll(/\b(?:globalThis|window)\.(render[A-Z][A-Za-z0-9_]*)\s*=/g)].map(m=>m[1]),
+    ]);
+    return [...invoked].filter(n=>!declared.has(n)).slice(0,25);
+   }
    // Do not re-add when server restarts or the file was already fixed.
    let globalSubscriptionFixed=false;
    const candidateSource=fixed?readFileSync(loc,"utf8"):source;
    const needsSub=candidateSource.includes("var originalSubs=renderSubscription") &&
       !candidateSource.includes("pf-subscription-rescue") &&
       !/\b(?:globalThis|window)\.renderSubscription\s*=\s*function/.test(candidateSource);
+   const missingRenderers=missingRenderSymbols(candidateSource);
    const needsAdmin=/\brenderAdmin\s*\(/.test(candidateSource) &&
       !candidateSource.includes("const names=[\"renderAdmin\",\"renderSubscription\"]");
-   if(needsSub||needsAdmin){
-    const candidate=globalRenderPrelude+(needsSub?prelude:"")+candidateSource;
+   console.log("[pulso-boot] Missing renderer declarations: "+missingRenderers.join(","));
+   const missingPrelude=missingRenderers.length?
+     ";(function(){for(const n of "+JSON.stringify(missingRenderers)+"){if(typeof globalThis[n]!==\"function\")globalThis[n]=function(){return '<section class=\\\"pro-surface\\\" style=\\\"padding:18px\\\"><h2>Seção indisponível</h2><p>Use o menu para navegar ou tente novamente.</p></section>';}}})();\\n":"";
+
+   if(needsSub||needsAdmin||missingRenderers.length){
+    const candidate=missingPrelude+globalRenderPrelude+(needsSub?prelude:"")+candidateSource;
     const check=parse(candidate,loc+"#subscription-fallback");
     if(check.ok){
       writeFileSync(loc,candidate);
