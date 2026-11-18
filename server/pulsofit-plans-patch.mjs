@@ -36,6 +36,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
     try{
      if(statSync(full).size>5500000)continue;
      const html=readFileSync(full,"utf8");
+     const aiRoutes=[...new Set([...html.matchAll(/\/api\/(?:ai|coach)[a-z0-9\/_-]*/gi)].map(m=>m[0]))].slice(0,20);
+     if(entry.name==="index.html")console.log("[pulso-ui] Backend AI paths referenced by frontend: "+(aiRoutes.length?aiRoutes.join(","):"none"));
+
      if(!/<\/body\s*>/i.test(html)||!/<html[\s>]/i.test(html))continue;
      if(html.includes(marker)){found.push(full+":already");continue}
      const matches=Array.from(html.matchAll(/<\/body\s*>/gi));
