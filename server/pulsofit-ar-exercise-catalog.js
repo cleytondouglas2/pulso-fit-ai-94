@@ -90,7 +90,7 @@ const definitions=[
 ];
 const list=Object.freeze(definitions.map(([id,label,gear,group])=>Object.freeze({id,label,gear,group})));
 const byId=new Map(list.map(p=>[p.id,p]));
-const normalize=s=>String(s||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/\\s+/g," ");
+const normalize=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim().replace(/\s+/g," ");
 const byLabel=new Map(list.map(x=>[normalize(x.label),x]));
 const aliases={
  "polichinelo":"jump_jack","polichinelo com salto":"jump_jack","polichinelo sem salto":"low_jack",
