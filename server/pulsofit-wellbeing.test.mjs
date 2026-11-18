@@ -33,13 +33,40 @@ test("Categorias incluem Pilates, dança, yoga, cardio, mobilidade e bem-estar",
  assert.ok(catalog.list.filter(x=>x.category==="pilates").length>=3);
  assert.ok(catalog.list.filter(x=>x.category==="dance").length>=2);
 });
-test("Vídeo é incorporado apenas por ID oficial verificado e link abre fonte confiável",()=>{
- assert.match(uiJS,/youtube-nocookie\.com\/embed/);
- assert.match(uiJS,/item\.video&&\/\^\[A-Za-z0-9_-\]\{11\}\$\//);
+test("Links reais abrem diretamente sem popups bloqueados no iPhone",()=>{
+ assert.match(uiJS,/function classLink/);
+ assert.match(uiJS,/target="_blank"/);
+ assert.match(uiJS,/link\.href=parsed\.href/);
  assert.match(uiJS,/www\.nhs\.uk/);
- assert.match(uiJS,/openExternal\(item\.url\)/);
- assert.ok(!uiJS.includes("canvas.toDataURL"));
+ assert.match(uiJS,/www\.youtube\.com/);
+ assert.ok(!uiJS.includes("window.open("),"Não usar janela popup bloqueada em PWA");
+ assert.match(uiJS,/classLink\(youtube\|\|item\.url/);
+ assert.match(uiJS,/Copiar link do vídeo/);
+ assert.match(uiJS,/Abrir página original do NHS/);
+ assert.match(uiJS,/if\(navigator\.clipboard\?\.writeText\)/);
+});
+test("Aula tem player opcional e fallback externo confiável",()=>{
+ assert.match(uiJS,/Reproduzir aqui no aplicativo/);
+ assert.match(uiJS,/youtube\.com\/embed/);
+ assert.match(uiJS,/frame\.loading="eager"/);
+ assert.match(uiJS,/frame\.referrerPolicy="strict-origin-when-cross-origin"/);
+ assert.match(uiJS,/item\.video\|\|""/);
  assert.ok(!uiJS.includes("youtube-dl"));
+});
+test("Vídeos publicados no canal NHS possuem ID confirmado e vídeo direto",()=>{
+ const known={
+  "pilates-basics":"WS9Yzh-XiIs",
+  "pilates-pyjama":"J5cjrqpaAWY",
+  "cardio-intro":"a44ayeoSfKM",
+  "cardio-morning":"KF6Z1udGnf4"
+ };
+ for(const [id,video] of Object.entries(known)){
+  assert.equal(catalog.byId(id)?.video,video,id);
+ }
+ for(const item of catalog.list){
+  assert.match(item.url,/^https:\/\/www\.nhs\.uk\//);
+  assert.ok(item.video===undefined||/^[A-Za-z0-9_-]{11}$/.test(item.video));
+ }
 });
 test("Conclusão é voluntária e local à conta autenticada, sem inventar resultado",()=>{
  assert.match(uiJS,/\/api\/me/);
