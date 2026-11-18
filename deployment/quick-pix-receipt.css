@@ -1,0 +1,103 @@
+/* Only the GENERATED Pix receipt is restyled. Other ARGUS screens are untouched. */
+.charge-result #charge-receipt.argus-pix-receipt{max-width:100%;min-width:0}
+.charge-result .argus-pix-receipt #charge-amount{margin:14px 0 12px}
+.charge-result .argus-pix-receipt #charge-receipt-id{overflow-wrap:anywhere;word-break:break-word}
+.charge-result #charge-qr.argus-pix-qr-host{
+  box-sizing:border-box!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:min(100%,378px)!important;
+  min-width:0!important;
+  height:auto!important;
+  padding:21px!important;
+  margin:24px auto 28px!important;
+  background:#fff!important;
+  border-radius:15px!important;
+  overflow:hidden;
+}
+.charge-result #charge-qr.argus-pix-qr-host[hidden]{display:none!important}
+.charge-result #charge-qr.argus-pix-qr-host img,
+.charge-result #charge-qr.argus-pix-qr-host canvas{
+  box-sizing:border-box!important;
+  width:min(100%,320px)!important;
+  height:auto!important;
+  max-width:100%!important;
+  aspect-ratio:1;
+  image-rendering:auto!important;
+}
+.charge-result .argus-pix-code-row{
+ display:flex;
+ align-items:stretch;
+ gap:12px;
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ margin:18px 0 22px;
+}
+.charge-result .argus-pix-code-label{
+ display:flex;
+ flex:1 1 0;
+ flex-direction:column;
+ min-width:0;
+ max-width:100%;
+ gap:9px;
+ font-weight:500;
+}
+.charge-result .argus-pix-code-label #charge-code{
+ display:block;
+ box-sizing:border-box;
+ width:100%;
+ max-width:100%;
+ min-height:144px;
+ max-height:none;
+ overflow:hidden;
+ resize:none;
+ white-space:pre-wrap;
+ overflow-wrap:anywhere;
+ word-break:break-all;
+ font:500 14px/1.55 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+ letter-spacing:0;
+ padding:14px;
+ border-radius:13px;
+ -webkit-text-size-adjust:100%;
+}
+.charge-result .argus-pix-copy-icon{
+ box-sizing:border-box!important;
+ flex:0 0 56px;
+ align-self:flex-end;
+ width:56px!important;
+ min-width:56px!important;
+ height:56px!important;
+ min-height:56px!important;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ padding:0!important;
+ border-radius:13px!important;
+ white-space:nowrap;
+}
+.charge-result .argus-pix-receipt-actions{
+ display:flex;
+ flex-direction:column;
+ gap:12px;
+ width:100%;
+ margin:17px 0 18px;
+}
+.charge-result .argus-pix-receipt-actions .btn{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:10px;
+ min-height:52px;
+ width:100%;
+ border-radius:12px;
+}
+.charge-result .argus-pix-receipt-actions .btn svg{flex:none}
+.charge-result .argus-pix-receipt-actions[hidden]{display:none!important}
+@media(max-width:430px){
+ .charge-result #charge-qr.argus-pix-qr-host{padding:16px!important;width:min(100%,352px)!important}
+ .charge-result .argus-pix-code-row{gap:8px}
+ .charge-result .argus-pix-code-label #charge-code{font-size:13px;padding:11px}
+ .charge-result .argus-pix-copy-icon{width:50px!important;min-width:50px!important;flex-basis:50px;height:52px!important;min-height:52px!important}
+}
