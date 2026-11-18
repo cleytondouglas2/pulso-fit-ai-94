@@ -1,0 +1,232 @@
+/* PulsoFit AI • HTML5 responsive consolidation (2026-11-18)
+   Last-loaded presentation layer; does not change data, routes, subscriptions or APIs.
+   Single navigation contract for iOS Safari, Android Chrome and desktop browsers. */
+:root {
+  --pf-ui-bottom: env(safe-area-inset-bottom, 0px);
+  --pf-ui-top: env(safe-area-inset-top, 0px);
+  --pf-ui-surface: #1b233e;
+  --pf-ui-border: rgba(172,154,226,.38);
+  --pf-ui-focus: #b9ffe7;
+}
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 18px; }
+body { max-width: 100%; overflow-x: clip; }
+body, input, button, textarea, select { -webkit-tap-highlight-color: transparent; }
+:where(button,input,select,textarea) { font-family: inherit; }
+:where(button,select,input[type="checkbox"],input[type="radio"]) { touch-action: manipulation; }
+:where(button,a,input,select,textarea,[role="button"]):focus-visible {
+  outline: 3px solid var(--pf-ui-focus) !important;
+  outline-offset: 3px !important;
+}
+#app, #app .main, #app main {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+#app img, #app video, #app canvas { max-width: 100%; }
+#app img { height: auto; }
+#app :where(.pro-surface,.pro-cols,.pro-grid,.pro-card,.pf2026-coach-hero,.pf2026-price-card,
+ .pf2026-journeys,.pf2026-price-grid,.profile-cover,.pf-rescue-host,.pfrr-card,.pfrr-hero) {
+  box-sizing: border-box;
+  min-width: 0;
+}
+#app :where(.pro-surface,.pro-card,.profile-cover,.pfrr-card,.pfrr-hero) {
+  overflow-wrap: anywhere;
+}
+#app :where(.pro-cols,.pf2026-price-grid,.pf2026-journeys) > * {
+  min-width: 0;
+}
+#app :where(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+#app :where(button,[role="button"]) {
+  overflow-wrap: break-word;
+}
+#app :where(.pro-surface,.pro-card) h1,
+#app :where(.pro-surface,.pro-card) h2,
+#app :where(.pro-surface,.pro-card) h3 {
+  overflow-wrap: anywhere;
+}
+#app :where(.pf2026-price-card,.pf2026-billing-hero,.pro-surface,.pro-cols) {
+  max-width: 100%;
+}
+#app .pf-rescue-host { overflow: visible; }
+#app #pf-rescue-panel { max-width: 100%; margin-inline: 0; }
+
+/* Bounded dialogs. On iOS, dynamic viewport sizing leaves input space above keyboard. */
+#pf-more-drawer, #pf-eval-overlay, #pf-stable-modal, #pf-performance-overlay,
+#pf-account-lock, .pf-plans-portal {
+  box-sizing: border-box !important;
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain;
+}
+#pf-eval-overlay .pf-eval-shell,
+#pf-more-drawer .pf-more-sheet,
+#pf-stable-modal .pf-stable-body,
+#pf-account-lock .pf-auth-dialog,
+.pf-plans-dialog {
+  max-width: calc(100vw - 20px) !important;
+  box-sizing: border-box !important;
+  overflow-wrap: anywhere;
+}
+#pf-more-drawer .pf-more-sheet {
+  max-width: min(680px, 100vw) !important;
+  border-radius: 24px 24px 0 0 !important;
+}
+#pf-eval-overlay :where(input,select,textarea),
+#pf-stable-modal :where(input,select,textarea),
+#pf-account-lock :where(input,select,textarea) {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  font-size: 16px !important; /* avoid iOS auto-zoom on focus */
+}
+#pf-more-drawer .pf-more-entry { min-width: 0 !important; }
+#pf-eval-overlay .pf-eval-grid > *,
+#pf-stable-modal .pf-stable-plans > * { min-width: 0 !important; }
+#pf-rescue-panel .pfrr-avatar img,
+#app #pf-profile-photo-widget img,
+#app .pf-cover-avatar img { height: 100% !important; object-fit: cover !important; }
+
+/* One bottom navigation across the app. The center Coach remains prominent.
+   Route labels and elements are kept intact to preserve existing JS listeners. */
+@media (max-width: 850px) {
+  #app .mobile-nav {
+    box-sizing: border-box !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    align-items: center !important;
+    justify-items: stretch !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    padding: 10px 6px calc(12px + var(--pf-ui-bottom)) !important;
+    min-height: calc(72px + var(--pf-ui-bottom)) !important;
+    overflow: visible !important;
+    background: rgba(13,20,37,.97) !important;
+    border-top: 1px solid var(--pf-ui-border) !important;
+  }
+  #app .mobile-nav > :where(button,.nav-link,[data-route]) {
+    box-sizing: border-box !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    min-height: 53px !important;
+    margin: 0 auto !important;
+    padding: 6px 2px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    font-size: clamp(10px, 2.5vw, 12px) !important;
+    line-height: 1.15 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+  }
+  #app .mobile-nav > :where(button,.nav-link,[data-route]) > span {
+    max-width: 100%;
+    text-align: center;
+    line-height: 1.15;
+  }
+  #app .mobile-nav > :where(button,.nav-link,[data-route]) svg {
+    width: clamp(24px, 7vw, 30px) !important;
+    height: clamp(24px, 7vw, 30px) !important;
+    min-width: 24px !important;
+    min-height: 24px !important;
+    flex: none !important;
+  }
+  #app .mobile-nav > button[data-route="coach"].nav-link {
+    width: clamp(56px, 15vw, 66px) !important;
+    max-width: 66px !important;
+    min-width: 56px !important;
+    height: clamp(56px, 15vw, 66px) !important;
+    min-height: 56px !important;
+    align-self: center !important;
+    justify-self: center !important;
+    margin: -9px auto 0 !important;
+    padding: 5px 3px !important;
+    transform: none !important;
+    border-radius: 50% !important;
+    overflow: visible !important;
+    background: linear-gradient(140deg,#9d54ee,#6831c3) !important;
+    border: 2px solid rgba(224,197,255,.84) !important;
+    box-shadow: 0 5px 18px #8b47df7a !important;
+  }
+  #app .mobile-nav > button[data-route="coach"].nav-link svg {
+    width: 23px !important;
+    height: 23px !important;
+    min-width: 23px !important;
+    min-height: 23px !important;
+  }
+  #app .mobile-nav > button[data-route="coach"].nav-link span::after {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+  #app .mobile-nav > button[data-pf-mais-tab="1"] .pf-more-nav-icon,
+  #app .mobile-nav > button[data-route="goals"] > span:first-child {
+    height: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    font-size: 29px !important;
+    display: grid !important;
+    place-items: center !important;
+    flex: none !important;
+  }
+  #app .mobile-nav > button[data-pf-mais-tab="1"] svg,
+  #app .mobile-nav > button[data-route="goals"] svg {
+    height: 29px !important;
+    width: 29px !important;
+    min-height: 29px !important;
+  }
+  #app .main, #app main {
+    box-sizing: border-box !important;
+    padding-bottom: calc(106px + var(--pf-ui-bottom)) !important;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+  #app .pro-cols, #app .pf2026-price-grid { grid-template-columns: minmax(0,1fr) !important; }
+  #app .pf2026-journeys { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  #app .pf2026-coach-hero { padding: clamp(14px,4vw,22px) !important; }
+  #app .pf-rescue-host { display: flex !important; flex-direction: column !important; }
+}
+@media (max-width: 520px) {
+  #app :where(.pro-surface,.pro-card,.pf2026-price-card) { padding-inline: clamp(12px,4vw,18px); }
+  #app .pf2026-price-grid,
+  #app .pf2026-journeys,
+  #pf-stable-modal .pf-stable-plans,
+  #pf-eval-overlay .pf-eval-grid { grid-template-columns: minmax(0,1fr) !important; }
+  #pf-more-drawer .pf-more-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #pf-more-drawer .pf-more-entry { padding: 11px 9px !important; }
+  #pf-more-drawer .pf-more-sheet { padding-inline: 13px !important; }
+  #pf-eval-overlay, #pf-stable-modal { padding: 10px !important; }
+  #pf-eval-overlay .pf-eval-shell, #pf-stable-modal .pf-stable-body {
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - 20px) !important;
+    padding: 16px !important;
+  }
+  #pf-rescue-panel .pfrr-status { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+}
+@media (max-width: 360px) {
+  #app .mobile-nav { padding-left: 2px !important; padding-right: 2px !important; }
+  #app .mobile-nav > :where(button,.nav-link,[data-route]) { font-size: 10px !important; }
+  #pf-more-drawer .pf-more-grid,
+  #app .pf2026-journeys,
+  #pf-rescue-panel .pfrr-tools { grid-template-columns: minmax(0,1fr) !important; }
+  #pf-rescue-panel .pfrr-status { grid-template-columns: minmax(0,1fr) !important; }
+}
+@media (min-width: 851px) {
+  #app .mobile-nav { max-width: 100%; }
+  #app .pro-cols { min-width: 0; }
+  #app .pf2026-price-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app .mobile-nav > button[data-route="coach"] {
+    animation: none !important;
+    transition: none !important;
+  }
+  #app .pf-page-enter,
+  .pf-plans-portal,
+  #pf-more-drawer .pf-more-entry { animation: none !important; transition: none !important; }
+}
