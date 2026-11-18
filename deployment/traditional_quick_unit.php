@@ -53,7 +53,7 @@ if(!$accountBacked){
 $auto=file_get_contents('/var/www/html/public/static/quick-pix-autostatus.js');
 $worker=file_get_contents('/usr/local/share/argus/notify_worker.php');
 if(!is_string($auto)||!is_string($worker))throw new RuntimeException('Missing auto-status assets');
-foreach(['quick-pix-autostatus.js?v=1'] as $x){
+foreach(['quick-pix-autostatus.js?v=2'] as $x){
  if(!str_contains($html,$x))throw new RuntimeException('Missing auto status or fields '.$x);
 }
 if(!str_contains($auto,"setInterval(check,20000)")||
