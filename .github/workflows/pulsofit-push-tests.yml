@@ -1,0 +1,27 @@
+name: PulsoFit Web Push / PWA tests
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-push-*"
+      - "server/pulsofit-pwa-asset.mjs"
+      - ".github/workflows/pulsofit-push-tests.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-push-*"
+      - "server/pulsofit-pwa-asset.mjs"
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check server/pulsofit-push-server.mjs
+      - run: node --check server/pulsofit-push-sw.js
+      - run: node --check server/pulsofit-push-ui.js
+      - run: node --check server/pulsofit-pwa-asset.mjs
+      - run: node --test server/pulsofit-push.test.mjs
