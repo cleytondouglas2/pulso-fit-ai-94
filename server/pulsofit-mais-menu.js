@@ -116,6 +116,7 @@ async function logout(){
   if(t)await fetch("/api/auth/logout",{method:"POST",headers:{"Authorization":"Bearer "+t},signal:AbortSignal.timeout(4500)}).catch(()=>{});
  }finally{
   try{sessionStorage.removeItem("pulso-fit-token")}catch{}
+  try{localStorage.removeItem("pulsofit-session-remember-v1")}catch{}
   location.hash="#/home";location.reload();
  }
 }
