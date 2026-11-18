@@ -71,6 +71,18 @@
     if(title){if(!originalHeader.title)originalHeader.title=title.textContent;title.textContent='QR Code PIX';}
     if(hint){if(!originalHeader.hint)originalHeader.hint=hint.textContent;hint.textContent='Compartilhe este QR Code para receber o pagamento.';}
     receipt.classList.add('argus-pix-receipt');
+    // The charge ID is required internally for authenticated reconciliation, but
+    // should not be displayed in the Pix receipt. Hide only its label and value.
+    const identifier=qr('charge-receipt-id');
+    if(identifier){
+      identifier.hidden=true;
+      identifier.classList.add('argus-pix-hidden-identifier');
+      const heading=identifier.previousElementSibling;
+      if(heading?.tagName==='P' && heading.textContent?.toLowerCase().includes('identificador da cobran')){
+        heading.hidden=true;
+        heading.classList.add('argus-pix-hidden-identifier');
+      }
+    }
     const label=code.closest('label');
     if(label){
       label.classList.add('argus-pix-code-label');
@@ -126,13 +138,24 @@
       actions=document.createElement('div');
       actions.id='argus-pix-receipt-actions';
       actions.className='argus-pix-receipt-actions';
-      actions.innerHTML='<button type="button" id="argus-pix-download" class="btn secondary full">'+downloadIcon+'<span>Baixar QR Code</span></button>'+
-        '<button type="button" id="argus-pix-new" class="btn secondary full">'+newIcon+'<span>Novo QR Code</span></button>';
+      actions.innerHTML='<button type="button" id="argus-pix-download" class="btn secondary" aria-label="Baixar QR Code" title="Baixar QR Code">'+downloadIcon+'<span>Baixar</span></button>'+
+        '<button type="button" id="argus-pix-new" class="btn secondary" aria-label="Novo QR Code" title="Novo QR Code">'+newIcon+'<span>Novo</span></button>';
       const reconcile=qr('charge-reconcile');
       if(reconcile)reconcile.before(actions);
       else receipt.appendChild(actions);
       qr('argus-pix-download').addEventListener('click',downloadImage);
       qr('argus-pix-new').addEventListener('click',newCharge);
+    }
+    // Reuse the original Verify button and its click handler, without triggering
+    // additional requests or changing any payment-confirmation logic.
+    const reconcile=qr('charge-reconcile');
+    if(reconcile && reconcile.parentElement!==actions){
+      reconcile.classList.remove('full');
+      reconcile.classList.add('argus-pix-verify');
+      reconcile.setAttribute('aria-label','Verificar pagamento');
+      reconcile.title='Verificar pagamento';
+      reconcile.textContent='Verificar';
+      actions.appendChild(reconcile);
     }
     actions.hidden=false;
     qr('argus-pix-download').disabled=false;
