@@ -96,8 +96,25 @@
    document.body.style.overflow='hidden';
    byId('argus-pix-success-ok').focus({preventScroll:true});
  }
+ function hideGenericPixUnavailableNotice(){
+   // Suppress only the generic banner requested by the user. Specific API errors
+   // and security/permission messages remain available to diagnose failures.
+   const warning=byId('pix-config-alert');
+   if(!warning)return;
+   const clean=()=>{
+     const value=(warning.textContent||'').trim();
+     if(value==='A emissão Pix está indisponível no momento.'||
+        value==='O piloto Pix não está disponível. Confirme a ativação no dashboard.'){
+       warning.hidden=true;
+       warning.textContent='';
+     }
+   };
+   clean();
+   new MutationObserver(clean).observe(warning,{subtree:true,childList:true,characterData:true});
+ }
  function attach(){
    ensurePopup();ensureSuccess();
+   hideGenericPixUnavailableNotice();
    const original=window.showChargeReceipt;
    if(typeof original!=='function'||original.__argusPopupV1)return;
    const wrapped=function(data){
