@@ -98,7 +98,7 @@ async function loadApplications(){
  const target=document.getElementById('application-rows');
  target.innerHTML=list.map(a=>{
   const docs=a.documents||[];
-  return '<tr><td><b>'+esc(a.display_name)+'</b><small>'+esc(a.email)+'</small></td><td>'+esc(a.account_type)+'</td><td>•••• '+esc(a.document_last4)+'</td><td>'+esc(a.status)+'</td><td>'+docs.map(d=>'<a class="mini" href="/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/documents/'+encodeURIComponent(d.id)+'" target="_blank" rel="noopener">'+esc(d.document_type)+'</a>').join(' ')+'</td><td><button class="mini" type="button" data-review="'+esc(a.id)+'">Analisar</button></td></tr>';
+  return '<tr><td><b>'+esc(a.display_name)+'</b><small>'+esc(a.email)+'</small><small>Validação automática: '+esc(a.validation?.label||'pendente')+'</small></td><td>'+esc(a.account_type)+'</td><td>•••• '+esc(a.document_last4)+'</td><td>'+esc(a.status)+'</td><td>'+docs.map(d=>'<a class="mini" href="/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/documents/'+encodeURIComponent(d.id)+'" target="_blank" rel="noopener">'+esc(d.document_type)+'</a>').join(' ')+'</td><td><button class="mini" type="button" data-review="'+esc(a.id)+'">Analisar</button></td></tr>';
  }).join('')||empty(6,'Nenhum pedido de cadastro');
 }
 document.getElementById('reload-applications').onclick=()=>loadApplications().catch(err=>toast(err.message,true));
