@@ -206,8 +206,8 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
    return respond(res,200,{...state,nextAction:state.ready?"Conectado":"Aguardando banco permanente e proteção de acesso no servidor."});
   }
-  if(path==="/api/subscription/status"&&(!configured||process.env.PULSO_BILLING_ENFORCE_ACCESS!=="1")){
-   return respond(res,200,{billingEnforced:false,checkoutEnabled:configured,trialDays:7});
+  if(path==="/api/subscription/status"&&!configured){
+   return respond(res,200,{billingEnforced:false,checkoutEnabled:false,trialDays:7});
   }
   if(path==="/api/admin/billing/config"&&!configured){
    const user=await authenticate(req);
