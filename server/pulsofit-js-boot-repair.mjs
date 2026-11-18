@@ -87,23 +87,46 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
     "'<article class=\"pf-offer\"><h3>Mensal</h3><p><b>R$ 24,90</b> por 30 dias</p><button type=\"button\" data-pf-select-plan=\"mensal\">Contratar com Pix</button></article>'+"+
     "'</div></section>';};"+
     "}})();\n";
+   // Older generated enhancements also capture renderAdmin and other
+   // render functions as bare identifiers outside the app's inner scope.
+   // Supply minimal placeholders ONLY for globals absent in that environment.
+   // This keeps login and the main app available without exposing admin data.
+   const globalRenderPrelude=String.raw\`;(()=>{
+    const names=["renderAdmin","renderSubscription"];
+    const known=new Set(names);
+    for(const id of known){
+     if(typeof globalThis[id]!=="function"){
+      globalThis[id]=function(){
+       return '<section class="pro-surface" style="padding:18px;margin:16px 0"><h2>'+
+        (id==="renderAdmin"?"Área administrativa":"Planos PulsoFit")+
+        '</h2><p>Esta seção está temporariamente indisponível. Use as opções do menu.</p></section>';
+      };
+     }
+    }
+   })();\n\`;
    // Do not re-add when server restarts or the file was already fixed.
    let globalSubscriptionFixed=false;
    const candidateSource=fixed?readFileSync(loc,"utf8"):source;
-   if(candidateSource.includes("var originalSubs=renderSubscription") &&
+   const needsSub=candidateSource.includes("var originalSubs=renderSubscription") &&
       !candidateSource.includes("pf-subscription-rescue") &&
-      !/\b(?:globalThis|window)\.renderSubscription\s*=\s*function/.test(candidateSource)){
-    const candidate=prelude+candidateSource;
+      !/\b(?:globalThis|window)\.renderSubscription\s*=\s*function/.test(candidateSource);
+   const needsAdmin=/\brenderAdmin\s*\(/.test(candidateSource) &&
+      !candidateSource.includes("const names=[\"renderAdmin\",\"renderSubscription\"]");
+   if(needsSub||needsAdmin){
+    const candidate=globalRenderPrelude+(needsSub?prelude:"")+candidateSource;
     const check=parse(candidate,loc+"#subscription-fallback");
     if(check.ok){
       writeFileSync(loc,candidate);
       globalSubscriptionFixed=true;
     }else console.warn("[pulso-boot] Subscription bootstrap rejected by syntax check: "+check.error);
    }
-   console.log("[pulso-boot] Subscription global fallback available="+globalSubscriptionFixed+
+   console.log("[pulso-boot] Render globals fallback available="+globalSubscriptionFixed+ " admin="+needsAdmin+
      " wrapperReferenced="+candidateSource.includes("var originalSubs=renderSubscription"));
 
    const effective=fixed?readFileSync(loc,"utf8"):source;
+   const rendererNames=[...new Set([...effective.matchAll(/\\brender(?:Admin|Subscription|Home|Profile|Account|Plans|Pricing|Settings|More|Coach)\\b/g)].map(x=>x[0]))];
+   console.log("[pulso-boot] Referenced render names: "+rendererNames.join(","));
+
    const targets=[...effective.matchAll(/\brenderSubscription\b/g)].slice(0,16);
    const declarationsFound=[...effective.matchAll(/\b(?:function\s+|(?:const|let|var)\s+)(render(?:Subscription|Plans|Pricing|Pro|Paywall)\b)/g)].map(m=>({name:m[1],at:m.index})).slice(0,25);
    const contexts=targets.map(m=>{
