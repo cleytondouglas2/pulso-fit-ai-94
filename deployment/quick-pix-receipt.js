@@ -12,7 +12,7 @@
     if(typeof window.toast==='function')window.toast(text,isError);
     else if(typeof toast==='function')toast(text,isError);
   };
-  function downloadImage(){
+  async function downloadImage(){
     const host=qr('charge-qr'),code=qr('charge-code')?.value||'';
     if(!host||!code){notify('Gere um Pix para baixar seu QR Code.',true);return;}
     try{
@@ -23,6 +23,20 @@
       const a=document.createElement('a');
       a.href=url;
       a.download='ARGUS-Pix-'+(lastCharge.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,54)||'cobranca')+'.png';
+      // On iPhone/iPad, the native share sheet lets the user select "Salvar imagem".
+      if(/iPhone|iPad|iPod/.test(navigator.userAgent) &&
+         typeof File==='function' && typeof navigator.share==='function' && typeof navigator.canShare==='function'){
+        try{
+          const blob=await(await fetch(url)).blob();
+          const file=new File([blob],a.download,{type:'image/png'});
+          if(navigator.canShare({files:[file]})){
+            await navigator.share({files:[file],title:'QR Code Pix ARGUS'});
+            return;
+          }
+        }catch(error){
+          if(error?.name==='AbortError')return; // User cancelled the native share sheet.
+        }
+      }
       document.body.appendChild(a);a.click();a.remove();
       notify('QR Code disponível para salvar. No iPhone, use Compartilhar → Salvar imagem, se necessário.');
     }catch(error){notify('Não foi possível baixar o QR Code. Verifique a imagem e tente novamente.',true);}
