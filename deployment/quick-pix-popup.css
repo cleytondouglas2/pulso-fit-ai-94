@@ -56,3 +56,9 @@
  .argus-pix-modal-card #charge-qr.argus-pix-qr-host{margin:8px auto 13px!important}
  .argus-pix-success-card{padding:25px 19px 20px}
 }
+
+/* The account identity is checked server-side. Do not show the redundant
+   "Dados utilizados automaticamente" block or profile summary on the Pix form. */
+#page-charge-create #argus-payer-details,
+#page-charge-create #argus-payer-summary,
+#page-charge-create #argus-edit-profile{display:none!important}
