@@ -3,7 +3,7 @@
    The server worker also checks pending charges when this tab is closed. */
 (()=>{
  'use strict';
- let chargeId='', timer=null, checking=false, autoStopped=false, resumeBusy=false;
+ let chargeId='', timer=null, checking=false, autoStopped=false, resumeBusy=false,expiresAtMs=0;
  let lastCelebratedCharge='';
  const note=()=>document.getElementById('charge-note');
  const badge=()=>document.getElementById('charge-receipt-state');
@@ -12,11 +12,27 @@
  const isValid=id=>/^qpx_[a-f0-9]{32}$/.test(String(id||''));
  const sectionVisible=()=>page() && !page().hidden && !document.hidden;
  function stop(){if(timer){clearInterval(timer);timer=null}autoStopped=true;}
+ // Charges are created in UTC by the PHP server. No session/localStorage dependency.
+ function expiryFromCharge(data){
+   const raw=String(data?.created_at||'').trim();
+   const normalized=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)?raw.replace(' ','T')+'Z':raw;
+   const started=Date.parse(normalized);
+   return Number.isFinite(started)?started+30*60*1000:0;
+ }
+ function withinWindow(){
+   if(expiresAtMs>0 && Date.now()<expiresAtMs)return true;
+   stop();
+   const b=badge();
+   if(b && b.textContent==='Aguardando confirmação do pagamento')
+     b.textContent='Prazo de verificação automática encerrado';
+   return false;
+ }
  function showStatus(status){
    const b=badge(),n=note();if(!b||!n)return;
    if(status==='paid'){
      b.textContent='Pagamento recebido e confirmado';
      b.className='status-badge paid';
+     n.hidden=false;
      n.textContent='Pix recebido e confirmado pela ARGUS Pay. Seu pagamento foi registrado com sucesso.';
      stop();
      // A celebration is only dispatched after the authenticated MisticPay payment
@@ -31,6 +47,7 @@
    }
    if(['failed','cancelled','refunded','expired'].includes(status)){
      b.textContent='Pagamento '+(status==='failed'?'não concluído':status);
+     n.hidden=false;
      n.textContent='A MisticPay não confirmou este pagamento. Verifique o extrato do provedor antes de gerar outra cobrança.';
      stop();return;
    }
@@ -38,7 +55,7 @@
    n.textContent='';n.hidden=true;
  }
  async function check(){
-   if(!isValid(chargeId)||autoStopped||checking||!sectionVisible())return;
+   if(!isValid(chargeId)||autoStopped||checking||!sectionVisible()||!withinWindow())return;
    checking=true;
    try{
      const result=await post('/api/admin/quick-pix/'+encodeURIComponent(chargeId)+'/reconcile');
@@ -50,21 +67,23 @@
      const message=String(err?.message||'Falha de consulta');
      if(/API_SCOPE_DENIED|TRANSACTION_READ|HTTP 403/.test(message)){
        stop();
-       if(note())note().textContent='Consulta automática bloqueada pela MisticPay (403). Na chave de API, habilite TRANSACTION_READ e confira as restrições de IP. Não marque como pago sem confirmação.';
+       if(note()){note().hidden=false;note().textContent='Consulta automática bloqueada pela MisticPay (403). Na chave de API, habilite TRANSACTION_READ e confira as restrições de IP. Não marque como pago sem confirmação.';}
        if(badge())badge().textContent='Confirmação pendente · permissão necessária';
      }else if(note()){
-       note().textContent='Não foi possível conferir o status agora. O monitor do servidor continuará consultando quando a API estiver disponível.';
+       note().hidden=false;
+       note().textContent='Não foi possível conferir o status agora. O monitor do servidor continuará consultando durante o prazo de 30 minutos.';
      }
    }finally{checking=false;}
  }
  function watchCharge(data){
    if(!data||!isValid(data.id)||data.provider!=='MisticPay tradicional')return;
-   chargeId=data.id;autoStopped=false;
+   chargeId=data.id;autoStopped=false;expiresAtMs=expiryFromCharge(data);
    if(timer)clearInterval(timer);
    if(data.status==='paid'){showStatus('paid');return;}
    if(['failed','cancelled','expired'].includes(data.status)){showStatus(data.status);return;}
    if(!data.pix_copy_paste)return;
    showStatus(data.status||'pending');
+   if(!withinWindow())return; // Never renew the 30-minute window by reopening the QR popup.
    timer=setInterval(check,20000);
    // The provider caches pending transactions for a few seconds.
    if(sectionVisible())setTimeout(check,12000);
@@ -84,7 +103,8 @@
    try{
      const rows=await api('/api/admin/quick-pix');
      if(!Array.isArray(rows))return;
-     const pending=rows.find(r=>isValid(r.id)&&String(r.provider_id||'').startsWith('tr_')&&['pending','unknown'].includes(r.status));
+     const pending=rows.find(r=>isValid(r.id)&&String(r.provider_id||'').startsWith('tr_')&&
+       ['pending','unknown'].includes(r.status)&&expiryFromCharge(r)>Date.now());
      if(!pending)return;
      const charge=await api('/api/admin/quick-pix/'+encodeURIComponent(pending.id));
      if(charge?.pix_copy_paste && typeof window.showChargeReceipt==='function')window.showChargeReceipt(charge);
