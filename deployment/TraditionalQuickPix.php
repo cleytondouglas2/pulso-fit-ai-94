@@ -71,7 +71,8 @@ final class TraditionalQuickPix
         $name=trim(preg_replace('/\s+/u',' ',$name)??'');
         if(mb_strlen($name)<3||mb_strlen($name)>120)throw new \InvalidArgumentException('Informe o nome completo do pagador');
         $cpf=preg_replace('/\D/','',$cpf);
-        if(!self::cpfValid($cpf)&&!IdentityProfile::validCnpj($cpf))throw new \InvalidArgumentException('CPF ou CNPJ cadastrado inválido');
+        $validDocument=(strlen($cpf)===11&&self::cpfValid($cpf))||(strlen($cpf)===14&&IdentityProfile::validCnpj($cpf));
+        if(!$validDocument)throw new \InvalidArgumentException('CPF ou CNPJ cadastrado inválido');
         if(!preg_match('/^qpx_[a-f0-9]{32}$/D',$id))throw new \InvalidArgumentException('ID inválido');
         return ['amount'=>$cents/100,'payerName'=>$name,'payerDocument'=>$cpf,
             'transactionId'=>$id,'description'=>$description];
