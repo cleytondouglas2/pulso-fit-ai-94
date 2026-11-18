@@ -38,6 +38,9 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
      avg_speed_kmh numeric(7,2) NOT NULL,
      estimated_kcal numeric(9,1),
      elevation_gain_m numeric(8,1),
+     estimated_steps integer,
+     floors_equivalent smallint,
+     step_source varchar(32),
      gps_samples integer NOT NULL DEFAULT 0,
      accuracy_m numeric(7,1),
      route_points jsonb NOT NULL,
@@ -45,6 +48,9 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
      recorded_at timestamptz NOT NULL DEFAULT now(),
      CONSTRAINT pf_outdoor_user_key UNIQUE(user_id,client_key)
     )`);
+   await pool.query("ALTER TABLE pf_outdoor_sessions ADD COLUMN IF NOT EXISTS estimated_steps integer");
+   await pool.query("ALTER TABLE pf_outdoor_sessions ADD COLUMN IF NOT EXISTS floors_equivalent smallint");
+   await pool.query("ALTER TABLE pf_outdoor_sessions ADD COLUMN IF NOT EXISTS step_source varchar(32)");
    await pool.query("CREATE INDEX IF NOT EXISTS pf_outdoor_user_dates ON pf_outdoor_sessions(user_id,recorded_at DESC)");
    ready=true;dbState="ready";
   }catch(e){dbState="unavailable";console.warn("[pulso-outdoor] Storage unavailable code="+String(e.code||"init").replace(/[^a-zA-Z0-9]/g,"").slice(0,24))}
@@ -111,12 +117,21 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
   let speed=calc/1000/(duration/3600),kcal=number(d.estimatedKcal,0,20000,"Calorias estimadas",true);
   let elevation=number(d.elevationGainM,0,3000,"Altimetria",true);
   let accuracy=number(d.accuracyM,0,250,"Precisão média",true);
-  return {key,sport,duration:Math.round(duration),distance:Number(calc.toFixed(2)),speed:Number(speed.toFixed(2)),kcal:kcal===null?null:Number(kcal.toFixed(1)),elevation:elevation===null?null:Number(elevation.toFixed(1)),accuracy:accuracy===null?null:Number(accuracy.toFixed(1)),points:pts};
+  const steps=d.estimatedSteps==null?null:Math.floor(number(d.estimatedSteps,0,200000,"Passos estimados"));
+  const floors=d.floorsEquivalent==null?null:Math.floor(number(d.floorsEquivalent,0,2000,"Andares equivalentes"));
+  const stepSource=["gps_stride_estimate","motion_estimate"].includes(d.stepSource)?d.stepSource:"gps_stride_estimate";
+  if(sport==="bike"&&steps!==null)throw fail(422,"A bicicleta não registra passos.");
+  if(steps!==null&&steps>Math.max(70,calc*4.5))throw fail(422,"Número de passos incompatível com a distância.");
+  if(floors!==null&&elevation!==null&&floors>Math.floor(elevation/3)+1)throw fail(422,"Andares incompatíveis com a subida estimada.");
+  return {key,sport,duration:Math.round(duration),distance:Number(calc.toFixed(2)),speed:Number(speed.toFixed(2)),kcal:kcal===null?null:Number(kcal.toFixed(1)),elevation:elevation===null?null:Number(elevation.toFixed(1)),accuracy:accuracy===null?null:Number(accuracy.toFixed(1)),steps,floors,stepSource,points:pts};
  }
  function summary(row,includeRoute){
   const d={id:row.id,sport:row.sport,durationSec:row.duration_sec,distanceM:Number(row.distance_m),avgSpeedKmh:Number(row.avg_speed_kmh),
    estimatedKcal:row.estimated_kcal===null?null:Number(row.estimated_kcal),elevationGainM:row.elevation_gain_m===null?null:Number(row.elevation_gain_m),
    gpsSamples:row.gps_samples,accuracyM:row.accuracy_m===null?null:Number(row.accuracy_m),
+   estimatedSteps:row.estimated_steps===null?null:Number(row.estimated_steps),
+   floorsEquivalent:row.floors_equivalent===null?null:Number(row.floors_equivalent),
+   stepSource:row.step_source||null,
    recordedAt:row.recorded_at,analysis:row.analysis||null};
   if(includeRoute)d.points=row.route_points;
   return d;
@@ -131,13 +146,15 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
    duracaoMinutos:Number(row.duration_sec)/60,distanciaKm:Number(row.distance_m)/1000,
    velocidadeMediaKmh:Number(row.avg_speed_kmh),estimativaCalorias:row.estimated_kcal===null?null:Number(row.estimated_kcal),
    ganhoAltitudeEstimadoM:row.elevation_gain_m===null?null:Number(row.elevation_gain_m),
+   passosEstimados:row.estimated_steps===null?null:Number(row.estimated_steps),
+   andaresEquivalentesEstimados:row.floors_equivalent===null?null:Number(row.floors_equivalent),
    amostrasGPS:row.gps_samples,precisaoGPSAproximadaM:row.accuracy_m===null?null:Number(row.accuracy_m)};
   const prompt=[
    "Você é o Coach PulsoFit AI. Analise uma atividade registrada por GPS em português do Brasil.",
    "Dados estritamente agregados, sem localização:",JSON.stringify(data),
    "Produza uma análise simples e motivadora (130–260 palavras) com seções RESUMO, RITMO E CONSISTÊNCIA, PRÓXIMA SESSÃO e LIMITAÇÕES DAS MEDIDAS.",
    "Distância/velocidade vêm do GPS e podem variar por precisão, sinal e pausas. Calorias e elevação, quando disponíveis, são estimativas aproximadas e não gasto medido nem gordura perdida.",
-   "Não invente batimentos, passos, ganhos fisiológicos, recordes, condições médicas, percentuais de gordura, perda de peso nem comparações com treinos anteriores que não recebeu.",
+   "Os passos recebidos são estimados a partir do GPS ou dos movimentos do celular e não são contagem de pedômetro validado. Os andares equivalentes são derivados da altitude aproximada, NÃO a contagem de escadas efetivamente subidas. Não invente batimentos, ganhos fisiológicos, recordes, condições médicas, percentuais de gordura, perda de peso nem comparações que não recebeu.",
    "Sugira progressão gradual e recuperação; não trate os números como diagnóstico. Se não houver calorias, não infira um valor. Nenhuma coordenada foi compartilhada."
   ].join("\n");
   const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",{
@@ -160,15 +177,15 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
     const q=await pool.query("SELECT * FROM pf_outdoor_sessions WHERE id=$1::uuid AND user_id=$2::uuid",[id,user.id]);
     return q.rows.length?send(res,200,{session:summary(q.rows[0],true)}):send(res,404,{error:"Atividade não encontrada."});
    }
-   const q=await pool.query("SELECT id,sport,duration_sec,distance_m,avg_speed_kmh,estimated_kcal,elevation_gain_m,gps_samples,accuracy_m,recorded_at,analysis FROM pf_outdoor_sessions WHERE user_id=$1::uuid ORDER BY recorded_at DESC LIMIT 50",[user.id]);
+   const q=await pool.query("SELECT id,sport,duration_sec,distance_m,avg_speed_kmh,estimated_kcal,elevation_gain_m,estimated_steps,floors_equivalent,step_source,gps_samples,accuracy_m,recorded_at,analysis FROM pf_outdoor_sessions WHERE user_id=$1::uuid ORDER BY recorded_at DESC LIMIT 50",[user.id]);
    return send(res,200,{items:q.rows.map(row=>summary(row,false))});
   }
   if(url.pathname===prefix&&req.method==="POST"){
    const v=parseSession(await body(req));
-   const q=await pool.query(`INSERT INTO pf_outdoor_sessions(user_id,client_key,sport,duration_sec,distance_m,avg_speed_kmh,estimated_kcal,elevation_gain_m,gps_samples,accuracy_m,route_points)
-      VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
+   const q=await pool.query(`INSERT INTO pf_outdoor_sessions(user_id,client_key,sport,duration_sec,distance_m,avg_speed_kmh,estimated_kcal,elevation_gain_m,gps_samples,accuracy_m,route_points,estimated_steps,floors_equivalent,step_source)
+      VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb,$12,$13,$14)
       ON CONFLICT(user_id,client_key) DO UPDATE SET client_key=EXCLUDED.client_key RETURNING id`,
-      [user.id,v.key,v.sport,v.duration,v.distance,v.speed,v.kcal,v.elevation,v.points.length,v.accuracy,JSON.stringify(v.points)]);
+      [user.id,v.key,v.sport,v.duration,v.distance,v.speed,v.kcal,v.elevation,v.points.length,v.accuracy,JSON.stringify(v.points),v.steps,v.floors,v.stepSource]);
    return send(res,200,{saved:true,id:q.rows[0].id,distanceM:v.distance,avgSpeedKmh:v.speed});
   }
   if(url.pathname===prefix&&req.method==="DELETE"){
