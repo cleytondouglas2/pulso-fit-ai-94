@@ -1,0 +1,15 @@
+{
+  "name": "argus-payments/web-push",
+  "description": "ARGUS opt-in browser push transport",
+  "type": "project",
+  "require": {
+    "php": "^8.3",
+    "minishlink/web-push": "11.0.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "php-http/discovery": true
+    },
+    "sort-packages": true
+  }
+}
