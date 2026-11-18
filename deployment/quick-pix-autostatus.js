@@ -35,7 +35,7 @@
      stop();return;
    }
    b.textContent='Aguardando confirmação do pagamento';
-   n.textContent='Verificação automática ativa: consultando a MisticPay a cada 20 segundos enquanto esta tela estiver aberta.';
+   n.textContent='';n.hidden=true;
  }
  async function check(){
    if(!isValid(chargeId)||autoStopped||checking||!sectionVisible())return;
