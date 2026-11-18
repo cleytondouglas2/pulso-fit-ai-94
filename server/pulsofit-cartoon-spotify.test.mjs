@@ -78,3 +78,16 @@ test("Spotify can list own playlists and search public playlists without URL inp
  assert.match(builder,/pf-cartoon-ar-js/);
  assert.match(server,/pulsofit-spotify-config\.mjs/);
 });
+
+test("Spotify blocks incomplete authorization when Client ID is missing",()=>{
+ assert.match(spotify,/function configurationStatus\(cfg,reason=""/);
+ assert.match(spotify,/connect\.disabled=missing\|\|busy/);
+ assert.match(spotify,/if\(!configurationStatus\(cfg\)\)return/);
+ assert.match(spotify,/Spotify aguardando configuração/);
+ assert.match(spotify,/pf-spotify-setup-needed/);
+ assert.match(spotify,/pf-spotify-retry/);
+ assert.match(spotify,/getConfig\(true\)/);
+ assert.match(spotify,/old\.replaceChildren\(\)/);
+ assert.match(spotify,/finally\{busy=false;updateControls\(\)\}/);
+ assert.equal(publicSpotifyConfig("").enabled,false);
+});
