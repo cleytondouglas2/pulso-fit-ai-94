@@ -215,6 +215,14 @@ function showSmartTip(){
  const x=nextMission();box.innerHTML='<strong>🧭 '+safe(x.title)+'</strong><p>'+safe(x.explanation)+'</p><button type="button" id="pf-tv-apply-tip">Aplicar sugestão</button>';
  box.querySelector("button").addEventListener("click",()=>{opts.style=x.style;opts.minutes=x.minutes;opts.energy=x.energy;opts.lowImpact=true;showBuilder()});
 }
+function liveEvent(action){
+ if(!session)return;
+ const exercise=byId.get(session.selected[session.position]);
+ window.dispatchEvent(new CustomEvent("pulso-live-activity",{detail:{
+  action,sessionKey:session.key,kind:"workout",title:session.label,
+  detail:"Exercício "+(session.position+1)+"/"+session.selected.length+" • "+(exercise?.[1]||"Treino")
+ }}));
+}
 function stopTimer(){
  if(timerId!=null)clearInterval(timerId);
  timerId=null;playing=false;
@@ -236,7 +244,7 @@ function renderClock(){
  if(clock)clock.textContent=String(Math.floor(seconds/60)).padStart(2,"0")+":"+String(seconds%60).padStart(2,"0");
  if(button)button.textContent=playing?"Pausar cronômetro":"Iniciar cronômetro";
 }
-function close(){stopTimer();if(root){root.remove();root=null}document.removeEventListener("keydown",keyHandler)}
+function close(){if(currentView==="runner")liveEvent("pause");stopTimer();if(root){root.remove();root=null}document.removeEventListener("keydown",keyHandler)}
 function keyHandler(ev){if(ev.key==="Escape"){ev.preventDefault();close()}}
 function overlay(){
  if(root?.isConnected)return root;
@@ -336,6 +344,7 @@ function showExercisePicker(pos=null){
  by("pf-tv-pick-back").addEventListener("click",showPlan);draw();
 }
 function showPlan(){
+ if(currentView==="runner")liveEvent("pause");
  currentView="plan";stopTimer();overlay();if(!session){showBuilder();return}
  let el=by("pf-tv-body"),label=session.label;
  el.innerHTML='<div class="pf-tv-plan-head"><div><span>SESSÃO ADAPTADA</span><h3>'+safe(label)+'</h3><p>'+safe(session.levelNote)+'</p></div><b>'+session.minutePlan+' min</b></div>'+
@@ -346,7 +355,7 @@ function showPlan(){
  '<button class="pf-tv-secondary" id="pf-tv-add-movement" type="button">+ Adicionar exercício</button>'+
  '<button class="pf-tv-primary" id="pf-tv-start" type="button">Começar sessão</button></div><p role="status" id="pf-tv-alert" aria-live="polite"></p>';
  el.querySelector("#pf-tv-back").addEventListener("click",showBuilder);
- el.querySelector("#pf-tv-start").addEventListener("click",()=>{session.startedAt=Date.now();session.position=0;seconds=session.each;showRunner()});
+ el.querySelector("#pf-tv-start").addEventListener("click",()=>{session.startedAt=Date.now();session.position=0;seconds=session.each;liveEvent("start");showRunner()});
  el.querySelector("#pf-tv-add-movement").addEventListener("click",()=>showExercisePicker(null));
  el.querySelectorAll("[data-pf-tv-swap]").forEach(b=>b.addEventListener("click",()=>swap(Number(b.dataset.pfTvSwap),"plan")));
  el.querySelectorAll("[data-pf-tv-pick]").forEach(b=>b.addEventListener("click",()=>showExercisePicker(Number(b.dataset.pfTvPick))));
@@ -375,10 +384,11 @@ function showRunner(){
  });
  el.querySelector("#pf-tv-clock-reset").addEventListener("click",()=>{stopTimer();seconds=session.each;renderClock()});
  el.querySelector("#pf-tv-run-swap").addEventListener("click",()=>{stopTimer();swap(session.position,"runner")});
- el.querySelector("#pf-tv-next").addEventListener("click",()=>{stopTimer();if(session.position+1<session.selected.length){session.position++;seconds=session.each;showRunner()}else showFinish()});
+ el.querySelector("#pf-tv-next").addEventListener("click",()=>{stopTimer();if(session.position+1<session.selected.length){session.position++;seconds=session.each;liveEvent("update");showRunner()}else showFinish()});
  el.querySelector("#pf-tv-exit").addEventListener("click",showPlan);
 }
 function showFinish(){
+ liveEvent("finish");
  currentView="finish";stopTimer();overlay();if(!session){showBuilder();return}
  const actualMinutes=Math.max(5,Math.min(120,Math.round((Date.now()-session.startedAt)/60000)||5));
  const el=by("pf-tv-body");
