@@ -29,6 +29,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const trainingLabJS=readFileSync(new URL("./pulsofit-training-lab-ui.js",import.meta.url),"utf8");
   const trainingLabCSS=readFileSync(new URL("./pulsofit-training-lab.css",import.meta.url),"utf8");
   const homeGreetingJS=readFileSync(new URL("./pulsofit-home-greeting.js",import.meta.url),"utf8");
+  const coachAvatarJS=readFileSync(new URL("./pulsofit-coach-avatar.js",import.meta.url),"utf8");
   const outdoorJS=readFileSync(new URL("./pulsofit-outdoor-ui.js",import.meta.url),"utf8");
   const outdoorCSS=readFileSync(new URL("./pulsofit-outdoor.css",import.meta.url),"utf8");
   const pushUI=readFileSync(new URL("./pulsofit-push-ui.js",import.meta.url),"utf8");
@@ -39,6 +40,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   new JavaScriptSyntax(html5AccessibilityJS,{filename:"pulsofit-html5-accessibility.js"});
   new JavaScriptSyntax(trainingLabJS,{filename:"pulsofit-training-lab-ui.js"});
   new JavaScriptSyntax(homeGreetingJS,{filename:"pulsofit-home-greeting.js"});
+  new JavaScriptSyntax(coachAvatarJS,{filename:"pulsofit-coach-avatar.js"});
   new JavaScriptSyntax(outdoorJS,{filename:"pulsofit-outdoor-ui.js"});
   if(!outdoorJS.includes("pf-outdoor-steps")||!outdoorJS.includes("pf-outdoor-live-widget"))throw Error("PULSO_OUTDOOR_PROGRESS_MISSING");
   if(!trainingLabJS.includes("bulgarian_squat")||!trainingLabJS.includes("showExercisePicker("))throw Error("PULSO_EXERCISE_EDITOR_MISSING");
@@ -69,6 +71,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-training-lab-ui-20261118">'+trainingLabJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-outdoor-css-20261118">'+outdoorCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
    '<script id="pf-home-greeting-20261118">'+homeGreetingJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-coach-avatar-20261118">'+coachAvatarJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-outdoor-ui-20261118">'+outdoorJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-push-style-20261118">'+pushCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
    '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>"+
