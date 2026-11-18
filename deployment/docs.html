@@ -1,0 +1,49 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#10141a"><title>Documentação API | ARGUS Payments</title><link rel="stylesheet" href="/static/portal.css?v=1"><link rel="icon" href="/static/assets/favicon.png"><style>.doc{max-width:960px;margin:auto;padding:32px 22px 70px}.doc h1{font-size:clamp(30px,5vw,45px);margin:0}.doc h2{margin:34px 0 12px;color:#ebc78b}.doc pre{background:#090d13;padding:20px;border:1px solid #384657;border-radius:12px;overflow-x:auto;font-size:12px;line-height:1.8}.doc code{font:12px/1.5 ui-monospace,SFMono-Regular,monospace}.doc p,.doc li{color:#c3ccd6}.doc table{width:100%;border-collapse:collapse}.doc th,.doc td{border-bottom:1px solid #384657;text-align:left;padding:12px;font-size:13px}.doc th{color:#ebc78b}.doc .panel{margin:22px 0}.doc .note{padding:18px;background:#2d261b;border:1px solid #77613c;border-radius:12px}</style></head><body><header class="top"><a class="brand" href="/conta"><img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments"></a><nav><a href="/conta">Minha conta</a><a href="/admin">Administração</a></nav></header><article class="doc"><span class="eyebrow">DESENVOLVEDORES · ARGUS PAYMENTS</span><h1>Documentação da API</h1><p>Integre cobranças Pix no seu site, loja virtual, aplicativo, ERP ou bot do Telegram, usando o back-end do seu sistema.</p><div class="panel"><strong>URL base de produção</strong><p><code id="base-url"></code></p><strong>Versão</strong><p>v1 — API HTTPS, JSON, transações em centavos</p><strong>Autenticação</strong><p>API Key e API Secret por conta/recebedor autorizado. Configure ambos em variáveis de ambiente do seu servidor, nunca em HTML, JavaScript público, aplicativo distribuído ou Telegram.</p></div>
+<h2>1. Crie sua conta</h2><p>Acesse <a href="/conta#cadastro">Cadastro ARGUS</a>, selecione pessoa física ou jurídica e forneça os dados solicitados. Após entrar, envie os documentos e acompanhe o status. As credenciais de produção aparecem apenas quando a verificação e a autorização do recebedor estiverem concluídas.</p>
+<h2>2. Emita API Key e Secret</h2><p>Em <a href="/conta">Minha conta</a>, acesse <b>API Key e chave secreta</b>. A Secret aparece apenas uma vez. É possível revogar cada par a qualquer momento. Após a revogação, as integrações que utilizavam esse par deixarão de funcionar.</p>
+<h2>3. Autenticação e requisições</h2><table><tr><th>Header</th><th>Descrição</th></tr><tr><td><code>X-Argus-Key</code></td><td>API Key pública individual</td></tr><tr><td><code>X-Argus-Secret</code></td><td>Chave secreta individual, mantida exclusivamente no servidor</td></tr><tr><td><code>Idempotency-Key</code></td><td>Identificador único da tentativa de cobrança (12–128 caracteres)</td></tr><tr><td><code>Content-Type</code></td><td><code>application/json</code></td></tr></table>
+<h2>4. Gerar uma cobrança Pix</h2><p><b>POST</b> <code>/api/v1/pix/charges</code>. Envie o valor em centavos, nome e CPF do pagador e descrição do produto/serviço.</p><pre><code>curl -X POST "https://SEU-DOMINIO/api/v1/pix/charges" \
+ -H "Content-Type: application/json" \
+ -H "X-Argus-Key: $ARGUS_API_KEY" \
+ -H "X-Argus-Secret: $ARGUS_API_SECRET" \
+ -H "Idempotency-Key: pedido-123-20261118" \
+ -d '{
+  "amount_cents": 2990,
+  "payer_name": "Cliente Exemplo",
+  "payer_document": "CPF_VALIDO_DO_PAGADOR",
+  "description": "Pedido 123"
+ }'</code></pre>
+<p>Resposta típica após confirmação de criação:</p><pre><code>{
+ "id": "livepix_...",
+ "merchant_id": "mer_...",
+ "amount_cents": 2990,
+ "status": "pending",
+ "pix_copy_paste": "000201...",
+ "created_at": "2026-11-18T..."
+}</code></pre><p>O valor de <code>pix_copy_paste</code> é o payload real retornado pela infraestrutura financeira. Construa o QR Code usando uma biblioteca QR local, sem enviar o payload para serviços externos. A cobrança ainda não está paga quando sua criação é confirmada.</p>
+<h2>5. Consultar cobrança</h2><p><b>GET</b> <code>/api/v1/pix/charges/{id}</code> com os mesmos headers de autenticação. Somente cobranças do próprio recebedor são consultáveis.</p><pre><code>curl "https://SEU-DOMINIO/api/v1/pix/charges/livepix_ID" \
+ -H "X-Argus-Key: $ARGUS_API_KEY" \
+ -H "X-Argus-Secret: $ARGUS_API_SECRET"</code></pre><p>Status: <code>creating</code>, <code>pending</code>, <code>paid</code>, <code>expired</code>, <code>failed</code> ou <code>unknown</code>. Considere pago apenas o estado conciliado pelo servidor, nunca por mensagem do comprador ou pelo navegador.</p>
+<h2>6. Exemplo em Node.js para e-commerce</h2><pre><code>const base = process.env.ARGUS_BASE_URL;
+const headers = {
+  "Content-Type": "application/json",
+  "X-Argus-Key": process.env.ARGUS_API_KEY,
+  "X-Argus-Secret": process.env.ARGUS_API_SECRET,
+  "Idempotency-Key": "order-"+order.id
+};
+const response = await fetch(base + "/api/v1/pix/charges", {
+  method: "POST", headers,
+  body: JSON.stringify({
+    amount_cents: order.amount_cents,
+    payer_name: customer.name,
+    payer_document: customer.cpf,
+    description: "Pedido "+order.id
+  })
+});
+const payment = await response.json();
+if (!response.ok) throw new Error(payment.detail || "Cobrança recusada");
+// Armazene payment.id. Não marque pedido pago neste momento.</code></pre>
+<h2>7. Integração com Telegram</h2><p>Coloque os tokens do Telegram e as credenciais ARGUS no servidor do seu bot. Ao receber um pedido, seu back-end chama a API e envia ao chat o código <code>pix_copy_paste</code>. Consulte o estado do pagamento pelo ID a partir do seu servidor; nunca publique a chave secreta no bot ou em mensagens.</p><p>Não existe endpoint público para criar bot Telegram automaticamente: o bot é configurado por você, e as credenciais ARGUS funcionam em chamadas HTTPS server-to-server.</p>
+<h2>8. Segurança, limites e erros</h2><ul><li>401/403: autenticação inválida, chave revogada ou recebedor sem autorização.</li><li>409: reutilização incompatível de Idempotency-Key ou cobrança já reservada.</li><li>422: campos ou documentos inválidos.</li><li>502/503: integração ou infraestrutura indisponível — não repita cobranças incertas usando outra chave.</li><li>Para cobranças com estado <code>unknown</code>, preserve o identificador e solicite conciliação antes de refazer.</li><li>Durante operação temporária, podem existir limites específicos de valor e condições adicionais de habilitação.</li></ul>
+<h2>9. Validação de documentos e privacidade</h2><p>A análise automática inicial verifica CPF/CNPJ, integridade, formato e tamanho do arquivo. A identidade, autenticidade documental, correspondência do titular e elegibilidade financeira exigem avaliação especializada. Arquivos só serão recebidos se houver armazenamento persistente com criptografia ativada.</p>
+<div class="note"><strong>Aviso operacional</strong><p>A geração real de Pix é permitida apenas a contas aprovadas e com integração financeira configurada. Esta documentação não garante habilitação comercial automática. Funções de boleto, cartão, saque, estorno e webhook de cliente não fazem parte desta API v1 publicada; não integre endpoints inexistentes.</p></div></article><footer>ARGUS Payments · Documentação técnica da API v1</footer><script>document.getElementById('base-url').textContent=location.origin</script></body></html>
