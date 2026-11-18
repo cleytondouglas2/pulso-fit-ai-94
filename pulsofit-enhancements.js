@@ -168,51 +168,75 @@
   function openPlanCheckout(planCode){
     var plan=prices.find(function(p){return p.code===planCode;});
     if(!plan)return;
-    var old=document.getElementById("pf-checkout-modal");if(old)old.remove();
-    var modal=document.createElement("div");
-    modal.id="pf-checkout-modal";
-    modal.className="pf-checkout-backdrop";
+    document.getElementById("pf-checkout-modal")?.remove();
+    var modal=document.createElement("div");modal.id="pf-checkout-modal";modal.className="pf-checkout-backdrop";
     modal.innerHTML='<section class="pf-checkout-box" role="dialog" aria-modal="true" aria-labelledby="pf-checkout-heading">'+
       '<button type="button" class="pf-checkout-close" aria-label="Fechar checkout">×</button>'+
       '<img class="pf-checkout-logo" src="./pulsofit-brand.svg" alt="PulsoFit AI">'+
-      '<span class="pf-checkout-kicker">ASSINATURA PULSOFIT AI</span>'+
-      '<h2 id="pf-checkout-heading">Confirme seu plano</h2>'+
-      '<div class="pf-checkout-summary"><span>'+plan.title+'</span><strong>'+plan.price+'</strong><small>Acesso por '+plan.duration+' · sem renovação automática por padrão</small></div>'+
-      '<p>Escolha como deseja pagar:</p>'+
-      '<div class="pf-checkout-methods"><label><input type="radio" name="pf-pay-method" value="pix" checked> Pix</label><label><input type="radio" name="pf-pay-method" value="card"> Cartão</label></div>'+
-      '<p class="pf-checkout-hint">Pagamento seguro no gateway. O acesso só será liberado após confirmação verificada no servidor.</p>'+
-      '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Consultando a disponibilidade do checkout...</p>'+
-      '<button type="button" class="pf-checkout-submit" disabled>Continuar para pagamento</button>'+
+      '<span class="pf-checkout-kicker">PULSOFIT AI · MISTICPAY</span>'+
+      '<h2 id="pf-checkout-heading">Contratar '+plan.title+'</h2>'+
+      '<div class="pf-checkout-summary"><span>'+plan.title+'</span><strong>'+plan.price+'</strong><small>'+plan.duration+' de acesso; sem renovação automática</small></div>'+
+      '<p>Método de pagamento</p>'+
+      '<div class="pf-checkout-methods"><label><input type="radio" name="pf-pay-method" value="pix" checked> Pix</label><label title="Não documentado pela MisticPay"><input type="radio" name="pf-pay-method" value="card" disabled> Cartão (indisponível)</label></div>'+
+      '<div class="pf-checkout-payer"><label>Nome completo do pagador<input id="pf-payer-name" type="text" autocomplete="name" maxlength="120" placeholder="Nome completo"></label><label>CPF do pagador<input id="pf-payer-document" type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label></div>'+
+      '<p class="pf-checkout-hint">Seus dados serão enviados por conexão segura à MisticPay para gerar a cobrança. Não armazenamos números de cartão nesta página.</p>'+
+      '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Verificando disponibilidade da MisticPay...</p>'+
+      '<button type="button" class="pf-checkout-submit" disabled>Gerar Pix</button>'+
+      '<div id="pf-checkout-pix" class="pf-checkout-pix" hidden><p><b>Escaneie o QR Code ou copie o código Pix</b></p><img class="pf-checkout-qr" alt="QR Code do Pix MisticPay" hidden><textarea readonly rows="3" aria-label="Código Pix copia e cola"></textarea><button type="button" class="pf-checkout-copy">Copiar Pix</button><button type="button" class="pf-checkout-verify">Verificar pagamento</button><p class="pf-checkout-hint">A assinatura será ativada somente após a confirmação bancária no servidor.</p></div>'+
       '<button type="button" class="pf-checkout-login">Entrar ou criar conta</button>'+
       '</section>';
     document.body.appendChild(modal);
-    var status=modal.querySelector("#pf-checkout-status"),submit=modal.querySelector(".pf-checkout-submit");
-    function close(){modal.remove();document.removeEventListener("keydown",onKey)}
+    var status=modal.querySelector("#pf-checkout-status"),submit=modal.querySelector(".pf-checkout-submit"),pix=modal.querySelector("#pf-checkout-pix");
+    var reference=null,token="",polling=false,pollId=null;
+    function close(){if(pollId)clearInterval(pollId);modal.remove();document.removeEventListener("keydown",onKey)}
     function onKey(ev){if(ev.key==="Escape")close()}
     document.addEventListener("keydown",onKey);
     modal.addEventListener("click",function(e){if(e.target===modal||e.target.closest(".pf-checkout-close"))close()});
     modal.querySelector(".pf-checkout-login").addEventListener("click",function(){close();location.hash="#/account"});
     modal.querySelector(".pf-checkout-close").focus();
-    fetch("/api/billing/config",{cache:"no-store"})
-      .then(function(r){if(!r.ok)throw Error("gateway indisponível");return r.json()})
+    fetch("/api/billing/config",{cache:"no-store"}).then(function(r){if(!r.ok)throw Error("API de cobrança não disponível");return r.json()})
       .then(function(info){
-        if(!info.ready){status.textContent="O pagamento online ainda não foi ativado. Aguarde a conexão do gateway pelo administrador.";return}
-        submit.disabled=false;
-        status.textContent="Checkout disponível. Você será direcionado ao ambiente seguro de pagamento.";
-      }).catch(function(){status.textContent="Checkout em preparação. O gateway ainda não está vinculado ao servidor.";});
+        if(!info.ready||!Array.isArray(info.supportedMethods)||!info.supportedMethods.includes("pix")){
+          status.textContent="Integração Pix em preparação. O administrador precisa concluir as credenciais e o servidor antes de liberar pagamentos.";
+          return;
+        }
+        submit.disabled=false;status.textContent="Pix disponível. Informe nome e CPF para gerar a cobrança.";
+      }).catch(function(){status.textContent="Gateway ainda não ativado no servidor. Nenhum pagamento será cobrado.";});
+    function verify(){
+      if(!reference||polling||!modal.isConnected)return;
+      polling=true;
+      fetch("/api/billing/payment?reference="+encodeURIComponent(reference),{cache:"no-store",headers:{Authorization:"Bearer "+token}})
+      .then(function(r){return r.json().then(function(d){if(!r.ok)throw Error(d.error||"Consulta indisponível");return d})})
+      .then(function(d){if(d.paid){status.textContent="Pagamento confirmado! Seu plano foi encaminhado para ativação.";if(pollId)clearInterval(pollId);pollId=null;}else if(["DEVOLVIDO","DEVOLVIDO_PARCIAL","CANCELADO","FALHA"].includes(d.status)){status.textContent="Pagamento não concluído: "+d.status;if(pollId)clearInterval(pollId);pollId=null;}else status.textContent="Pix gerado. Aguardando confirmação do pagamento...";})
+      .catch(function(err){status.textContent="Não foi possível consultar agora: "+err.message})
+      .finally(function(){polling=false});
+    }
+    modal.querySelector(".pf-checkout-verify").addEventListener("click",verify);
+    modal.querySelector(".pf-checkout-copy").addEventListener("click",function(){
+      var value=pix.querySelector("textarea").value;
+      if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(function(){status.textContent="Código Pix copiado!"}).catch(function(){status.textContent="Selecione o código Pix para copiar manualmente.";});
+      else{pix.querySelector("textarea").select();status.textContent="Código selecionado. Copie usando o menu do dispositivo.";}
+    });
     submit.addEventListener("click",function(){
-      var token="";try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
-      if(!token){status.textContent="Entre na sua conta para continuar com a contratação.";return}
-      var method=modal.querySelector('input[name="pf-pay-method"]:checked');
-      if(!method)return;
-      submit.disabled=true;status.textContent="Gerando link seguro para pagamento...";
-      fetch("/api/billing/checkout",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({planCode:planCode,paymentMethod:method.value})})
-       .then(function(r){return r.json().then(function(data){if(!r.ok)throw Error(data.error||"Falha no checkout");return data})})
+      try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
+      if(!token){status.textContent="Entre na sua conta antes de contratar.";return}
+      var name=modal.querySelector("#pf-payer-name").value.trim();
+      var cpf=modal.querySelector("#pf-payer-document").value.replace(/\D/g,"");
+      if(name.length<3||cpf.length!==11){status.textContent="Informe nome completo e CPF com 11 dígitos.";return;}
+      submit.disabled=true;status.textContent="Gerando Pix seguro na MisticPay...";
+      fetch("/api/billing/checkout",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
+        body:JSON.stringify({planCode:planCode,paymentMethod:"pix",payerName:name,payerDocument:cpf})})
+       .then(function(r){return r.json().then(function(d){if(!r.ok)throw Error(d.error||"Falha ao gerar Pix");return d})})
        .then(function(data){
-         var u=new URL(data.checkoutUrl);
-         if(u.protocol!=="https:")throw Error("Link de pagamento inseguro");
-         location.assign(u.href);
-       }).catch(function(err){status.textContent="Não foi possível iniciar o pagamento: "+err.message;submit.disabled=false});
+         if(!data.reference||!data.copyPaste)throw Error("Cobrança sem código Pix");
+         reference=data.reference;
+         pix.hidden=false;pix.querySelector("textarea").value=data.copyPaste;
+         var qr=pix.querySelector("img");
+         if(typeof data.qrCodeBase64==="string"&&/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(data.qrCodeBase64)){qr.src=data.qrCodeBase64;qr.hidden=false}
+         status.textContent="Pix gerado. Aguardando pagamento...";
+         modal.querySelector(".pf-checkout-payer").hidden=true;submit.hidden=true;
+         pollId=setInterval(verify,12000);
+       }).catch(function(err){status.textContent="Não foi possível gerar Pix: "+err.message;submit.disabled=false});
     });
   }
 
