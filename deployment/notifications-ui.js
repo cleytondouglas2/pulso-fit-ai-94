@@ -67,7 +67,7 @@ function build(){
  guide();
 }
 function renderNotifications(rows){
- $("an-inbox").innerHTML=rows.length?rows.map(x=>'<article class="an-notice"><span class="an-emoji">'+(x.category==="pix.received"?"🐶":x.category==="pix.sent"?"💸":"📣")+'</span><div><b>'+escapeHTML(x.title)+'</b><p>'+escapeHTML(x.body)+'</p><small>'+escapeHTML(x.created_at)+'</small></div>'+(x.read_at?"":'<button type="button" title="Marcar como lido" data-read="'+escapeHTML(x.id)+'">✓</button>')+'</article>').join(""):'<p>Seus avisos aparecerão aqui. Nenhuma cobrança de teste será exibida como recebida.</p>';
+ $("an-inbox").innerHTML=rows.length?rows.map(x=>'<article class="an-notice"><span class="an-emoji">'+(x.category==="pix.received"?'<img src="/static/assets/pix-cachorro.png" width="42" height="42" style="object-fit:contain" alt="Cachorrinho comemorando Pix recebido">':x.category==="pix.sent"?"💸":"📣")+'</span><div><b>'+escapeHTML(x.title)+'</b><p>'+escapeHTML(x.body)+'</p><small>'+escapeHTML(x.created_at)+'</small></div>'+(x.read_at?"":'<button type="button" title="Marcar como lido" data-read="'+escapeHTML(x.id)+'">✓</button>')+'</article>').join(""):'<p>Seus avisos aparecerão aqui. Nenhuma cobrança de teste será exibida como recebida.</p>';
 }
 async function refresh(){
  try{
