@@ -73,7 +73,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   if(state.credentialsConfigured){
    try{
     // Consulta autenticada de um ID inexistente: nenhum PIX é criado.
-    await gateway.getTransaction("00000000-0000-4000-8000-000000000000");
+    await gateway.getTransaction("0");
     state.providerAuth="verified";
    }catch(error){
     const code=String(error.code||"");
