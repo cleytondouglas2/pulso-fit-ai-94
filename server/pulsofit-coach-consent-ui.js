@@ -158,7 +158,10 @@
    'body.pf-coach-active #app{overflow-x:clip!important}'+
    '#app #pfaiChatInput{font-size:16px!important;line-height:1.5!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;transform:none!important}'+
    '#app .pf-coach-bubble-model,#app .pf-coach-bubble-user{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow-wrap:anywhere!important;word-break:normal!important;line-height:1.65!important}'+
-   '#app .pf-coach-bubble-model{background:linear-gradient(150deg,#2b3a5e,#202c49)!important;border:1px solid #5e7598!important;border-radius:16px!important;box-shadow:0 8px 20px #070e2030!important;padding:14px!important}'+
+   '#app .pf-coach-bubble-model{background:linear-gradient(150deg,#2b3a5e,#202c49)!important;border:1px solid #5e7598!important;border-radius:16px!important;box-shadow:0 8px 20px #070e2030!important;padding:14px!important;animation:pf-coach-card-in .22s ease-out both!important}'+
+   '@keyframes pf-coach-card-in{from{opacity:.35;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}'+
+   '@media(prefers-reduced-motion:reduce){#app .pf-coach-bubble-model{animation:none!important}}'+
+   '#app .pf-coach-bubble-model > strong:first-child{display:block!important;color:#aaffdc!important;letter-spacing:.01em!important;font:850 13px/1.4 system-ui!important;margin-bottom:6px!important}'+
    '#app .pf-coach-bubble-user{background:#164b60!important;border:1px solid #4ba3ac!important;border-radius:16px!important;padding:12px!important}'+
    '#app .pf-coach-readable-answer{font:400 14px/1.72 system-ui!important;letter-spacing:.01em!important;color:#ebf1ff!important;white-space:normal!important;overflow-wrap:anywhere!important}'+
    '#app .pf-coach-readable-answer p{margin:0 0 11px!important;font:inherit!important;line-height:inherit!important;white-space:pre-wrap!important}'+
