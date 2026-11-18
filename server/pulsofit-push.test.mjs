@@ -8,7 +8,7 @@ import {pulsoIcon,pulsoManifest} from "./pulsofit-pwa-asset.mjs";
 const source=readFileSync(new URL("./pulsofit-push-server.mjs",import.meta.url),"utf8");
 const sw=readFileSync(new URL("./pulsofit-push-sw.js",import.meta.url),"utf8");
 const ui=readFileSync(new URL("./pulsofit-push-ui.js",import.meta.url),"utf8");
-const stripped=source.replace(/^import .*;\s*$/gm,"").replace(" const oldEmit=Server.prototype.emit;"," globalThis.__pushTest={validEndpoint,verifySub,encryptedPayload,vapidJWT,parseOptions,localParts,setVapid:v=>vapid=v};\n const oldEmit=Server.prototype.emit;");
+const stripped=source.replace(/^import .*;\s*$/gm,"").replace('new URL("./pulsofit-push-sw.js",import.meta.url)','"pulsofit-push-sw.js"').replace(" const oldEmit=Server.prototype.emit;"," globalThis.__pushTest={validEndpoint,verifySub,encryptedPayload,vapidJWT,parseOptions,localParts,setVapid:v=>vapid=v};\n const oldEmit=Server.prototype.emit;");
 function server(){
  const ctx={};
  const fakeServer=class{emit(){return false}};
