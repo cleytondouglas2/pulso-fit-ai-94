@@ -16,6 +16,14 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
  const fn=()=>null;
  function countDeclarations(code){return [...code.matchAll(decl)].map(m=>m.index);}
  function parse(code,filename){try{new Script(code,{filename,displayErrors:false});return {ok:true}}catch(e){return {ok:false,error:String(e.message||e).slice(0,190)}}}
+ function preserveReferences(code){
+  // Two top-level lexical declarations with the same name are invalid in
+  // Safari. Using "var" on both keeps every original reference intact.
+  // Renaming earlier code sections caused runtime lookup failures even
+  // though the file parsed in Node.
+  const replaced=code.replace(/\b(?:const|let)\s+mobileNavItems(?=\s*=)/g,"var mobileNavItems");
+  return replaced===code?null:replaced;
+ }
  function uniqueSegments(code){
   // Keep the newest navigation definition under its original identifier.
   // Earlier implementations receive a private identifier and keep their own
@@ -54,17 +62,19 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
   if(/\.js$/i.test(loc)){
    const declarations=countDeclarations(source);
    const before=parse(source,loc);
-   let fixed=false,after=before;
-   if(declarations.length>=2 && (!before.ok && /already been declared|declared twice|Identifier/.test(before.error))){
-    const candidate=uniqueSegments(source);
+   let fixed=false,after=before,method="none";
+   if(declarations.length>=2 && !before.ok && /already been declared|declared twice|Identifier/.test(before.error)){
+    const candidate=preserveReferences(source);
     if(candidate){
      after=parse(candidate,loc);
-     if(after.ok){writeFileSync(loc,candidate);fixed=true}
+     if(after.ok){writeFileSync(loc,candidate);fixed=true;method="preserve-references-var";}
     }
+    // A fallback is intentionally not applied if parse still fails:
+    // renaming lexical scopes can silently break variables after login.
    }
    console.log("[pulso-boot] "+loc+" mobileNavDeclarations="+declarations.length+
     " parseBefore="+(before.ok?"ok":before.error)+
-    " fixed="+fixed+" parseAfter="+(after.ok?"ok":after.error));
+    " fixed="+fixed+" method="+method+" parseAfter="+(after.ok?"ok":after.error));
    return;
   }
   // HTML may include several separate classic scripts which share a global
@@ -86,7 +96,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
     // colliding declarations and the corrected script parses successfully.
     if(n>1){
      const before=parse(m[2],loc+"#inline");
-     const cand=uniqueSegments(m[2]);
+     const cand=preserveReferences(m[2]);
      if(cand&&(!before.ok)&&parse(cand,loc+"#inline").ok){
       const start=m.index+m[0].indexOf(">")+1;
       revised=revised.slice(0,start)+cand+revised.slice(start+m[2].length);changed=true;
