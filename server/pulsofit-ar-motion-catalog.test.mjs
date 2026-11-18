@@ -101,5 +101,5 @@ test("A troca de exercício recalcula poses e equipamento no mesmo avatar",()=>{
 });
 test("Integração Treino Vivo envia a identidade correta do exercício",()=>{
  assert.match(trainingJS,/pulso-open-camera-ar/);
- assert.match(trainingJS,/id:e\[0\]/);
+ assert.match(trainingJS,/exercise:e\[0\]/);
 });
