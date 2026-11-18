@@ -54,7 +54,7 @@ function openMenu(){
   ["performance","📸","Performance IA","Análise corporal por foto"],
   ["meal","🥗","Avaliar meu prato","Foto, calorias, proteínas e dicas da IA"],
    ["playlist","🎵","Playlist de treino","Trilhas originais e músicas do aparelho"],
-   ["camera-ar","🕶️","Treino com câmera 3D","Veja um avatar demonstrar o exercício no ambiente"],
+   ["camera-ar","🕶️","Treino 3D com IA real","Câmera, avatar animado, análise corporal e repetições"],
   ["assessment","📈","Avaliação e progresso","Método da IA e evolução"],
   ["account","☁️","Conta online","Dados, sincronização e plano"],
    ["subscription","💎","Renovação e upgrade","Gerencie seu plano no Meu Perfil"],
