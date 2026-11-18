@@ -81,6 +81,27 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
     const code=String(error.code||"");
     state.providerAuth=["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?"denied":(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR"].includes(code)?"verified":"checked");
     console.log("[pulso-billing] Provider read-only probe: http="+(Number(error.status)||0)+" code="+code.replace(/[^A-Z0-9_]/g,"").slice(0,64)+" kind="+String(error.name||"").replace(/[^a-zA-Z]/g,"").slice(0,24)+"; no charge created.");
+    // Um ID inexistente pode provocar INTERNAL_ERROR no gateway. Consulte
+    // validação de parâmetro vazio para distinguir escopo de falha do provedor.
+    // Este teste não cria transação, nem divulga credenciais.
+    if(state.providerAuth==="checked"){
+     try{
+      const id=process.env.PULSO_MISTICPAY_CLIENT_ID,secret=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
+      const response=await fetch("https://api.misticpay.com/api/transactions/check",{
+       method:"POST",redirect:"error",signal:AbortSignal.timeout(7000),
+       headers:{"Authorization":"Basic "+Buffer.from(id+":"+secret).toString("base64"),
+        "Content-Type":"application/json","Accept":"application/json"},
+       body:JSON.stringify({transactionId:""})
+      });
+      const result=await response.json().catch(()=>({}));
+      const safeCode=String(result?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,48);
+      const requestId=String(result?.requestId||"").replace(/[^a-zA-Z0-9-]/g,"").slice(0,80);
+      if(response.status===400&&safeCode==="VALIDATION_ERROR")state.providerAuth="verified";
+      else if(["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(safeCode))state.providerAuth="denied";
+      console.log("[pulso-billing] Read scope fallback: http="+response.status+" code="+safeCode+
+       " requestId="+(requestId||"not_provided")+" result="+state.providerAuth+"; no charge created.");
+     }catch{console.log("[pulso-billing] Read scope fallback network error; charges stay disabled.");}
+    }
    }
   }
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
