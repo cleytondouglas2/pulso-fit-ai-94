@@ -96,7 +96,23 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
       const result=await response.json().catch(()=>({}));
       const safeCode=String(result?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,48);
       const requestId=String(result?.requestId||"").replace(/[^a-zA-Z0-9-]/g,"").slice(0,80);
-      if(response.status===400&&["VALIDATION_ERROR","TRANSACTION_ID_REQUIRED"].includes(safeCode))state.providerAuth="verified";
+      if(response.status===400&&["VALIDATION_ERROR","TRANSACTION_ID_REQUIRED"].includes(safeCode)){
+       // Confirme a ordem de autenticação: uma credencial fictícia deve ser
+       // rejeitada antes da validação do corpo. Só então a resposta 400
+       // das credenciais reais comprova que elas foram aceitas.
+       const fake=await fetch("https://api.misticpay.com/api/transactions/check",{
+        method:"POST",redirect:"error",signal:AbortSignal.timeout(7000),
+        headers:{"Authorization":"Basic "+Buffer.from("pk_invalid_proof:sk_invalid_proof").toString("base64"),
+         "Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify({transactionId:""})
+       });
+       const fakeBody=await fake.json().catch(()=>({}));
+       const fakeCode=String(fakeBody?.code||"");
+       if(fake.status===401&&fakeCode==="INVALID_API_CREDENTIAL")state.providerAuth="verified";
+       console.log("[pulso-billing] Negative credential control: http="+fake.status+
+        " code="+fakeCode.replace(/[^A-Z0-9_]/g,"").slice(0,50)+
+        " readScope="+state.providerAuth+"; no charge created.");
+      }
       else if(["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(safeCode))state.providerAuth="denied";
       console.log("[pulso-billing] Read scope fallback: http="+response.status+" code="+safeCode+
        " requestId="+(requestId||"not_provided")+" result="+state.providerAuth+"; no charge created.");
