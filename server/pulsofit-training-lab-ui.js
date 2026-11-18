@@ -293,33 +293,72 @@ function showBuilder(){
   try{session=build();seconds=session.each;showPlan()}catch(e){message(e.message)}
  });
 }
-function exerciseMarkup(id,i,substitute){
- const e=byId.get(id);
- if(!e)return "";
- return '<article class="pf-tv-exercise"><div class="pf-tv-exercise-index">'+(i+1)+'</div><div><h4>'+safe(e[1])+'</h4><p>'+safe(e[6])+'</p><small><b>Mais fácil:</b> '+safe(e[7])+'</small><div class="pf-tv-tags"><span>'+safe(gears[e[3]]||e[3])+'</span><span>'+(!e[4]?'Baixo impacto':'Impacto opcional')+'</span></div></div>'+
- (substitute?'<button class="pf-tv-swap" data-pf-tv-swap="'+i+'" type="button" aria-label="Substituir '+safe(e[1])+'">Trocar</button>':"")+'</article>';
+function exerciseMarkup(id,i,edit){
+ const e=byId.get(id);if(!e)return "";
+ return '<article class="pf-tv-exercise"><div class="pf-tv-exercise-index">'+(i+1)+'</div><div><h4>'+safe(e[1])+'</h4><p>'+safe(e[6])+'</p><small><b>Mais fácil:</b> '+safe(e[7])+'</small><div class="pf-tv-tags"><span>'+safe(gears[e[3]]||e[3])+'</span></div></div>'+
+ (edit?'<div class="pf-tv-edit-buttons"><button class="pf-tv-swap" data-pf-tv-swap="'+i+'" type="button">Trocar rápido</button>'+
+ '<button class="pf-tv-swap" data-pf-tv-pick="'+i+'" type="button">Escolher</button>'+
+ '<button class="pf-tv-swap pf-tv-remove" data-pf-tv-remove="'+i+'" type="button">Remover</button></div>':"")+'</article>';
+}
+function removeMovement(pos){
+ if(!session||session.selected.length<=2){message("Mantenha pelo menos dois exercícios para uma sessão.");return}
+ session.selected.splice(pos,1);session.position=Math.min(session.position,session.selected.length-1);showPlan();
+ message("Exercício removido. Adicione outro quando quiser.");
+}
+function showExercisePicker(pos=null){
+ if(!session)return;
+ currentView="picker";overlay();
+ const container=by("pf-tv-body");
+ const all=items.filter(e=>validExercise(e)&&!session.selected.includes(e[0]))
+  .sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));
+ container.innerHTML='<div class="pf-tv-sectiontitle"><h3>'+(pos===null?"Adicionar exercício":"Escolher substituição")+
+ '</h3><p>Somente exercícios compatíveis com seu nível, equipamento e modo de impacto.</p></div>'+
+ '<label class="pf-tv-field"><span>Buscar exercício</span><input id="pf-tv-search" type="search" placeholder="Ex.: peito, bíceps, agachamento"></label>'+
+ '<p class="pf-tv-advice">Movimentos avançados aparecem somente quando o nível e os equipamentos selecionados permitem.</p>'+
+ '<div id="pf-tv-pick-items" class="pf-tv-pick-items"></div>'+
+ '<div class="pf-tv-actions"><button id="pf-tv-pick-back" class="pf-tv-secondary" type="button">Voltar ao treino</button></div><p id="pf-tv-alert" role="status"></p>';
+ function draw(){
+  const q=String(by("pf-tv-search")?.value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  const subset=all.filter(e=>(e[1]+" "+e[2]).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().includes(q)).slice(0,65);
+  const holder=by("pf-tv-pick-items");
+  holder.innerHTML=subset.map(e=>'<button class="pf-tv-pick-card" type="button" data-pf-tv-choose="'+safe(e[0])+'">'+
+   '<strong>'+safe(e[1])+'</strong><small>'+safe(gears[e[3]]||"Sem equipamento")+' · '+safe(e[6])+'</small></button>').join("")||
+   '<p class="pf-tv-empty">Nenhum exercício compatível. Ajuste seu nível ou equipamento.</p>';
+  holder.querySelectorAll("[data-pf-tv-choose]").forEach(b=>b.addEventListener("click",()=>{
+   const id=b.dataset.pfTvChoose,e=byId.get(id);
+   if(!e||!validExercise(e)||session.selected.includes(id))return;
+   if(pos===null){if(session.selected.length>=16){message("Limite de 16 exercícios por sessão.");return}session.selected.push(id)}
+   else session.selected[pos]=id;
+   showPlan();message("Treino personalizado atualizado.");
+  }));
+ }
+ by("pf-tv-search").addEventListener("input",draw);
+ by("pf-tv-pick-back").addEventListener("click",showPlan);draw();
 }
 function showPlan(){
  currentView="plan";stopTimer();overlay();if(!session){showBuilder();return}
  let el=by("pf-tv-body"),label=session.label;
  el.innerHTML='<div class="pf-tv-plan-head"><div><span>SESSÃO ADAPTADA</span><h3>'+safe(label)+'</h3><p>'+safe(session.levelNote)+'</p></div><b>'+session.minutePlan+' min</b></div>'+
  '<div class="pf-tv-pillbar"><span>'+safe(opts.place==="home"?"Casa":opts.place==="gym"?"Academia":opts.place==="crossfit"?"CrossFit":opts.place==="outdoor"?"Ar livre":"Livre")+'</span><span>'+safe(opts.level==="beginner"?"Iniciante":opts.level==="intermediate"?"Intermediário":"Avançado")+'</span><span>'+session.selected.length+' movimentos</span></div>'+
- '<p class="pf-tv-subhead">Roteiro educativo com ritmo sugerido. A duração é estimada: avance no seu tempo e faça pausas quando necessário.</p>'+
+ '<p class="pf-tv-subhead">Treino editável por você: adicione, remova ou escolha substituições. A duração é uma sugestão; faça pausas quando precisar.</p>'+
  '<div class="pf-tv-exercises">'+session.selected.map((id,i)=>exerciseMarkup(id,i,true)).join("")+'</div>'+
- '<div class="pf-tv-actions"><button class="pf-tv-secondary" id="pf-tv-back" type="button">Ajustar missão</button><button class="pf-tv-primary" id="pf-tv-start" type="button">Começar sessão</button></div><p role="status" id="pf-tv-alert" aria-live="polite"></p>';
+ '<div class="pf-tv-actions"><button class="pf-tv-secondary" id="pf-tv-back" type="button">Ajustar missão</button>'+
+ '<button class="pf-tv-secondary" id="pf-tv-add-movement" type="button">+ Adicionar exercício</button>'+
+ '<button class="pf-tv-primary" id="pf-tv-start" type="button">Começar sessão</button></div><p role="status" id="pf-tv-alert" aria-live="polite"></p>';
  el.querySelector("#pf-tv-back").addEventListener("click",showBuilder);
  el.querySelector("#pf-tv-start").addEventListener("click",()=>{session.startedAt=Date.now();session.position=0;seconds=session.each;showRunner()});
+ el.querySelector("#pf-tv-add-movement").addEventListener("click",()=>showExercisePicker(null));
  el.querySelectorAll("[data-pf-tv-swap]").forEach(b=>b.addEventListener("click",()=>swap(Number(b.dataset.pfTvSwap),"plan")));
+ el.querySelectorAll("[data-pf-tv-pick]").forEach(b=>b.addEventListener("click",()=>showExercisePicker(Number(b.dataset.pfTvPick))));
+ el.querySelectorAll("[data-pf-tv-remove]").forEach(b=>b.addEventListener("click",()=>removeMovement(Number(b.dataset.pfTvRemove))));
 }
 function swap(pos,view){
  if(!session)return;
- const id=session.selected[pos],e=byId.get(id);
- if(!e)return;
- let excludes=session.selected.slice(),group=e[2].split(" ").find(x=>x!=="warm"&&x!=="recover")||e[2].split(" ")[0];
- let alternativesList=alternatives(group,excludes);
- if(!alternativesList.length){message("Não há alternativa compatível com os filtros escolhidos.");return}
- const next=alternativesList[0];
- session.selected[pos]=next[0];if(view==="plan")showPlan();else{seconds=session.each;showRunner()}
+ const id=session.selected[pos],e=byId.get(id);if(!e)return;
+ let group=e[2].split(" ").find(x=>x!=="warm"&&x!=="recover")||e[2].split(" ")[0];
+ let replacements=alternatives(group,session.selected);
+ if(!replacements.length){message("Não há alternativa automática compatível. Use 'Escolher' e ajuste os filtros.");return}
+ session.selected[pos]=replacements[0][0];if(view==="plan")showPlan();else{seconds=session.each;showRunner()}
 }
 function showRunner(){
  currentView="runner";overlay();if(!session){showBuilder();return}
