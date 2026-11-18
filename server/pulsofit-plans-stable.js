@@ -343,7 +343,7 @@
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",maintain,{once:true});
  else maintain();
  window.addEventListener("hashchange",maintain);
- window.addEventListener("pulso-open-plan-manager",()=>{closedOnRoute=false;hide();show();void load(true)});
+ window.addEventListener("pulso-open-plan-manager",async()=>{closedOnRoute=false;hide();await load(true);show()});
  window.addEventListener("pulso-payment-confirmed",()=>void load(true));
  window.addEventListener("pageshow",()=>autoVerifyPix(true));
  window.addEventListener("focus",()=>autoVerifyPix(true));
