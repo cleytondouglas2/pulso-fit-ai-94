@@ -1,0 +1,44 @@
+name: PulsoFit - Coach, assinaturas, playlist e treinos
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-plans-stable.js"
+      - "server/pulsofit-profile-rescue.js"
+      - "server/pulsofit-mais-menu.js"
+      - "server/pulsofit-coach-consent-ui.js"
+      - "server/pulsofit-coach-chat.mjs"
+      - "server/pulsofit-workout-feedback.js"
+      - "server/pulsofit-live-companion.js"
+      - "server/pulsofit-ux-v3.test.mjs"
+      - "server/pulsofit-plans-patch.mjs"
+      - "pulsofit-upgrade-2026.js"
+      - ".github/workflows/pulsofit-ux-v3.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-ux-v3.test.mjs"
+      - "server/pulsofit-plans-stable.js"
+      - "server/pulsofit-coach-consent-ui.js"
+      - "server/pulsofit-coach-chat.mjs"
+      - "server/pulsofit-live-companion.js"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check server/pulsofit-plans-stable.js
+          node --check server/pulsofit-profile-rescue.js
+          node --check server/pulsofit-coach-consent-ui.js
+          node --check server/pulsofit-coach-chat.mjs
+          node --check server/pulsofit-live-companion.js
+          node --check server/pulsofit-workout-feedback.js
+          node --check server/pulsofit-plans-patch.mjs
+          node --check server/misticpay-runtime.mjs
+          node --check pulsofit-upgrade-2026.js
+      - run: node --test server/pulsofit-ux-v3.test.mjs server/pulsofit-live-companion.test.mjs server/pulsofit-mobile-fixes.test.mjs
