@@ -72,6 +72,19 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
     // A fallback is intentionally not applied if parse still fails:
     // renaming lexical scopes can silently break variables after login.
    }
+   const effective=fixed?readFileSync(loc,"utf8"):source;
+   const targets=[...effective.matchAll(/\brenderSubscription\b/g)].slice(0,16);
+   const declarationsFound=[...effective.matchAll(/\b(?:function\s+|(?:const|let|var)\s+)(render(?:Subscription|Plans|Pricing|Pro|Paywall)\b)/g)].map(m=>({name:m[1],at:m.index})).slice(0,25);
+   const contexts=targets.map(m=>{
+     const before=effective.slice(Math.max(0,m.index-70),m.index);
+     const after=effective.slice(m.index+m[0].length,m.index+m[0].length+95);
+     const kind=/function\s*$|(?:const|let|var)\s*$/.test(before)?"declaration":/:\s*$/.test(before)?"property":"reference";
+     return {at:m.index,kind,prefix:before.replace(/[^a-zA-Z0-9_:.,(){ }=]/g,"_").slice(-55),
+       suffix:after.replace(/[^a-zA-Z0-9_:.,(){ }=]/g,"_").slice(0,80)};
+   });
+   console.log("[pulso-boot] Subscription symbol diagnostic: "+JSON.stringify({
+      bytes:effective.length,mentions:targets.length,declarations:declarationsFound,contexts
+   }));
    console.log("[pulso-boot] "+loc+" mobileNavDeclarations="+declarations.length+
     " parseBefore="+(before.ok?"ok":before.error)+
     " fixed="+fixed+" method="+method+" parseAfter="+(after.ok?"ok":after.error));
