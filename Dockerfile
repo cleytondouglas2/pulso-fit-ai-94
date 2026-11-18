@@ -19,7 +19,7 @@ COPY deployment/storage_probe.php /usr/local/share/argus/storage_probe.php
 COPY deployment/backup_argus_schema.sh /usr/local/share/argus/backup_argus_schema.sh
 COPY deployment/MIGRATION.md /usr/local/share/argus/MIGRATION.md
 RUN php -l /usr/local/share/argus/storage_probe.php && bash -n /usr/local/share/argus/backup_argus_schema.sh
-RUN php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php
+RUN php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; exec /bin/bash /var/www/html/start-render.sh"]
