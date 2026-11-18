@@ -290,14 +290,14 @@
       '</form><small class="pf-checkout-warning">Aguardando definição do gateway e implementação do endpoint de credenciais. Nenhuma chave será armazenada neste navegador.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
     main.appendChild(panel);
     var f=panel.querySelector("form"),status=panel.querySelector(".pf-gateway-status");
-    function setWebhook(){f.elements.webhookUrl.value=location.origin+"/api/billing/webhooks/"+encodeURIComponent(f.elements.provider.value||"seu-gateway");}
+    function setWebhook(){f.elements.webhookUrl.value=location.origin+"/api/billing/webhook";}
     f.elements.provider.addEventListener("change",setWebhook);setWebhook();
     // O endpoint de status deve existir e confirmar explicitamente a disponibilidade do armazenamento seguro.
     var token=getToken();
-    fetch("/api/admin/billing/config/status",{headers:{Authorization:"Bearer "+token},cache:"no-store"})
+    fetch("/api/admin/billing/config",{headers:{Authorization:"Bearer "+token},cache:"no-store"})
     .then(function(r){if(!r.ok)throw Error("Ainda não configurado");return r.json()})
     .then(function(data){
-      if(!data||data.secureStorageReady!==true||data.webhookVerificationReady!==true)throw Error("Armazenamento ou verificação do webhook ainda pendente");
+      if(!data||data.readyForSecureWrite!==true||data.webhookVerificationReady!==true)throw Error("Armazenamento ou verificação do webhook ainda pendente");
       apiReady=true;
       f.elements.apiKey.disabled=false;f.elements.webhookSecret.disabled=false;
       f.querySelector(".pf-gateway-save").disabled=false;
@@ -309,7 +309,7 @@
       var v=f.elements,body={provider:v.provider.value,environment:v.environment.value,apiBaseUrl:v.apiBaseUrl.value,apiKey:v.apiKey.value,webhookSecret:v.webhookSecret.value};
       if(!body.provider||!body.apiKey||!body.webhookSecret){status.textContent="Preencha gateway, API Key e segredo do webhook.";return}
       status.textContent="Enviando configuração ao servidor...";
-      fetch("/api/admin/billing/config",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+getToken()},body:JSON.stringify(body)})
+      fetch("/api/admin/billing/config",{method:"PUT",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+getToken()},body:JSON.stringify(body)})
       .then(function(r){return r.json().then(function(data){if(!r.ok)throw Error(data.error||"Falha ao configurar");return data})})
       .then(function(){v.apiKey.value="";v.webhookSecret.value="";status.textContent="Configuração recebida pelo servidor. Confirme o webhook com um evento de teste antes de liberar cobranças.";})
       .catch(function(e){status.textContent="Não foi possível salvar: "+e.message});
