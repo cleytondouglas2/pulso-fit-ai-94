@@ -97,7 +97,8 @@
   if(!document.body)return;
   ensureStyle();ensureLauncher();
   var r=route();
-  if(r!==lastRoute){lastRoute=r;closedOnRoute=false;if(r==="subscription"||r==="plans"||r==="pricing")opened=true}
+  if(r!==lastRoute){lastRoute=r;closedOnRoute=false;if(["subscription","plans","pricing","pro","premium"].includes(r))opened=true}
+  if(!closedOnRoute&&!opened&&document.querySelector("#app .pro-price-grid, #app .pf-commercial-hero"))opened=true;
   if(opened&&!closedOnRoute&&!document.getElementById("pf-stable-modal"))show();
   load();paint();
  }
