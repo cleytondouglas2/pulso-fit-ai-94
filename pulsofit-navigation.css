@@ -1,0 +1,25 @@
+/* PulsoFit responsive bottom navigation and smooth screens */
+:root { --pulsofit-nav-height: 76px; }
+.pulsofit-bottom-nav {
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 100;
+  display: grid; grid-template-columns: repeat(5,minmax(0,1fr));
+  align-items: end; gap: 0; width: 100%; box-sizing: border-box;
+  padding: 8px 8px max(8px,env(safe-area-inset-bottom));
+  background: rgba(16,18,24,.94); backdrop-filter: blur(14px);
+}
+.pulsofit-bottom-nav > button { min-width: 0; padding: 8px 2px; background: none;
+  border: 0; color: inherit; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; cursor: pointer; transition: color .25s ease, transform .25s ease;
+}
+.pulsofit-bottom-nav > button:active { transform: scale(.95); }
+.pulsofit-bottom-nav .pulsofit-coach-ai { justify-self: center; transform: translateY(-12px);
+  border-radius: 999px; width: 58px; height: 58px; color: white;
+  background: linear-gradient(145deg,#a855f7,#6d28d9); box-shadow: 0 6px 22px #9333ea55;
+}
+.pulsofit-bottom-nav .pulsofit-coach-ai:active { transform: translateY(-12px) scale(.96); }
+.pulsofit-screen-enter { animation: pulsofit-screen-enter .25s ease both; }
+@keyframes pulsofit-screen-enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .pulsofit-screen-enter { animation: none; }
+  .pulsofit-bottom-nav > button { transition: none; }
+}
