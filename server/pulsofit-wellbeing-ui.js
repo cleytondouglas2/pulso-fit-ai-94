@@ -49,38 +49,79 @@ function txt(tag,content,className){
  if(className)el.className=className;
  return el;
 }
-function openExternal(url){
- try{
-  const parsed=new URL(url);
-  if(parsed.protocol!=="https:"||!["www.nhs.uk","www.youtube.com"].includes(parsed.hostname))throw Error("Fonte não permitida");
-  window.open(parsed.href,"_blank","noopener,noreferrer");
- }catch{announce("O endereço da aula não está disponível.")}
+function classLink(url,label,css){
+ const parsed=new URL(url,location.origin);
+ if(parsed.protocol!=="https:"||!["www.nhs.uk","www.youtube.com"].includes(parsed.hostname))return null;
+ const link=document.createElement("a");
+ link.href=parsed.href;
+ link.target="_blank";
+ link.rel="noopener noreferrer";
+ link.className=css||"pf-class-direct-link";
+ link.textContent=label;
+ // A native hyperlink is more reliable than window.open inside installed iOS PWAs.
+ // No preventDefault, synthetic click or timer in this navigation path.
+ link.addEventListener("click",()=>announce("Abrindo a aula no site oficial. Se continuar nesta tela, copie o endereço do vídeo abaixo e abra no Safari."));
+ return link;
+}
+function classVideoURL(item){
+ return /^[A-Za-z0-9_-]{11}$/.test(item.video||"")?
+ "https://www.youtube.com/watch?v="+item.video:null;
 }
 function drawPlayer(item){
  const mount=$("pf-class-player");if(!mount)return;
  mount.replaceChildren();
+ const youtube=classVideoURL(item);
  const header=txt("h3",item.emoji+" "+item.title);
  const meta=txt("p",item.level+" · "+item.minutes+" minutos · "+item.source);
  const info=txt("p",item.focus);
  const equipment=txt("p","Você pode precisar de: "+item.equip);
  mount.append(header,meta,info,equipment);
  const pad=document.createElement("div");pad.className="pf-class-playarea";
- if(item.video&&/^[A-Za-z0-9_-]{11}$/.test(item.video)){
-  const frame=document.createElement("iframe");
-  frame.title="Vídeo oficial: "+item.title;
-  frame.src="https://www.youtube-nocookie.com/embed/"+item.video+"?rel=0&playsinline=1";
-  frame.loading="lazy";frame.referrerPolicy="strict-origin-when-cross-origin";
-  frame.allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-  frame.allowFullscreen=true;pad.appendChild(frame);
-  pad.appendChild(txt("p","Vídeo incorporado do canal oficial NHS. Se não abrir, use “Assistir no site oficial”."));
- }else{
-  const placeholder=txt("div","▶", "pf-class-video-placeholder");
-  placeholder.setAttribute("aria-hidden","true");pad.appendChild(placeholder);
-  pad.appendChild(txt("p","Esta aula tem vídeo na página oficial do NHS. Abra pelo botão abaixo para assistir integralmente com o instrutor."));
+ // Explicit play action instead of a preloaded iframe with a broken triangle.
+ const stage=document.createElement("div");stage.className="pf-class-video-stage";
+ const graphic=txt("span",item.emoji,"pf-class-video-emoji");
+ graphic.setAttribute("aria-hidden","true");stage.appendChild(graphic);
+ stage.appendChild(txt("strong",youtube?"Aula em vídeo • YouTube oficial":"Aula em vídeo • NHS"));
+ stage.appendChild(txt("p",youtube?
+  "Você pode reproduzir nesta tela ou abrir o vídeo diretamente no YouTube.":
+  "Este vídeo está na página oficial do NHS. Abra o site para assistir no player original."));
+ pad.appendChild(stage);
+ const openVideo=classLink(youtube||item.url,youtube?"▶ Assistir vídeo no YouTube":"▶ Assistir aula no site oficial do NHS","pf-class-primary pf-class-video-cta");
+ if(openVideo)pad.appendChild(openVideo);
+ if(youtube){
+  const load=button("▣ Reproduzir aqui no aplicativo","pf-class-inline-action",()=>{
+   if(!stage.isConnected)return;
+   stage.replaceChildren();
+   const frame=document.createElement("iframe");
+   frame.title="Vídeo oficial NHS: "+item.title;
+   frame.src="https://www.youtube.com/embed/"+item.video+"?playsinline=1&rel=0";
+   frame.loading="eager";
+   frame.referrerPolicy="strict-origin-when-cross-origin";
+   frame.allow="autoplay; encrypted-media; picture-in-picture; fullscreen";
+   frame.setAttribute("allowfullscreen","");
+   frame.setAttribute("playsinline","");
+   frame.addEventListener("error",()=>announce("Reprodução incorporada indisponível. Use o botão “Assistir vídeo no YouTube” para abrir diretamente."));
+   stage.appendChild(frame);
+   announce("Player aberto. Se não reproduzir, use o botão externo; alguns navegadores bloqueiam vídeos incorporados.");
+  });
+  pad.appendChild(load);
  }
+ const copy=button("⧉ Copiar link do vídeo","pf-class-link-copy",async()=>{
+  try{
+   const target=youtube||item.url;
+   if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(target);}
+   else{
+    const temp=document.createElement("textarea");temp.value=target;temp.style.position="fixed";temp.style.opacity="0";document.body.appendChild(temp);temp.select();
+    const ok=document.execCommand?.("copy");temp.remove();if(!ok)throw Error("copy blocked");
+   }
+   announce("Link copiado. Cole no Safari caso o navegador do aplicativo não abra a aula.");
+  }catch{announce("A cópia não foi autorizada. Use o link da fonte oficial logo abaixo.")}
+ });
+ pad.appendChild(copy);
  mount.append(pad);
  const row=document.createElement("div");row.className="pf-class-actions";
- row.appendChild(button("↗ Assistir no site oficial","pf-class-primary",()=>openExternal(item.url)));
+ const sourceLink=classLink(item.url,"↗ Abrir página original do NHS","pf-class-secondary pf-class-source");
+ if(sourceLink)row.appendChild(sourceLink);
  const complete=button(done.has(item.id)?"✓ Aula concluída":"✓ Concluí esta aula","pf-class-secondary",()=>{
   if(done.has(item.id))done.delete(item.id);else done.add(item.id);
   save("done",done);drawPlayer(item);renderGrid();
@@ -93,9 +134,8 @@ function drawPlayer(item){
  });
  saveFav.setAttribute("aria-pressed",String(faves.has(item.id)));row.appendChild(saveFav);
  mount.appendChild(row);
- const source=document.createElement("a");source.href=item.url;source.rel="noopener noreferrer";source.target="_blank";
- source.textContent="Fonte original: "+item.source+" · vídeo e orientações do instrutor";
- mount.appendChild(source);
+ const source=classLink(item.url,"Fonte: "+item.source+" · vídeo e orientações do instrutor","pf-class-credit");
+ if(source)mount.appendChild(source);
  mount.appendChild(txt("small","Aulas de educação física e bem-estar, não atendimento médico. Ajuste o ritmo, faça pausas e interrompa se sentir dor, tontura ou mal-estar. Se tiver lesão, estiver grávida ou se recuperando de cirurgia, peça orientação profissional."));
 }
 function select(item){
@@ -204,11 +244,17 @@ function boot(){
  '#pf-classes-modal #pf-class-player p{font:12px/1.55 system-ui;color:#d5e6ec;margin:0}'+
  '#pf-classes-modal .pf-class-playarea{display:grid;gap:8px}'+
  '#pf-classes-modal .pf-class-playarea iframe{width:100%;height:auto;aspect-ratio:16/9;border:0;border-radius:11px;background:#090b1e}'+
- '#pf-classes-modal .pf-class-video-placeholder{display:grid;place-items:center;height:158px;background:linear-gradient(125deg,#5d35aa,#1e8a85);border-radius:12px;font-size:48px;color:white}'+
+ '#pf-classes-modal .pf-class-video-stage{display:grid;place-items:center;min-height:172px;gap:7px;background:linear-gradient(125deg,#5d35aa,#1e8a85);border-radius:12px;padding:14px;text-align:center}'+
+ '#pf-classes-modal .pf-class-video-stage .pf-class-video-emoji{font-size:39px}'+
+ '#pf-classes-modal .pf-class-video-stage strong{font:900 15px/1.4 system-ui;color:white}'+
+ '#pf-classes-modal .pf-class-video-stage p{color:#fff!important}'+
+ '#pf-classes-modal .pf-class-video-stage iframe{display:block;width:100%;height:auto;aspect-ratio:16/9;border:0;background:#080a19}'+
+ '#pf-classes-modal .pf-class-playarea .pf-class-video-cta{display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid #b99dff;border-radius:12px;background:linear-gradient(100deg,#814be1,#a15ee8);color:#fff;text-align:center;text-decoration:none;font:900 14px/1.4 system-ui;padding:12px}'+
+ '#pf-classes-modal .pf-class-inline-action,#pf-classes-modal .pf-class-link-copy{width:100%;background:#273956;border:1px solid #7595b9;border-radius:10px;min-height:42px;padding:10px;font:800 12px/1.3 system-ui;color:white}'+
  '#pf-classes-modal .pf-class-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}'+
- '#pf-classes-modal .pf-class-actions button{border:1px solid #7489ba;padding:10px;min-height:42px;font:800 12px/1.3 system-ui;color:#fff;background:#394464;border-radius:11px}'+
+ '#pf-classes-modal .pf-class-actions button,#pf-classes-modal .pf-class-actions a{border:1px solid #7489ba;padding:10px;min-height:42px;font:800 12px/1.3 system-ui;color:#fff;background:#394464;border-radius:11px;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}'+
  '#pf-classes-modal .pf-class-actions .pf-class-primary{grid-column:1/-1;background:#7540d4;border-color:#ae8aff;font-size:14px}'+
- '#pf-classes-modal #pf-class-player a{color:#abffe1;font:12px/1.5 system-ui;overflow-wrap:anywhere}'+
+ '#pf-classes-modal #pf-class-player a.pf-class-credit{color:#abffe1;font:12px/1.5 system-ui;overflow-wrap:anywhere}'+
  '#pf-classes-modal #pf-class-player small{font:10px/1.55 system-ui;color:#c8d7e6}'+
  '#pf-classes-modal .pf-class-footer{padding-top:10px}'+
  '#pf-classes-modal #pf-class-message{color:#a8ffda;font-weight:800}'+
