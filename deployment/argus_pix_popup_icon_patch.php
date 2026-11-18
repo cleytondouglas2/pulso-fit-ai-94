@@ -9,7 +9,7 @@ if(!is_string($h)||substr_count($h,'</head>')!==1||substr_count($h,'</body>')!==
 $old='<script src="/static/quick-pix-receipt.js?v=3" defer></script>';
 if(substr_count($h,$old)!==1)throw new RuntimeException('ARGUS popup: receipt script version missing');
 $h=str_replace('</head>','<link rel="stylesheet" href="/static/quick-pix-popup.css?v=1"></head>',$h);
-$h=str_replace('</body>','<script src="/static/quick-pix-popup.js?v=1" defer></script></body>',$h);
+$h=str_replace('</body>','<script src="/static/quick-pix-popup.js?v=2" defer></script></body>',$h);
 file_put_contents($admin,$h);
 // Every home-screen entry point must refer to the same new, uniquely named, opaque
 // icon. Changing filename (not just query string) avoids Safari's cached old glyph.
