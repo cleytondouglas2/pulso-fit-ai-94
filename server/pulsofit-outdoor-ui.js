@@ -106,7 +106,7 @@ function layout(){
 }
 function escapeKey(e){if(e.key==="Escape")close()}
 function dispose(){
- stopWatch();clearInterval(timer);timer=null;releaseWake();destroyMap();
+ stopWatch();turnOffMotion();clearInterval(timer);timer=null;releaseWake();destroyMap();
  if(el){el.remove();el=null}document.removeEventListener("keydown",escapeKey);
  activity=null;openedHistory=null;
 }
@@ -274,6 +274,12 @@ function startGPS(){
  if(!activity||activity.state!=="ready")return;
  if(!window.isSecureContext||!navigator.geolocation){setStatus("O GPS precisa de HTTPS e de um navegador com Geolocalização. Abra o site no Safari ou Chrome e permita o acesso.",true);return}
  if(!captureWeight())return;
+ const pushBox=document.getElementById("pf-outdoor-push-live");
+ activity.notify=!!pushBox?.checked&&typeof Notification!=="undefined"&&Notification.permission==="granted";
+ if(pushBox?.checked&&!activity.notify)setStatus("Ative primeiro as notificações em Mais → Notificações para receber avisos durante o percurso.");
+ activity.motionWanted=!!document.getElementById("pf-outdoor-motion")?.checked;
+ activity.strideM=Number(document.getElementById("pf-outdoor-stride")?.value)||(activity.kind==="run"?1.05:.75);
+ initMotion();
  activity.started=Date.now();activity.resumedAt=Date.now();activity.activeMs=0;activity.state="running";
  activateWatch();
  timer=setInterval(updateStats,1000);
@@ -339,7 +345,7 @@ function onFix(fix){
 function pause(){
  if(!activity||activity.state!=="running")return;
  activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="paused";stopWatch();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="paused";stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
  updateControls();updateStats();
  setStatus("Atividade pausada. O GPS não registra novas posições até você retomar.");
 }
@@ -348,13 +354,15 @@ function resume(){
  activity.state="running";activity.resumedAt=Date.now();
  // Break the route after any pause, even when points are geographically close.
  activity.segmentBreak=true;
+ if(activity.motionActive)window.addEventListener("devicemotion",motionEvent);
  activateWatch();
  timer=setInterval(updateStats,1000);updateControls();void holdWake();
 }
 function finish(){
  if(!activity||!["running","paused"].includes(activity.state))return;
  if(activity.state==="running")activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="finished";stopWatch();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="finished";stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
+ if(activity.notify)liveNotice("🏁 Atividade finalizada • PulsoFit");
  showCompleted();
 }
 function updateStats(){
@@ -365,9 +373,13 @@ function updateStats(){
   "pf-outdoor-speed":nf(speed(),1)+" km/h",
   "pf-outdoor-pace":pace(activity.distance,elapsed()/1000),
   "pf-outdoor-kcal":calories()===null?"—":"≈ "+nf(calories(),0)+" kcal",
-  "pf-outdoor-accuracy":activity.gpsAccuracy===null?"—":"±"+activity.gpsAccuracy+" m"
+  "pf-outdoor-accuracy":activity.gpsAccuracy===null?"—":"±"+activity.gpsAccuracy+" m",
+  "pf-outdoor-steps":stepsEstimated()?"≈ "+stepsEstimated().value.toLocaleString("pt-BR"):"Não se aplica",
+  "pf-outdoor-uphill":activity.ascent>0?"≈ "+nf(activity.ascent,1)+" m":"Sem medida",
+  "pf-outdoor-floors":floorsEstimated()===null?"—":"≈ "+floorsEstimated()
  };
  Object.entries(boxes).forEach(([id,text])=>{const x=document.getElementById(id);if(x&&x.textContent!==text)x.textContent=text});
+ refreshLiveSummary();
  if(activity.state==="running"&&activity.lastFixAt&&Date.now()-activity.lastFixAt>35000)
   setStatus("Sinal GPS interrompido. Mantenha o Safari aberto, com a tela ligada e a localização ativada.",true);
 }
@@ -462,13 +474,16 @@ function chooseStats(s){
  '<div><small>Velocidade média</small><strong>'+nf(s.avgSpeedKmh,1)+' km/h</strong></div>'+
  '<div><small>Ritmo médio</small><strong>'+pace(s.distanceM,s.durationSec)+'</strong></div>'+
  '<div><small>Calorias estimadas</small><strong>'+(s.estimatedKcal==null?"Não calculadas":"≈ "+nf(s.estimatedKcal,0)+" kcal")+'</strong></div>'+
- '<div><small>Ganho de altitude</small><strong>'+(s.elevationGainM==null?"Não estimado":"≈ "+nf(s.elevationGainM,0)+" m")+'</strong></div></div>';
+ '<div><small>Ganho de altitude</small><strong>'+(s.elevationGainM==null?"Não estimado":"≈ "+nf(s.elevationGainM,0)+" m")+'</strong></div>'+
+ '<div><small>Passos estimados</small><strong>'+(s.estimatedSteps==null?"Não se aplica":"≈ "+Math.round(s.estimatedSteps).toLocaleString("pt-BR"))+'</strong></div>'+
+ '<div><small>Andares equivalentes</small><strong>'+(s.floorsEquivalent==null?"Não estimado":"≈ "+Math.floor(s.floorsEquivalent))+'</strong></div></div>';
 }
 function summaryFromCurrent(){
  return {sport:activity.kind,durationSec:Math.max(0,Math.round(activity.activeMs/1000)),distanceM:activity.distance,
   avgSpeedKmh:activity.distance/1000/Math.max(activity.activeMs/3600000,1/3600),
   estimatedKcal:calories(),elevationGainM:activity.ascent>0?activity.ascent:null,accuracyM:activity.gpsAccuracy,
-  gpsSamples:activity.points.length,points:activity.points};
+  gpsSamples:activity.points.length,points:activity.points,estimatedSteps:stepsEstimated()?.value??null,
+  floorsEquivalent:floorsEstimated(),stepSource:activity.motionActive?"motion_estimate":"gps_stride_estimate"};
 }
 function offlineSummary(s){
  const dist=nf(s.distanceM/1000,2),time=Math.round(s.durationSec/60),velocity=nf(s.avgSpeedKmh,1);
@@ -502,7 +517,8 @@ async function save(){
  const s=summaryFromCurrent();
  try{
   const payload={clientKey:activity.key,sport:activity.kind,durationSec:Math.max(30,s.durationSec),
-   points:activity.points,estimatedKcal:s.estimatedKcal,elevationGainM:s.elevationGainM,accuracyM:s.accuracyM};
+   points:activity.points,estimatedKcal:s.estimatedKcal,elevationGainM:s.elevationGainM,accuracyM:s.accuracyM,
+   estimatedSteps:s.estimatedSteps,floorsEquivalent:s.floorsEquivalent,stepSource:s.stepSource};
   const d=await request("/api/fitness/outdoor",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   activity.saved=true;activity.savedId=d.id;
   saveStatus("Trajeto salvo na sua conta. Gerando análise de desempenho com a IA…");
