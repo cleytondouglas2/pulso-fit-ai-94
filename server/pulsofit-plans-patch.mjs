@@ -33,7 +33,13 @@ if (basename(process.argv[1]||"")==="server.mjs") {
     if(!entry.isFile()||!entry.name.endsWith(".html"))continue;
     try{
      if(statSync(full).size>5500000)continue;
-     const html=readFileSync(full,"utf8");
+     let html=readFileSync(full,"utf8");
+     // A barra mobile nativa tinha cinco itens e apagava a sexta guia após render().
+     // Atualizar a mesma função de reconciliação para preservar Performance.
+     html=html.replace('var ids=["home","workouts","coach","goals","profile"];',
+       'var ids=["home","workouts","coach","goals","profile","performance"];')
+      .replace("var needs=els.length!==5||","var needs=els.length!==6||")
+      .replace('clone("profile","Perfil","◉")','clone("profile","Perfil","◉"),clone("performance","Performance","📸")');
      if(!/<\/body\s*>/i.test(html)||!/<html[\s>]/i.test(html))continue;
      if(html.includes(marker)){found.push(full+":already");continue}
      const matches=Array.from(html.matchAll(/<\/body\s*>/gi));
