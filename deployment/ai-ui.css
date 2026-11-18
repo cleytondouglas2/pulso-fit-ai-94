@@ -1,0 +1,24 @@
+/* ARGUS IA: scoped styling, responsive on desktop and mobile */
+.argus-ai .ai-shell{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(240px,.7fr);gap:16px;align-items:start}
+.argus-ai .ai-box{border:1px solid rgba(180,158,116,.3);border-radius:18px;padding:18px;background:rgba(16,20,27,.62);min-width:0}
+.argus-ai .ai-box h2,.argus-ai .ai-box h3{margin:0 0 10px;font-size:19px;color:inherit}
+.argus-ai .ai-status,.argus-ai .ai-foot{font-size:13px;opacity:.8;margin:8px 0 12px}
+.argus-ai .ai-conversation{height:315px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:12px 4px 14px;scroll-behavior:smooth}
+.argus-ai .ai-message{max-width:96%;border-radius:14px;padding:12px 14px;background:rgba(130,124,113,.12);overflow-wrap:anywhere}
+.argus-ai .ai-message p{margin:4px 0 0;white-space:pre-wrap;line-height:1.5}
+.argus-ai .ai-message small{font-size:11px;opacity:.7}
+.argus-ai .ai-message.ai-user{align-self:end;background:rgba(210,171,88,.16)}
+.argus-ai .ai-form{display:flex;gap:9px;align-items:flex-end}
+.argus-ai .ai-question{width:100%;flex:1;min-width:0;resize:vertical;min-height:70px;max-height:180px;border-radius:11px;padding:12px;background:rgba(255,255,255,.06);color:inherit;border:1px solid rgba(180,158,116,.4);font:inherit}
+.argus-ai .ai-send,.argus-ai .ai-refresh,.argus-ai [data-ai-question]{cursor:pointer;padding:11px 13px;border-radius:11px;border:1px solid rgba(196,161,94,.55);background:rgba(202,164,93,.15);color:inherit;font:inherit}
+.argus-ai .ai-send:disabled{opacity:.45;cursor:progress}
+.argus-ai .ai-presets{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+.argus-ai .ai-presets button{font-size:12px}
+.argus-ai .ai-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.argus-ai .ai-metric{border:1px solid rgba(180,158,116,.2);border-radius:12px;padding:12px;overflow-wrap:anywhere}
+.argus-ai .ai-metric small{display:block;font-size:12px;opacity:.8;margin-bottom:5px}
+.argus-ai .ai-metric strong{display:block;font-size:18px}
+.argus-ai .ai-alerts p{margin:8px 0;line-height:1.45}
+.argus-ai .ai-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+@media(max-width:850px){.argus-ai .ai-shell{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:500px){.argus-ai .ai-box{padding:12px}.argus-ai .ai-form{flex-direction:column;align-items:stretch}.argus-ai .ai-send{width:100%}.argus-ai .ai-metric strong{font-size:15px}}
