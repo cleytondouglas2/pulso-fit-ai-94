@@ -21,7 +21,7 @@ test("Assinatura ativa remove promoções sem remover upgrade do perfil",()=>{
  assert.match(s.billing,/Renovar ou mudar meu plano/);
  assert.match(s.profile,/data-pfrr-plan/);
  assert.match(s.profile,/pulso-open-plan-manager/);
- assert.match(s.profile,/período comprado/);
+ assert.match(s.profile,/dias comprados/);
  assert.match(s.menu,/Renovação e upgrade/);
 });
 test("IA exige consentimento explícito e sem URL do usuário",()=>{
