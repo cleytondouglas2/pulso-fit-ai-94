@@ -9,7 +9,7 @@ window.__PULSO_PUSH_UI_20261118__=true;
 const IOS=/iPad|iPhone|iPod/i.test(navigator.userAgent)||navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1;
 const ANDROID=/Android/i.test(navigator.userAgent);
 let banner=null,modal=null,reg=null,serverKey="",current=null,installPrompt=null,loading=false,seenToken="",scheduled=false;
-let ready=false,deviceEnabled=false,lastStatus="",selectedHour=9,selectedTraining=true,selectedPerformance=true;
+let ready=false,deviceEnabled=false,lastStatus="",selectedHour=9,selectedTraining=true,selectedPerformance=true,selectedWellness=true,selectedFrequency=3;
 const token=()=>{try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}};
 const logged=()=>!!token()&&!document.body.classList.contains("pf-account-locked");
 const home=()=>String(location.hash||"#/home").replace(/^#\/?/,"").split("/")[0].toLowerCase()==="home";
@@ -50,6 +50,8 @@ async function bootstrap(){
     selectedHour=firstHour(mine.reminderHour);
     selectedTraining=mine.training!==false;
     selectedPerformance=mine.performance!==false;
+    selectedWellness=mine.wellness!==false;
+    selectedFrequency=[1,2,3].includes(Number(mine.tipsPerDay))?Number(mine.tipsPerDay):3;
    }
   }else deviceEnabled=false;
   ready=true;
@@ -60,15 +62,17 @@ async function bootstrap(){
  }
 }
 function copyPreferences(){
- const hour=document.getElementById("pf-push-hour"),training=document.getElementById("pf-push-training"),performance=document.getElementById("pf-push-performance");
+ const hour=document.getElementById("pf-push-hour"),training=document.getElementById("pf-push-training"),performance=document.getElementById("pf-push-performance"),wellness=document.getElementById("pf-push-wellness"),frequency=document.getElementById("pf-push-frequency");
  if(hour)selectedHour=firstHour(hour.value);
  if(training)selectedTraining=training.checked;
  if(performance)selectedPerformance=performance.checked;
+ if(wellness)selectedWellness=wellness.checked;
+ if(frequency)selectedFrequency=[1,2,3].includes(Number(frequency.value))?Number(frequency.value):3;
 }
 function timezone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||"America/Sao_Paulo"}
 function payload(subscription,extra={}){
  return {subscription:subscription.toJSON(),reminderHour:selectedHour,training:selectedTraining,
-  performance:selectedPerformance,timezone:timezone(),
+  performance:selectedPerformance,wellness:selectedWellness,tipsPerDay:selectedFrequency,timezone:timezone(),
   platform:IOS?"ios":ANDROID?"android":"web",...extra};
 }
 async function subscribe(){
@@ -162,13 +166,17 @@ function renderDialog(){
  if(!modal?.isConnected)return;
  const b=modal.querySelector(".pf-push-dialog-body");if(!b)return;
  b.innerHTML='<div class="pf-push-hero"><span aria-hidden="true">🔔</span>'+
- '<div><h3>Seu treino não precisa esperar o app abrir.</h3><p>Receba lembretes e acompanhe sua consistência com notificações push, quando disponíveis.</p></div></div>'+
+ '<div><h3>Bom dia, com dicas só para você!</h3><p>Receba até três mensagens ao longo do dia: treino, recuperação, saúde e evolução — com seu nome cadastrado.</p></div></div>'+
  '<div class="pf-push-guide">'+guideMarkup()+'</div>'+
  '<div class="pf-push-config"><h4>Escolha como quer ser lembrado</h4>'+
  '<label class="pf-push-label">Horário diário <select id="pf-push-hour">'+Array.from({length:16},(_,i)=>i+6).map(h=>
  '<option value="'+h+'"'+(h===selectedHour?" selected":"")+'>'+String(h).padStart(2,"0")+":00</option>").join("")+'</select></label>'+
  '<label class="pf-push-check"><input id="pf-push-training" type="checkbox"'+(selectedTraining?" checked":"")+'> <span>💪 Lembretes de treino</span></label>'+
- '<label class="pf-push-check"><input id="pf-push-performance" type="checkbox"'+(selectedPerformance?" checked":"")+'> <span>📈 Evolução e constância semanal</span></label></div>'+
+ '<label class="pf-push-check"><input id="pf-push-performance" type="checkbox"'+(selectedPerformance?" checked":"")+'> <span>📈 Evolução e constância semanal</span></label>'+
+ '<label class="pf-push-check"><input id="pf-push-wellness" type="checkbox"'+(selectedWellness?" checked":"")+'> <span>💚 Saúde, hidratação, sono e recuperação</span></label>'+
+ '<label class="pf-push-label">Dicas por dia <select id="pf-push-frequency">'+
+ [1,2,3].map(n=>'<option value="'+n+'"'+(selectedFrequency===n?" selected":"")+'>'+n+(n===1?" mensagem":" mensagens")+'</option>').join("")+
+ '</select></label><p class="pf-push-info">Os avisos são enviados a partir do horário escolhido, com intervalos aproximados de quatro horas. Entre 6h e 21h, nunca à noite. A quantidade efetiva pode ser menor conforme o horário inicial e a disponibilidade do servidor.</p></div>'+
  '<div class="pf-push-actions">'+
  '<button type="button" id="pf-push-install" class="pf-push-secondary"'+(installed()?" hidden":"")+'>📲 '+(ANDROID?"Instalar no Android":"Como adicionar o ícone")+'</button>'+
  '<button type="button" id="pf-push-activate" class="pf-push-primary">'+(deviceEnabled?"✓ Reativar dispositivo":"🔔 Ativar notificações")+'</button>'+
@@ -221,7 +229,7 @@ function updateBanner(){
  }else{
   if(badge)badge.textContent="🔔";
   if(title)title.textContent="Não perca seu próximo treino!";
-  if(text)text.textContent=IOS&&!installed()?"Adicione o PulsoFit à Tela de Início para liberar as notificações.":"Receba lembretes de treino e progresso, mesmo quando não estiver usando o app.";
+  if(text)text.textContent=IOS&&!installed()?"Adicione o PulsoFit à Tela de Início para liberar as notificações.":"Receba bom dia com seu nome e até 3 dicas diárias de treino, saúde e desempenho.";
  }
 }
 function placeBanner(){
