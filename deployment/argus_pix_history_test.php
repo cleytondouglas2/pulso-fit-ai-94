@@ -5,7 +5,7 @@ use ArgusPayments\TraditionalQuickPix as Pix;
 
 $expired=(new ReflectionMethod(Pix::class,'displayStatus'));
 $summary=(new ReflectionMethod(Pix::class,'publicSummary'));
-$created='2026-11-18 20:00:00';
+$created=gmdate('Y-m-d H:i:s',time()-120);
 $start=strtotime($created.' UTC');
 $pending=[
  'id'=>'qpx_'.str_repeat('a',32),'amount_cents'=>1000,'provider_id'=>'tr_sample',
@@ -35,7 +35,7 @@ if(($summary->invoke(null,$nonTrad)['can_reconcile']??true)!==false)
 $src=(string)file_get_contents('/var/www/html/src/TraditionalQuickPix.php');
 if(!str_contains($src,'WHERE actor_id=? ORDER BY created_at DESC LIMIT 150'))
     throw new RuntimeException('Recent QR history must scope to authenticated actor');
-if(!str_contains($src,"$display==='paid'||$display==='expired'"))
+if(!str_contains($src,"\$display==='paid'||\$display==='expired'"))
     throw new RuntimeException('Paid / expired reconciliation must never call provider unnecessarily');
 if(!str_contains($src,'self::reconcileRow($db,$row)'))
     throw new RuntimeException('Traditional authenticated provider check missing');
