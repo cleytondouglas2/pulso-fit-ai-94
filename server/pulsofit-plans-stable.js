@@ -87,6 +87,27 @@
  var paymentPoll=null;
  function stopPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}
  var checkingPreviousPix=false;
+ var autoLastCheckedAt=0,autoAccountToken="",autoPendingPix=false,autoWasConfirmed=false;
+ function paymentToast(message){
+  if(!document.body)return;
+  var old=document.getElementById("pf-auto-payment-notice");if(old)old.remove();
+  var n=document.createElement("div");n.id="pf-auto-payment-notice";
+  n.setAttribute("role","status");
+  n.style.cssText="position:fixed;z-index:2147483000;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:calc(98px + env(safe-area-inset-bottom));background:#1f3651;color:#e8fff2;border:2px solid #73e5a3;border-radius:14px;box-shadow:0 12px 40px #0009;font:800 14px/1.5 system-ui;padding:15px;max-width:440px;margin:auto;text-align:center";
+  n.textContent=String(message);document.body.appendChild(n);
+  setTimeout(function(){if(n.isConnected)n.remove()},12000);
+ }
+ function autoVerifyPix(force){
+  var key=token();
+  if(!key||document.hidden)return;
+  if(key!==autoAccountToken){autoAccountToken=key;autoLastCheckedAt=0;autoPendingPix=false;autoWasConfirmed=false}
+  if(autoWasConfirmed&&!force)return;
+  var interval=autoPendingPix?12000:90000;
+  if(!force&&Date.now()-autoLastCheckedAt<interval)return;
+  if(checkingPreviousPix)return;
+  autoLastCheckedAt=Date.now();
+  void recoverPreviousPix(true);
+ }
  function renderPaid(data){
   var root=document.querySelector("#pf-stable-modal .pf-stable-body");
   if(!root)return;
@@ -114,7 +135,21 @@
    const response=await fetch("/api/billing/recover",{cache:"no-store",headers:{Authorization:"Bearer "+token()}});
    const json=await response.json().catch(()=>({}));
    if(!response.ok)throw Error(json.error||"Não foi possível consultar o pagamento.");
-   if(json.paid){renderPaid(json);return}
+   autoPendingPix=!!json.found&&!json.paid&&!["DEVOLVIDO","DEVOLVIDO_PARCIAL","CANCELADO","FALHA"].includes(json.status);
+   if(json.paid){
+    autoPendingPix=false;
+    if(!autoWasConfirmed){
+     autoWasConfirmed=true;
+     if(document.querySelector("#pf-stable-modal .pf-stable-body"))renderPaid(json);
+     else{
+      try{localStorage.removeItem("pulsofit-pix-pending-ref-v1")}catch{}
+      void load(true);
+      paymentToast(json.planActive?"✅ Pix confirmado! Seu plano foi ativado automaticamente.":"✅ Pix confirmado. Consulte sua assinatura para verificar a liberação.");
+      try{window.dispatchEvent(new Event("pulso-payment-confirmed"))}catch{}
+     }
+    }
+    return json;
+   }
    const message=document.getElementById("pf-stable-recovery-status");
    if(message&&json.found){
     message.textContent=json.retryable?
@@ -220,6 +255,7 @@
    .then(function(j){
     if(!j.reference||!j.copyPaste)throw Error("Cobrança sem código Pix válido");
     reference=j.reference;result.hidden=false;form.hidden=true;
+    autoWasConfirmed=false;autoPendingPix=true;autoLastCheckedAt=0;
     try{localStorage.setItem("pulsofit-pix-pending-ref-v1",reference)}catch{}
     body.querySelector("#pf-stable-pix-code").value=j.copyPaste;
     var img=body.querySelector("#pf-stable-pix-image");
@@ -279,9 +315,15 @@
   if(!closedOnRoute&&!opened&&document.querySelector("#app .pro-price-grid, #app .pf-commercial-hero"))opened=true;
   if(opened&&!closedOnRoute&&!document.getElementById("pf-stable-modal"))show();
   load();paint();updateOffer();if(opened)void refreshOffer(false);
+  autoVerifyPix(false);
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",maintain,{once:true});
  else maintain();
  window.addEventListener("hashchange",maintain);
+ window.addEventListener("pageshow",()=>autoVerifyPix(true));
+ window.addEventListener("focus",()=>autoVerifyPix(true));
+ window.addEventListener("online",()=>autoVerifyPix(true));
+ document.addEventListener("visibilitychange",()=>{if(!document.hidden)autoVerifyPix(true)});
+ window.addEventListener("pulso-auth-ready",()=>{autoLastCheckedAt=0;autoVerifyPix(true)});
  setInterval(maintain,1500);
 })();
