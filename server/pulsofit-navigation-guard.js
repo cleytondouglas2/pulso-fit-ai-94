@@ -58,7 +58,7 @@ function navigationalClick(event){
    (el.getAttribute("href")||"").replace(/^#\/?/,"").split("/")[0]||
    el.getAttribute("data-pf-more-action")||"";
  if(!section||["more","mais","playlist","camera-ar","logout","notifications","outdoor","meal","training-lab"].includes(section))return;
- if(section===current()&&el.closest("#app"))return;
+ if(section===current())return;
  begin();
 }
 function init(){
