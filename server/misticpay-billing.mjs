@@ -38,26 +38,32 @@ const missing=(store)=>[
  *   const handler=createMisticPayBilling({authenticate,store,origin});
  *   if(await handler(req,res))return;
  */
+/**
+ * Shared server-only settlement for callback, customer recovery and background worker.
+ * Never trust payment confirmation from the client or an unsigned webhook body.
+ */
+export async function settleVerifiedMisticPayOrder(store,order,payment){
+ if(!paymentMatchesOrder(payment,order)||!PLANS[order?.planCode])
+  throw Object.assign(Error("Dados da transação divergem do pedido"),{status:409});
+ if(payment.status==="COMPLETO"){
+  await store.applyVerifiedEventOnce({
+   reference:order.reference,providerPaymentId:payment.id,userId:order.userId,
+   planCode:order.planCode,amountCents:order.amountCents,currency:"BRL",
+   durationDays:PLANS[order.planCode].days,status:"paid"
+  });
+ }else if(["DEVOLVIDO","DEVOLVIDO_PARCIAL"].includes(payment.status)){
+  await store.applyVerifiedRefundOnce({
+   reference:order.reference,providerPaymentId:payment.id,userId:order.userId,
+   status:payment.status
+  });
+ }
+ return payment.status;
+}
 export function createMisticPayBilling({authenticate,store,origin,gateway=createMisticPayAdapter()}={}){
  if(typeof authenticate!=="function")throw Error("Autenticação do servidor é obrigatória");
  if(!origin||!/^https:\/\/[^/]+$/.test(origin))throw Error("Origin HTTPS explícita obrigatória");
  const ready=()=>missing(store).length===0&&typeof store?.firstTrialUse==="function"&&typeof store?.getEntitlement==="function"&&gateway.credentialsReady();
- async function settle(order,payment){
-  if(!paymentMatchesOrder(payment,order))throw Object.assign(Error("Dados da transação divergem do pedido"),{status:409});
-  if(payment.status==="COMPLETO") {
-   await store.applyVerifiedEventOnce({
-    reference:order.reference,providerPaymentId:payment.id,userId:order.userId,
-    planCode:order.planCode,amountCents:order.amountCents,currency:"BRL",
-    durationDays:PLANS[order.planCode].days,status:"paid"
-   });
-  } else if(["DEVOLVIDO","DEVOLVIDO_PARCIAL"].includes(payment.status)) {
-   await store.applyVerifiedRefundOnce({
-    reference:order.reference,providerPaymentId:payment.id,userId:order.userId,
-    status:payment.status
-   });
-  }
-  return payment.status;
- }
+ const settle=(order,payment)=>settleVerifiedMisticPayOrder(store,order,payment);
  return async function handle(req,res){
   const url=new URL(req.url,origin);
   const path=url.pathname;
