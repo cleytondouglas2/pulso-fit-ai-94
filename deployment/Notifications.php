@@ -173,8 +173,12 @@ final class Notifications
     public static function pixReceived(Database $db,string $merchantId,string $chargeId,int $amount):void {
         self::install($db);
         $targets=[];
-        foreach($db->all("SELECT id FROM argus_portal_accounts WHERE merchant_id=? AND status='approved'",[$merchantId]) as $x)$targets[]=['portal',$x['id']];
-        foreach($db->all("SELECT id FROM admin_users WHERE role='superadmin' AND status='active'") as $x)$targets[]=['admin',$x['id']];
+        // An early provider confirmation may predate the first portal/admin registration.
+        // Missing optional audience tables must not affect payment reconciliation.
+        try{foreach($db->all("SELECT id FROM argus_portal_accounts WHERE merchant_id=? AND status='approved'",[$merchantId]) as $x)$targets[]=['portal',$x['id']];}
+        catch(\PDOException $ignore){}
+        try{foreach($db->all("SELECT id FROM admin_users WHERE role='superadmin' AND status='active'") as $x)$targets[]=['admin',$x['id']];}
+        catch(\PDOException $ignore){}
         foreach($targets as [$type,$id]){
             $event=self::record($db,$type,$id,'pix.received','pix.received:'.$chargeId,
                 'Olha o Pix aí, cachorro! 🐶💸','Pix recebido e confirmado. Abra o ARGUS Pay para consultar.', $amount,$type==='admin'?'/admin':'/conta');
