@@ -280,6 +280,14 @@
   const repeatBtn=by("pf-companion-repeat");if(repeatBtn)repeatBtn.setAttribute("aria-pressed",String(repeat));
   const shuffleBtn=by("pf-companion-shuffle");if(shuffleBtn)shuffleBtn.setAttribute("aria-pressed",String(shuffle));
   const autoBtn=by("pf-companion-autoplay");if(autoBtn)autoBtn.checked=autoPlay;
+  const choices=modal?.querySelectorAll("[data-pf-original]")||[];
+  choices.forEach(button=>{
+   const selected=originalChoice===button.dataset.pfOriginal&&Boolean(originalTimer);
+   button.setAttribute("aria-pressed",String(selected));
+   button.title=selected?"Trilha tocando: pressione outra ou Parar":"Reproduzir esta trilha original";
+  });
+  const stop=modal?.querySelector("[data-pf-original-stop]");
+  if(stop)stop.disabled=!originalTimer;
  }
  function show(){
   if(modal?.isConnected){modal.focus();return}
