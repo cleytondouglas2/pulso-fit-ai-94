@@ -234,6 +234,17 @@ RUN php -l /tmp/argus_pix_history_patch.php \
  && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/argus_pix_history_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Super Admin payout readiness. Read-only checks; withdrawal, 2FA, provider scopes
+# and original idempotent money movement remain intentionally unchanged.
+COPY deployment/payout-readiness.js deployment/payout-readiness.css /var/www/html/public/static/
+COPY deployment/payout_readiness_patch.php /tmp/payout_readiness_patch.php
+COPY deployment/payout_readiness_test.php /var/www/html/tests/payout_readiness_test.php
+RUN php -l /tmp/payout_readiness_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/payout_readiness_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/payout_readiness_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
