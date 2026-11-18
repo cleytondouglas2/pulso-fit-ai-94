@@ -91,19 +91,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
    // render functions as bare identifiers outside the app's inner scope.
    // Supply minimal placeholders ONLY for globals absent in that environment.
    // This keeps login and the main app available without exposing admin data.
-   const globalRenderPrelude=String.raw\`;(()=>{
-    const names=["renderAdmin","renderSubscription"];
-    const known=new Set(names);
-    for(const id of known){
-     if(typeof globalThis[id]!=="function"){
-      globalThis[id]=function(){
-       return '<section class="pro-surface" style="padding:18px;margin:16px 0"><h2>'+
-        (id==="renderAdmin"?"Área administrativa":"Planos PulsoFit")+
-        '</h2><p>Esta seção está temporariamente indisponível. Use as opções do menu.</p></section>';
-      };
-     }
-    }
-   })();\n\`;
+   const globalRenderPrelude=";(function(){const names=[\"renderAdmin\",\"renderSubscription\"];for(const id of names){if(typeof globalThis[id]!==\"function\"){globalThis[id]=function(){return '<section class=\"pro-surface\" style=\"padding:18px;margin:16px 0\"><h2>'+(id===\"renderAdmin\"?\"Área administrativa indisponível\":\"Planos PulsoFit\")+'</h2><p>Esta seção está temporariamente indisponível. Use as opções do menu.</p></section>';};}}})();\n";
    // Do not re-add when server restarts or the file was already fixed.
    let globalSubscriptionFixed=false;
    const candidateSource=fixed?readFileSync(loc,"utf8"):source;
@@ -124,7 +112,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
      " wrapperReferenced="+candidateSource.includes("var originalSubs=renderSubscription"));
 
    const effective=fixed?readFileSync(loc,"utf8"):source;
-   const rendererNames=[...new Set([...effective.matchAll(/\\brender(?:Admin|Subscription|Home|Profile|Account|Plans|Pricing|Settings|More|Coach)\\b/g)].map(x=>x[0]))];
+   const rendererNames=[...new Set([...effective.matchAll(/\brender(?:Admin|Subscription|Home|Profile|Account|Plans|Pricing|Settings|More|Coach)\b/g)].map(x=>x[0]))];
    console.log("[pulso-boot] Referenced render names: "+rendererNames.join(","));
 
    const targets=[...effective.matchAll(/\brenderSubscription\b/g)].slice(0,16);
