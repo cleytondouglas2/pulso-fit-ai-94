@@ -22,7 +22,9 @@ $new=<<<'PHP'
 
     public static function isLegacyKey(string $value):bool
     {
-        return preg_match('/^(?:pk_|sk_|ci_|cs_)/',trim($value))===1;
+        // Only the discontinued ci/cs header credentials are certainly incompatible.
+        // pk/sk is used by the traditional API, but Finance does not publish a definitive prefix contract.
+        return preg_match('/^(?:ci_|cs_)/',trim($value))===1;
     }
 PHP;
 if(substr_count($s,$old)!==1)throw new RuntimeException('Finance configured() anchor changed');
@@ -36,7 +38,7 @@ $newConstructor=<<<'PHP'
         $this->clientId=trim($clientId);
         $this->clientSecret=trim($clientSecret);
         if(self::isLegacyKey($this->clientId)||self::isLegacyKey($this->clientSecret)){
-            throw new \InvalidArgumentException('Credenciais da API MisticPay tradicional não servem para a API Finance QRCODES');
+            throw new \InvalidArgumentException('Credenciais antigas ci/cs não são compatíveis com a API Finance QRCODES');
         }
         if (strlen($this->clientId) < 8 || strlen($this->clientSecret) < 12 ||
             preg_match('/[\r\n]/', $this->clientId.$this->clientSecret)) {
