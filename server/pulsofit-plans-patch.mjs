@@ -42,7 +42,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const finishFeedbackJS=readFileSync(new URL("./pulsofit-workout-feedback.js",import.meta.url),"utf8");
   const activePlanUIJS=readFileSync(new URL("./pulsofit-active-plan-cleanup.js",import.meta.url),"utf8");
   const providerMusicJS=readFileSync(new URL("./pulsofit-provider-playlists.js",import.meta.url),"utf8");
+  const spotifyOAuthJS=readFileSync(new URL("./pulsofit-spotify-oauth.js",import.meta.url),"utf8");
   const cameraARJS=readFileSync(new URL("./pulsofit-camera-ar.js",import.meta.url),"utf8");
+  const cartoonARJS=readFileSync(new URL("./pulsofit-cartoon-ar.js",import.meta.url),"utf8");
   const poseEngineJS=readFileSync(new URL("./pulsofit-ar-pose-engine.js",import.meta.url),"utf8");
   const poseVisionJS=readFileSync(new URL("./pulsofit-ar-vision-ui.js",import.meta.url),"utf8");
   const realPersonJS=readFileSync(new URL("./pulsofit-ar-real-person.js",import.meta.url),"utf8");
@@ -66,7 +68,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   new JavaScriptSyntax(finishFeedbackJS,{filename:"pulsofit-workout-feedback.js"});
   new JavaScriptSyntax(activePlanUIJS,{filename:"pulsofit-active-plan-cleanup.js"});
   new JavaScriptSyntax(providerMusicJS,{filename:"pulsofit-provider-playlists.js"});
+  new JavaScriptSyntax(spotifyOAuthJS,{filename:"pulsofit-spotify-oauth.js"});
   new JavaScriptSyntax(cameraARJS,{filename:"pulsofit-camera-ar.js"});
+  new JavaScriptSyntax(cartoonARJS,{filename:"pulsofit-cartoon-ar.js"});
   new JavaScriptSyntax(poseEngineJS,{filename:"pulsofit-ar-pose-engine.js"});
   new JavaScriptSyntax(poseVisionJS,{filename:"pulsofit-ar-vision-ui.js"});
   new JavaScriptSyntax(realPersonJS,{filename:"pulsofit-ar-real-person.js"});
@@ -106,7 +110,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-workout-feedback-js">'+finishFeedbackJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-active-plan-cleanup-js">'+activePlanUIJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-provider-playlists-js">'+providerMusicJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
+   '<script id="pf-spotify-oauth-js">'+spotifyOAuthJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-camera-ar-js">'+cameraARJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
+   '<script id="pf-cartoon-ar-js">'+cartoonARJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-ar-pose-engine-js">'+poseEngineJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-ar-vision-ui-js">'+poseVisionJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-ar-real-person-20261118">'+realPersonJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
