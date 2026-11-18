@@ -6,7 +6,7 @@
  "use strict";
  if(window.__PULSO_STABLE_PLANS_20261118__)return;
  window.__PULSO_STABLE_PLANS_20261118__=true;
- var opened=false,closedOnRoute=false,lastRoute="",lastToken=null,details=null;
+ var opened=false,closedOnRoute=false,lastRoute="",lastToken=null,details=null,offer=null,offerCheckedAt=0,offerLoading=false;
  var css='#pf-stable-open{position:fixed!important;right:12px!important;bottom:calc(89px + env(safe-area-inset-bottom,0px))!important;z-index:2147480000!important;background:linear-gradient(125deg,#7133c5,#9f51ec)!important;border:1px solid #d4b4ff!important;color:#fff!important;box-shadow:0 10px 35px #16072a9c!important;border-radius:16px!important;padding:12px 15px!important;font:800 13px/1.3 system-ui,sans-serif!important;cursor:pointer!important;max-width:min(320px,calc(100vw - 24px))!important;text-align:left!important}'+
  '#pf-stable-open small{display:block;font:500 11px/1.4 system-ui,sans-serif;color:#efe3ff;margin-top:3px}'+
  '#pf-stable-modal{position:fixed!important;inset:0!important;z-index:2147482000!important;background:#070816e8!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow-y:auto!important;padding:16px!important;box-sizing:border-box!important;backdrop-filter:blur(8px)}'+
@@ -20,6 +20,8 @@
  '#pf-stable-modal .pf-stable-plans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'+
  '#pf-stable-modal .pf-stable-card{min-width:0;box-sizing:border-box;padding:20px 16px;border-radius:17px;border:1px solid #6c638e;background:#1d2540;display:flex;flex-direction:column;gap:8px}'+
  '#pf-stable-modal .pf-stable-card.best{border:2px solid #b083fb;background:#302345}'+
+ '#pf-stable-modal .pf-stable-card.promo{border:2px solid #83e8ba;background:linear-gradient(130deg,#153e42,#1d2540);grid-column:1/-1}'+
+ '#pf-stable-modal .pf-stable-card.promo .pf-stable-price{color:#baffcb}'+
  '#pf-stable-modal .pf-stable-card b{font-size:18px}'+
  '#pf-stable-modal .pf-stable-price{font-size:30px;color:#b0ffca;font-weight:900}'+
  '#pf-stable-modal .pf-stable-card small{font-size:12px;color:#ded5f0}'+
@@ -39,6 +41,33 @@
   var b=document.getElementById("pf-stable-open");if(b){var sm=b.querySelector("small");if(sm)sm.textContent=message()}
   var p=document.getElementById("pf-stable-trial-status");if(p)p.textContent=message();
  }
+ function offerActive(){
+  return Boolean(offer?.enabled&&Number.isFinite(Date.parse(offer.expiresAt))&&Date.now()<Date.parse(offer.expiresAt));
+ }
+ function updateOffer(){
+  var box=document.getElementById("pf-stable-test-offer");if(!box)return;
+  var active=offerActive();box.hidden=!active;
+  if(!active){box.innerHTML="";return}
+  var until=new Date(offer.expiresAt).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short"});
+  box.innerHTML='<small>🧪 OFERTA TEMPORÁRIA • TESTE REAL DE PIX</small>'+
+   '<b>Teste da API de pagamento</b><div class="pf-stable-price">R$ 1,00</div>'+
+   '<small>7 dias de acesso após confirmação do Pix</small>'+
+   '<p>Oferta disponível até '+until+' (horário local). Encerra automaticamente após 24 horas. Pagamento único, sem renovação.</p>'+
+   '<button type="button" data-pf-stable-plan="teste7d"'+(offer.ready?"":" disabled")+'>'+
+   (offer.ready?"Contratar 7 dias por R$ 1,00":"PIX temporariamente indisponível")+'</button>';
+ }
+ async function refreshOffer(force){
+  if(offerLoading||!force&&Date.now()-offerCheckedAt<40000)return;
+  offerCheckedAt=Date.now();offerLoading=true;
+  try{
+   var resp=await fetch("/api/billing/config",{cache:"no-store"});
+   if(!resp.ok)throw Error("Configuração indisponível");
+   var info=await resp.json();
+   offer=info.testOffer&&typeof info.testOffer==="object"?
+     {...info.testOffer,ready:!!(info.ready&&info.supportedMethods?.includes("pix"))}:null;
+   updateOffer();
+  }catch{offer=null;updateOffer()}finally{offerLoading=false}
+ }
  function ensureStyle(){
   if(document.getElementById("pf-stable-css"))return;
   var node=document.createElement("style");node.id="pf-stable-css";node.textContent=css;(document.head||document.documentElement).appendChild(node);
@@ -56,7 +85,8 @@
  var paymentPoll=null;
  function stopPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}
  function select(code){
-  var plan=code==="mensal"?{code:"mensal",name:"Mensal",price:"R$ 24,90",days:30}:
+  var plan=code==="teste7d"&&offerActive()?{code:"teste7d",name:"Teste do Pix",price:"R$ 1,00",days:7}:
+       code==="mensal"?{code:"mensal",name:"Mensal",price:"R$ 24,90",days:30}:
            code==="quinzenal"?{code:"quinzenal",name:"Quinzenal",price:"R$ 14,90",days:15}:null;
   if(!plan)return;
   stopPolling();
@@ -164,6 +194,7 @@
   '<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • ASSINATURA</small><h2 id="pf-stable-title">Escolha seu plano</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
   '<section class="pf-stable-trial"><strong>🎁 7 dias de teste grátis</strong><p id="pf-stable-trial-status"></p><small>O prazo é registrado na conta e não gera cobrança automática.</small></section>'+
   '<div class="pf-stable-plans">'+
+  '<article class="pf-stable-card promo" id="pf-stable-test-offer" hidden></article>'+
   '<article class="pf-stable-card"><small>SEM FIDELIDADE</small><b>Plano Quinzenal</b><div class="pf-stable-price">R$ 14,90</div><small>15 dias de acesso</small><p>Treinos, Coach IA, metas e acompanhamento.</p><button type="button" data-pf-stable-plan="quinzenal">Selecionar 15 dias</button></article>'+
   '<article class="pf-stable-card best"><small>MELHOR CUSTO-BENEFÍCIO</small><b>Plano Mensal</b><div class="pf-stable-price">R$ 24,90</div><small>30 dias de acesso</small><p>Todos os recursos, com mais economia.</p><button type="button" data-pf-stable-plan="mensal">Selecionar 30 dias</button></article>'+
   '</div><p class="pf-stable-foot">Pix via MisticPay. O cartão ainda não está disponível. O pagamento somente libera o plano após confirmação no servidor.</p></section>';
@@ -172,7 +203,7 @@
    if(e.target===outer){closedOnRoute=true;hide();return}
    var btn=e.target.closest("[data-pf-stable-plan]");if(btn)select(btn.dataset.pfStablePlan);
   });
-  document.body.appendChild(outer);paint();
+  document.body.appendChild(outer);paint();updateOffer();void refreshOffer(true);
  }
  async function load(force){
   var key=token();
@@ -194,7 +225,7 @@
   if(r!==lastRoute){lastRoute=r;closedOnRoute=false;if(["subscription","plans","pricing","pro","premium"].includes(r))opened=true}
   if(!closedOnRoute&&!opened&&document.querySelector("#app .pro-price-grid, #app .pf-commercial-hero"))opened=true;
   if(opened&&!closedOnRoute&&!document.getElementById("pf-stable-modal"))show();
-  load();paint();
+  load();paint();updateOffer();if(opened)void refreshOffer(false);
  }
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",maintain,{once:true});
  else maintain();
