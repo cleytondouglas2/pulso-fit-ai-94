@@ -9,7 +9,7 @@ const greeting=readFileSync(new URL("./pulsofit-home-greeting.js",import.meta.ur
 const tail=ui.lastIndexOf("})();");
 const uiInjected=ui.slice(0,tail)+"window.__tests={onFix,pause,resume,haversine,pace,metFor,calories,routeSegments,setActivity:v=>activity=v};\n"+ui.slice(tail);
 function uiSandbox(){
- const window={},geo={watchPosition(){return 3},clearWatch(){}};
+ const window={addEventListener(){},removeEventListener(){}},geo={watchPosition(){return 3},clearWatch(){}};
  runInNewContext(uiInjected,{window,document:{readyState:"loading",addEventListener(){},getElementById(){return null}},
   navigator:{geolocation:geo},sessionStorage:{getItem(){return "test"}},location:{hash:"#/home"},
   setInterval(){return 0},clearInterval(){},setTimeout(){},requestAnimationFrame(){},console});
