@@ -224,11 +224,16 @@
     if(!grid&&main){grid=document.createElement("div");grid.className="pro-price-grid pf-offers";main.appendChild(grid);}
     if(!grid)return;
     var oldTrial=root.querySelector(".pf-trial-card");
-    if(oldTrial)oldTrial.remove();
-    if(grid.dataset.pfPricing!=="v2"){
-      grid.dataset.pfPricing="v2";
+    // O aplicativo re-renderiza a grade e pode recolocar os cartões antigos
+    // sem apagar data-pf-pricing. Conferir as opções REAIS em vez da marca.
+    var activeOffers=Array.from(grid.querySelectorAll("[data-pf-select-plan]"));
+    var hasBothPlans=prices.every(function(p){
+      return activeOffers.some(function(el){return el.dataset.pfSelectPlan===p.code});
+    });
+    if(!hasBothPlans){
       grid.replaceChildren(offerCard(prices[0]),offerCard(prices[1]));
     }
+    grid.dataset.pfPricing="v3";
     var state=billingServerStatus;
     var token="";
     try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
@@ -248,7 +253,7 @@
       detail="Consultando sua data de validade no servidor. O teste grátis é vinculado à sua conta.";
     }
     var hero=root.querySelector(".pf-commercial-hero, .pro-hero");
-    var banner=root.querySelector(".pf-trial-banner");
+    var banner=root.querySelector(".pf-trial-banner")||oldTrial;
     if(!banner){
       banner=document.createElement("section");banner.className="pf-trial-banner";
       banner.setAttribute("aria-label","Status do período gratuito");
