@@ -1,0 +1,10 @@
+/* Scoped: ARGUS withdrawal readiness only; no other payment form restyled. */
+#argus-payout-readiness{display:flex;align-items:flex-start;gap:12px;box-sizing:border-box;
+ padding:14px 15px;margin:10px 0 15px;border-radius:13px;border:1px solid rgba(224,177,107,.4);
+ background:rgba(72,48,40,.28);color:#f1e4d0;font-size:13px;line-height:1.5;max-width:100%}
+#argus-payout-readiness.argus-payout-ready{background:rgba(47,86,69,.23);border-color:rgba(111,183,137,.4)}
+#argus-payout-readiness strong{display:block;font-size:14px;color:#f4dbac;margin-bottom:4px}
+#argus-payout-readiness p{margin:0;color:#cbc9c6;font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+#argus-payout-readiness .argus-payout-readiness-icon{font-size:19px;flex:none;line-height:1.35}
+#argus-payout-readiness + button:disabled{opacity:.53;cursor:not-allowed}
+@media(max-width:500px){#argus-payout-readiness{padding:12px;font-size:12px}}
