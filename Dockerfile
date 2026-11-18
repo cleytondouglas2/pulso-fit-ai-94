@@ -168,6 +168,29 @@ RUN php -l /tmp/quick_pix_receipt_patch.php \
  && php /var/www/html/tests/traditional_quick_unit.php \
  && php /var/www/html/tests/ui_contract.php
 
+# iOS home-screen icon: explicit, centered gold A; never crop the old wordmark.
+# Pix UI: modal reuses existing receipt/QR/reconcile; success follows verified provider status.
+COPY deployment/quick-pix-popup.js deployment/quick-pix-popup.css /var/www/html/public/static/
+COPY deployment/argus-letter-a-icon.svg /var/www/html/public/static/assets/argus-letter-a-icon.svg
+RUN rsvg-convert -w 512 -h 512 /var/www/html/public/static/assets/argus-letter-a-icon.svg -o /tmp/argus-new-a-512.png \
+ && convert /tmp/argus-new-a-512.png -background '#141820' -alpha remove -alpha off -strip /var/www/html/public/static/assets/argus-a-512-v6.png \
+ && convert /var/www/html/public/static/assets/argus-a-512-v6.png -resize 192x192 -strip /var/www/html/public/static/assets/argus-a-192-v6.png \
+ && convert /var/www/html/public/static/assets/argus-a-512-v6.png -resize 180x180 -strip /var/www/html/public/apple-touch-icon-argus-a-v6.png \
+ && cp /var/www/html/public/apple-touch-icon-argus-a-v6.png /var/www/html/public/apple-touch-icon.png \
+ && cp /var/www/html/public/apple-touch-icon-argus-a-v6.png /var/www/html/public/static/assets/argus-icon-180.png \
+ && cp /var/www/html/public/static/assets/argus-a-192-v6.png /var/www/html/public/static/assets/argus-icon-192.png \
+ && cp /var/www/html/public/static/assets/argus-a-512-v6.png /var/www/html/public/static/assets/argus-icon-512.png \
+ && test "$(identify -format '%[opaque]' /var/www/html/public/apple-touch-icon-argus-a-v6.png)" = "true"
+COPY deployment/argus_pix_popup_icon_patch.php /tmp/argus_pix_popup_icon_patch.php
+COPY deployment/argus_pix_popup_icon_test.php /var/www/html/tests/argus_pix_popup_icon_test.php
+RUN php -l /tmp/argus_pix_popup_icon_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_pix_popup_icon_patch.php \
+ && php /var/www/html/tests/argus_pix_popup_icon_test.php \
+ && php /var/www/html/tests/quick_pix_receipt_test.php \
+ && php /var/www/html/tests/identity_profile_test.php \
+ && php /var/www/html/tests/traditional_quick_unit.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
