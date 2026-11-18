@@ -11,19 +11,22 @@
     {code:"mensal",title:"Plano Mensal",price:"R$ 24,90",duration:"30 dias",detail:"Mais economia e continuidade na rotina.",featured:true}
   ];
   var entitlement={valid:false,token:"",checked:false};
+  var verifiedServerAccess=null, billingServerStatus=null;
   function refreshBillingEntitlement(token){
-    if(!token){window.PULSO_BILLING_ENFORCED=false;removeGate();return;}
+    if(!token){verifiedServerAccess=null;billingServerStatus=null;window.PULSO_BILLING_ENFORCED=false;removeGate();return;}
     fetch('/api/subscription/status',{cache:'no-store',headers:{Authorization:'Bearer '+token}})
       .then(function(r){if(!r.ok)throw Error('Consulta de assinatura indisponível');return r.json()})
       .then(function(data){
         if(token!==pendingToken)return;
         window.PULSO_BILLING_ENFORCED=data.billingEnforced===true;
+        verifiedServerAccess=window.PULSO_BILLING_ENFORCED?!!data.hasAccess:null;
+        billingServerStatus=window.PULSO_BILLING_ENFORCED?data:null;
         if(window.PULSO_BILLING_ENFORCED){
-          entitlement.valid=!!data.hasAccess;
+          entitlement.valid=verifiedServerAccess;
           entitlement.checked=true;
         }
         enhance();
-      }).catch(function(){window.PULSO_BILLING_ENFORCED=false;enhance()});
+      }).catch(function(){window.PULSO_BILLING_ENFORCED=false;verifiedServerAccess=null;billingServerStatus=null;enhance()});
   }
 
   var pendingToken="";
@@ -41,7 +44,7 @@
     var token="";
     try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
     if(token===pendingToken)return;
-    pendingToken=token;entitlement={valid:false,token:token,checked:!token};
+    pendingToken=token;verifiedServerAccess=null;billingServerStatus=null;entitlement={valid:false,token:token,checked:!token};
     refreshBillingEntitlement(token);
     if(!token){enhance();return}
     fetch("/api/me",{headers:{"Authorization":"Bearer "+token},cache:"no-store"})
@@ -50,9 +53,10 @@
       var u=result.user||{};
       var plan=String(u.plan||"").toLowerCase();
       var expiry=Date.parse(u.expires||"");
-      entitlement={valid:u.role==="admin"||(["plus","premium","quinzenal","mensal"].indexOf(plan)>=0&&Number.isFinite(expiry)&&expiry>Date.now()),token:token,checked:true};
+      var legacyAccess=u.role==="admin"||(["plus","premium","quinzenal","mensal"].indexOf(plan)>=0&&Number.isFinite(expiry)&&expiry>Date.now());
+      if(token===pendingToken)entitlement={valid:verifiedServerAccess!==null?verifiedServerAccess:legacyAccess,token:token,checked:true};
       enhance();
-    }).catch(function(){entitlement={valid:false,token:token,checked:true};enhance()});
+    }).catch(function(){if(token===pendingToken)entitlement={valid:verifiedServerAccess!==null?verifiedServerAccess:false,token:token,checked:true};enhance()});
   }
   function activeRoute(){return (location.hash.replace(/^#\/?/,"").split("/")[0]||"home")}
   function formatDates(){
@@ -165,11 +169,11 @@
     var overlay=document.createElement("section");overlay.id="pf-trial-gate";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","Período de teste encerrado");
     overlay.innerHTML="<div class='pf-gate-box'><div class='pf-gate-icon'>✦</div>"+
      "<span class='eyebrow'>PULSOFIT PREMIUM</span><h2>Seus 7 dias de teste terminaram.</h2>"+
-     "<p>Escolha um plano para continuar treinando. A liberação de assinatura é feita pelo administrador enquanto o pagamento online não estiver configurado.</p>"+
+     "<p>Escolha um plano para continuar treinando. Sua assinatura será liberada após a confirmação do pagamento pela MisticPay, quando o checkout Pix estiver ativo.</p>"+
      "<div class='pf-gate-plans'><div><b>15 dias</b><strong>R$ 14,90</strong></div><div><b>30 dias</b><strong>R$ 24,90</strong></div></div>"+
      "<button type='button' class='btn wide' data-pf-open-plans='1'>Ver planos e ativar acesso</button>"+
      "<button type='button' class='btn-alt wide' data-pf-open-account='1'>Já tenho assinatura — entrar na conta</button>"+
-     "<small>O período nesta versão é vinculado ao navegador. Proteção segura depende de autenticação e pagamentos verificados no servidor.</small></div>";
+     "<small>O prazo de teste e o vencimento são verificados na sua conta pelo servidor.</small></div>";
     root.appendChild(overlay);
   }
   function enhance(){
