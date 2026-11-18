@@ -237,10 +237,11 @@ function onFix(fix){
  const ts=Number.isFinite(at)?at:Date.now(),a=[Number(c.latitude.toFixed(6)),Number(c.longitude.toFixed(6)),Math.round(ts),
   Math.min(250,Number(acc.toFixed(1))),Number.isFinite(c.altitude)&&Number.isFinite(c.altitudeAccuracy)&&c.altitudeAccuracy<=30?Number(c.altitude.toFixed(1)):null,0];
  const prev=activity.lastFix;
+ if(activity.segmentBreak){a[5]=1;activity.segmentBreak=false}
  if(prev){
   let sec=(a[2]-prev[2])/1000,delta=haversine(prev,a);
   if(sec<=0||delta<Math.max(3,Math.min(12,acc*.13)))return;
-  if(sec>150){a[5]=1;activity.prevAltitude=null;setStatus("Trecho após uma pausa de sinal GPS. Distância desse intervalo não foi estimada.",true)}
+  if(a[5]||sec>150){a[5]=1;activity.prevAltitude=null;setStatus("Novo trecho após pausa ou perda de sinal. A distância entre trechos não será somada.",true)}
   else {
    const limit=activity.kind==="bike"?21:activity.kind==="run"?10:4.5;
    if(delta/sec>limit){activity.skipped++;setStatus("Leitura GPS com salto irreal descartada.",true);return}
@@ -341,12 +342,16 @@ function drawFallback(points){
 }
 function applyPolylines(points){
  if(!map||!window.L)return;
- segments.forEach(l=>{try{map.removeLayer(l)}catch{}});
- segments=[];
- routeSegments(points).forEach(part=>{
-  if(part.length>=2)segments.push(window.L.polyline(part,{color:"#74ffe0",weight:5,opacity:.95}).addTo(map));
+ const all=routeSegments(points).filter(part=>part.length>=2);
+ while(segments.length>all.length){
+  const old=segments.pop();try{map.removeLayer(old)}catch{}
+ }
+ all.forEach((part,i)=>{
+  if(!segments[i])segments[i]=window.L.polyline(part,{color:"#74ffe0",weight:5,opacity:.95}).addTo(map);
+  else segments[i].setLatLngs(part);
  });
 }
+
 async function updateMap(point){
  const container=document.getElementById("pf-outdoor-map");
  if(!container||!el?.isConnected||!(view==="tracker"||view==="completed"||view==="detail"))return;
