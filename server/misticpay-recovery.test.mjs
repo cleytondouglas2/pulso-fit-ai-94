@@ -67,7 +67,7 @@ test("UI conserva referência e recupera Pix ao retornar ao aplicativo",()=>{
 test("Backend de cobrança reserva rota de recuperação autenticada e conta isolada",()=>{
  const server=readFileSync(new URL("./misticpay-runtime.mjs",import.meta.url),"utf8");
  const store=readFileSync(new URL("./misticpay-postgres-store.mjs",import.meta.url),"utf8");
- assert.match(server,/"/api\/billing\/recover"/);
+ assert.ok(server.includes('"/api/billing/recover"'));
  assert.match(store,/user_id=\$1 AND provider_payment_id IS NOT NULL/);
  assert.match(store,/ORDER BY created_at DESC LIMIT 1/);
 });
