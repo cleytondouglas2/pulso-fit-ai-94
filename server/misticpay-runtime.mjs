@@ -186,12 +186,14 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    }
   }
 
-  // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
-  // controle premium real nas APIs antes de transacionar dinheiro.
+  // Uso temporário autorizado pelo proprietário; não exigir banco permanente
+  // durante piloto. Checkout exige confirmação de leitura da própria cobrança
+  // antes de exibir o Pix. Bloqueio de acesso é uma flag independente.
   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&
-    state.credentialsConfigured&&state.providerAuth==="verified"&&requiredFlags());
+    state.credentialsConfigured&&state.providerAuth!=="denied"&&requiredFlags());
   state.ready=configured;
   if(configured)state.supportedMethods=["pix"];
+  state.accessEnforcementActive=configured&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1";
   console.log("[pulso-billing] Integration: postgres="+state.databaseReachable+
    " accountSchema="+state.accountSchemaVerified+" billingStore="+state.storageReady+
    " providerAuth="+state.providerAuth+" checkout="+(configured?"enabled":"disabled")+
@@ -204,8 +206,8 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
    return respond(res,200,{...state,nextAction:state.ready?"Conectado":"Aguardando banco permanente e proteção de acesso no servidor."});
   }
-  if(path==="/api/subscription/status"&&!configured){
-   return respond(res,200,{billingEnforced:false,checkoutEnabled:false});
+  if(path==="/api/subscription/status"&&(!configured||process.env.PULSO_BILLING_ENFORCE_ACCESS!=="1")){
+   return respond(res,200,{billingEnforced:false,checkoutEnabled:configured,trialDays:7});
   }
   if(path==="/api/admin/billing/config"&&!configured){
    const user=await authenticate(req);
@@ -246,7 +248,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
     });
     return true;
    }
-   if(premiumRoute(path)&&process.env.PULSO_MISTICPAY_ENABLE_CHARGES==="1"){
+   if(premiumRoute(path)&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1"){
     void Promise.resolve(checkPremiumAccess(this,req,res)).catch(()=>{
      if(!res.headersSent)respond(res,503,{error:"Não foi possível verificar a assinatura."});
      else if(!res.writableEnded)res.end();
