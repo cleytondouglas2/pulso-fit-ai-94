@@ -221,6 +221,21 @@ RUN php -d display_errors=1 -d log_errors=0 -l /var/www/html/src/KycStudio.php \
  && php /var/www/html/tests/identity_profile_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Unified QR history: recent ledger inside existing QR panel; authenticated status
+# and original popup used on "Ver Pix"; 30-minute expiry; correct old qpx_ reconciliation.
+COPY deployment/quick-pix-history.js deployment/quick-pix-history.css /var/www/html/public/static/
+COPY deployment/argus_pix_history_patch.php /tmp/argus_pix_history_patch.php
+COPY deployment/argus_pix_history_test.php /var/www/html/tests/argus_pix_history_test.php
+RUN php -l /tmp/argus_pix_history_patch.php \
+ && php -l /var/www/html/tests/argus_pix_history_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_pix_history_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/TraditionalQuickPix.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/argus_pix_history_test.php \
+ && php /var/www/html/tests/traditional_quick_unit.php \
+ && php /var/www/html/tests/argus_pix_30m_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
