@@ -184,12 +184,27 @@ async function loadHistory(){
  if(loading||!logged())return;
  loading=true;try{let d=await api("/api/fitness/training-lab");history=Array.isArray(d.items)?d.items:[];sleepMessage="";}
  catch(e){sleepMessage="Histórico online indisponível: "+e.message;}
- finally{loading=false;if(root&&currentView==="history")showHistory()}
+ finally{loading=false;if(root&&currentView==="history")showHistory();else if(root&&currentView==="builder")showSmartTip()}
 }
 function stats(){
  let now=Date.now(),weekly=history.filter(h=>new Date(h.completedAt).getTime()>now-7*86400000);
  const minutes=weekly.reduce((n,h)=>n+Number(h.minutes||0),0);
  return {week:weekly.length,minutes,total:history.length};
+}
+function nextMission(){
+ // Rules-based suggestion from REAL completed sessions; not a medical inference.
+ const week=history.filter(h=>new Date(h.completedAt).getTime()>Date.now()-7*86400000);
+ const recent=history.slice(0,2),tired=recent.length===2&&recent.every(h=>Number(h.effort)>=8);
+ if(tired)return {style:"recovery",minutes:10,energy:"low",title:"Semana de esforço alto",explanation:"Suas duas últimas sessões foram registradas com esforço 8/10 ou mais. Considere uma missão leve de mobilidade e recuperação."};
+ if(week.length>=4)return {style:"mobility",minutes:15,energy:"low",title:"Constância em alta",explanation:"Você registrou quatro ou mais sessões em sete dias. Uma missão de mobilidade pode trazer variedade à sua rotina."};
+ if(week.length===0)return {style:"express",minutes:10,energy:"medium",title:"Comece pequeno",explanation:"Nenhum treino registrado nos últimos sete dias. Que tal uma missão de 10 minutos para retomar o hábito?"};
+ if(recent[0]?.style==="strength")return {style:"core",minutes:15,energy:"medium",title:"Variedade de movimentos",explanation:"Seu último registro foi de força. Experimente uma sessão complementar de estabilidade."};
+ return {style:"functional",minutes:15,energy:"medium",title:"Próxima missão sugerida",explanation:"Com base no histórico, um circuito funcional curto pode variar os movimentos da semana."};
+}
+function showSmartTip(){
+ const box=by("pf-tv-smart-tip");if(!box)return;
+ const x=nextMission();box.innerHTML='<strong>🧭 '+safe(x.title)+'</strong><p>'+safe(x.explanation)+'</p><button type="button" id="pf-tv-apply-tip">Aplicar sugestão</button>';
+ box.querySelector("button").addEventListener("click",()=>{opts.style=x.style;opts.minutes=x.minutes;opts.energy=x.energy;opts.lowImpact=true;showBuilder()});
 }
 function stopTimer(){
  if(timerId!=null)clearInterval(timerId);
@@ -247,6 +262,7 @@ function showBuilder(){
  const st=stats();
  const el=by("pf-tv-body");if(!el)return;
  el.innerHTML='<div class="pf-tv-statbar"><span>📅 <b>'+st.week+'</b> sessões em 7 dias</span><span>⏱ <b>'+st.minutes+'</b> min registrados</span><button type="button" id="pf-tv-view-history">Ver histórico</button></div>'+
+ '<aside id="pf-tv-smart-tip" class="pf-tv-smart-tip" aria-label="Próxima missão sugerida"></aside>'+
  '<div class="pf-tv-sectiontitle"><h3>Escolha uma missão</h3><p>Além dos treinos tradicionais do aplicativo</p></div>'+
  '<div class="pf-tv-cards">'+styles.map(x=>'<button class="pf-tv-style'+(opts.style===x[0]?' is-selected':'')+'" data-pf-tv-style="'+x[0]+'" type="button" aria-pressed="'+(opts.style===x[0])+'"><span aria-hidden="true">'+x[1]+'</span><strong>'+safe(x[2])+'</strong><small>'+safe(x[3])+'</small></button>').join("")+'</div>'+
  '<div class="pf-tv-sectiontitle"><h3>Adapte ao seu momento</h3><p>Em vez de um treino fixo, escolha seu contexto real.</p></div>'+
@@ -259,6 +275,7 @@ function showBuilder(){
  '</div><div class="pf-tv-checks"><label><input id="pf-tv-low" type="checkbox"'+(opts.lowImpact?" checked":"")+'> Sem saltos e baixo impacto</label><label><input id="pf-tv-quiet" type="checkbox"'+(opts.quiet?" checked":"")+'> Modo silencioso</label></div>'+
  '<p class="pf-tv-advice">Ajuste os movimentos à sua capacidade. Caso sinta dor, tontura, falta de ar fora do habitual ou desconforto importante, interrompa a sessão. Restrições e condições de saúde devem ser avaliadas por profissional habilitado.</p>'+
  '<button class="pf-tv-primary" id="pf-tv-generate" type="button">⚡ Criar meu treino adaptativo</button><p id="pf-tv-alert" role="status" aria-live="polite"></p>';
+ showSmartTip();
  el.querySelectorAll("[data-pf-tv-style]").forEach(b=>b.addEventListener("click",()=>{updateFromFields();chooseStyle(b.dataset.pfTvStyle)}));
  el.querySelector("#pf-tv-view-history").addEventListener("click",showHistory);
  el.querySelector("#pf-tv-generate").addEventListener("click",()=>{
