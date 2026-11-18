@@ -210,7 +210,7 @@ COPY deployment/KycStudio.php /var/www/html/src/KycStudio.php
 COPY deployment/kyc-portal.js deployment/kyc-portal.css deployment/kyc-studio.js deployment/kyc-studio.css /var/www/html/public/static/
 COPY deployment/argus_kyc_studio_patch.php /tmp/argus_kyc_studio_patch.php
 COPY deployment/kyc_studio_test.php /var/www/html/tests/kyc_studio_test.php
-RUN php -l /var/www/html/src/KycStudio.php \
+RUN php -d display_errors=1 -d log_errors=0 -l /var/www/html/src/KycStudio.php \
  && php -l /tmp/argus_kyc_studio_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_kyc_studio_patch.php \
  && php -l /var/www/html/src/Portal.php \
