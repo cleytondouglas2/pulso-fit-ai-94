@@ -1,0 +1,130 @@
+/* PulsoFit AI • greeting + Outdoor Live responsive interfaces, 2026-11-18 */
+#app #pf-home-welcome{
+ box-sizing:border-box!important;display:flex!important;flex-direction:column!important;gap:13px!important;
+ width:100%!important;max-width:100%!important;margin:4px 0 20px!important;padding:clamp(18px,4vw,29px)!important;
+ border-radius:23px!important;border:1px solid rgba(176,142,245,.62)!important;
+ background:radial-gradient(circle at 96% 0%,rgba(136,72,230,.39),transparent 50%),linear-gradient(125deg,#24294d,#18243c)!important;
+ color:#fff!important;box-shadow:0 12px 38px rgba(0,0,0,.14)!important;min-width:0!important;
+}
+#app #pf-home-welcome *{box-sizing:border-box!important;min-width:0!important}
+#app .pf-home-greet-eyebrow{color:#cbadff!important;font-size:11px!important;font-weight:900!important;letter-spacing:.16em!important}
+#app .pf-home-greet-eyebrow span{color:#8effd6!important}
+#app .pf-home-greet-row{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:14px!important}
+#app #pf-home-greet-title{font-size:clamp(25px,5vw,38px)!important;color:#fff!important;letter-spacing:-.04em!important;font-weight:900!important;line-height:1.12!important;margin:0 0 9px!important;overflow-wrap:anywhere!important}
+#app #pf-home-greet-quote{font-size:clamp(13px,3.2vw,16px)!important;color:#e3def6!important;line-height:1.55!important;margin:0!important;max-width:57ch!important}
+#app .pf-home-greet-icon{display:grid!important;place-items:center!important;flex:0 0 65px!important;width:65px!important;height:65px!important;border-radius:22px!important;background:#7741c6a1!important;color:#c8ffed!important;font-size:38px!important;box-shadow:0 0 0 4px #9e79f426!important}
+#app .pf-home-greet-footer{display:flex!important;align-items:center!important;flex-wrap:wrap!important;justify-content:space-between!important;gap:11px!important;padding-top:14px!important;border-top:1px solid #8f83bb55!important}
+#app .pf-home-greet-footer>span{font-size:11px!important;color:#b9cde1!important}
+#app #pf-home-outdoor-shortcut{min-height:40px!important;max-width:100%!important;border:1px solid #91d9db!important;border-radius:13px!important;background:#184b5b!important;color:#d8fff4!important;padding:10px 13px!important;font:850 12px/1.25 system-ui,sans-serif!important;cursor:pointer!important}
+#app #pf-outdoor-launch{display:flex!important;align-items:center!important;gap:14px!important;width:100%!important;max-width:100%!important;padding:16px!important;margin:12px 0 18px!important;box-sizing:border-box!important;text-align:left!important;min-width:0!important;border-radius:19px!important;border:1px solid #6bc8b5!important;color:white!important;background:linear-gradient(120deg,#145260,#25365c)!important;cursor:pointer!important}
+#app #pf-outdoor-launch>span:first-child{font-size:30px!important;width:51px!important;height:51px!important;flex:0 0 51px!important;display:grid!important;place-items:center!important;border-radius:15px!important;background:#205e66!important}
+#app #pf-outdoor-launch>span:nth-child(2){display:grid!important;gap:5px!important;min-width:0!important;flex:1!important}
+#app #pf-outdoor-launch strong{font-size:17px!important;color:#fff!important;line-height:1.35!important}
+#app #pf-outdoor-launch strong small{vertical-align:middle!important;white-space:nowrap!important;font-size:9px!important;letter-spacing:.07em!important;color:#173245!important;background:#9effdf!important;border-radius:24px!important;padding:4px 6px!important;margin-left:7px!important}
+#app #pf-outdoor-launch em{font-size:11px!important;line-height:1.45!important;color:#d3f5f2!important;font-style:normal!important}
+#app #pf-outdoor-launch>span:last-child{font-size:32px!important;color:#b0ffde!important}
+#pf-outdoor-overlay{
+ position:fixed!important;inset:0!important;z-index:2147483500!important;display:flex!important;
+ align-items:flex-end!important;justify-content:center!important;padding:0!important;
+ box-sizing:border-box!important;overflow-y:auto!important;overscroll-behavior:contain!important;
+ background:rgba(7,10,24,.88)!important;backdrop-filter:blur(10px)!important;
+ color:#fff!important;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+}
+#pf-outdoor-overlay *{box-sizing:border-box!important;min-width:0!important}
+#pf-outdoor-overlay .pf-outdoor-sheet{
+ width:min(960px,100%)!important;max-width:100%!important;max-height:93dvh!important;
+ border-radius:25px 25px 0 0!important;border:1px solid #5d7290!important;border-bottom:0!important;
+ display:flex!important;flex-direction:column!important;overflow:hidden!important;
+ background:radial-gradient(circle at 98% 0%,rgba(44,132,135,.28),transparent 44%),linear-gradient(165deg,#172d42,#141b32 60%,#1d2140)!important;
+ box-shadow:0 -8px 80px #000a!important;
+}
+#pf-outdoor-overlay .pf-outdoor-head{padding:18px clamp(15px,4vw,27px)!important;display:flex!important;gap:18px!important;align-items:start!important;justify-content:space-between!important;border-bottom:1px solid #7e97ac59!important}
+#pf-outdoor-overlay .pf-outdoor-overline{color:#9af5d6!important;font-size:10px!important;font-weight:850!important;letter-spacing:.12em!important}
+#pf-outdoor-overlay .pf-outdoor-head h2{color:#fff!important;margin:5px 0!important;font-size:clamp(24px,5vw,34px)!important;line-height:1.1!important;font-weight:900!important;letter-spacing:-.04em!important}
+#pf-outdoor-overlay .pf-outdoor-head h2 span{color:#88f7cd!important}
+#pf-outdoor-overlay .pf-outdoor-head p{margin:5px 0 0!important;color:#c1cfdd!important;font-size:12px!important;line-height:1.45!important}
+#pf-outdoor-overlay #pf-outdoor-close{flex:0 0 42px!important;width:42px!important;height:42px!important;border:1px solid #7795ad!important;border-radius:13px!important;background:#2b4159!important;color:#fff!important;font:28px/1 system-ui,sans-serif!important;cursor:pointer!important}
+#pf-outdoor-overlay .pf-outdoor-body{flex:1!important;min-height:0!important;max-width:100%!important;overflow-y:auto!important;overscroll-behavior:contain!important;padding:20px clamp(14px,4vw,27px) calc(24px + env(safe-area-inset-bottom,0px))!important}
+#pf-outdoor-overlay :where(button,select,input,textarea){font-family:inherit!important}
+#pf-outdoor-overlay :where(button,input,select):focus-visible{outline:3px solid #9bffdc!important;outline-offset:3px!important}
+#pf-outdoor-overlay button{cursor:pointer!important;white-space:normal!important}
+#pf-outdoor-overlay button[hidden]{display:none!important}
+#pf-outdoor-overlay button:disabled{opacity:.56!important;cursor:wait!important}
+#pf-outdoor-overlay .pf-outdoor-intro h3{font-size:clamp(22px,4vw,28px)!important;color:#fff!important;margin:0 0 6px!important}
+#pf-outdoor-overlay .pf-outdoor-intro p{font-size:13px!important;color:#c5d4e6!important;line-height:1.55!important;margin:0 0 17px!important}
+#pf-outdoor-overlay .pf-outdoor-choices{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;margin:18px 0!important}
+#pf-outdoor-overlay .pf-outdoor-choice{display:flex!important;flex-direction:column!important;gap:9px!important;align-items:flex-start!important;text-align:left!important;padding:19px!important;border-radius:18px!important;min-height:155px!important;border:1px solid #5b7992!important;background:linear-gradient(155deg,#273b56,#202c4a)!important;color:#fff!important}
+#pf-outdoor-overlay .pf-outdoor-choice:hover{border-color:#b1f8df!important;background:#2d5261!important}
+#pf-outdoor-overlay .pf-outdoor-choice>span{font-size:39px!important;line-height:1.15!important}
+#pf-outdoor-overlay .pf-outdoor-choice strong{font-size:17px!important;color:#fff!important;line-height:1.3!important}
+#pf-outdoor-overlay .pf-outdoor-choice small{font-size:12px!important;line-height:1.4!important;color:#c6d4e4!important}
+#pf-outdoor-overlay .pf-outdoor-privacy{padding:16px 18px!important;background:rgba(24,79,82,.42)!important;border:1px solid #589c9b!important;border-radius:15px!important;color:#d8f7ef!important}
+#pf-outdoor-overlay .pf-outdoor-privacy strong{font-size:13px!important;color:#b2ffe6!important}
+#pf-outdoor-overlay .pf-outdoor-privacy p{font-size:11px!important;line-height:1.65!important;color:#d9ecf0!important;margin:9px 0 0!important}
+#pf-outdoor-overlay .pf-outdoor-activity-heading{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;padding:12px 14px!important;border:1px solid #4c7e91!important;border-radius:16px!important;background:#223750!important}
+#pf-outdoor-overlay .pf-outdoor-activity-heading>div>span{font-size:10px!important;font-weight:850!important;letter-spacing:.1em!important;color:#aaf9e1!important}
+#pf-outdoor-overlay .pf-outdoor-activity-heading h3{font-size:clamp(17px,4vw,23px)!important;color:#fff!important;line-height:1.25!important;margin:5px 0!important}
+#pf-outdoor-overlay .pf-outdoor-activity-heading button{padding:9px 12px!important;background:#324a64!important;border:1px solid #87a3b6!important;color:#fff!important;border-radius:11px!important;font-size:11px!important}
+#pf-outdoor-overlay .pf-outdoor-weight{padding:13px 0!important;display:flex!important;flex-wrap:wrap!important;gap:7px 10px!important;align-items:center!important}
+#pf-outdoor-overlay .pf-outdoor-weight label{font-size:12px!important;color:#d6e8ed!important;font-weight:750!important}
+#pf-outdoor-overlay .pf-outdoor-weight input{max-width:110px!important;min-width:95px!important;background:#152b3b!important;border:1px solid #8ca8b5!important;border-radius:10px!important;color:#fff!important;padding:10px!important;font-size:16px!important}
+#pf-outdoor-overlay .pf-outdoor-weight small{font-size:11px!important;color:#a8c2d3!important;line-height:1.4!important}
+#pf-outdoor-overlay .pf-outdoor-status{margin:10px 0!important;border:1px solid #407f7a!important;border-radius:13px!important;background:#143c44!important;color:#ccfff0!important;padding:11px 12px!important;font-size:12px!important;line-height:1.5!important;font-weight:650!important}
+#pf-outdoor-overlay .pf-outdoor-status.pf-outdoor-warning{background:#3f3145!important;border-color:#b98497!important;color:#ffe8ef!important}
+#pf-outdoor-overlay .pf-outdoor-map-wrap{position:relative!important;height:clamp(250px,43vh,435px)!important;min-height:250px!important;max-width:100%!important;overflow:hidden!important;border:1px solid #617b98!important;border-radius:20px!important;background:#172a41!important}
+#pf-outdoor-overlay #pf-outdoor-map{height:100%!important;width:100%!important;background:#1c2c47!important;overflow:hidden!important}
+#pf-outdoor-overlay .pf-outdoor-map-loading{display:grid!important;place-items:center!important;text-align:center!important;padding:20px!important;width:100%!important;height:100%!important;font-size:13px!important;color:#d5e8ed!important;line-height:1.5!important}
+#pf-outdoor-overlay .pf-outdoor-map-wrap #pf-outdoor-follow{position:absolute!important;right:12px!important;top:12px!important;z-index:701!important;border:1px solid #8fd1cc!important;border-radius:11px!important;padding:10px 13px!important;background:#173949!important;color:#edfff9!important;box-shadow:0 3px 18px #0007!important;font-size:11px!important;font-weight:850!important}
+#pf-outdoor-overlay .leaflet-control-attribution{font-size:10px!important}
+#pf-outdoor-overlay .pf-outdoor-fallback-note{position:absolute!important;bottom:10px!important;left:8px!important;right:8px!important;background:#16293ce6!important;color:#e8f4ff!important;border-radius:8px!important;padding:6px!important;font-size:11px!important;z-index:1!important}
+#pf-outdoor-overlay .pf-outdoor-stats,#pf-outdoor-overlay .pf-outdoor-summary-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin:13px 0!important}
+#pf-outdoor-overlay .pf-outdoor-stats>div,#pf-outdoor-overlay .pf-outdoor-summary-grid>div{display:flex!important;flex-direction:column!important;gap:5px!important;padding:13px!important;background:#1f324b!important;border:1px solid #5a738c!important;border-radius:14px!important;overflow:hidden!important}
+#pf-outdoor-overlay .pf-outdoor-stats small,#pf-outdoor-overlay .pf-outdoor-summary-grid small{font-size:10px!important;line-height:1.3!important;color:#c1d7e4!important;font-weight:700!important}
+#pf-outdoor-overlay .pf-outdoor-stats strong,#pf-outdoor-overlay .pf-outdoor-summary-grid strong{font-size:clamp(15px,3vw,20px)!important;line-height:1.18!important;color:#c6ffe5!important;font-weight:900!important;font-variant-numeric:tabular-nums!important;white-space:normal!important}
+#pf-outdoor-overlay .pf-outdoor-stats em{font-style:normal!important;font-size:11px!important;color:#d5f6e9!important}
+#pf-outdoor-overlay .pf-outdoor-actions{display:flex!important;flex-wrap:wrap!important;align-items:stretch!important;gap:10px!important;margin:14px 0!important}
+#pf-outdoor-overlay .pf-outdoor-actions button{flex:1 1 180px!important;min-height:45px!important;padding:11px 13px!important;border-radius:13px!important;font-size:13px!important;font-weight:850!important;line-height:1.25!important}
+#pf-outdoor-overlay .pf-outdoor-primary{background:linear-gradient(115deg,#196a67,#1a887b)!important;color:#fff!important;border:1px solid #91f2db!important}
+#pf-outdoor-overlay .pf-outdoor-secondary{background:#34465e!important;color:#fff!important;border:1px solid #8b9ba9!important}
+#pf-outdoor-overlay .pf-outdoor-danger{background:#53384b!important;color:#ffe4e9!important;border:1px solid #d38f9b!important}
+#pf-outdoor-overlay .pf-outdoor-foot{font-size:11px!important;line-height:1.6!important;color:#b9c8dd!important;padding:10px 12px!important;border-left:3px solid #6a8f9e!important;background:#2435506b!important;margin:12px 0!important}
+#pf-outdoor-overlay .pf-outdoor-complete{text-align:center!important;padding:15px 0!important}
+#pf-outdoor-overlay .pf-outdoor-complete>span{font-size:48px!important}
+#pf-outdoor-overlay .pf-outdoor-complete h3{font-size:26px!important;color:#fff!important;margin:8px 0!important}
+#pf-outdoor-overlay .pf-outdoor-complete p{color:#d0d8e5!important;font-size:13px!important;line-height:1.5!important}
+#pf-outdoor-overlay .pf-outdoor-ai{border:1px solid #7762aa!important;border-radius:17px!important;background:#292b4a!important;padding:17px!important;margin:14px 0!important}
+#pf-outdoor-overlay .pf-outdoor-ai h3{color:#d1baff!important;font-size:17px!important;margin:0 0 10px!important}
+#pf-outdoor-overlay .pf-outdoor-ai p{white-space:pre-wrap!important;overflow-wrap:anywhere!important;font-size:13px!important;color:#e8eaf7!important;line-height:1.7!important;margin:0!important}
+#pf-outdoor-overlay #pf-outdoor-save-status{font-size:12px!important;color:#b9ffe4!important;font-weight:700!important;line-height:1.5!important}
+#pf-outdoor-overlay .pf-outdoor-history{display:grid!important;gap:9px!important}
+#pf-outdoor-overlay .pf-outdoor-history-row{display:grid!important;grid-template-columns:41px minmax(0,1fr) 18px!important;align-items:center!important;gap:12px!important;width:100%!important;padding:13px!important;text-align:left!important;border:1px solid #637891!important;border-radius:13px!important;background:#24334c!important;color:#fff!important}
+#pf-outdoor-overlay .pf-outdoor-history-row>span:first-child{font-size:26px!important}
+#pf-outdoor-overlay .pf-outdoor-history-row strong{display:block!important;font-size:14px!important;color:#fff!important}
+#pf-outdoor-overlay .pf-outdoor-history-row small{display:block!important;font-size:11px!important;color:#c8d6e4!important;margin-top:4px!important;line-height:1.45!important}
+#pf-outdoor-overlay .pf-outdoor-empty,#pf-outdoor-overlay .pf-outdoor-error{padding:20px!important;text-align:center!important;border:1px dashed #7b90a6!important;border-radius:13px!important;color:#d2e0f1!important;font-size:12px!important;line-height:1.5!important}
+#pf-outdoor-overlay .pf-outdoor-error{color:#ffdae2!important;border-color:#be8a97!important}
+@media(max-width:680px){
+ #pf-outdoor-overlay .pf-outdoor-sheet{height:92dvh!important;max-height:92dvh!important}
+ #pf-outdoor-overlay .pf-outdoor-head{padding:14px 16px!important}
+ #pf-outdoor-overlay .pf-outdoor-body{padding:14px 12px calc(19px + env(safe-area-inset-bottom,0px))!important}
+ #pf-outdoor-overlay .pf-outdoor-choices{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #pf-outdoor-overlay .pf-outdoor-choice{min-height:145px!important;padding:14px!important}
+ #pf-outdoor-overlay .pf-outdoor-map-wrap{height:clamp(260px,42vh,390px)!important}
+ #pf-outdoor-overlay .pf-outdoor-stats,#pf-outdoor-overlay .pf-outdoor-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #pf-outdoor-overlay .pf-outdoor-actions button{flex:1 1 130px!important}
+}
+@media(max-width:375px){
+ #app .pf-home-greet-icon{display:none!important}
+ #app .pf-home-greet-footer{align-items:stretch!important;flex-direction:column!important}
+ #app #pf-home-outdoor-shortcut{width:100%!important}
+ #pf-outdoor-overlay .pf-outdoor-choices{grid-template-columns:minmax(0,1fr)!important}
+ #pf-outdoor-overlay .pf-outdoor-choice{min-height:120px!important}
+ #pf-outdoor-overlay .pf-outdoor-map-wrap{height:270px!important}
+ #pf-outdoor-overlay .pf-outdoor-stats,#pf-outdoor-overlay .pf-outdoor-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #pf-outdoor-overlay .pf-outdoor-stats strong,#pf-outdoor-overlay .pf-outdoor-summary-grid strong{font-size:15px!important}
+}
+@media(min-width:681px){
+ #pf-outdoor-overlay{align-items:center!important;padding:24px!important}
+ #pf-outdoor-overlay .pf-outdoor-sheet{border-radius:25px!important;max-height:90dvh!important}
+}
+@media(prefers-reduced-motion:reduce){#pf-outdoor-overlay button{transition:none!important}}
