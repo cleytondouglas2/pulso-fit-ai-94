@@ -52,6 +52,7 @@ function openMenu(){
  var items=[
   ["profile","👤","Meu perfil","Foto, informações e preferências"],
   ["performance","📸","Performance IA","Análise corporal por foto"],
+  ["meal","🥗","Avaliar meu prato","Foto, calorias, proteínas e dicas da IA"],
   ["assessment","📈","Avaliação e progresso","Método da IA e evolução"],
   ["account","☁️","Conta online","Dados, sincronização e plano"],
   ["subscription","💎","Planos e validade","7 dias grátis e assinatura"],
@@ -126,6 +127,7 @@ async function act(action){
  if(action==="training-lab"){closeMenu();window.dispatchEvent(new Event("pulso-open-training-lab"));return}
  if(action==="outdoor"){closeMenu();window.dispatchEvent(new Event("pulso-open-outdoor"));return}
  if(action==="notifications"){closeMenu();window.dispatchEvent(new Event("pulso-open-push-settings"));return}
+ if(action==="meal"){closeMenu();window.dispatchEvent(new Event("pulso-open-meal"));return}
  if(action==="performance"||action==="assessment")return openFeature(action);
  var allowed=new Set(["profile","account","subscription","goals","workouts","coach"]);
  if(allowed.has(action))goTo(action);
