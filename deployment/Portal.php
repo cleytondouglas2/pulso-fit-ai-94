@@ -71,6 +71,7 @@ final class Portal
         return ['id'=>$a['id'],'account_type'=>$a['account_type'],'display_name'=>$a['display_name'],'email'=>$a['email'],
             'document_last4'=>$a['document_last4'],'status'=>$a['status'],'documents'=>$documents,
             'can_issue_live_keys'=>$a['status']==='approved'&&!empty($a['merchant_id']),
+            'document_validation'=>DocumentValidation::view($db,(string)$a['id']),
             'kyc_message'=>'Verificação automática de integridade e formato não substitui validação de identidade, prova de vida e análise do prestador de pagamentos.'];
     }
     private static function authPair(Database $db):array {
@@ -99,7 +100,7 @@ final class Portal
         if($bytes===false||strlen($bytes)<1024||strlen($bytes)>3200000)self::fail('Arquivo deve ter entre 1 KB e 3,2 MB',422);
         $mime=(new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
         if(!in_array($mime,['image/jpeg','image/png','application/pdf'],true))self::fail('Envie JPG, PNG ou PDF válido',422);
-        if(($type==='selfie'&&$mime==='application/pdf')||($mime==='application/pdf'&&!str_starts_with($bytes,'%PDF-')))self::fail('Formato do arquivo incompatível',422);
+        if(!DocumentValidation::formatValid($bytes,$mime))self::fail('Arquivo inválido, corrompido ou com resolução insuficiente. Envie outra foto nítida ou PDF completo.',422);
         $name='kyc_'.self::id().'.enc';$nonce=random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
         $sealed=$nonce.sodium_crypto_secretbox($bytes,$nonce,$key);
         $destination=rtrim($root,'/').'/'.$name;
@@ -121,6 +122,7 @@ final class Portal
         if($method==='GET'&&$path==='/api/admin/portal/applications'){
             $accounts=$db->all('SELECT id,account_type,display_name,email,document_last4,status,merchant_id,created_at,updated_at FROM argus_portal_accounts ORDER BY created_at DESC LIMIT 200');
             foreach($accounts as &$a){
+                $a['validation']=DocumentValidation::view($db,(string)$a['id']);
                 $a['documents']=$db->all('SELECT id,document_type,mime,review_status,created_at FROM argus_portal_documents WHERE account_id=? ORDER BY created_at DESC',[$a['id']]);
             }unset($a);self::out($accounts);
         }
@@ -216,7 +218,8 @@ final class Portal
             try{$db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                 [$id,$type,$name,$email,$h,substr($number,-4),password_hash($password,PASSWORD_DEFAULT),'documents_required',null,self::now(),self::now()]);}
             catch(\PDOException){self::fail('Cadastro já existente ou dados inválidos',409);}
-            self::out(['ok'=>true,'message'=>'Conta criada. Entre para enviar os documentos e acompanhar sua validação.','status'=>'documents_required'],201);
+            try{DocumentValidation::screen($db,$id,$type,$number,$name);}catch(\Throwable $e){error_log('ARGUS document screening unavailable: '.get_class($e));}
+            self::out(['ok'=>true,'message'=>'Conta criada. A triagem cadastral automática foi solicitada; identidade e pagamentos dependem de revisão.','status'=>'documents_required'],201);
         }
         if($method==='POST'&&$path==='/api/portal/login'){
             $data=self::body();$email=strtolower(self::string($data,'email',5,190));$password=self::string($data,'password',1,200);
@@ -242,6 +245,12 @@ final class Portal
             $token=$_COOKIE['arg_portal_session']??'';
             $db->run('DELETE FROM argus_portal_sessions WHERE token_hash=?',[hash('sha256',(string)$token)]);
             self::cookie('',time()-3600);self::csrfCookie('',time()-3600);self::out(['ok'=>true]);
+        }
+        if($method==='POST'&&$path==='/api/portal/validate-document'){
+            $data=self::body();$number=preg_replace('/\\D/','',self::string($data,'document_number',11,24));
+            if(!hash_equals((string)$account['document_digest'],self::digest($number)))self::fail('O documento não corresponde ao cadastro original',403);
+            $result=DocumentValidation::screen($db,(string)$account['id'],(string)$account['account_type'],$number,(string)$account['display_name'],true);
+            self::out(['validation'=>$result,'message'=>'Triagem atualizada. A conferência automática não valida a titularidade.']);
         }
         if($method==='POST'&&$path==='/api/portal/documents')self::upload($db,$account,self::body(4600000));
         if($method==='GET'&&$path==='/api/portal/keys'){
