@@ -13,8 +13,12 @@ import {existsSync,readFileSync,writeFileSync,readdirSync,statSync} from "node:f
 if (basename(process.argv[1]||"")==="server.mjs") {
  try {
   const script=readFileSync(new URL("./pulsofit-plans-stable.js",import.meta.url),"utf8");
+  const authJS=readFileSync(new URL("./pulsofit-auth-ui.js",import.meta.url),"utf8");
+  const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const marker="pulsofit-stable-plans-20261118";
-  const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>";
+  const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>";
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
