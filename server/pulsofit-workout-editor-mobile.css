@@ -1,0 +1,97 @@
+/* Narrow, screen-scoped patch for the original "Crie seu treino" editor.
+   No changes to user values, sets/reps, order or save handlers. */
+@media(max-width:760px){
+ #app .pf-custom-workout-row{
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-auto-flow:row!important;
+  gap:12px!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  height:auto!important;min-height:0!important;
+  padding:clamp(11px,3vw,17px)!important;
+  margin-inline:0!important;
+  overflow:hidden!important;
+  align-items:start!important;
+ }
+ #app .pf-custom-workout-row>*{
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin-left:0!important;
+  margin-right:0!important;
+ }
+ #app .pf-custom-workout-row>.pf-custom-workout-media,
+ #app .pf-custom-workout-row .pf-custom-workout-media{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:auto!important;
+  position:relative!important;
+  overflow:hidden!important;
+  justify-self:stretch!important;
+  border-radius:13px!important;
+ }
+ #app .pf-custom-workout-row .pf-custom-workout-media :is(img,video),
+ #app .pf-custom-workout-row>img,
+ #app .pf-custom-workout-row img{
+  display:block!important;
+  width:100%!important;
+  height:auto!important;
+  max-height:260px!important;
+  aspect-ratio:16 / 9!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:12px!important;
+  margin:0!important;
+ }
+ #app .pf-custom-workout-row :is(h3,h4,strong,.pf-custom-workout-title){
+  font-size:clamp(15px,4vw,18px)!important;
+  line-height:1.3!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  min-width:0!important;
+ }
+ #app .pf-custom-workout-row :is(p,small,span,label){
+  overflow-wrap:break-word!important;
+  white-space:normal!important;
+  min-width:0!important;
+  max-width:100%!important;
+ }
+ #app .pf-custom-workout-row .pf-custom-workout-controls{
+  display:flex!important;flex-wrap:wrap!important;
+  gap:8px!important;align-items:center!important;
+  justify-content:flex-start!important;
+  max-width:100%!important;
+  width:100%!important;
+  min-width:0!important;
+ }
+ #app .pf-custom-workout-row .pf-custom-workout-field{
+  flex:0 1 auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+ }
+ #app .pf-custom-workout-row :is(input[type="number"],select){
+  box-sizing:border-box!important;
+  width:min(90px,100%)!important;
+  max-width:100%!important;
+  min-width:64px!important;
+  margin:0!important;
+  font-size:16px!important;
+  min-height:43px!important;
+  padding-inline:9px!important;
+ }
+ #app .pf-custom-workout-row button{
+  box-sizing:border-box!important;
+  position:static!important;
+  min-width:36px!important;
+  min-height:42px!important;
+  max-width:100%!important;
+  flex:0 0 auto!important;
+  margin:0!important;
+  overflow:visible!important;
+ }
+ #app .pf-custom-workout-row :is(.pf-custom-workout-controls,.pf-custom-workout-field)>*{max-width:100%!important}
+}
+/* Keep the app's tabbar reachable while editing a long routine. */
+#app .pf-custom-workout-row~*{max-width:100%!important;min-width:0!important}
