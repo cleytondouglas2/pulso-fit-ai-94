@@ -53,6 +53,7 @@
      ['Recebedor financeiro',a.merchant_linked?'Vinculado':'Não autorizado'],
      ['Triagem cadastral',a.screening?.label||'Não realizada']
    ].map(x=>'<div><small>'+esc(x[0])+'</small><strong>'+esc(x[1])+'</strong></div>').join('')+'</div>';
+   html+='<div class="kyc-reveal-panel"><button type="button" id="kyc-reveal-identity">Conferir CPF/CNPJ cadastrado</button><p id="kyc-revealed-document" class="kyc-privacy">O documento completo só aparece após autorização de acesso e fica registrado no histórico.</p></div>';
    if(a.account_type==='PJ')html+='<div class="kyc-representative-card"><h3>Responsável / sócio</h3>'+
      (rep?'<strong>'+esc(rep.full_name)+'</strong><p>CPF final '+esc(rep.cpf_last4)+' · '+esc(rep.capacity)+'</p>':
      '<p class="kyc-warning">Responsável ainda não informado.</p>')+'</div>';
@@ -91,6 +92,16 @@
    }
    html+='<p class="kyc-privacy">Apenas membros autorizados podem visualizar anexos. Downloads são auditados. Nenhuma validação pública de CPF comprova identidade ou propriedade da conta.</p>';
    target.innerHTML=html;
+   E('kyc-reveal-identity')?.addEventListener('click',async()=>{
+     const button=E('kyc-reveal-identity');button.disabled=true;
+     try{
+       const result=await api('/api/admin/kyc/applications/'+encodeURIComponent(selected)+'/identity');
+       const el=E('kyc-revealed-document');
+       if(el)el.textContent='CPF/CNPJ: '+(result.document_number||'—')+
+         (result.representative_cpf?' · CPF do responsável: '+result.representative_cpf:'');
+     }catch(e){toast(e.message,true)}
+     finally{button.disabled=false}
+   });
    E('kyc-decision')?.addEventListener('change',toggleDecision);
    E('kyc-decision-form')?.addEventListener('submit',decide);
    E('kyc-finance-form')?.addEventListener('submit',release);
