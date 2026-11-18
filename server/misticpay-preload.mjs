@@ -16,7 +16,7 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
   globalThis.__PULSO_MISTICPAY_PRELOAD__ = true;
   const origin = "https://pulso-fit-ai-95-online.onrender.com";
   const publicPaths = new Set(["/api/billing/config","/api/billing/health"]);
-  const managedPaths = new Set(["/api/billing/checkout","/api/billing/payment","/api/billing/webhook","/api/admin/billing/config"]);
+  const managedPaths = new Set(["/api/billing/checkout","/api/billing/payment","/api/billing/webhook","/api/admin/billing/config","/api/subscription/status"]);
   const originalEmit = Server.prototype.emit;
   const accessId = process.env.PULSO_MISTICPAY_CLIENT_ID||"";
   const accessSecret = process.env.PULSO_MISTICPAY_CLIENT_SECRET||"";
@@ -123,6 +123,7 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
       });
       return json(res,409,{error:"Não envie credenciais por navegador. Gerencie-as no Render."});
     }
+    if(pathname==="/api/subscription/status"){return json(res,200,{billingEnforced:false,checkoutEnabled:false,trialDays:7});}
     if(pathname==="/api/billing/webhook"){
       // O webhook não é aceito sem verificação independente e banco idempotente.
       return json(res,503,{error:"Webhook ainda não habilitado. Nenhuma assinatura foi ativada."});
