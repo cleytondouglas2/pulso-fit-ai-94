@@ -1,5 +1,5 @@
 FROM php:8.3-apache-bookworm
-RUN apt-get update && apt-get install -y --no-install-recommends unzip libpq-dev libsqlite3-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends unzip libpq-dev libsqlite3-dev postgresql-client \
     && docker-php-ext-install pdo_mysql pdo_pgsql pdo_sqlite \
     && a2enmod rewrite headers setenvif \
     && rm -rf /var/lib/apt/lists/*
@@ -15,7 +15,11 @@ RUN unzip -q /tmp/argus-source.zip -d /tmp \
  && a2enconf argus-auth \
  && sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/public#g' /etc/apache2/sites-available/000-default.conf \
  && printf '<Directory /var/www/html/public>\nAllowOverride All\nRequire all granted\n</Directory>\n' >> /etc/apache2/sites-available/000-default.conf
+COPY deployment/storage_probe.php /usr/local/share/argus/storage_probe.php
+COPY deployment/backup_argus_schema.sh /usr/local/share/argus/backup_argus_schema.sh
+COPY deployment/MIGRATION.md /usr/local/share/argus/MIGRATION.md
+RUN php -l /usr/local/share/argus/storage_probe.php && bash -n /usr/local/share/argus/backup_argus_schema.sh
 RUN php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/b2b_http.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
-CMD ["/bin/bash", "/var/www/html/start-render.sh"]
+CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; exec /bin/bash /var/www/html/start-render.sh"]
