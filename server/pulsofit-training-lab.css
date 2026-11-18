@@ -121,3 +121,16 @@
 }
 @media (min-width:681px){#pf-tv-overlay{align-items:center!important;padding:25px!important}#pf-tv-overlay .pf-tv-sheet{max-height:88dvh!important;border-radius:25px!important}}
 @media (prefers-reduced-motion:reduce){#pf-tv-overlay .pf-tv-style{transition:none!important}}
+
+
+/* Recommendations are opt-in and based solely on the user's saved sessions. */
+#pf-tv-overlay .pf-tv-smart-tip {
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:6px!important;
+  margin:12px 0 18px!important;border:1px solid rgba(126,242,206,.6)!important;
+  border-radius:16px!important;padding:14px 16px!important;
+  background:linear-gradient(120deg,rgba(30,102,104,.42),rgba(57,50,102,.66))!important;
+  color:#f0fff8!important;
+}
+#pf-tv-overlay .pf-tv-smart-tip strong {font-size:13px!important;font-weight:850!important;color:#d2ffe8!important}
+#pf-tv-overlay .pf-tv-smart-tip p {font-size:12px!important;line-height:1.55!important;color:#e5e8f4!important;margin:0!important}
+#pf-tv-overlay .pf-tv-smart-tip button {background:#214e52!important;border:1px solid #72d7cc!important;color:#f3fffc!important;padding:9px 12px!important;border-radius:10px!important;font-size:12px!important;font-weight:800!important;margin-top:3px!important}
