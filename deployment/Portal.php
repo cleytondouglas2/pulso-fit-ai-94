@@ -72,6 +72,7 @@ final class Portal
             'document_last4'=>$a['document_last4'],'status'=>$a['status'],'documents'=>$documents,
             'can_issue_live_keys'=>$a['status']==='approved'&&!empty($a['merchant_id']),
             'document_validation'=>DocumentValidation::view($db,(string)$a['id']),
+            'identity_profile'=>IdentityProfile::public($db,'portal',(string)$a['id']),
             'kyc_message'=>'Verificação automática de integridade e formato não substitui validação de identidade, prova de vida e análise do prestador de pagamentos.'];
     }
     private static function authPair(Database $db):array {
@@ -210,6 +211,7 @@ final class Portal
             if(!filter_var($email,FILTER_VALIDATE_EMAIL))self::fail('E-mail inválido',422);
             $number=preg_replace('/\D/','',self::string($data,'document_number',11,24));
             if(!(($type==='PF'&&self::validCpf($number))||($type==='PJ'&&self::validCnpj($number))))self::fail('CPF ou CNPJ inválido',422);
+            IdentityProfile::validate($type,$name,$number);
             $password=self::string($data,'password',14,200);
             if(!preg_match('/[A-Z]/',$password)||!preg_match('/[a-z]/',$password)||!preg_match('/[0-9]/',$password))self::fail('Use senha com pelo menos 14 caracteres, letras e números',422);
             $h=self::digest($number);$existing=$db->one('SELECT id FROM argus_portal_accounts WHERE email=? OR document_digest=?',[$email,$h]);
@@ -218,6 +220,7 @@ final class Portal
             try{$db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
                 [$id,$type,$name,$email,$h,substr($number,-4),password_hash($password,PASSWORD_DEFAULT),'documents_required',null,self::now(),self::now()]);}
             catch(\PDOException){self::fail('Cadastro já existente ou dados inválidos',409);}
+            IdentityProfile::store($db,'portal',$id,$type,$name,$number);
             try{DocumentValidation::screen($db,$id,$type,$number,$name);}catch(\Throwable $e){error_log('ARGUS document screening unavailable: '.get_class($e));}
             self::out(['ok'=>true,'message'=>'Conta criada. A triagem cadastral automática foi solicitada; identidade e pagamentos dependem de revisão.','status'=>'documents_required'],201);
         }
@@ -245,6 +248,10 @@ final class Portal
             $token=$_COOKIE['arg_portal_session']??'';
             $db->run('DELETE FROM argus_portal_sessions WHERE token_hash=?',[hash('sha256',(string)$token)]);
             self::cookie('',time()-3600);self::csrfCookie('',time()-3600);self::out(['ok'=>true]);
+        }
+        if($path==='/api/portal/account-profile'&&$method==='POST'){
+            $saved=IdentityProfile::portal($db,$account,self::body());
+            self::out(['ok'=>true,'profile'=>$saved,'message'=>'Dados cadastrais confirmados com segurança.']);
         }
         if($method==='POST'&&$path==='/api/portal/validate-document'){
             $data=self::body();$number=preg_replace('/\\D/','',self::string($data,'document_number',11,24));
