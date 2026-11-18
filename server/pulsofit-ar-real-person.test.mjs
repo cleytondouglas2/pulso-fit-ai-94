@@ -19,8 +19,8 @@ test("Real human is now the default rather than a cartoon avatar",()=>{
  assert.match(real,/Pessoa real \(vídeo\)/);
  assert.match(real,/Avatar 3D ilustrado/);
  assert.match(real,/Treinador de verdade gravado em vídeo, não boneco/);
- assert.match(menu,/Pessoa real no ambiente/);
- assert.match(training,/Ver pessoa real no ambiente/);
+ assert.match(menu,/Treino com avatar animado/);
+ assert.match(training,/Treinar com avatar animado/);
 });
 test("Licensed human demonstrator videos are exact exercises with source credits",()=>{
  const fixed=real.replace(/\}\)\(\);\s*$/,"window.__licensedHumanFootage=footage;\n})();");
