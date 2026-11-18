@@ -23,6 +23,25 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
   const credsPresent = /^pk_[^\s]+$/.test(accessId) && /^sk_[^\s]+$/.test(accessSecret);
   const dbVar = ["PULSO_BILLING_DATABASE_URL","DATABASE_URL","PULSO_DATABASE_URL","POSTGRES_URL","PG_CONNECTION_STRING"].find(k=>!!process.env[k]);
   let dbDetected = !!dbVar, databaseReachable=false, driverAvailable=false;
+  let readScopeVerified=false, readScopeResult="not_checked";
+  async function validateReadScope(){
+    if(!credsPresent)return;
+    try{
+      const response=await fetch("https://api.misticpay.com/api/transactions/check",{
+        method:"POST",redirect:"error",signal:AbortSignal.timeout(8000),
+        headers:{"Authorization":"Basic "+Buffer.from(accessId+":"+accessSecret).toString("base64"),
+          "Content-Type":"application/json","Accept":"application/json"},
+        body:JSON.stringify({transactionId:"pulsofit-verify-read-scope-not-a-real-transaction"})
+      });
+      const body=await response.json().catch(()=>({}));
+      const code=String(body?.code||"");
+      readScopeVerified=response.status===404&&code==="TRANSACTION_NOT_FOUND";
+      readScopeResult=readScopeVerified?"scope_valid":("HTTP_"+response.status+"_"+code.replace(/[^A-Z_]/g,"").slice(0,50));
+    }catch{readScopeResult="network_unavailable"}
+    console.log("[pulso-billing] MisticPay read-only auth probe: "+readScopeResult);
+  }
+  void validateReadScope();
+
   let pgProbeStarted = false;
   let activeBillingHandler = null;
   const billingFlagsApproved = process.env.PULSO_BILLING_ENABLE_PAYMENTS==="1" && process.env.PULSO_BILLING_DURABLE_ACK==="1";
@@ -68,6 +87,7 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
     return {
       provider:"misticpay",backendMounted:true,ready:ready(),
       production:true,credentialsConfigured:credsPresent,
+      readScopeVerified,
       databaseConfigured:dbDetected,databaseReachable,driverAvailable,
       supportedMethods:supported(),
       plans:{quinzenal:{days:15,amountCents:1490},mensal:{days:30,amountCents:2490}},
