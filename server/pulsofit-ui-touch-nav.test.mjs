@@ -63,6 +63,24 @@ test("O escudo de navegação é visual e termina sem bloquear indefinidamente",
  assert.match(guard,/if\(section===current\(\)\)return/);
 });
 
+test("Troca entre todas as rotas e janelas internas tem efeitos suaves e respeita acessibilidade",()=>{
+ assert.match(guard,/pf-page-revealing/);
+ assert.match(guard,/pf-page-reveal/);
+ assert.match(guard,/pf-screen-progress/);
+ assert.match(guard,/pf-screen-curtain--exit/);
+ assert.match(guard,/pf-dialog-backdrop-in/);
+ assert.match(guard,/pf-dialog-panel-in/);
+ assert.match(guard,/prefers-reduced-motion:reduce/);
+ assert.match(guard,/clearTimeout\(exitTimer\)/);
+ assert.match(guard,/clearTimeout\(revealTimer\)/);
+ assert.match(guard,/\["profile","account","subscription","goals","workouts","coach"\]/);
+});
+test("O carregador antigo não sobrepõe o guard nem desliga animações",()=>{
+ const legacy=read("../pulsofit-upgrade-2026.js");
+ assert.match(legacy,/if\(window\.__PF_NAVIGATION_GUARD__\)/);
+ assert.ok(!legacy.includes('[class*=page-enter]{animation:none!important'));
+});
+
 test("Todos os botões recebem confirmação visual; playlist tem seleção persistente",()=>{
  assert.match(touch,/pointerdown/);
  assert.match(touch,/pf-ui-pressed/);
