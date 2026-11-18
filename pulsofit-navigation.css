@@ -200,3 +200,39 @@
 @media (prefers-reduced-motion: reduce) {
   .mobile-nav button[data-route="coach"] {animation:none !important;}
 }
+
+
+/* Coach IA - seletor real do botao, publicado v6 */
+@media (max-width:850px) {
+  .mobile-nav.mobile-nav {grid-template-columns:repeat(5,minmax(0,1fr))!important;overflow:visible!important;gap:0!important;padding-top:11px!important;padding-bottom:calc(10px + env(safe-area-inset-bottom))!important;}
+  .mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"] {
+    position:relative!important;isolation:isolate!important;z-index:5!important;
+    display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+    flex:0 0 auto!important;width:clamp(64px,17vw,76px)!important;min-width:0!important;max-width:76px!important;
+    height:72px!important;min-height:72px!important;margin:-17px auto 0!important;padding:8px 3px!important;
+    border-radius:50%!important;border:2px solid rgba(195,174,255,.82)!important;
+    background:linear-gradient(145deg,#9f55fc,#6736d5)!important;color:white!important;
+    transform:none!important;overflow:visible!important;
+    box-shadow:0 7px 24px rgba(125,63,223,.6),0 0 0 5px rgba(164,103,246,.12)!important;
+    animation:pf-ai-btn-glow 2.7s ease-in-out infinite!important;
+  }
+  .mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"] svg {
+    color:#b8fff2!important;stroke:#b8fff2!important;width:24px!important;height:24px!important;flex-shrink:0!important;
+  }
+  .mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"] span {
+    font-size:0!important;line-height:0!important;white-space:nowrap!important;
+  }
+  .mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"] span::after {
+    content:"Coach IA"!important;display:block!important;font:900 10px/1.15 system-ui,sans-serif!important;
+    white-space:nowrap!important;letter-spacing:-.25px;color:white!important;
+  }
+  .mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"]::after {
+    content:"IA"!important;position:absolute!important;top:-10px!important;right:-9px!important;
+    width:30px!important;height:22px!important;border:2px solid #10152a!important;border-radius:12px!important;
+    display:grid!important;place-items:center!important;background:linear-gradient(135deg,#a3ffbb,#66e7ff)!important;
+    color:#10213d!important;font:900 11px/1 system-ui,sans-serif!important;
+    box-shadow:0 2px 10px #26c6ef6b!important;pointer-events:none!important;
+  }
+}
+@keyframes pf-ai-btn-glow {0%,100%{box-shadow:0 7px 24px #7d3fdf99,0 0 0 5px #a467f61f}50%{box-shadow:0 9px 30px #9855ffcc,0 0 0 7px #a467f630}}
+@media (prefers-reduced-motion:reduce){.mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"]{animation:none!important}}
