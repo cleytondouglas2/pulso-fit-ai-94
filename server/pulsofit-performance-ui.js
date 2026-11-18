@@ -92,6 +92,8 @@ function avatarWidget(){
   '<button type="button">Remover foto</button><small>Salva apenas na sua conta. Pode ser excluída a qualquer momento.</small>'+
   '<span role="status" aria-live="polite"></span>';
  target.appendChild(box);
+ var avatarPreview=box.querySelector("#pf-avatar-preview");
+ if(avatarPreview&&avatar){avatarPreview.src=avatar;avatarPreview.style.display="block";}
  var notice=box.querySelector('[role="status"]');
  box.querySelector('input').addEventListener("change",async function(e){
   var f=e.target.files?.[0];if(!f)return;notice.textContent="Preparando foto...";
