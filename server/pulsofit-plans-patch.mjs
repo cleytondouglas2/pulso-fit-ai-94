@@ -32,7 +32,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      const html=readFileSync(full,"utf8");
      if(!/<\/body\s*>/i.test(html)||!/<html[\s>]/i.test(html))continue;
      if(html.includes(marker)){found.push(full+":already");continue}
-     const revised=html.replace(/<\/body\s*>/i,inject+"</body>");
+     const matches=Array.from(html.matchAll(/<\/body\s*>/gi));
+     const last=matches[matches.length-1];
+     const revised=html.slice(0,last.index)+inject+html.slice(last.index);
      writeFileSync(full,revised);
      found.push(full);
     }catch{console.warn("[pulso-ui] Não foi possível atualizar arquivo HTML (continua disponível sem patch).")}
