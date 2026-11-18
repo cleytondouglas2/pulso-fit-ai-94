@@ -10,10 +10,12 @@
  */
 import { randomUUID } from "node:crypto";
 import { createMisticPayAdapter,paymentMatchesOrder } from "./misticpay-adapter.mjs";
+import {TEST_PLAN,TEST_PLAN_CODE,testOfferState,availableBillingPlans} from "./pulsofit-test-offer.mjs";
 
 const PLANS=Object.freeze({
  quinzenal:Object.freeze({title:"Plano quinzenal",amountCents:1490,days:15}),
- mensal:Object.freeze({title:"Plano mensal",amountCents:2490,days:30})
+ mensal:Object.freeze({title:"Plano mensal",amountCents:2490,days:30}),
+ [TEST_PLAN_CODE]:TEST_PLAN
 });
 function reply(res,status,body){
  res.writeHead(status,{"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff"});
@@ -77,7 +79,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
    }
    if(path==="/api/billing/config"&&req.method==="GET"){
     reply(res,200,{provider:"misticpay",ready:ready(),supportedMethods:ready()?["pix"]:[],
-     plans:PLANS,webhookPath:"/api/billing/webhook"});
+     plans:availableBillingPlans(PLANS),testOffer:testOfferState(),webhookPath:"/api/billing/webhook"});
     return true;
    }
    if(path==="/api/admin/billing/config"&&req.method==="GET"){
@@ -101,6 +103,9 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     const planCode=String(input.planCode||"");
     const plan=PLANS[planCode];
     if(!plan){reply(res,400,{error:"Plano inválido"});return true;}
+    if(planCode===TEST_PLAN_CODE&&!testOfferState().enabled){
+     reply(res,410,{error:"Oferta de teste R$ 1,00 encerrada. Os planos regulares continuam disponíveis.",code:"TEST_OFFER_EXPIRED"});return true;
+    }
     if(input.paymentMethod!=="pix"){reply(res,422,{error:"A documentação desta API MisticPay suporta apenas PIX; cartão indisponível."});return true;}
     const reference=randomUUID();
     // O banco deve rejeitar pedidos repetidos segundo sua regra de idempotência.
