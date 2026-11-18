@@ -243,7 +243,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    slot.index===1?(sub.wellness?"wellness":sub.training?"training":"performance"):
    (sub.performance?"performance":sub.wellness?"wellness":"training");
   const text=topic==="training"?ideas[index]:topic==="wellness"?wellness[index]:performance[index];
-  return {title:(slot.index===0?"☀️ ":"🌿 ")+hello+", "+name+"! • PulsoFit",
+  return {title:(hour<12?"☀️ ":hour<18?"🌤️ ":"🌙 ")+hello+", "+name+"! • PulsoFit",
    body:text,tag:"pulsofit-"+day+"-"+slot.index,
    url:topic==="performance"?"/?source=push#/goals":topic==="training"?"/?source=push#/workouts":"/?source=push#/home"};
  }
