@@ -7,6 +7,7 @@
  * Fail closed: NÃO aceita pagamentos até banco permanente e validação da
  * proteção de acesso. API keys nunca chegam ao navegador.
  */
+import "./pulsofit-plans-patch.mjs";
 import {Server} from "node:http";
 import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
