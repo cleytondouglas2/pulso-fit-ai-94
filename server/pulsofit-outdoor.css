@@ -128,3 +128,21 @@
  #pf-outdoor-overlay .pf-outdoor-sheet{border-radius:25px!important;max-height:90dvh!important}
 }
 @media(prefers-reduced-motion:reduce){#pf-outdoor-overlay button{transition:none!important}}
+
+
+/* Outdoor Live foreground panel + optional motion settings */
+#pf-outdoor-overlay .pf-outdoor-live-widget{
+ position:sticky!important;top:0!important;z-index:600!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
+ gap:12px!important;border:1px solid #89f4d6!important;border-radius:14px!important;padding:11px 13px!important;margin:11px 0!important;
+ background:#114f4be8!important;backdrop-filter:blur(8px)!important;color:#eafff6!important;box-shadow:0 4px 18px #0005!important;
+}
+#pf-outdoor-overlay .pf-outdoor-live-widget strong{font-size:10px!important;white-space:nowrap!important;letter-spacing:.05em!important;color:#b4ffe8!important}
+#pf-outdoor-overlay .pf-outdoor-live-widget span{font-size:13px!important;font-weight:850!important;text-align:right!important;font-variant-numeric:tabular-nums!important}
+#pf-outdoor-overlay .pf-outdoor-optional{display:grid!important;gap:8px!important;margin:12px 0!important;padding:12px!important;border:1px solid #5e8096!important;border-radius:13px!important;background:#243650!important}
+#pf-outdoor-overlay .pf-outdoor-optional label{display:flex!important;align-items:center!important;gap:9px!important;font-size:12px!important;color:#eef4ff!important;line-height:1.4!important}
+#pf-outdoor-overlay .pf-outdoor-optional input{width:18px!important;height:18px!important;flex:0 0 18px!important;accent-color:#7be9cf!important}
+#pf-outdoor-overlay .pf-outdoor-optional select{background:#14293f!important;border:1px solid #8bb1be!important;color:#fff!important;padding:8px!important;border-radius:9px!important;font-size:13px!important}
+@media(max-width:420px){
+ #pf-outdoor-overlay .pf-outdoor-live-widget{flex-direction:column!important;align-items:flex-start!important;gap:4px!important}
+ #pf-outdoor-overlay .pf-outdoor-live-widget span{text-align:left!important}
+}
