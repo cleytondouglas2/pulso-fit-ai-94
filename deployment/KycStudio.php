@@ -318,7 +318,7 @@ final class KycStudio {
         echo $bytes;exit;
     }
     public static function admin(Database $db,string $method,string $path,array $actor):never{
-        self::reviewer($actor);self::install($db);
+        self::reviewer($actor);Portal::install($db);self::install($db);
         if($method==='GET'&&$path==='/api/admin/kyc/queue'){
             $accounts=$db->all('SELECT * FROM argus_portal_accounts ORDER BY created_at DESC LIMIT 200');
             $items=[];foreach($accounts as $account)$items[]=self::dossier($db,$account);
