@@ -30,7 +30,12 @@ test("IA exige consentimento explícito e sem URL do usuário",()=>{
  assert.deepEqual(validateCoachRequest({message:"Oi",consent:true,history:[{role:"user",text:"anterior"}]}),
   {message:"Oi",history:[{role:"user",text:"anterior"}]});
  assert.match(s.coach,/pf-coach-consent/);
- assert.match(s.coach,/\/api\/coach\/secure-chat/);
+ // Legacy chat layout is preserved; sending is gated by the same explicit consent.
+ assert.match(s.coach,/pfaiChatInput/);
+ assert.match(s.coach,/stopIfNoConsent/);
+ assert.match(s.coach,/document\.addEventListener\("submit",stopIfNoConsent,true\)/);
+ assert.ok(!s.coach.includes('id="pf-coach-input"'));
+ assert.ok(!s.coach.includes('id="pf-coach-form"'));
  assert.match(s.coach,/seu-servidor/);
  assert.match(s.chat,/\/api\/me/);
  assert.match(s.chat,/gemini-2\.5-flash:generateContent/);
