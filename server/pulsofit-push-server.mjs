@@ -315,9 +315,9 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   if(!ready)return;
   try{
    await pool.query("DELETE FROM pf_push_active_workouts WHERE started_at<now()-interval '4 hours'");
-   const q=await pool.query(\`UPDATE pf_push_active_workouts SET last_notified_at=now()
+   const q=await pool.query(`UPDATE pf_push_active_workouts SET last_notified_at=now()
     WHERE state='running' AND (last_notified_at IS NULL OR last_notified_at<now()-interval '3 minutes')
-    RETURNING *\`);
+    RETURNING *`);
    for(const x of q.rows.slice(0,60))await sendLive(x);
   }catch(e){console.warn("[pulso-push] Live scheduler code="+String(e.code||"runtime").replace(/[^A-Za-z0-9]/g,"").slice(0,30))}
  }
@@ -335,12 +335,12 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    if(!validEndpoint(endpoint))throw fail(422,"Inscrição push do aparelho inválida.");
    const subs=await pool.query("SELECT count(*)::int n FROM pf_push_subscriptions WHERE user_id=$1::uuid AND endpoint=$2 AND enabled=true AND training=true",[user,endpoint]);
    if(!subs.rows[0]?.n)return json(res,409,{error:"Ative as notificações de treino nas configurações do PulsoFit primeiro."});
-   const q=await pool.query(\`INSERT INTO pf_push_active_workouts
+   const q=await pool.query(`INSERT INTO pf_push_active_workouts
     (user_id,session_key,kind,title,state,resumed_at,detail,endpoint,last_notified_at)
     VALUES($1::uuid,$2,$3,$4,'running',now(),$5,$6,now())
     ON CONFLICT(user_id) DO UPDATE SET session_key=EXCLUDED.session_key,kind=EXCLUDED.kind,
     title=EXCLUDED.title,state='running',elapsed_ms=0,resumed_at=now(),started_at=now(),
-    detail=EXCLUDED.detail,endpoint=EXCLUDED.endpoint,last_notified_at=now() RETURNING *\`,[user,key,kind,title,detail,endpoint]);
+    detail=EXCLUDED.detail,endpoint=EXCLUDED.endpoint,last_notified_at=now() RETURNING *`,[user,key,kind,title,detail,endpoint]);
    const sent=await sendLive(q.rows[0]);
    return json(res,200,{active:true,state:"running",sent,periodMinutes:3});
   }
