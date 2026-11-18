@@ -9,6 +9,7 @@
  */
 import {basename,join} from "node:path";
 import {ensureHTML5Document} from "./pulsofit-html5.mjs";
+import {Script as JavaScriptSyntax} from "node:vm";
 import {existsSync,readFileSync,writeFileSync,readdirSync,statSync} from "node:fs";
 
 if (basename(process.argv[1]||"")==="server.mjs") {
@@ -23,6 +24,10 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const authFetchJS=readFileSync(new URL("./pulsofit-auth-fetch.js",import.meta.url),"utf8");
   const html5ResponsiveCSS=readFileSync(new URL("./pulsofit-html5-responsive.css",import.meta.url),"utf8");
   const html5AccessibilityJS=readFileSync(new URL("./pulsofit-html5-accessibility.js",import.meta.url),"utf8");
+  // Preflight: abort the new visual overlay if its JavaScript is invalid.
+  new JavaScriptSyntax(html5AccessibilityJS,{filename:"pulsofit-html5-accessibility.js"});
+  if(!html5ResponsiveCSS.includes("#app .mobile-nav")||!html5ResponsiveCSS.includes("#pf-eval-overlay"))
+   throw Error("PULSO_HTML5_RESPONSIVE_STYLES_INCOMPLETE");
   const marker="pulsofit-stable-plans-20261118";
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
@@ -76,7 +81,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      // Bust only the script URL; the generated app.js itself is repaired
      // before this file is updated by pulsofit-js-boot-repair.mjs.
      const freshHtml=html5.html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
-      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-renderer-recovery-v3"+quote);
+      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-html5-responsive-v4"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
      const lastBody=Array.from(freshHtml.matchAll(/<\/body\s*>/gi)).at(-1);
@@ -89,7 +94,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   for(const d of roots)visit(d,0);
   console.log("[pulso-ui] Portal de assinatura no HTML servido: "+(found.length?found.join(", "):"nenhum HTML localizado"));
   console.log("[pulso-ui] Carregados: autenticação, apresentação inicial, foto/perfil, Performance em Mais, planos e avaliação.");
-  console.log("[pulso-html5] Responsividade consolidada e semântica acessível integradas ao HTML gerado.");
+  console.log("[pulso-html5] Verificações: metadados="+found.length+" arquivo(s), CSS=ok, acessibilidadeJS=syntax-ok; nenhuma rota ou dado de conta alterado.");
  }catch(error){
   console.warn("[pulso-ui] Não foi possível integrar portal de assinatura: "+String(error.code||"init_error"));
  }
