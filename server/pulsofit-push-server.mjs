@@ -11,7 +11,7 @@
 import {Server} from "node:http";
 import {basename} from "node:path";
 import {readFileSync} from "node:fs";
-import {createECDH,createPrivateKey,createCipheriv,hkdfSync,randomBytes,sign} from "node:crypto";
+import {createECDH,createPrivateKey,createCipheriv,createDecipheriv,hkdfSync,randomBytes,sign} from "node:crypto";
 import {pulsoIcon,pulsoManifest} from "./pulsofit-pwa-asset.mjs";
 
 if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RUNTIME__){
@@ -291,6 +291,34 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   if(req.method==="HEAD")res.end();else res.end(payload);
   return true;
  }
+ function selfCheckCrypto(){
+  const receiver=createECDH("prime256v1");receiver.generateKeys();
+  const secret=randomBytes(16),ua=receiver.getPublicKey();
+  const data=encryptedPayload({p256dh:b64(ua),auth_key:b64(secret)},{title:"PulsoFit",body:"encryption-test"});
+  const salt=data.subarray(0,16),sender=data.subarray(21,86),enc=data.subarray(86);
+  const ikm=Buffer.from(hkdfSync("sha256",receiver.computeSecret(sender),secret,
+    Buffer.concat([Buffer.from("WebPush: info\0"),ua,sender]),32));
+  const cek=Buffer.from(hkdfSync("sha256",ikm,salt,Buffer.from("Content-Encoding: aes128gcm\0"),16));
+  const nonce=Buffer.from(hkdfSync("sha256",ikm,salt,Buffer.from("Content-Encoding: nonce\0"),12));
+  const dec=createDecipheriv("aes-128-gcm",cek,nonce);dec.setAuthTag(enc.subarray(-16));
+  const plain=Buffer.concat([dec.update(enc.subarray(0,-16)),dec.final()]);
+  if(plain.at(-1)!==2||JSON.parse(plain.subarray(0,-1).toString()).body!=="encryption-test")throw Error("encryption mismatch");
+  if(vapidJWT("https://web.push.apple.com/endpoint").split(".").length!==3)throw Error("JWT failure");
+ }
+ setTimeout(()=>{
+  void(async()=>{
+   if(!ready){console.warn("[pulso-push] Selfcheck skipped: backend unavailable");return}
+   try{selfCheckCrypto();console.log("[pulso-push] Encryption selfcheck=ok AES128GCM VAPID-ES256")}
+   catch{ready=false;state="push_crypto_failed";console.warn("[pulso-push] Encryption selfcheck=failed; push disabled")}
+   for(const p of ["/pulsofit.webmanifest","/pulsofit-sw.js","/pulsofit-icon-192.png","/pulsofit-icon-512.png","/api/push/config"]){
+    try{
+     const r=await fetch("http://127.0.0.1:"+(process.env.PORT||"10000")+p,{
+      cache:"no-store",signal:AbortSignal.timeout(4000)});
+     console.log("[pulso-push] Asset "+p+" http="+r.status+" type="+String(r.headers.get("content-type")||"").split(";")[0]);
+    }catch{console.warn("[pulso-push] Asset "+p+" check unavailable")}
+   }
+  })();
+ },5500).unref?.();
  const oldEmit=Server.prototype.emit;
  Server.prototype.emit=function(event,...args){
   if(event==="request"&&args.length>=2){
