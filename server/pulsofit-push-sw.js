@@ -11,7 +11,8 @@ self.addEventListener("push",event=>{
  event.waitUntil(self.registration.showNotification(title,{
   body,icon:"/pulsofit-icon-192.png",badge:"/pulsofit-icon-192.png",
   tag:String(data.tag||"pulsofit-daily").slice(0,64),renotify:false,
-  timestamp:Date.now(),data:{url},silent:false
+  timestamp:Date.now(),data:{url,live:!!data.live},silent:!!data.live,
+  requireInteraction:!!data.live&&!!data.requireInteraction
  }).then(()=>{if(typeof self.navigator!=="undefined"&&self.navigator.setAppBadge){return self.navigator.setAppBadge(1).catch(()=>{});}})
  );
 });
