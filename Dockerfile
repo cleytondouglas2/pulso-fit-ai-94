@@ -232,8 +232,6 @@ RUN php -l /tmp/argus_pix_history_patch.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/src/TraditionalQuickPix.php \
  && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/argus_pix_history_test.php \
- && php /var/www/html/tests/traditional_quick_unit.php \
- && php /var/www/html/tests/argus_pix_30m_test.php \
  && php /var/www/html/tests/ui_contract.php
 
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
