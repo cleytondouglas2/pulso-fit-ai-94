@@ -118,6 +118,7 @@ function close(){
 }
 function selectKind(kind){
  if(!labels[kind])return;
+ openedHistory=null;
  activity={kind,state:"ready",started:0,resumedAt:0,activeMs:0,distance:0,points:[],lastFix:null,lastFixAt:0,
   gpsAccuracy:null,skipped:0,weight:profileWeight,ascent:0,prevAltitude:null,splits:[],nextSplit:1000,
   key:"pf"+Date.now().toString(36)+Math.random().toString(36).slice(2,12),saved:false,savedId:null,
@@ -310,7 +311,7 @@ function onFix(fix){
  activity.lastFixAt=Date.now();
  if(!Number.isFinite(acc)||acc>80){activity.skipped++;setStatus("Sinal GPS fraco ("+Math.round(acc||0)+" m). Aguardando leitura mais precisa.",true);updateStats();return}
  const ts=Number.isFinite(at)?at:Date.now(),a=[Number(c.latitude.toFixed(6)),Number(c.longitude.toFixed(6)),Math.round(ts),
-  Math.min(250,Number(acc.toFixed(1))),Number.isFinite(c.altitude)&&Number.isFinite(c.altitudeAccuracy)&&c.altitudeAccuracy<=30?Number(c.altitude.toFixed(1)):null,0];
+  Math.min(250,Number(acc.toFixed(1))),Number.isFinite(c.altitude)&&Number.isFinite(c.altitudeAccuracy)&&c.altitudeAccuracy<=12?Number(c.altitude.toFixed(1)):null,0];
  const prev=activity.lastFix;
  if(activity.segmentBreak){a[5]=1;activity.segmentBreak=false}
  if(prev){
@@ -326,7 +327,7 @@ function onFix(fix){
     activity.splits.push({km:Math.floor(activity.nextSplit/1000),sec:Math.round(secs)});
     activity.nextSplit+=1000;
    }
-   if(a[4]!==null&&activity.prevAltitude!==null&&a[4]-activity.prevAltitude>=4&&delta>=10){
+   if(a[4]!==null&&activity.prevAltitude!==null&&a[4]-activity.prevAltitude>=5&&a[4]-activity.prevAltitude<=30&&delta>=10&&(a[4]-activity.prevAltitude)/delta<=.55){
     activity.ascent+=a[4]-activity.prevAltitude;
    }
   }
