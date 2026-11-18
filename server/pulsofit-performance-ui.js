@@ -174,7 +174,9 @@ function ensureNavigation(){
  var mobile=app.querySelector(".mobile-nav");
  if(mobile){
   mobile.classList.add("pf-performance-six");
-  if(!mobile.querySelector("[data-pf-open-performance]")){
+  var nativeTab=mobile.querySelector('[data-route="performance"]');
+  if(nativeTab){nativeTab.classList.add("pf-performance-launch");}
+  else if(!mobile.querySelector("[data-pf-open-performance]")){
    var item=document.createElement("button");item.type="button";item.className="nav-link pf-performance-launch";
    item.setAttribute("data-pf-open-performance","1");
    item.innerHTML='<span aria-hidden="true">📈</span><span>Performance</span>';
