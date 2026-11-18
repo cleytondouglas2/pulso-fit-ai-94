@@ -87,7 +87,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_OUTDOOR_API
    const ts=number(p[2],1000000000000,Date.now()+3600000,"Horário GPS");
    const accuracy=p[3]===null?null:number(p[3],0,250,"Precisão GPS");
    const altitude=p[4]===null?null:number(p[4],-500,9000,"Altitude");
-   const gap=p[5]===true?1:0;
+   const gap=(p[5]===true||p[5]===1)?1:0;
    if(i>0&&ts<v[i-1][2])throw fail(422,"Horários GPS fora de ordem.");
    return [Number(lat.toFixed(6)),Number(lng.toFixed(6)),Math.round(ts),accuracy===null?null:Number(accuracy.toFixed(1)),altitude===null?null:Number(altitude.toFixed(1)),gap];
   });
