@@ -94,8 +94,10 @@ test("Se o cadastro já fornece token, não faz login duplicado",async()=>{
  assert.deepEqual(x.calls.map(c=>c.url),["/api/auth/register","/api/me"]);
  assert.equal(x.refreshed(),1);
 });
-test("Google e Apple aparecem como não configurados, sem autenticação simulada",()=>{
- assert.ok(auth.includes("Google e Apple aguardam configuração OAuth"));
- assert.ok(auth.includes('disabled aria-label="Google: aguardando configuração OAuth"'));
- assert.ok(auth.includes('disabled aria-label="Apple: aguardando configuração OAuth"'));
+test("Cadastro e login só exibem e-mail e senha; Google e Apple estão ocultos",()=>{
+ assert.ok(auth.includes('name="email"'));
+ assert.ok(auth.includes('name="password"'));
+ assert.ok(!auth.includes("Google e Apple aguardam configuração OAuth"));
+ assert.ok(!auth.includes("pf-auth-social-buttons"));
+ assert.ok(!auth.includes("Outras formas de entrar"));
 });
