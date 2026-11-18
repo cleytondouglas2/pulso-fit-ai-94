@@ -17,6 +17,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const assessmentJS=readFileSync(new URL("./pulsofit-assessment-ui.js",import.meta.url),"utf8");
   const profilePolishJS=readFileSync(new URL("./pulsofit-profile-polish.js",import.meta.url),"utf8");
+  const profileRescueJS=readFileSync(new URL("./pulsofit-profile-rescue.js",import.meta.url),"utf8");
   const authFetchJS=readFileSync(new URL("./pulsofit-auth-fetch.js",import.meta.url),"utf8");
   const marker="pulsofit-stable-plans-20261118";
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
@@ -24,7 +25,8 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
-   '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>";
+   '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-profile-rescue-20261118">'+profileRescueJS.replace(/<\/script/gi,"<\\/script")+"</script>";
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
