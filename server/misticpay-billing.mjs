@@ -112,6 +112,25 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
      webhookUrl:origin+"/api/billing/webhook"
     });
     await store.attachProviderPayment({reference,providerPaymentId:invoice.providerPaymentId});
+    // Jamais exibir um PIX que o servidor não consiga consultar.
+    // Isso comprova que a chave pode LER pagamentos antes de o usuário pagar.
+    let verifiedPending=null,lastError=null;
+    for(let attempt=0;attempt<3;attempt++){
+      try{
+        const checked=await gateway.getTransaction(invoice.providerPaymentId);
+        if(!paymentMatchesOrder(checked,{providerPaymentId:invoice.providerPaymentId,amountCents:plan.amountCents})){
+          throw Object.assign(Error("Transação MisticPay divergente"),{status:503});
+        }
+        if(checked.status!=="PENDENTE"){
+          throw Object.assign(Error("Transação Pix não está pendente"),{status:503});
+        }
+        verifiedPending=checked;break;
+      }catch(e){lastError=e;if(attempt<2)await new Promise(r=>setTimeout(r,400*(attempt+1)));}
+    }
+    if(!verifiedPending){
+      console.error("[pulso-billing] Pix gerado não pôde ser conferido na MisticPay; não exibido ao pagador.");
+      throw Object.assign(Error("MisticPay não confirmou o Pix. Nenhuma cobrança foi exibida."),{status:503,cause:lastError});
+    }
     reply(res,201,{provider:"misticpay",reference,providerPaymentId:invoice.providerPaymentId,
      status:"PENDENTE",amountCents:plan.amountCents,
      copyPaste:invoice.copyPaste,qrCodeBase64:invoice.qrCodeBase64});
