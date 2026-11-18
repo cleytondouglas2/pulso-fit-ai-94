@@ -148,16 +148,24 @@
   function enhancePlans(root){
     var route=activeRoute();
     var main=root.querySelector(".main");
-    if(route==="home"&&main&&!main.querySelector(".pf-home-pricing-entry")){
-      var intro=document.createElement("section");
-      intro.className="pf-home-pricing-entry";
-      intro.innerHTML='<div><strong>🎁 7 dias de teste grátis</strong><p>Acompanhe seu teste na conta online e escolha o melhor plano para você.</p></div>'+
+    if(route==="home"&&main){
+      var intro=main.querySelector(".pf-home-pricing-entry");
+      if(!intro){intro=document.createElement("section");intro.className="pf-home-pricing-entry";main.insertBefore(intro,main.firstChild);}
+      var state=billingServerStatus,daysLeft=state&&Number.isFinite(Number(state.remainingTrialDays))?Number(state.remainingTrialDays):null;
+      var dateText=state&&state.trialEndsAt?new Date(state.trialEndsAt).toLocaleDateString("pt-BR"):"";
+      var summary=state&&state.planActive?"Seu plano está ativo"+(state.planExpiresAt?" até "+new Date(state.planExpiresAt).toLocaleDateString("pt-BR"):"")+"."
+        :daysLeft!==null?(daysLeft>0?"Faltam "+daysLeft+" dia(s) para terminar o teste em "+dateText+".":"Seu teste terminou em "+dateText+"."):
+          "Crie sua conta ou entre para consultar quando os 7 dias gratuitos terminam.";
+      var homeMarkup='<div><strong>🎁 7 dias de teste grátis</strong><p>'+summary+'</p></div>'+
         '<button type="button" data-route="subscription">Ver planos e validade</button>';
-      main.insertBefore(intro,main.firstChild);
+      if(intro.innerHTML!==homeMarkup)intro.innerHTML=homeMarkup;
     }
     if(route!=="subscription")return;
     var grid=root.querySelector(".pro-price-grid");
+    if(!grid&&main){grid=document.createElement("div");grid.className="pro-price-grid pf-offers";main.appendChild(grid);}
     if(!grid)return;
+    var oldTrial=root.querySelector(".pf-trial-card");
+    if(oldTrial)oldTrial.remove();
     if(grid.dataset.pfPricing!=="v2"){
       grid.dataset.pfPricing="v2";
       grid.replaceChildren(offerCard(prices[0]),offerCard(prices[1]));
