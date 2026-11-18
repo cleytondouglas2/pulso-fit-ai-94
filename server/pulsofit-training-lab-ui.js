@@ -378,12 +378,14 @@ function showRunner(){
  '<div class="pf-tv-clock-wrap"><span>Tempo sugerido</span><strong id="pf-tv-clock" aria-live="off">00:00</strong><button type="button" id="pf-tv-clock-toggle">Iniciar cronômetro</button><button type="button" id="pf-tv-clock-reset">Reiniciar</button></div>'+
  '<p class="pf-tv-advice">O cronômetro é opcional. Execute com controle; descanse quando precisar e não force até a falha.</p>'+
  '<div class="pf-tv-actions"><button type="button" class="pf-tv-secondary" id="pf-tv-run-swap">Trocar exercício</button><button class="pf-tv-primary" type="button" id="pf-tv-next">'+(session.position+1===session.selected.length?"Finalizar exercícios":"Próximo exercício")+'</button></div>'+
+ '<button type="button" class="pf-tv-secondary" id="pf-tv-ar-demo">📷 Demonstrar em câmera 3D</button>'+
  '<button type="button" class="pf-tv-textbutton" id="pf-tv-exit">Voltar ao roteiro</button><p id="pf-tv-alert" role="status" aria-live="polite"></p>';
  renderClock();
  el.querySelector("#pf-tv-clock-toggle").addEventListener("click",()=>{
   if(playing){stopTimer();renderClock()}else startTimer();
  });
  el.querySelector("#pf-tv-clock-reset").addEventListener("click",()=>{stopTimer();seconds=session.each;renderClock()});
+ el.querySelector("#pf-tv-ar-demo").addEventListener("click",()=>window.dispatchEvent(new CustomEvent("pulso-open-camera-ar",{detail:{exercise:e[1]}})));
  el.querySelector("#pf-tv-run-swap").addEventListener("click",()=>{stopTimer();swap(session.position,"runner")});
  el.querySelector("#pf-tv-next").addEventListener("click",()=>{stopTimer();if(session.position+1<session.selected.length){session.position++;seconds=session.each;liveEvent("update");showRunner()}else showFinish()});
  el.querySelector("#pf-tv-exit").addEventListener("click",showPlan);
