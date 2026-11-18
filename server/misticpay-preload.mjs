@@ -36,9 +36,14 @@ if (basename(process.argv[1]||"") === "server.mjs" && !globalThis.__PULSO_MISTIC
       if(!driverAvailable)return;
       const Pool=pg.Pool||pg.default.Pool;
       const pool=new Pool({connectionString:process.env[dbVar],connectionTimeoutMillis:3500,max:1});
-      try {await pool.query("SELECT 1");databaseReachable=true;}
+      try {
+        await pool.query("SELECT 1");databaseReachable=true;
+        const schema=await pool.query("SELECT table_name,column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name IN ('users','accounts','pulso_users','pro_users','subscriptions') ORDER BY table_name,column_name LIMIT 70");
+        console.log("[pulso-billing] Available account table field names: "+JSON.stringify(schema.rows.map(r=>r.table_name+"."+r.column_name+" ("+r.data_type+")")));
+      }
       finally {await pool.end();}
     }catch{databaseReachable=false;}
+    console.log("[pulso-billing] Database probe: driver="+driverAvailable+" reachable="+databaseReachable);
     // Não criar tabelas nem alterar o banco durante o diagnóstico.
   }
   void probe();
