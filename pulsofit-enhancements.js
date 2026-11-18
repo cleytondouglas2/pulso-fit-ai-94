@@ -163,14 +163,64 @@
       enhanceNav(root);enhanceCoach(root);enhanceNutrition(root);enhancePlans(root);enhanceGate(root);
     }finally{observerBusy=false}
   }
+
+  /* PulsoFit checkout visual — configuração e cobrança verificadas no servidor */
+  function openPlanCheckout(planCode){
+    var plan=prices.find(function(p){return p.code===planCode;});
+    if(!plan)return;
+    var old=document.getElementById("pf-checkout-modal");if(old)old.remove();
+    var modal=document.createElement("div");
+    modal.id="pf-checkout-modal";
+    modal.className="pf-checkout-backdrop";
+    modal.innerHTML='<section class="pf-checkout-box" role="dialog" aria-modal="true" aria-labelledby="pf-checkout-heading">'+
+      '<button type="button" class="pf-checkout-close" aria-label="Fechar checkout">×</button>'+
+      '<img class="pf-checkout-logo" src="./pulsofit-brand.svg" alt="PulsoFit AI">'+
+      '<span class="pf-checkout-kicker">ASSINATURA PULSOFIT AI</span>'+
+      '<h2 id="pf-checkout-heading">Confirme seu plano</h2>'+
+      '<div class="pf-checkout-summary"><span>'+plan.title+'</span><strong>'+plan.price+'</strong><small>Acesso por '+plan.duration+' · sem renovação automática por padrão</small></div>'+
+      '<p>Escolha como deseja pagar:</p>'+
+      '<div class="pf-checkout-methods"><label><input type="radio" name="pf-pay-method" value="pix" checked> Pix</label><label><input type="radio" name="pf-pay-method" value="card"> Cartão</label></div>'+
+      '<p class="pf-checkout-hint">Pagamento seguro no gateway. O acesso só será liberado após confirmação verificada no servidor.</p>'+
+      '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Consultando a disponibilidade do checkout...</p>'+
+      '<button type="button" class="pf-checkout-submit" disabled>Continuar para pagamento</button>'+
+      '<button type="button" class="pf-checkout-login">Entrar ou criar conta</button>'+
+      '</section>';
+    document.body.appendChild(modal);
+    var status=modal.querySelector("#pf-checkout-status"),submit=modal.querySelector(".pf-checkout-submit");
+    function close(){modal.remove();document.removeEventListener("keydown",onKey)}
+    function onKey(ev){if(ev.key==="Escape")close()}
+    document.addEventListener("keydown",onKey);
+    modal.addEventListener("click",function(e){if(e.target===modal||e.target.closest(".pf-checkout-close"))close()});
+    modal.querySelector(".pf-checkout-login").addEventListener("click",function(){close();location.hash="#/account"});
+    modal.querySelector(".pf-checkout-close").focus();
+    fetch("/api/billing/config",{cache:"no-store"})
+      .then(function(r){if(!r.ok)throw Error("gateway indisponível");return r.json()})
+      .then(function(info){
+        if(!info.ready){status.textContent="O pagamento online ainda não foi ativado. Aguarde a conexão do gateway pelo administrador.";return}
+        submit.disabled=false;
+        status.textContent="Checkout disponível. Você será direcionado ao ambiente seguro de pagamento.";
+      }).catch(function(){status.textContent="Checkout em preparação. O gateway ainda não está vinculado ao servidor.";});
+    submit.addEventListener("click",function(){
+      var token="";try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
+      if(!token){status.textContent="Entre na sua conta para continuar com a contratação.";return}
+      var method=modal.querySelector('input[name="pf-pay-method"]:checked');
+      if(!method)return;
+      submit.disabled=true;status.textContent="Gerando link seguro para pagamento...";
+      fetch("/api/billing/checkout",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token},body:JSON.stringify({planCode:planCode,paymentMethod:method.value})})
+       .then(function(r){return r.json().then(function(data){if(!r.ok)throw Error(data.error||"Falha no checkout");return data})})
+       .then(function(data){
+         var u=new URL(data.checkoutUrl);
+         if(u.protocol!=="https:")throw Error("Link de pagamento inseguro");
+         location.assign(u.href);
+       }).catch(function(err){status.textContent="Não foi possível iniciar o pagamento: "+err.message;submit.disabled=false});
+    });
+  }
+
   document.addEventListener("click",function(e){
-    var button=e.target.closest("[data-pf-select-plan],[data-pf-open-plans],[data-pf-open-account]");
+    var button=e.target.closest("[data-pf-select-plan],[data-pf2026-action=plan],[data-pf-open-plans],[data-pf-open-account]");
     if(!button)return;e.preventDefault();e.stopImmediatePropagation();
-    if(button.dataset.pfSelectPlan){
-      try{sessionStorage.setItem("pf_preferred_plan",button.dataset.pfSelectPlan)}catch(err){}
-      location.hash="#/account";
-      return;
-    }
+    var planCode=button.dataset.pfSelectPlan||(button.dataset.pf2026Action==="plan"?button.dataset.plan:null);
+    if(planCode){openPlanCheckout(planCode);return;}
     location.hash=button.hasAttribute("data-pf-open-account")?"#/account":"#/subscription";
   },true);
   document.addEventListener("keydown",function(e){
