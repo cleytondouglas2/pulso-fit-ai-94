@@ -78,8 +78,22 @@
       label.firstChild.textContent='Chave PIX / Pix Copia e Cola';
       code.setAttribute('aria-label','Código Pix completo para copiar e colar');
       code.readOnly=true;
-      code.wrap='soft';
-      code.rows=7;
+      code.wrap='off';
+      code.rows=1;
+      code.setAttribute('wrap','off');
+      code.setAttribute('rows','1');
+      // A compact single-line preview. The complete Pix payload remains in textarea.value.
+      if(!code.dataset.argusSelectAll){
+        const selectFullPix=()=>{
+          if(!code.value)return;
+          try{code.select();code.setSelectionRange(0,code.value.length);}
+          catch(error){/* Readonly selection may be controlled by iOS Safari. */}
+        };
+        code.addEventListener('focus',selectFullPix);
+        code.addEventListener('click',selectFullPix);
+        code.addEventListener('touchend',()=>setTimeout(selectFullPix,0),{passive:true});
+        code.dataset.argusSelectAll='1';
+      }
       if(!qr('argus-pix-code-row')){
         const row=document.createElement('div');
         row.id='argus-pix-code-row';
@@ -94,15 +108,16 @@
     copy.setAttribute('aria-label','Copiar código Pix completo');
     copy.title='Copiar código Pix';
     copy.innerHTML=copyIcon;
-    // Display the complete Pix string instead of clipping it inside a 1-line strip.
-    code.style.height='auto';
-    code.style.height=Math.max(144,code.scrollHeight+10)+'px';
+    // Show only one line, not the full QR text; copy button still copies code.value in full.
+    code.style.height='54px';
+    code.scrollTop=0;
+    code.scrollLeft=0;
     if(host){
       host.classList.add('argus-pix-qr-host');
       host.replaceChildren();
       host.hidden=false;
       if(typeof QRCode==='function'){
-        try{new QRCode(host,{text:code.value,width:320,height:320,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+        try{new QRCode(host,{text:code.value,width:210,height:210,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
         catch(error){host.textContent='Não foi possível desenhar o QR Code. Use o Pix Copia e Cola.';}
       }
     }
