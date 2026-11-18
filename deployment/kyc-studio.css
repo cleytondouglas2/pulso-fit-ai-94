@@ -1,0 +1,73 @@
+/* ARGUS KYC Studio - isolated responsive analysis workbench */
+.kyc-staff-only{display:none}
+#page-kyc-studio{color:#e8e6e2}
+.kyc-studio-root{max-width:1600px;margin:auto}
+.kyc-studio-top{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:20px}
+.kyc-strap{font-size:11px;letter-spacing:.18em;font-weight:800;color:#ddb474}
+.kyc-studio-top h1{font-size:clamp(28px,4vw,40px);margin:7px 0;color:#ffdfaa}
+.kyc-studio-top p{color:#aaaeb8;margin:0}
+.kyc-stat-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 17px}
+.kyc-stat{background:linear-gradient(135deg,#26242b,#1b2028);border:1px solid #514333;border-radius:14px;padding:17px}
+.kyc-stat span{color:#abaeb8;font-size:12px;display:block}.kyc-stat strong{font-size:29px;color:#f6ce90;display:block;margin-top:9px}
+.kyc-workbench{display:grid;grid-template-columns:minmax(250px,.95fr) minmax(0,1.65fr);gap:15px;align-items:start}
+.kyc-queue-panel,.kyc-dossier-panel{background:#191d26;border:1px solid #3c3e48;border-radius:17px;min-width:0;overflow:hidden}
+.kyc-queue-panel{position:sticky;top:14px;max-height:80dvh;display:flex;flex-direction:column}
+.kyc-queue-head{display:flex;align-items:center;justify-content:space-between;padding:17px;border-bottom:1px solid #383b46}
+.kyc-queue-head h2{margin:0;font-size:17px;color:#f7ddad}.kyc-queue-head span{font-size:12px;color:#a7a7b4}
+.kyc-filters{display:grid;gap:9px;padding:13px}
+.kyc-filters input,.kyc-filters select{width:100%;box-sizing:border-box;background:#10151d;color:#f4f3f0;border:1px solid #4a4e5b;border-radius:10px;padding:11px;font-size:14px}
+.kyc-queue-list{overflow-y:auto;overscroll-behavior:contain}
+.kyc-queue-row{display:flex;gap:12px;text-align:left;width:100%;padding:15px;background:transparent;border:0;border-top:1px solid #333744;color:inherit;cursor:pointer}
+.kyc-queue-row:hover,.kyc-queue-row.selected{background:#302b30}
+.kyc-queue-row.selected{box-shadow:inset 3px 0 #dcb87b}
+.kyc-queue-avatar{display:grid;place-items:center;width:39px;height:39px;flex:none;border-radius:12px;background:#5f4c36;color:#ffdaa1;font-size:19px;font-weight:800}
+.kyc-queue-info{display:block;min-width:0;flex:1}
+.kyc-queue-info strong{font-size:14px;color:#f0ece3;display:block;overflow-wrap:anywhere}
+.kyc-queue-info small{display:block;color:#a8acb6;font-size:11px;overflow-wrap:anywhere;margin:4px 0}
+.kyc-queue-next{color:#c3a071;font-size:28px}
+.kyc-status{display:inline-flex;max-width:100%;padding:5px 9px;background:#49412e;color:#f6d19c;border-radius:20px;font-size:11px;font-weight:700;white-space:normal}
+.kyc-status.documents_under_review{background:#4b3a26;color:#eec88a}
+.kyc-status.approved,.kyc-status.identity_verified{background:#254c38;color:#a1e4b8}
+.kyc-status.rejected,.kyc-status.suspended{background:#532e34;color:#ffbfc0}
+.kyc-progress{height:4px;background:#333743;border-radius:10px;overflow:hidden;margin:10px 0 3px}
+.kyc-progress span{height:100%;background:#ddbc7c;display:block;border-radius:10px;transition:width .24s}
+.kyc-dossier-panel{padding:20px}
+.kyc-empty{text-align:center;color:#acb0b9;padding:35px 15px}
+.kyc-empty span{font-size:45px;color:#dab780}.kyc-empty h2{color:#f7d9a8}
+.kyc-dossier-header{display:flex;justify-content:space-between;align-items:start;flex-wrap:wrap;gap:13px;border-bottom:1px solid #414047;padding-bottom:16px}
+.kyc-dossier-header h2{color:#f8dbac;margin:8px 0;font-size:clamp(20px,3vw,27px)}
+.kyc-dossier-header p{color:#acb0bb;margin:0;overflow-wrap:anywhere}
+.kyc-dossier-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:17px 0}
+.kyc-dossier-data div{padding:13px;background:#222631;border-radius:11px;min-width:0}
+.kyc-dossier-data small{display:block;font-size:11px;color:#aeb4be;margin-bottom:7px}
+.kyc-dossier-data strong{font-size:13px;color:#f3eee7;overflow-wrap:anywhere;display:block}
+.kyc-representative-card,.kyc-timeline,.kyc-decision,.kyc-finance-release{padding:16px;margin:17px 0;border:1px solid #494651;background:#20232d;border-radius:14px}
+.kyc-representative-card h3,.kyc-timeline h3,.kyc-decision h3,.kyc-finance-release h3,.kyc-dossier-heading h3{color:#f5d69c;margin:0 0 8px}
+.kyc-warning{color:#ffbbbf}
+.kyc-dossier-heading{display:flex;gap:12px;justify-content:space-between;margin:19px 0 12px;color:#b1b4bf}
+.kyc-review-docs{display:grid;gap:9px}
+.kyc-review-doc{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;background:#212632;border:1px solid #534f58;border-radius:11px}
+.kyc-review-doc.ok{border-color:#3c775a}
+.kyc-review-doc strong{display:block;font-size:13px;color:#ebebe8}
+.kyc-review-doc small{display:block;color:#a9aeb7;margin-top:5px}
+.kyc-review-doc button{background:#473d30;color:#f7d9a7;border:1px solid #ad8e61;padding:9px 11px;border-radius:9px;white-space:nowrap;cursor:pointer;font-size:12px}
+.kyc-timeline>div{padding:11px 0;border-top:1px solid #42434c}
+.kyc-timeline small{float:right;color:#a8aeb9}.kyc-timeline b{color:#f4dfbd}
+.kyc-timeline p,.kyc-decision p,.kyc-finance-release p{color:#c6c2c4;line-height:1.5}
+.kyc-decision form,.kyc-finance-release form{display:grid;gap:13px}
+.kyc-decision label,.kyc-finance-release label{font-size:13px;color:#dcdce0}
+.kyc-decision input[type=checkbox],.kyc-finance-release input[type=checkbox]{accent-color:#d9b179}
+.kyc-decision select,.kyc-decision textarea,.kyc-finance-release input:not([type=checkbox]){display:block;box-sizing:border-box;width:100%;margin-top:7px;border-radius:10px;border:1px solid #545661;background:#131822;color:#f6f5ef;padding:11px;font-size:15px}
+#kyc-checks,#kyc-requirements{display:grid;gap:10px}
+#kyc-checks[hidden],#kyc-requirements[hidden]{display:none!important}
+.kyc-submit-review,.kyc-finance-release button{padding:13px;background:#dfba7f;color:#141517;font-weight:bold;border:0;border-radius:10px;cursor:pointer}
+.kyc-finance-release{border-color:#8c633a}
+.kyc-privacy,.kyc-footer-note{color:#9ea4b1;font-size:12px;line-height:1.6;margin:14px 0}
+.kyc-document-viewer{position:fixed;z-index:2147483300;inset:0;background:rgba(3,6,12,.92);display:flex;align-items:center;justify-content:center;padding:15px}
+.kyc-viewer-card{background:#1b202b;border:1px solid #d0a46c;border-radius:16px;padding:15px;max-width:min(96vw,750px);max-height:90dvh;overflow:auto}
+.kyc-viewer-head{display:flex;justify-content:space-between;align-items:center;gap:12px;color:#f7d9a6;margin-bottom:12px}
+.kyc-viewer-head button,.kyc-viewer-card a{border:1px solid #c5a272;background:#302b2b;color:#f2d5aa;padding:9px;border-radius:9px}
+.kyc-viewer-card img{max-width:100%;max-height:75dvh;display:block;object-fit:contain}
+@media(max-width:950px){.kyc-workbench{grid-template-columns:1fr}.kyc-queue-panel{position:static;max-height:400px}.kyc-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.kyc-dossier-panel{padding:12px}.kyc-dossier-data{grid-template-columns:1fr}.kyc-review-doc{flex-wrap:wrap}.kyc-stat{padding:12px}}
+@media(prefers-reduced-motion:reduce){.kyc-progress span{transition:none}}
