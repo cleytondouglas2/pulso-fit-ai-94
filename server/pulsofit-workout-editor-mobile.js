@@ -14,7 +14,12 @@ function enhance(){
  if(!headings.some(el=>normalize(el.textContent).includes("crie seu treino")))return;
  const sequence=headings.find(el=>normalize(el.textContent).includes("sequência de exercícios"));
  if(!sequence)return;
- const scope=sequence.closest("section,article,.page,.page-content,.main,main")||app;
+ let scope=sequence.parentElement;
+ for(let up=0;scope&&scope!==app&&up<7;up++,scope=scope.parentElement){
+  // The heading often lives in a small header section, with cards as siblings.
+  if(scope.querySelectorAll("img,video").length&&scope.querySelectorAll("button,input").length>=2)break;
+ }
+ if(!scope)scope=app;
  // Keep selectors limited to content following the heading.
  const images=Array.from(scope.querySelectorAll("img")).filter(img=>{
   if(sequence.compareDocumentPosition&&typeof Node!=="undefined"){
