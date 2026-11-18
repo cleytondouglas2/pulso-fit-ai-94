@@ -217,6 +217,7 @@ function showSmartTip(){
 }
 function liveEvent(action){
  if(!session)return;
+ if(typeof CustomEvent!=="function"||typeof window.dispatchEvent!=="function")return;
  const exercise=byId.get(session.selected[session.position]);
  window.dispatchEvent(new CustomEvent("pulso-live-activity",{detail:{
   action,sessionKey:session.key,kind:"workout",title:session.label,
