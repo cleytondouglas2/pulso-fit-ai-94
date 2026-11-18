@@ -6,7 +6,8 @@
 "use strict";
 if(window.__PF_CAMERA_AR_STUDIO__)return;window.__PF_CAMERA_AR_STUDIO__=true;
 window.__PULSO_CARTOON_PREFERRED__=true;
-const exercises={
+const catalog=window.PulsoARExercises;
+const quick={
  squat:{label:"Agachamento",tempo:1.65},
  lunge:{label:"Afundo / passada",tempo:2.2},
  jumping_jack:{label:"Polichinelo",tempo:1.4},
@@ -17,19 +18,21 @@ const exercises={
  plank:{label:"Prancha",tempo:3},
  bridge:{label:"Ponte de glúteos",tempo:2.3}
 };
+const exercises={...quick,...Object.fromEntries((catalog?.list||[]).map(item=>[item.id,{label:item.label,group:item.group,gear:item.gear}]))};
+const groupNames={warm:"Aquecimento",lower:"Pernas",upper:"Peito, costas e braços",posterior:"Posterior e glúteos",core:"Abdômen e estabilidade",walk:"Caminhada e corrida",cardio:"Cardio",mobility:"Mobilidade e recuperação",extra:"Funcionais",advanced:"Avançados"};
+const exerciseMenu=()=>{
+ if(!catalog?.list)return Object.entries(exercises).map(([k,v])=>'<option value="'+k+'">'+v.label+'</option>').join("");
+ let result='<optgroup label="Escolha rápida">'+Object.entries(quick).map(([id,v])=>'<option value="'+id+'">'+v.label+'</option>').join("")+'</optgroup>';
+ for(const [key,label] of Object.entries(groupNames)){
+  const found=catalog.list.filter(item=>item.group===key&&!Object.prototype.hasOwnProperty.call(quick,item.id));
+  if(found.length)result+='<optgroup label="'+label+'">'+found.map(item=>'<option value="'+item.id+'">'+item.label+'</option>').join("")+'</optgroup>';
+ }
+ return result;
+};
 const $=id=>document.getElementById(id);
-const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
-function keyFromName(text){
- const t=norm(text);
- if(/polichinelo|jumping/.test(t))return "jumping_jack";
- if(/b[uú]lgaro|passada|afundo|lunge/.test(t))return "lunge";
- if(/rosca|biceps|bíceps|barra supinada/.test(t))return "curl";
- if(/lateral|ombro|elevacao/.test(t))return "arm_raise";
- if(/flexao|push.?up|diamante|planche/.test(t))return "pushup";
- if(/prancha|plank/.test(t))return "plank";
- if(/ponte|gluteo/.test(t))return "bridge";
- if(/caminhada|marcha|passo/.test(t))return "march";
- return "squat";
+function keyFromName(value){
+ const found=catalog?.resolve(value);
+ return found?.id||(Object.prototype.hasOwnProperty.call(exercises,String(value||""))?String(value):null);
 }
 let stream=null,renderer=null,scene=null,camera=null,actor=null,raf=0,started=0,paused=false,pausedAt=0,elapsedPause=0,selected="squat",controller=null,cameraOpen=false,lastFacing="environment",aiBusy=false;
 const status=msg=>{const el=$("pf-ar-status");if(el)el.textContent=msg};
@@ -162,21 +165,28 @@ async function setup3D(){
  }
 }
 function updateExercise(choice){
- if(!exercises[choice])return;
+ if(!exercises[choice]){
+  status("Ainda não há animação para esse exercício. Escolha um dos movimentos listados.");
+  return;
+ }
  selected=choice;
  const sel=$("pf-ar-exercise");if(sel)sel.value=choice;
  const lbl=$("pf-ar-exercise-name");if(lbl)lbl.textContent=exercises[choice].label;
  const fallback=$("pf-ar-fallback");if(fallback&&!fallback.hidden)showFallback(exercises[choice].label);
+ window.dispatchEvent(new CustomEvent("pulso-ar-exercise-selected",{detail:{id:choice,label:exercises[choice].label}}));
 }
 function open(exercise){
- if($("pf-ar-overlay")){if(exercise)updateExercise(keyFromName(exercise));return}
+ if($("pf-ar-overlay")){
+  if(exercise){const id=keyFromName(exercise);if(id)updateExercise(id);else status("Exercício não encontrado no catálogo; escolha uma animação na lista.")}
+  return;
+ }
  if(!document.body)return;
  const modal=document.createElement("div");modal.id="pf-ar-overlay";modal.setAttribute("role","dialog");modal.setAttribute("aria-modal","true");modal.setAttribute("aria-label","Treino com personagem animado na câmera");
  modal.innerHTML='<div class="pf-ar-header"><div><small>◈ PULSOFIT · CÂMERA 3D</small><h2>Personagem animado no seu ambiente</h2></div><button type="button" id="pf-ar-close" aria-label="Fechar câmera">×</button></div>'+
  '<div class="pf-ar-stage"><video id="pf-ar-video" playsinline muted autoplay></video><div id="pf-ar-canvas"></div><div id="pf-ar-fallback" hidden></div>'+
  '<span id="pf-ar-exercise-name" class="pf-ar-label">Agachamento</span></div>'+
- '<div class="pf-ar-controls"><label for="pf-ar-exercise">Exercício demonstrado</label><select id="pf-ar-exercise">'+
- Object.entries(exercises).map(([k,v])=>'<option value="'+k+'">'+v.label+'</option>').join("")+'</select>'+
+ '<div class="pf-ar-controls"><label for="pf-ar-exercise">Exercício demonstrado • 73 opções do Treino Vivo</label><select id="pf-ar-exercise">'+
+ exerciseMenu()+'</select>'+
  '<div class="pf-ar-buttons"><button type="button" id="pf-ar-camera">📷 Ativar câmera</button><button type="button" id="pf-ar-pause">⏸ Pausar</button><button type="button" id="pf-ar-facing">↻ Trocar câmera</button></div>'+
  '<div class="pf-ar-sliders"><label>Tamanho do avatar<input type="range" id="pf-ar-size" min=".45" max="1.8" step=".05" value="1"></label>'+
  '<label>Posição horizontal<input type="range" id="pf-ar-x" min="-1.8" max="1.8" step=".1" value="0"></label></div>'+
@@ -210,7 +220,9 @@ function open(exercise){
   }catch(err){status(String(err.message||"IA indisponível")+". Você pode selecionar o exercício manualmente.")}
   finally{aiBusy=false}
  });
- updateExercise(exercise?keyFromName(exercise):"squat");
+ const requested=exercise?keyFromName(exercise):"body_squat";
+ updateExercise(requested||"body_squat");
+ if(exercise&&!requested)status("Nome não encontrado. Escolha um dos 73 exercícios do Treino Vivo.");
  void setup3D();
 }
 function boot(){
