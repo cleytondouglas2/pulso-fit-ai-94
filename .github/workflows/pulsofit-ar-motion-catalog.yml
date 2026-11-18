@@ -1,0 +1,36 @@
+name: PulsoFit - 73 animacoes no avatar AR
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-ar-exercise-catalog.js"
+      - "server/pulsofit-ar-motion-engine.js"
+      - "server/pulsofit-cartoon-ar.js"
+      - "server/pulsofit-camera-ar.js"
+      - "server/pulsofit-training-lab-ui.js"
+      - "server/pulsofit-plans-patch.mjs"
+      - "server/pulsofit-ar-motion-catalog.test.mjs"
+      - ".github/workflows/pulsofit-ar-motion-catalog.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-ar-motion-catalog.test.mjs"
+      - "server/pulsofit-ar-exercise-catalog.js"
+      - "server/pulsofit-cartoon-ar.js"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check server/pulsofit-ar-exercise-catalog.js
+          node --check server/pulsofit-ar-motion-engine.js
+          node --check server/pulsofit-cartoon-ar.js
+          node --check server/pulsofit-camera-ar.js
+          node --check server/pulsofit-training-lab-ui.js
+          node --check server/pulsofit-plans-patch.mjs
+      - run: node --test server/pulsofit-ar-motion-catalog.test.mjs server/pulsofit-ar-vision.test.mjs server/pulsofit-ar-music.test.mjs server/pulsofit-cartoon-spotify.test.mjs
