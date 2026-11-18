@@ -21,6 +21,8 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const profileRescueJS=readFileSync(new URL("./pulsofit-profile-rescue.js",import.meta.url),"utf8");
   const maisJS=readFileSync(new URL("./pulsofit-mais-menu.js",import.meta.url),"utf8");
   const authFetchJS=readFileSync(new URL("./pulsofit-auth-fetch.js",import.meta.url),"utf8");
+  const html5ResponsiveCSS=readFileSync(new URL("./pulsofit-html5-responsive.css",import.meta.url),"utf8");
+  const html5AccessibilityJS=readFileSync(new URL("./pulsofit-html5-accessibility.js",import.meta.url),"utf8");
   const marker="pulsofit-stable-plans-20261118";
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
@@ -29,7 +31,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-profile-rescue-20261118">'+profileRescueJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
-   '<script id="pf-mais-menu-20261118">'+maisJS.replace(/<\/script/gi,"<\\/script")+"</script>";
+   '<script id="pf-mais-menu-20261118">'+maisJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<style id="pf-html5-responsive-20261118">'+html5ResponsiveCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
+   '<script id="pf-html5-accessibility-20261118">'+html5AccessibilityJS.replace(/<\/script/gi,"<\\/script")+"</script>";
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
@@ -85,6 +89,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   for(const d of roots)visit(d,0);
   console.log("[pulso-ui] Portal de assinatura no HTML servido: "+(found.length?found.join(", "):"nenhum HTML localizado"));
   console.log("[pulso-ui] Carregados: autenticação, apresentação inicial, foto/perfil, Performance em Mais, planos e avaliação.");
+  console.log("[pulso-html5] Responsividade consolidada e semântica acessível integradas ao HTML gerado.");
  }catch(error){
   console.warn("[pulso-ui] Não foi possível integrar portal de assinatura: "+String(error.code||"init_error"));
  }
