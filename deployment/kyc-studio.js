@@ -8,7 +8,7 @@
  let queue=[],selected='',loading=false,activePreview=null,previewHref='';
  function staff(){return ['admin','superadmin'].includes(state?.user?.role)}
  function superuser(){return state?.user?.role==='superadmin'}
- function nav(){document.querySelectorAll('.kyc-staff-only').forEach(x=>{x.style.display=staff()?'':'none'})}
+ function nav(){document.querySelectorAll('.kyc-staff-only').forEach(x=>{x.style.display=staff()?'flex':'none'})}
  function meta(a){
    const checked=a.kyc?.received?.length||0,total=a.kyc?.required?.length||0;
    const pct=Math.round(total?checked/total*100:0);
