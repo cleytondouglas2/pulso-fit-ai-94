@@ -16,11 +16,6 @@ var css=[
 '#pf-account-lock button:disabled{opacity:.5}',
 '#pf-account-lock .pf-auth-switch{background:transparent;border:1px solid #7963ac;color:#ddc7ff;width:100%}',
 '#pf-account-lock .pf-auth-feedback{min-height:22px;color:#ffc1c5;font-size:12px}',
-'#pf-account-lock .pf-auth-social{margin:13px 0 10px;padding:13px 0;border-top:1px solid #ffffff27}',
-'#pf-account-lock .pf-auth-social-title{text-align:center;color:#e6ddec;font-size:12px;font-weight:700;margin:0 0 10px}',
-'#pf-account-lock .pf-auth-social-buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}',
-'#pf-account-lock .pf-auth-social-buttons button{background:#f8f8ff;color:#1b2030;border:1px solid #9291b2;font-size:13px;opacity:.65;cursor:not-allowed}',
-'#pf-account-lock .pf-auth-social-note{display:block;margin-top:8px;color:#cbbddd;font-size:11px;line-height:1.45}',
 'body.pf-account-locked{overflow:hidden!important}',
 'body.pf-account-locked #app{pointer-events:none!important;filter:blur(5px)!important;user-select:none!important}',
 'body.pf-account-locked #pf-stable-open,body.pf-account-locked #pf-plans-shortcut{display:none!important}',
@@ -182,15 +177,11 @@ function show(mode,notice){
  '<small style="color:#b3ffdd;font-weight:900;letter-spacing:.1em">PULSOFIT AI • CONTA OBRIGATÓRIA</small>'+
  '<h2>'+(register?'Crie sua conta grátis':'Entre na sua conta')+'</h2>'+
  '<p>Seus treinos, fotos e análises precisam estar vinculados à sua conta. Não existe mais modo visitante.</p>'+
- '<form id="pf-auth-required-form">'+
+ '<form id="pf-auth-required-form" aria-label="Acesso por e-mail e senha">'+
  (register?'<label>Nome completo<input name="name" required minlength="2" maxlength="80" autocomplete="name" placeholder="Seu nome"></label>':'')+
  '<label>E-mail<input type="email" name="email" required maxlength="240" autocomplete="email" placeholder="nome@exemplo.com"></label>'+
  '<label>Senha<input type="password" name="password" required minlength="'+(register?10:1)+'" autocomplete="'+(register?'new-password':'current-password')+'" placeholder="'+(register?'Mínimo de 10 caracteres':'Sua senha')+'"></label>'+
  '<button type="submit">'+(register?'Cadastrar e começar':'Entrar no PulsoFit')+'</button></form>'+
- '<div class="pf-auth-social"><p class="pf-auth-social-title">Outras formas de entrar</p>'+
- '<div class="pf-auth-social-buttons"><button type="button" disabled aria-label="Google: aguardando configuração OAuth">G　Google</button>'+
- '<button type="button" disabled aria-label="Apple: aguardando configuração OAuth">●　Apple</button></div>'+
- '<small class="pf-auth-social-note">Google e Apple aguardam configuração OAuth dos provedores. Enquanto isso, use e-mail e senha.</small></div>'+
  '<button class="pf-auth-switch" type="button">'+(register?'Já tenho uma conta':'Quero criar uma conta')+'</button>'+
  '<p class="pf-auth-feedback" role="status" aria-live="polite"></p>'+
  '<p style="font-size:11px">Suas imagens de performance só são enviadas à IA após você autorizar cada análise.</p></section>';
