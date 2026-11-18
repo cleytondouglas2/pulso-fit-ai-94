@@ -47,6 +47,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends imagemagick \
  && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 180x180 \
     /var/www/html/public/static/assets/argus-icon-180.png \
  && identify /var/www/html/public/static/assets/argus-icon-192.png
+# Standards-based VAPID Web Push: HTTPS payload encryption and browser push transports.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libcurl4-openssl-dev libonig-dev libgmp-dev librsvg2-bin \
+ && docker-php-ext-install -j$(nproc) curl mbstring gmp \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
+COPY deployment/composer.json /var/www/html/composer.json
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader --no-scripts
+COPY deployment/Notifications.php /var/www/html/src/Notifications.php
+COPY deployment/notifications-ui.js deployment/notifications-ui.css /var/www/html/public/static/
+COPY deployment/sw.js /var/www/html/public/sw.js
+COPY deployment/pix-cachorro.svg /var/www/html/public/static/assets/pix-cachorro.svg
+RUN rsvg-convert -w 512 -h 512 /var/www/html/public/static/assets/pix-cachorro.svg -o /var/www/html/public/static/assets/pix-cachorro.png \
+ && test -s /var/www/html/public/static/assets/pix-cachorro.png
+COPY deployment/argus_notification_patch.php /tmp/argus_notification_patch.php
+RUN php -l /tmp/argus_notification_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_notification_patch.php \
+ && php -l /var/www/html/src/Notifications.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/LivePix.php \
+ && php /var/www/html/tests/ui_contract.php
 RUN php -l src/Integrations/MisticPayFinance.php && php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/finance_qr_unit.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php && php tests/ui_contract.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
