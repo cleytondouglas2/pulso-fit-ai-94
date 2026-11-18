@@ -153,7 +153,7 @@ function build(){
  const categories=[];
  categories.push("warm");
  while(categories.length<count-1){
-  for(const g of recipe.slice(1,-1)){if(categories.length<count-1)break;categories.push(g)}
+  for(const g of recipe.slice(1,-1)){if(categories.length>=count-1)break;categories.push(g)}
  }
  categories.push("recover");
  const selected=[],used=[];
