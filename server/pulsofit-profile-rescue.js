@@ -45,6 +45,10 @@ var css=[
 '#pf-rescue-panel .pfrr-tools button{flex-direction:column!important;align-items:flex-start!important;min-height:95px!important;text-align:left!important;border:1px solid #8069b4!important;background:linear-gradient(125deg,#362456,#222a4c)!important;color:#fff!important;padding:14px!important;font-size:14px!important}',
 '#pf-rescue-panel .pfrr-tools button small{font:11px/1.5 system-ui,sans-serif;color:#d3c8e7}',
 '#pf-rescue-panel .pfrr-tools button b{font-size:13px}',
+'#pf-rescue-panel .pfrr-manage-plan{display:grid!important;gap:9px!important;background:#213048!important;border:1px solid #6ec7a4!important;border-radius:17px!important;padding:15px!important;margin-top:13px!important}'+
+'#pf-rescue-panel .pfrr-manage-plan strong{font:850 15px system-ui;color:#c3ffe1}'+
+'#pf-rescue-panel .pfrr-manage-plan p{font:12px/1.5 system-ui;color:#d9e5ed;margin:0}'+
+'#pf-rescue-panel .pfrr-manage-plan button{min-height:46px!important;max-width:100%!important;background:linear-gradient(90deg,#7850d6,#995ded)!important;color:white!important;border:1px solid #c5a8ff!important;border-radius:12px!important;font:850 13px system-ui!important;cursor:pointer!important}'+
 '#pf-rescue-panel .pfrr-footer{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;flex-wrap:wrap!important;padding:12px 16px!important;background:#18223b!important;border:1px solid #575b80!important;border-radius:16px!important}',
 '#pf-rescue-panel .pfrr-footer p{color:#cbd0e0!important;font:12px/1.4 system-ui,sans-serif!important;margin:0!important;flex:1 1 170px}',
 '#pf-rescue-panel .pfrr-footer button{border:1px solid #a97e9a!important;background:#3d2e42!important;color:#ffe3e8!important;min-width:120px!important}',
@@ -118,6 +122,12 @@ async function update(){
    const date=active?d.planExpiresAt:d.trialEndsAt;
    const planEl=root.querySelector(".pfrr-plan");if(planEl)planEl.textContent=planLabel;
    const dateEl=root.querySelector(".pfrr-validity");if(dateEl)dateEl.textContent=fmt(date);
+   const button=root.querySelector("[data-pfrr-plan]");
+   if(button)button.textContent=active?"🔄 Renovar ou mudar meu plano":("💎 "+(d.trialEndsAt?"Escolher um plano pago":"Contratar um plano"));
+   const description=root.querySelector(".pfrr-plan-explanation");
+   if(description)description.textContent=active?
+    "Assinatura ativa. Você pode renovar ou escolher outra duração. Após confirmação do Pix, os dias comprados são adicionados à validade atual.":
+    "Veja os planos e contrate quando quiser. O acesso gratuito não gera cobrança automática.";
   }
   if(results[2].status==="fulfilled"){
    photo=results[2].value.hasPhoto?safeImage(results[2].value.image):null;
@@ -177,6 +187,7 @@ function make(){
  '<div class="pfrr-identity"><small>Seu espaço</small><h2 class="pfrr-name">Meu perfil</h2><p class="pfrr-subtitle">Seu espaço de treino personalizado</p></div></div>'+
  '<div class="pfrr-status"><div><small>Plano atual</small><strong class="pfrr-plan">Consultando...</strong></div>'+
  '<div><small>Validade</small><strong class="pfrr-validity">Consultando...</strong></div></div></div>'+
+ '<div class="pfrr-manage-plan"><strong>💎 Assinatura e renovação</strong><p class="pfrr-plan-explanation">Consultando seu plano...</p><button type="button" data-pfrr-plan>Gerenciar meu plano</button></div>'+
  '<div class="pfrr-card"><div class="pfrr-cardtop"><span aria-hidden="true">📷</span><div><strong>Minha foto de perfil</strong>'+
  '<small>Escolha uma foto para aparecer no seu cabeçalho</small></div></div>'+
  '<div class="pfrr-photo-actions"><label for="pfrr-upload">Alterar foto'+
@@ -190,6 +201,7 @@ function make(){
  '<button type="button" data-pfrr-logout>Sair da conta</button></div>';
  el.querySelector("#pfrr-upload").addEventListener("change",function(){void upload(this.files?.[0])});
  el.querySelector("[data-pfrr-remove]").addEventListener("click",function(){void removePhoto()});
+ el.querySelector("[data-pfrr-plan]").addEventListener("click",()=>window.dispatchEvent(new Event("pulso-open-plan-manager")));
  el.querySelector("[data-pfrr-logout]").addEventListener("click",function(){void logout()});
  el.querySelectorAll("[data-pfrr-tool]").forEach(button=>button.addEventListener("click",function(){openTool(button.dataset.pfrrTool)}));
  return el;
