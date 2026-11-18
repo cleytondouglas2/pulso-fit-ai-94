@@ -4,11 +4,13 @@ on:
     branches: [main]
     paths:
       - "server/pulsofit-push-*"
+      - "server/pulsofit-push.test.mjs"
       - "server/pulsofit-pwa-asset.mjs"
       - ".github/workflows/pulsofit-push-tests.yml"
   pull_request:
     paths:
       - "server/pulsofit-push-*"
+      - "server/pulsofit-push.test.mjs"
       - "server/pulsofit-pwa-asset.mjs"
 jobs:
   verify:
