@@ -42,7 +42,7 @@ test("O player é incorporado ao PulsoFit, nunca abre janela externa",()=>{
  assert.match(uiJS,/frame\.allowFullscreen=true|player\.allowFullscreen=true/);
  assert.match(uiJS,/searchParams\.set\("playsinline","1"\)/);
  assert.match(uiJS,/searchParams\.set\("origin",location\.origin\)/);
- assert.match(uiJS,/referrerPolicy="origin-when-cross-origin"/);
+ assert.match(uiJS,/referrerPolicy="strict-origin-when-cross-origin"/);
  assert.match(uiJS,/enablejsapi/);
  assert.match(uiJS,/stage\.appendChild\(player\)/);
  assert.match(uiJS,/Assistir aqui no PulsoFit/);
