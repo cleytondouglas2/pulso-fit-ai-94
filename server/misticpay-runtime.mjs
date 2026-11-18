@@ -22,6 +22,7 @@ import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
 import {createMisticPayPostgresStore} from "./misticpay-postgres-store.mjs";
 import {createMisticPayBilling} from "./misticpay-billing.mjs";
+import {TEST_PLAN,testOfferState,availableBillingPlans} from "./pulsofit-test-offer.mjs";
 
 if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUNTIME__){
  globalThis.__PULSO_BILLING_RUNTIME__=true;
@@ -34,7 +35,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    credentialsConfigured:gateway.credentialsReady(),databaseConfigured:Boolean(dbVar),
    databaseReachable:false,accountSchemaVerified:false,storageReady:false,
    providerAuth:"unchecked",supportedMethods:[],webhookPath:"/api/billing/webhook",
-   plans:{quinzenal:{days:15,amountCents:1490},mensal:{days:30,amountCents:2490}}};
+   plans:{quinzenal:{days:15,amountCents:1490},mensal:{days:30,amountCents:2490},teste7d:TEST_PLAN}};
  let pool=null,store=null,billing=null,configured=false;
  const premiumRoutes = new Set(["/api/coach/plan","/api/videos","/api/progress","/api/nutrition/lookup"]);
  const premiumGuardInstalled=true;
@@ -214,7 +215,8 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   await bootPromise;
   if(path==="/api/billing/health"||path==="/api/billing/config"){
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
-   return respond(res,200,{...state,nextAction:state.ready?"Conectado":"Aguardando banco permanente e proteção de acesso no servidor."});
+   return respond(res,200,{...state,plans:availableBillingPlans(state.plans),testOffer:testOfferState(),
+    nextAction:state.ready?"Conectado":"Pagamento indisponível; verifique integração com a MisticPay."});
   }
   // Mostrar o trial da conta no servidor, mesmo com bloqueio automático desligado.
   if(path==="/api/subscription/status"){
