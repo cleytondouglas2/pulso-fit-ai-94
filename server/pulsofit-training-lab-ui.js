@@ -90,7 +90,13 @@ var items=[
  ["sit_reach","Sentar, levantar e alcançar","functional squat","none",0,0,"Levante de uma cadeira firme e estenda as mãos à frente, sem perder equilíbrio.","Use apoio para levantar."],
  ["fast_feet","Passinhos rápidos sem salto","functional cardio","none",1,1,"Faça passos leves e curtos em ritmo rápido no local, controlando a respiração.","Reduza a velocidade ou marche."],
  ["single_balance","Passo com equilíbrio","functional core","none",0,0,"Dê um passo à frente, pause brevemente e volte com controle.","Segure apoio."],
- ["seated_reach","Alcance alternado sentado","recover mobility","none",0,0,"Sentado em cadeira firme, estenda o braço para frente sem forçar.","Alcance menos distante."]
+ ["seated_reach","Alcance alternado sentado","recover mobility","none",0,0,"Sentado em cadeira firme, estenda o braço para frente sem forçar.","Alcance menos distante."],
+ ["decline_pushup","Flexão declinada (peito)","push strength","step",0,0,"Com pés sobre plataforma baixa e firme, mãos no solo, desça controlado sem forçar a lombar. Exige nível intermediário/avançado.","Faça flexão inclinada na parede ou bancada estável."],
+ ["diamond_pushup","Flexão diamante (peito e tríceps)","push strength","none",0,0,"Aproxime as mãos sob o peito em posição confortável; flexione os cotovelos sem forçar os punhos e retorne.","Afaste as mãos ou faça flexão na parede."],
+ ["pseudo_planche","Flexão pseudo planche (peito, ombros e core)","push strength","none",0,0,"Avance gradualmente os ombros sobre as mãos e faça flexão curta com tronco estável. Exige preparo de punhos e ombros.","Faça flexão tradicional ou inclinada."],
+ ["bulgarian_squat","Agachamento búlgaro (pernas)","squat strength","step",0,0,"Com o pé de trás apoiado em banco baixo e firme, desça com controle e apoio para equilíbrio, mantendo o joelho da frente alinhado.","Faça afundo estático com ambos os pés no chão."],
+ ["nordic_curl","Flexão nórdica assistida (posterior de coxa)","hinge strength","mat",0,0,"Ajoelhado em base acolchoada e tornozelos fixados em suporte seguro, incline o tronco devagar, amparando a descida com as mãos. Não improvise ancoragem.","Faça ponte de glúteos ou flexão de joelhos na máquina."],
+ ["chinup_supinated","Barra fixa supinada (bíceps e costas)","pull strength","bar",0,0,"Em barra fixa firmemente instalada, palmas voltadas para si, puxe sem balanço e desça com controle. Confira a fixação.","Use barra assistida ou remada com faixa."]
 ];
 var byId=new Map(items.map(x=>[x[0],x]));
 var recipes={
@@ -115,13 +121,16 @@ function validExercise(e){
  if(opts.lowImpact&&e[4])return false;
  if(opts.quiet&&e[5])return false;
  if(opts.energy==="low"&&(e[4]||e[5]))return false;
- if(opts.level==="beginner"&&(e[0]==="easy_jog"||e[0]==="fast_feet"||e[0]==="jump_jack"))return false;
+ if(opts.level==="beginner"&&(e[0]==="easy_jog"||e[0]==="fast_feet"||e[0]==="jump_jack"||
+  ["decline_pushup","diamond_pushup","pseudo_planche","bulgarian_squat","nordic_curl","chinup_supinated"].includes(e[0])))return false;
+ if(opts.level==="intermediate"&&["pseudo_planche","nordic_curl"].includes(e[0]))return false;
  var allowed=new Set(["none"]);
  if(opts.gear==="band")allowed.add("band");
  if(opts.gear==="dumbbell")allowed.add("dumbbell");
  if(opts.gear==="mat")allowed.add("mat");
- if(opts.gear==="gym")["band","dumbbell","mat","machine","step"].forEach(x=>allowed.add(x));
+ if(opts.gear==="gym")["band","dumbbell","mat","machine","step","bar"].forEach(x=>allowed.add(x));
  if(opts.gear==="step")allowed.add("step");
+ if(opts.gear==="bar")allowed.add("bar");
  if(opts.gear==="outdoors")allowed.add("outdoors");
  if(opts.place==="outdoor")allowed.add("outdoors");
  // CrossFit sessions never require unsafe barbell lifts or skills without coaching.
@@ -268,7 +277,7 @@ function showBuilder(){
  '<div class="pf-tv-sectiontitle"><h3>Adapte ao seu momento</h3><p>Em vez de um treino fixo, escolha seu contexto real.</p></div>'+
  '<div class="pf-tv-fields">'+
  field("pf-tv-place","Onde está?",[["home","Em casa"],["gym","Academia"],["crossfit","Box / CrossFit"],["outdoor","Ao ar livre"],["anywhere","Onde estiver"]],opts.place)+
- field("pf-tv-gear","Equipamento disponível",[["none","Nenhum"],["mat","Colchonete"],["band","Faixa elástica"],["dumbbell","Halteres"],["step","Degrau"],["gym","Academia completa"],["outdoors","Área externa"]],opts.gear)+
+ field("pf-tv-gear","Equipamento disponível",[["none","Nenhum"],["mat","Colchonete"],["band","Faixa elástica"],["dumbbell","Halteres"],["step","Degrau"],["gym","Academia completa"],["bar","Barra fixa segura"],["outdoors","Área externa"]],opts.gear)+
  field("pf-tv-level","Experiência",[["beginner","Iniciante"],["intermediate","Intermediário"],["advanced","Avançado"]],opts.level)+
  field("pf-tv-energy","Energia de hoje",[["low","Baixa · ritmo leve"],["medium","Moderada"],["high","Alta · técnica primeiro"]],opts.energy)+
  field("pf-tv-minutes","Quanto tempo tem?",[[5,"5 min"],[10,"10 min"],[15,"15 min"],[20,"20 min"],[30,"30 min"],[45,"45 min"],[60,"60 min"]],opts.minutes)+
