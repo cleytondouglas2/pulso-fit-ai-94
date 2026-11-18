@@ -113,7 +113,7 @@ final class KycStudio {
     }
     public static function identityApproved(Database $db,string $accountId):bool{
         self::install($db);
-        $event=$db->one('SELECT event_type FROM argus_kyc_review_events WHERE account_id=? ORDER BY created_at DESC LIMIT 1',[$accountId]);
+        $event=$db->one('SELECT event_type FROM argus_kyc_review_events WHERE account_id=? AND event_type IN ('identity_approved','needs_changes','rejected') ORDER BY created_at DESC,id DESC LIMIT 1',[$accountId]);
         return $event!==null&&$event['event_type']==='identity_approved';
     }
     private static function account(Database $db,string $id):array{
