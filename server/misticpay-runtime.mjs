@@ -156,6 +156,36 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    else if(state.providerAuth!=="denied")state.providerAuth="checked";
   }
 
+  /* Teste diferencial com ID não vazio: somente leitura, nenhum Pix */
+  if(state.credentialsConfigured&&state.providerAuth!=="denied"){
+   try{
+    const reference="978154328728161432"; // ID improvável, sem dados de cliente
+    const id=process.env.PULSO_MISTICPAY_CLIENT_ID,sk=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
+    async function readWith(user,pass){
+     const res=await fetch("https://api.misticpay.com/api/transactions/check",{
+      method:"POST",redirect:"error",signal:AbortSignal.timeout(6500),
+      headers:{"Authorization":"Basic "+Buffer.from(user+":"+pass).toString("base64"),"Content-Type":"application/json"},
+      body:JSON.stringify({transactionId:reference})
+     });
+     const body=await res.json().catch(()=>({}));
+     return {http:res.status,code:String(body?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,45)};
+    }
+    const real=await readWith(id,sk);
+    const fake=await readWith("pk_invalid_pulsofit","sk_invalid_pulsofit");
+    const validFake=fake.http===401&&fake.code==="INVALID_API_CREDENTIAL";
+    const realAuthorized=(real.http===404&&real.code==="TRANSACTION_NOT_FOUND")||
+      (real.http===200);
+    if(validFake&&realAuthorized)state.providerAuth="verified";
+    else if(validFake&&real.http===502)state.providerAuth="checked";
+    state.readProbeResult={realHttp:real.http,realCode:real.code,fakeHttp:fake.http,fakeCode:fake.code,confirmed:Boolean(validFake&&realAuthorized)};
+    console.log("[pulso-billing] Nonempty read contrast: real="+real.http+"/"+real.code+
+      " invalid="+fake.http+"/"+fake.code+" authorized="+Boolean(validFake&&realAuthorized)+
+      "; no transaction created.");
+   }catch{
+    console.log("[pulso-billing] Nonempty read contrast unavailable; no PIX created.");
+   }
+  }
+
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
   // controle premium real nas APIs antes de transacionar dinheiro.
   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&
