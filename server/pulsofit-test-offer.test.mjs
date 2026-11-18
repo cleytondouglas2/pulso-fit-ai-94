@@ -63,7 +63,7 @@ test("Interface só apresenta botão promocional se a API o autorizar",()=>{
  new Script(ui);
  assert.match(ui,/offerActive/);
  assert.match(ui,/testOffer/);
- assert.match(ui,/testOffer\.enabled|offer\.enabled/);
+ assert.match(ui,/offer\?\.enabled/);
  assert.match(ui,/data-pf-stable-plan="teste7d"/);
 });
 test("Ativar todas as notificações requer toque e respeita as permissões do celular",()=>{
