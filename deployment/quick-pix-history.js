@@ -14,7 +14,8 @@
  };
  const expiry=row=>{
    const epoch=Number(row?.expires_at_epoch)||0;
-   return epoch>0?epoch*1000:parseUtc(row?.created_at)+1800000;
+   const created=parseUtc(row?.created_at);
+   return epoch>0?epoch*1000:(created>0?created+1800000:0);
  };
  function displayStatus(row){
    const status=String(row?.status||'unknown');
@@ -98,6 +99,7 @@
      rows=data.filter(x=>valid(x.id));
      lastLoaded=Date.now();
      render();
+     decoratePayments();
    }catch(e){
      if(root&&!rows.length)by('argus-pix-recent-body').textContent='As cobranças recentes não puderam ser consultadas agora.';
      if(force&&typeof toast==='function')toast('Não foi possível atualizar os Pix recentes: '+e.message,true);
@@ -159,6 +161,30 @@
    else if(button.dataset.argusCheck)reconcile(id);
    else {const row=rows.find(x=>x.id===id);if(row)details(row);}
  }
+ function decoratePayments(){
+   // Existing transactions screen renders its own responsive table. Keep that
+   // structure intact and update only the status/actions of traditional qpx_ rows.
+   const table=by('payment-rows');if(!table)return;
+   for(const tr of table.querySelectorAll('tr')){
+     const id=(tr.querySelector('td[data-label="CLIENTE"]')?.textContent||'').match(/qpx_[a-f0-9]{32}/)?.[0];
+     if(!valid(id))continue;
+     const row=rows.find(x=>x.id===id);
+     const fallback=Array.isArray(state?.payments)?state.payments.find(x=>x.id===id):null;
+     const source=row||fallback;if(!source)continue;
+     const status=displayStatus(source),pill=tr.querySelector('td[data-label="STATUS"] .demo-status-pill');
+     if(pill){
+       const label=statusLabels[status]||status;
+       if(pill.textContent!==label)pill.textContent=label;
+       const kind=status==='paid'?'paid':status==='expired'||status==='failed'?'failed':'pending';
+       const cls='demo-status-pill demo-status-'+kind;
+       if(pill.className!==cls)pill.className=cls;
+     }
+     const view=tr.querySelector('button[data-viewpix]');
+     if(view)view.textContent=status==='expired'?'Detalhes':'Ver Pix';
+     const reconcile=tr.querySelector('button[data-reconcile]');
+     if(reconcile)reconcile.hidden=!row?.can_reconcile||!['pending','unknown'].includes(status);
+   }
+ }
  async function handleOldPaymentAction(event){
    // Older transaction rows link qpx_ charges to the Finance route and show a
    // second, incorrect text-only modal. Replace *only* qpx_ actions.
@@ -180,11 +206,15 @@
      if(typeof toast==='function')toast('O QR Code venceu após 30 minutos. Consulte o status no histórico.');
    }
    if(page()&&!page().hidden)render();
+   if(by('page-payments')&&!by('page-payments').hidden)decoratePayments();
  }
  function init(){
    if(historyReady)return;historyReady=true;
    ensure();
    document.addEventListener('click',handleOldPaymentAction,true);
+   const transactions=by('payment-rows');
+   if(transactions)new MutationObserver(decoratePayments).observe(transactions,{childList:true});
+   decoratePayments();
    const prev=window.showChargeReceipt;
    if(typeof prev==='function'){
      window.showChargeReceipt=function(data){
