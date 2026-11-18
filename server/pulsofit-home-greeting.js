@@ -5,7 +5,7 @@
 "use strict";
 if(window.__PULSO_HOME_GREETING_20261118__)return;
 window.__PULSO_HOME_GREETING_20261118__=true;
-var cachedName="",lastToken="",pending=null,scheduled=false,lastHour=-1;
+var cachedName="",lastToken="",pending=null,scheduled=false,lastHour=-1,avatar=null,avatarForToken="",avatarPending=null;
 var messages=[
  "Cada movimento conta. Comece pelo que é possível hoje.",
  "Consistência vale mais que perfeição. Seu ritmo é seu.",
@@ -41,6 +41,32 @@ async function fetchName(){
  })();
  await pending;
 }
+function validPhoto(v){return typeof v==="string"&&/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]{40,}$/.test(v)?v:null}
+function drawPhoto(){
+ const holder=document.querySelector("#pf-home-welcome .pf-home-greet-icon");
+ if(!holder)return;
+ const image=holder.querySelector("img"),fallback=holder.querySelector("[data-pf-home-fallback]");
+ if(image){
+  if(avatar){if(image.getAttribute("src")!==avatar)image.src=avatar;image.hidden=false}
+  else{image.hidden=true;image.removeAttribute("src")}
+ }
+ if(fallback)fallback.hidden=Boolean(avatar);
+}
+async function fetchPhoto(force){
+ const t=token();
+ if(!t){avatar=null;avatarForToken="";drawPhoto();return}
+ if(avatarPending||!force&&avatarForToken===t)return;
+ avatarPending=(async()=>{
+  try{
+   const r=await fetch("/api/profile/photo",{cache:"no-store",headers:{Authorization:"Bearer "+t},signal:AbortSignal.timeout(9000)});
+   if(!r.ok)return;
+   const d=await r.json();if(t!==token())return;
+   avatar=Boolean(d.hasPhoto)?validPhoto(d.image):null;avatarForToken=t;
+   drawPhoto();
+  }catch{}finally{avatarPending=null}
+ })();
+ await avatarPending;
+}
 function normalizeBrand(area){
  // Only the exact pre-existing heading is normalized. No navigation, icons or links touched.
  const headings=area.querySelectorAll("h1,h2,.page-title,.pro-title,.home-title");
@@ -64,7 +90,7 @@ function render(){
   banner.setAttribute("aria-label","Boas-vindas e motivação diária");
   banner.innerHTML='<div class="pf-home-greet-eyebrow">PULSOFIT <span>AI</span> · SUA JORNADA</div>'+
    '<div class="pf-home-greet-row"><div><h2 id="pf-home-greet-title"></h2><p id="pf-home-greet-quote"></p></div>'+
-   '<span class="pf-home-greet-icon" aria-hidden="true">✦</span></div>'+
+   '<span class="pf-home-greet-icon" aria-label="Foto do perfil"><img alt="Sua foto de perfil" hidden><span data-pf-home-fallback aria-hidden="true">✦</span></span></div>'+
    '<div class="pf-home-greet-footer"><span>Hoje é uma nova oportunidade de se movimentar.</span>'+
    '<button id="pf-home-outdoor-shortcut" type="button">🚶 Atividade ao ar livre</button></div>';
   area.insertBefore(banner,area.firstElementChild);
@@ -74,6 +100,7 @@ function render(){
  const name=userFirstName(),greet=dayGreeting();
  const newTitle=greet+", "+name+"!";
  if(title.textContent!==newTitle)title.textContent=newTitle;
+  drawPhoto();
  const q=quote();if(desc.textContent!==q)desc.textContent=q;
 }
 function requestRender(){
@@ -85,13 +112,16 @@ function boot(){
  if(app)new MutationObserver(requestRender).observe(app,{childList:true,subtree:true});
  window.addEventListener("hashchange",requestRender);
  window.addEventListener("pageshow",requestRender);
- window.addEventListener("pulso-auth-ready",()=>{void fetchName();requestRender()});
+ window.addEventListener("pulso-auth-ready",()=>{avatarForToken="";void fetchPhoto(true);void fetchName();requestRender()});
+  window.addEventListener("pulso-avatar-changed",ev=>{
+   avatar=validPhoto(ev.detail?.src);avatarForToken=token();drawPhoto();
+  });
  // Detect token changes without adding additional network requests per DOM update.
  setInterval(()=>{
-  const t=token();if(t!==lastToken){cachedName="";lastToken=t;if(t)void fetchName()}
+  const t=token();if(t!==lastToken){cachedName="";lastToken=t;avatar=null;avatarForToken="";if(t){void fetchName();void fetchPhoto(true)}else drawPhoto()}
   if(lastHour!==new Date().getHours()){lastHour=new Date().getHours();requestRender()}
  },45000);
- void fetchName();requestRender();
+ void fetchName();void fetchPhoto(false);requestRender();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
