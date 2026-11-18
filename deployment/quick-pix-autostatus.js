@@ -17,7 +17,7 @@
    if(status==='paid'){
      b.textContent='Pagamento recebido e confirmado';
      b.className='status-badge paid';
-     n.textContent='Pix confirmado pela consulta autenticada à MisticPay. O registro financeiro foi atualizado.';
+     n.textContent='Pix recebido e confirmado pela ARGUS Pay. Seu pagamento foi registrado com sucesso.';
      stop();
      // A celebration is only dispatched after the authenticated MisticPay payment
      // status (or a verified stored charge) is "paid". No client-side payment spoof.
@@ -26,7 +26,7 @@
        window.dispatchEvent(new CustomEvent('argus:pix-paid',{detail:{chargeId}}));
      }
      if(typeof toast==='function' && !document.getElementById('argus-pix-success-overlay'))
-       toast('Pix recebido e confirmado pela MisticPay!');
+       toast('Pix recebido e confirmado pela ARGUS Pay!');
      return;
    }
    if(['failed','cancelled','refunded','expired'].includes(status)){
