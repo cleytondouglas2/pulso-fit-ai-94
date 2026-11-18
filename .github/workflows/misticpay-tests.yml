@@ -3,10 +3,12 @@ on:
   push:
     paths:
       - 'server/misticpay-*.mjs'
+      - 'server/mount-misticpay.mjs'
       - '.github/workflows/misticpay-tests.yml'
   pull_request:
     paths:
       - 'server/misticpay-*.mjs'
+      - 'server/mount-misticpay.mjs'
       - '.github/workflows/misticpay-tests.yml'
 permissions:
   contents: read
@@ -23,5 +25,6 @@ jobs:
           node --check server/misticpay-adapter.mjs
           node --check server/misticpay-billing.mjs
           node --check server/misticpay-postgres-store.mjs
+          node --check server/mount-misticpay.mjs
       - name: Run adapter tests without creating charges
         run: node --test server/misticpay-adapter.test.mjs
