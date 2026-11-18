@@ -5,6 +5,12 @@ if(window.__PULSO_MAIS_MENU_20261118__)return;
 window.__PULSO_MAIS_MENU_20261118__=true;
 var sheet=null,scheduled=false,menuListeners=new WeakSet(),nextAction=null;
 var css=[
+'#app .mobile-nav button[data-route="goals"] > span:first-child{display:inline-flex!important;justify-content:center!important;align-items:center!important;flex:0 0 32px!important;width:32px!important;height:32px!important;min-height:32px!important;font-size:30px!important;line-height:1!important;margin-inline:auto!important}',
+'#app .mobile-nav button[data-route="goals"] > span:first-child svg,#app .mobile-nav button[data-route="goals"] svg{display:block!important;width:31px!important;height:31px!important;min-width:31px!important;min-height:31px!important;max-width:31px!important;max-height:31px!important;stroke-width:2.3!important}',
+'#app .mobile-nav button[data-pf-mais-tab="1"] > .pf-more-nav-icon{display:inline-flex!important;justify-content:center!important;align-items:center!important;flex:0 0 32px!important;width:32px!important;height:32px!important;min-height:32px!important;line-height:1!important;margin-inline:auto!important;color:inherit!important}',
+'#app .mobile-nav button[data-pf-mais-tab="1"] > .pf-more-nav-icon svg{display:block!important;width:31px!important;height:31px!important;min-width:31px!important;min-height:31px!important;stroke-width:2.4!important;stroke:currentColor!important}',
+'#app .mobile-nav button[data-pf-mais-tab="1"] > .pf-more-nav-label{display:block!important;font:800 clamp(10px,2.5vw,12px)/1.2 system-ui,sans-serif!important;white-space:nowrap!important}',
+'#app .mobile-nav button[data-route="goals"],#app .mobile-nav button[data-pf-mais-tab="1"]{justify-content:center!important;align-items:center!important;gap:5px!important;overflow:visible!important}',
 '.mobile-nav .pf-more-nav-icon{font:900 25px/1 system-ui,sans-serif!important;display:block!important;color:inherit!important}',
 '.mobile-nav .pf-more-nav-label{font:800 11px/1.3 system-ui,sans-serif!important;display:block!important;white-space:nowrap!important}',
 '.mobile-nav [data-pf-mais-tab="1"]{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;color:#b2fff1!important;display:flex!important;align-items:center!important;flex-direction:column!important;justify-content:center!important;gap:5px!important;cursor:pointer!important}',
@@ -142,10 +148,10 @@ function fixNav(){
   tab.dataset.pfMaisTab="1";tab.setAttribute("aria-label","Abrir menu Mais");
   // Preserve the existing data-route=profile for integrations with the native router.
   if(!tab.getAttribute("data-route"))tab.setAttribute("data-route","profile");
-  tab.innerHTML='<span class="pf-more-nav-icon" aria-hidden="true">☰</span><span class="pf-more-nav-label">Mais</span>';
+  tab.innerHTML='<span class="pf-more-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="pf-more-nav-label">Mais</span>';
  }
  else if(!tab.querySelector(".pf-more-nav-label")||tab.querySelector(".pf-more-nav-label")?.textContent!=="Mais"){
-  tab.innerHTML='<span class="pf-more-nav-icon" aria-hidden="true">☰</span><span class="pf-more-nav-label">Mais</span>';
+  tab.innerHTML='<span class="pf-more-nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg></span><span class="pf-more-nav-label">Mais</span>';
  }
  if(!menuListeners.has(tab)){
   menuListeners.add(tab);
