@@ -17,6 +17,7 @@ import "./pulsofit-outdoor-api.mjs";
 import "./pulsofit-push-server.mjs";
 import "./pulsofit-gemini-recovery.mjs";
 import "./pulsofit-meal-assess.mjs";
+import "./pulsofit-coach-chat.mjs";
 import "./pulsofit-social-auth.mjs";
 import {Server} from "node:http";
 import {basename} from "node:path";
