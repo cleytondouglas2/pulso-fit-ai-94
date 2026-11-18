@@ -98,7 +98,7 @@ function changeFootage(){
   notice("Não há gravação humana verificada para esse exercício. Use um vídeo de treinador com autorização ou ative o avatar 3D.");
   return;
  }
- broken=false;clip.crossOrigin="anonymous";
+ broken=false;clip.crossOrigin="anonymous";clip.dataset.pfCorsRetried="";
  clip.src=source.src;clip.hidden=false;clip.load();
  void playVideo();
 }
@@ -246,12 +246,30 @@ function mount(){
  holder.querySelector("#pf-real-segment-button").addEventListener("click",()=>void segment());
  holder.querySelector("#pf-real-start").addEventListener("click",()=>{if(!clip)return;if(clip.paused){void playVideo()}else{clip.pause();paused=true;notice("Demonstração pausada.")}updateModes()});
  holder.querySelector("#pf-real-local-file").addEventListener("change",e=>setLocal(e.target.files?.[0]));
- humanVideo.addEventListener("error",()=>{if(clip===humanVideo&&!userFileUrl)failed("Vídeo público indisponível. Você pode carregar um vídeo MP4 próprio e autorizado ou abrir a fonte nos créditos.")});
+ humanVideo.addEventListener("error",()=>{
+  if(clip!==humanVideo||userFileUrl)return;
+  const source=footage[$("pf-ar-exercise")?.value||"squat"];
+  if(source&&!humanVideo.dataset.pfCorsRetried){
+   humanVideo.dataset.pfCorsRetried="1";
+   humanVideo.removeAttribute("crossorigin");humanVideo.src=source.src;humanVideo.load();
+   notice("Ativando modo de vídeo compatível com o navegador. O recorte por IA pode ficar indisponível para este arquivo.");
+   void humanVideo.play().catch(()=>{});
+   return;
+  }
+  failed("Vídeo público indisponível. Envie um vídeo MP4 próprio e autorizado ou abra a fonte nos créditos.");
+ });
  humanVideo.addEventListener("loadedmetadata",()=>{broken=false;updateModes()});
  humanVideo.addEventListener("canplay",()=>{if(kind==="real"&&!paused)void clip.play().catch(()=>{})});
  const exercise=$("pf-ar-exercise");
  if(exercise)exercise.addEventListener("change",changeFootage);
  overlay.querySelector("#pf-ar-close")?.addEventListener("click",close);
+ const liveCamera=overlay.querySelector("#pf-ar-camera");
+ if(liveCamera)liveCamera.addEventListener("click",()=>{
+  // The real instructor remains visible without segmentation on unsupported devices.
+  setTimeout(()=>{
+   if(clip?.videoWidth&&kind==="real"&&!segActive&&!segLoading&&!broken&&clip.crossOrigin==="anonymous")void segment();
+  },650);
+ });
  const swap=overlay.querySelector("#pf-ar-facing");
  if(swap)swap.addEventListener("click",()=>{if(segActive){resetModel();notice("Câmera alterada. Inicie o recorte novamente se desejar.")}});
  changeFootage();applyMode();
