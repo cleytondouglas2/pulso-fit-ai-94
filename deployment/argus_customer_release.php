@@ -17,9 +17,9 @@ argusReplace($gateway,"// Only authenticated administrator API and provider-back
 "// Customer portal and merchant API are isolated from administrative sessions.\n            if (str_starts_with(\$path, '/api/portal/') || str_starts_with(\$path, '/api/v1/')) {\n                \$portalDb = new Database(self::\$config);\n                \$portalDb->installAndSeed();\n                Portal::handle(\$portalDb,\$method,\$path);\n            }\n            // Only authenticated administrator API and provider-backed Pix API remain exposed.",'portal routes');
 $admin="$root/src/Admin.php";
 argusReplace($admin,"'ready'=>LivePix::readiness(\$db)['ready'], 'min_cents'=>100,'max_cents'=>10000,",
-"'ready'=>\$configured && \$access['status']==='verified', 'min_cents'=>100,'max_cents'=>10000,",'dedicated finance QR availability');
+"'ready'=>\$configured && \$access['status']==='verified' && in_array(\$db->driver(),['pgsql','mysql'],true) && (LivePix::readiness(\$db)['checks']['storage_policy'] ?? false), 'min_cents'=>100,'max_cents'=>10000,",'dedicated finance QR availability');
 argusReplace($admin,"if(!LivePix::readiness(\$db)['ready'])self::fail('Pix temporariamente indisponível',503);",
-"if(!\\ArgusPayments\\Integrations\\MisticPayFinance::configured())self::fail('Serviço de Pix ainda não configurado',503);",'independent quick Pix readiness');
+"if(!\\ArgusPayments\\Integrations\\MisticPayFinance::configured() || !in_array(\$db->driver(),['pgsql','mysql'],true) || !(LivePix::readiness(\$db)['checks']['storage_policy'] ?? false))self::fail('Pix indisponível: banco persistente ou configuração financeira ausente',503);",'independent quick Pix readiness');
 $html="$root/public/static/admin.html";
 argusReplace($html,'<script src="/static/admin.js?v=7" defer></script>','<script src="/static/qrcode.min.js?v=1" defer></script><script src="/static/admin.js?v=8" defer></script>','QR library');
 argusReplace($html,'<link rel="icon" type="image/png" href="/static/assets/favicon.png">',
