@@ -236,3 +236,56 @@
 }
 @keyframes pf-ai-btn-glow {0%,100%{box-shadow:0 7px 24px #7d3fdf99,0 0 0 5px #a467f61f}50%{box-shadow:0 9px 30px #9855ffcc,0 0 0 7px #a467f630}}
 @media (prefers-reduced-motion:reduce){.mobile-nav.mobile-nav > .nav-link.nav-link[data-route="coach"]{animation:none!important}}
+
+/* PulsoFit 9.8 — seletor robusto pelo destino Coach */
+@media (max-width:850px) {
+ .mobile-nav {
+   display:grid!important;
+   grid-template-columns:repeat(5,minmax(0,1fr))!important;
+   overflow:visible!important;
+   align-items:end!important;
+   padding:9px 6px calc(12px + env(safe-area-inset-bottom))!important;
+   min-height:80px!important;
+ }
+ .mobile-nav .nav-link {
+   flex:initial!important;
+   min-width:0!important;
+   width:100%!important;
+   padding:7px 0!important;
+   overflow:visible!important;
+ }
+ .mobile-nav .nav-link[data-route="coach"] {
+   position:relative!important;
+   width:clamp(55px,14vw,67px)!important;
+   height:clamp(55px,14vw,67px)!important;
+   padding:6px 3px!important;
+   margin:0 auto!important;
+   min-height:55px!important;
+   border-radius:50%!important;
+   transform:translateY(-10px)!important;
+   background:linear-gradient(135deg,#a855f7 0%,#6330d9 95%)!important;
+   border:2px solid rgba(220,193,255,.78)!important;
+   box-shadow:0 7px 26px #8530efb8,0 0 0 5px #9739e626!important;
+   color:#fff!important;
+   animation:pf-coach-pulse 3.2s ease-in-out infinite!important;
+   isolation:isolate;
+ }
+ .mobile-nav .nav-link[data-route="coach"] svg {width:24px!important;height:24px!important;color:white!important;filter:drop-shadow(0 0 5px #ffffff70)!important}
+ .mobile-nav .nav-link[data-route="coach"] span {font-size:0!important;white-space:nowrap!important;line-height:1!important}
+ .mobile-nav .nav-link[data-route="coach"] span::after {content:"Coach IA";display:block;font:900 9px/1.1 system-ui,sans-serif;color:#fff;letter-spacing:-.2px}
+ .mobile-nav .nav-link[data-route="coach"]::before {
+   content:"IA";position:absolute;right:-10px;top:-9px;z-index:4;
+   display:grid;place-items:center;width:29px;height:23px;
+   border-radius:14px;border:2px solid #111827;
+   background:linear-gradient(135deg,#81f5c1,#68dbf4);
+   color:#071b22;font:900 11px/1 system-ui,sans-serif;
+   box-shadow:0 3px 9px #09c7d755;pointer-events:none;
+ }
+ .mobile-nav .nav-link[data-route="coach"]:active{transform:translateY(-10px) scale(.94)!important}
+ .main {padding-bottom:calc(105px + env(safe-area-inset-bottom))!important}
+}
+@keyframes pf-coach-pulse{
+ 0%,100%{box-shadow:0 7px 25px #8530ef99,0 0 0 5px #9739e626}
+ 50%{box-shadow:0 7px 28px #a855f7df,0 0 0 8px #9739e633}
+}
+@media (prefers-reduced-motion:reduce){.mobile-nav .nav-link[data-route="coach"]{animation:none!important}}
