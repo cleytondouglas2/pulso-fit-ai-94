@@ -125,6 +125,7 @@ RUN php -l /tmp/argus_finance_guard_patch.php \
  && php /var/www/html/tests/finance_qr_unit.php \
  && php /var/www/html/tests/ui_contract.php
 # Protected traditional MisticPay Pix: ask for real payer details at charge confirmation.
+COPY deployment/quick-pix-autostatus.js /var/www/html/public/static/quick-pix-autostatus.js
 COPY deployment/TraditionalQuickPix.php /var/www/html/src/TraditionalQuickPix.php
 COPY deployment/argus_traditional_quick_patch.php /tmp/argus_traditional_quick_patch.php
 COPY deployment/traditional_quick_unit.php /var/www/html/tests/traditional_quick_unit.php
@@ -133,6 +134,9 @@ RUN php -l /var/www/html/src/TraditionalQuickPix.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_traditional_quick_patch.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/src/Gateway.php \
+ && php -l /usr/local/share/argus/notify_worker.php \
+ && php -l /usr/local/share/argus/storage_probe.php \
+ && test -s /var/www/html/public/static/quick-pix-autostatus.js \
  && php /var/www/html/tests/traditional_quick_unit.php \
  && php /var/www/html/tests/finance_qr_unit.php \
  && php /var/www/html/tests/ui_contract.php
