@@ -385,7 +385,7 @@ function showRunner(){
   if(playing){stopTimer();renderClock()}else startTimer();
  });
  el.querySelector("#pf-tv-clock-reset").addEventListener("click",()=>{stopTimer();seconds=session.each;renderClock()});
- el.querySelector("#pf-tv-ar-demo").addEventListener("click",()=>window.dispatchEvent(new CustomEvent("pulso-open-camera-ar",{detail:{exercise:e[1]}})));
+ el.querySelector("#pf-tv-ar-demo").addEventListener("click",()=>window.dispatchEvent(new CustomEvent("pulso-open-camera-ar",{detail:{exercise:e[0],name:e[1]}})));
  el.querySelector("#pf-tv-run-swap").addEventListener("click",()=>{stopTimer();swap(session.position,"runner")});
  el.querySelector("#pf-tv-next").addEventListener("click",()=>{stopTimer();if(session.position+1<session.selected.length){session.position++;seconds=session.each;liveEvent("update");showRunner()}else showFinish()});
  el.querySelector("#pf-tv-exit").addEventListener("click",showPlan);
