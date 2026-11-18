@@ -236,7 +236,7 @@
   const time=by("pf-companion-time");if(time)time.textContent=workout?clock(elapsed()):"00:00:00";
   const activity=by("pf-companion-activity");if(activity)activity.textContent=workout?workout.title+" · "+(workout.state==="paused"?"Pausado":"Em andamento"):
    "Inicie um treino para acompanhar a duração";
-  const button=by("pf-companion-live");if(button)button.textContent=liveEnabled?"🔔 Desativar acompanhamento":"🔔 Ativar notificações ao vivo";
+  const liveButton=by("pf-companion-live");if(liveButton)liveButton.textContent=liveEnabled?"🔔 Desativar acompanhamento":"🔔 Ativar notificações ao vivo";
   const repeatBtn=by("pf-companion-repeat");if(repeatBtn)repeatBtn.setAttribute("aria-pressed",String(repeat));
   const shuffleBtn=by("pf-companion-shuffle");if(shuffleBtn)shuffleBtn.setAttribute("aria-pressed",String(shuffle));
   const autoBtn=by("pf-companion-autoplay");if(autoBtn)autoBtn.checked=autoPlay;
