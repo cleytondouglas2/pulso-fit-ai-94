@@ -21,7 +21,8 @@ import {Server} from "node:http";
 import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
 import {createMisticPayPostgresStore} from "./misticpay-postgres-store.mjs";
-import {createMisticPayBilling} from "./misticpay-billing.mjs";
+import {createMisticPayBilling,settleVerifiedMisticPayOrder} from "./misticpay-billing.mjs";
+import {createProductionPixReconciler} from "./misticpay-auto-reconcile.mjs";
 import {TEST_PLAN,testOfferState,availableBillingPlans} from "./pulsofit-test-offer.mjs";
 
 if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUNTIME__){
@@ -211,11 +212,32 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    " (no keys or user records logged).");
  }
  const bootPromise=boot();
+ let verifiedPixWorker=null,livePixTest=null;
+ // Verify existing production PIX transactions. Never create or pay a charge.
+ async function reconcileExistingPix(){
+  await bootPromise;
+  if(!configured||!store?.claimPendingForVerification)return;
+  if(!verifiedPixWorker)verifiedPixWorker=createProductionPixReconciler({
+   store,gateway,settle:settleVerifiedMisticPayOrder,logger(stats){
+    livePixTest={...stats,lastCheckedAt:new Date().toISOString(),environment:"production",newChargesCreated:0};
+    // Count-only telemetry. No transaction IDs, payer identities or secrets in logs.
+    console.log("[pulso-billing] Production PIX verification: checked="+stats.checked+
+     " confirmed="+stats.confirmed+" pending="+stats.pending+
+     " failedOrCancelled="+stats.declined+" unverified="+stats.unverified+" created=0");
+   }});
+  try{await verifiedPixWorker.check()}catch(error){
+   console.warn("[pulso-billing] Production PIX verification unavailable code="+
+    String(error.code||"runtime").replace(/[^A-Z0-9_]/gi,"").slice(0,40));
+  }
+ }
+ const pixPoll=setInterval(()=>{void reconcileExistingPix()},65000);
+ pixPoll.unref?.();
+ setTimeout(()=>{void reconcileExistingPix()},3000).unref?.();
  async function handle(req,res,path){
   await bootPromise;
   if(path==="/api/billing/health"||path==="/api/billing/config"){
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
-   return respond(res,200,{...state,plans:availableBillingPlans(state.plans),testOffer:testOfferState(),
+   return respond(res,200,{...state,autoVerification:{enabled:configured,intervalSeconds:65,workerActive:!!verifiedPixWorker,productionTest:livePixTest},plans:availableBillingPlans(state.plans),testOffer:testOfferState(),
     nextAction:state.ready?"Conectado":"Pagamento indisponível; verifique integração com a MisticPay."});
   }
   // Mostrar o trial da conta no servidor, mesmo com bloqueio automático desligado.
