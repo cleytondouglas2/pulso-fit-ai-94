@@ -25,7 +25,7 @@ $new='<div id="argus-payer-details" class="argus-payer-details" hidden>'.
  '<button id="argus-edit-profile" type="button" class="btn secondary">Conferir meu cadastro</button>'.
  '<p class="muted">Nome e CPF/CNPJ são obtidos com segurança no servidor. Você informa somente o valor.</p></div>'.
  '<div id="pix-config-alert"';
-$html=preg_replace($pattern,static fn()=> $new,$html,1);
+$html=preg_replace_callback($pattern,static fn()=> $new,$html,1);
 $old='Informe o valor e preencha os dados reais do pagador para emitir a cobrança pela MisticPay.';
 if(substr_count($html,$old)!==1)throw new RuntimeException('Pix introduction missing');
 $html=str_replace($old,'Digite somente o valor. A ARGUS usa os dados PF/PJ que você confirmou no cadastro.',$html);
