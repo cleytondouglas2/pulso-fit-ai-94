@@ -1,0 +1,31 @@
+name: PulsoFit - dicas e Performance visual
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-push-server.mjs"
+      - "server/pulsofit-push-ui.js"
+      - "server/pulsofit-private-features.mjs"
+      - "server/pulsofit-performance-ui.js"
+      - "server/pulsofit-tips-performance.test.mjs"
+      - ".github/workflows/pulsofit-tips-performance-tests.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-push-server.mjs"
+      - "server/pulsofit-private-features.mjs"
+      - "server/pulsofit-performance-ui.js"
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check server/pulsofit-push-server.mjs
+      - run: node --check server/pulsofit-private-features.mjs
+      - run: node --check server/pulsofit-push-ui.js
+      - run: node --check server/pulsofit-performance-ui.js
+      - run: node --test server/pulsofit-tips-performance.test.mjs
