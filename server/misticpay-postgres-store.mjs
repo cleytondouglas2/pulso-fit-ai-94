@@ -1,0 +1,82 @@
+/*
+ * Store PostgreSQL para MisticPay / PulsoFit.
+ * Requer pg.Pool persistente e autenticação de usuário do servidor original.
+ * initialize:true cria tabelas isoladas, sem modificar contas legadas.
+ */
+const SQL=[
+  "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference UUID PRIMARY KEY, user_id TEXT NOT NULL, plan_code TEXT NOT NULL CHECK (plan_code IN ('quinzenal','mensal')), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), currency TEXT NOT NULL CHECK(currency='BRL'), provider_payment_id TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'PENDENTE', created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+  "CREATE INDEX IF NOT EXISTS pf_billing_orders_user_idx ON pf_billing_orders(user_id,created_at DESC)",
+  "CREATE TABLE IF NOT EXISTS pf_billing_entitlements (user_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL DEFAULT '-infinity', blocked BOOLEAN NOT NULL DEFAULT false, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+  "CREATE TABLE IF NOT EXISTS pf_billing_events (provider_payment_id TEXT NOT NULL, kind TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(provider_payment_id,kind))",
+  "CREATE TABLE IF NOT EXISTS pf_billing_trials (user_id TEXT PRIMARY KEY, started_at TIMESTAMPTZ NOT NULL DEFAULT now())"
+];
+const CATALOG={quinzenal:{amount:1490,days:15},mensal:{amount:2490,days:30}};
+function rowToOrder(o){return o&&{reference:o.reference,userId:o.user_id,planCode:o.plan_code,amountCents:o.amount_cents,currency:o.currency,providerPaymentId:o.provider_payment_id,status:o.status};}
+export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
+ if(typeof pool?.query!=="function"||typeof pool?.connect!=="function")throw Error("Pool PostgreSQL necessário");
+ if(initialize)for(const sql of SQL)await pool.query(sql);
+ async function transaction(fn){
+  const db=await pool.connect();
+  try{await db.query("BEGIN");const v=await fn(db);await db.query("COMMIT");return v}
+  catch(err){await db.query("ROLLBACK");throw err}finally{db.release()}
+ }
+ return {
+  async createPendingCheckout(order){
+   const p=CATALOG[order.planCode];
+   if(!p||p.amount!==order.amountCents||order.currency!=="BRL"||!String(order.userId||""))throw Error("Pedido inválido");
+   await pool.query("INSERT INTO pf_billing_orders(reference,user_id,plan_code,amount_cents,currency) VALUES($1,$2,$3,$4,$5)",
+    [order.reference,String(order.userId),order.planCode,order.amountCents,order.currency]);
+  },
+  async attachProviderPayment({reference,providerPaymentId}){
+   if(!providerPaymentId)throw Error("Transação ausente");
+   const result=await pool.query("UPDATE pf_billing_orders SET provider_payment_id=$2,updated_at=now() WHERE reference=$1 AND provider_payment_id IS NULL RETURNING reference",
+    [reference,String(providerPaymentId)]);
+   if(result.rowCount!==1)throw Error("Pedido não encontrado ou já registrado");
+  },
+  async getByProviderPaymentId(id){
+   const r=await pool.query("SELECT * FROM pf_billing_orders WHERE provider_payment_id=$1",[String(id)]);return rowToOrder(r.rows[0]);
+  },
+  async getByReference(ref){
+   const r=await pool.query("SELECT * FROM pf_billing_orders WHERE reference=$1",[String(ref)]);return rowToOrder(r.rows[0]);
+  },
+  async applyVerifiedEventOnce(evt){
+   if(evt?.status!=="paid"||evt.currency!=="BRL"||CATALOG[evt.planCode]?.days!==evt.durationDays)throw Error("Pagamento inválido");
+   return transaction(async(db)=>{
+    const r=await db.query("SELECT * FROM pf_billing_orders WHERE reference=$1 FOR UPDATE",[evt.reference]);
+    const o=r.rows[0];
+    if(!o||o.user_id!==String(evt.userId)||o.provider_payment_id!==String(evt.providerPaymentId)||
+       o.plan_code!==evt.planCode||o.amount_cents!==evt.amountCents||
+       o.amount_cents!==CATALOG[evt.planCode].amount||o.currency!=="BRL"||
+       ["DEVOLVIDO","DEVOLVIDO_PARCIAL"].includes(o.status))throw Error("Pagamento diverge do pedido");
+    const once=await db.query("INSERT INTO pf_billing_events(provider_payment_id,kind) VALUES($1,'COMPLETO') ON CONFLICT DO NOTHING RETURNING provider_payment_id",[o.provider_payment_id]);
+    if(!once.rowCount)return false;
+    await db.query("INSERT INTO pf_billing_entitlements(user_id,expires_at,blocked) VALUES($1,now()+$2::integer*interval '1 day',false) ON CONFLICT(user_id) DO UPDATE SET expires_at=greatest(pf_billing_entitlements.expires_at,now())+$2::integer*interval '1 day',blocked=false,updated_at=now()",
+     [o.user_id,evt.durationDays]);
+    await db.query("UPDATE pf_billing_orders SET status='COMPLETO',updated_at=now() WHERE reference=$1",[o.reference]);
+    return true;
+   });
+  },
+  async applyVerifiedRefundOnce(evt){
+   if(!["DEVOLVIDO","DEVOLVIDO_PARCIAL"].includes(evt.status))throw Error("Devolução inválida");
+   return transaction(async(db)=>{
+    const r=await db.query("SELECT * FROM pf_billing_orders WHERE reference=$1 FOR UPDATE",[evt.reference]),o=r.rows[0];
+    if(!o||o.user_id!==String(evt.userId)||o.provider_payment_id!==String(evt.providerPaymentId))throw Error("Devolução não corresponde ao pedido");
+    const once=await db.query("INSERT INTO pf_billing_events(provider_payment_id,kind) VALUES($1,$2) ON CONFLICT DO NOTHING RETURNING provider_payment_id",[o.provider_payment_id,evt.status]);
+    if(!once.rowCount)return false;
+    await db.query("UPDATE pf_billing_orders SET status=$2,updated_at=now() WHERE reference=$1",[o.reference,evt.status]);
+    // Suspender acesso até auditoria evita manter benefício por pagamento estornado.
+    await db.query("INSERT INTO pf_billing_entitlements(user_id,expires_at,blocked) VALUES($1,now(),true) ON CONFLICT(user_id) DO UPDATE SET blocked=true,updated_at=now()",[o.user_id]);
+    return true;
+   });
+  },
+  async firstTrialUse(userId){
+   const r=await pool.query("INSERT INTO pf_billing_trials(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING started_at",[String(userId)]);
+   return r.rows[0].started_at;
+  },
+  async getEntitlement(userId){
+   const r=await pool.query("SELECT expires_at,blocked FROM pf_billing_entitlements WHERE user_id=$1",[String(userId)]);
+   if(!r.rowCount)return {active:false,expiresAt:null,blocked:false};
+   return {active:!r.rows[0].blocked&&new Date(r.rows[0].expires_at)>new Date(),expiresAt:r.rows[0].expires_at,blocked:r.rows[0].blocked};
+  }
+ };
+}
