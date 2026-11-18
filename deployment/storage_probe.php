@@ -34,6 +34,12 @@ try {
     }
     // Only prerequisite names. Never log provider secrets or connection strings.
     error_log('ARGUS_LIVE_READINESS status='.($report['ready'] ? 'ready' : 'blocked').' missing='.($missing ? implode(',', $missing) : 'none'));
+    // Show only whether Finance QR credentials are syntactically present, not their values.
+    $financeId = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_ID') ?: ''));
+    $financeSecret = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET') ?: ''));
+    $financeConfigured = strlen($financeId) >= 8 && strlen($financeSecret) >= 12;
+    error_log('ARGUS_FINANCE_QR_CONFIG status='.($financeConfigured ? 'configured' : 'missing'));
+
 } catch (Throwable $error) {
     error_log('ARGUS_STORAGE_PROBE status=unavailable driver='.$driver.' shared='.($shared?'yes':'no').' error_type='.get_class($error));
     // Keep the web server running so /health can report a precise HTTP 503 status.
