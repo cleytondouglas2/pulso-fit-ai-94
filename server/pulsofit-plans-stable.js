@@ -8,6 +8,8 @@
  window.__PULSO_STABLE_PLANS_20261118__=true;
  var opened=false,closedOnRoute=false,lastRoute="",lastToken=null,details=null,offer=null,offerCheckedAt=0,offerLoading=false;
  var css='#pf-stable-open[hidden]{display:none!important}'+
+ 'body.pf-paid-subscriber #pf-stable-open,body.pf-paid-subscriber #pf-plans-shortcut{display:none!important}'+
+ 'body.pf-paid-subscriber .pf-commercial-float,body.pf-paid-subscriber .pf-subscription-floating{display:none!important}'+
  '#pf-stable-open{position:fixed!important;right:12px!important;bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;z-index:2147480000!important;background:linear-gradient(125deg,#7133c5,#9f51ec)!important;border:1px solid #d4b4ff!important;color:#fff!important;box-shadow:0 10px 35px #16072a9c!important;border-radius:16px!important;padding:8px 10px!important;font:800 11px/1.3 system-ui,sans-serif!important;cursor:pointer!important;max-width:min(180px,calc(100vw - 24px))!important;text-align:left!important}'+
  '#pf-stable-open small{display:block;font:500 11px/1.4 system-ui,sans-serif;color:#efe3ff;margin-top:3px}'+
  '#pf-stable-modal{position:fixed!important;inset:0!important;z-index:2147482000!important;background:#070816e8!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow-y:auto!important;padding:16px!important;box-sizing:border-box!important;backdrop-filter:blur(8px)}'+
@@ -44,11 +46,10 @@
   var b=document.getElementById("pf-stable-open");
   if(b){
    var sm=b.querySelector("small");if(sm)sm.textContent=message();
-   var activePaid=!!details?.planActive;
-   var activeTrial=Number.isFinite(Date.parse(details?.trialEndsAt))&&Date.parse(details.trialEndsAt)>Date.now();
-   // An active account already has Planos in Mais. Never obscure exercise controls.
-   b.hidden=activePaid||activeTrial||["workouts","coach","training-lab","outdoor","goals","profile","account"].includes(route());
+   b.hidden=Boolean(token())||["workouts","coach","training-lab","outdoor","goals","profile","account"].includes(route());
+   if(b.hidden)b.style.setProperty("display","none","important");else b.style.removeProperty("display");
   }
+  document.body?.classList.toggle("pf-paid-subscriber",!!token()&&!!details?.planActive);
   var p=document.getElementById("pf-stable-trial-status");if(p)p.textContent=message();
  }
  function offerActive(){
@@ -87,7 +88,7 @@
   var b=document.createElement("button");b.type="button";b.id="pf-stable-open";
   b.innerHTML='🎁 Ver planos e 7 dias grátis<small></small>';
   b.addEventListener("click",function(){closedOnRoute=false;show()});
-  document.body.appendChild(b);
+  b.hidden=true;document.body.appendChild(b);
  }
  function hide(){
   opened=false;var el=document.getElementById("pf-stable-modal");if(el)el.remove();
@@ -297,8 +298,9 @@
   var old=document.getElementById("pf-stable-modal");if(old){paint();return}
   var outer=document.createElement("div");outer.id="pf-stable-modal";
   outer.innerHTML='<section class="pf-stable-body" role="dialog" aria-modal="true" aria-labelledby="pf-stable-title">'+
-  '<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • ASSINATURA</small><h2 id="pf-stable-title">Escolha seu plano</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
-  '<section class="pf-stable-trial"><strong>🎁 7 dias de teste grátis</strong><p id="pf-stable-trial-status"></p><small>O prazo é registrado na conta e não gera cobrança automática.</small></section>'+
+  '<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • ASSINATURA</small><h2 id="pf-stable-title">'+(details?.planActive?'Renovar ou mudar meu plano':'Escolha seu plano')+'</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
+  (details?.planActive?'<section class="pf-stable-trial"><strong>✓ Assinatura ativa</strong><p id="pf-stable-trial-status"></p><small>Ao renovar ou escolher outro plano, o período comprado será acrescentado à validade existente após a confirmação do Pix. Sem renovação automática.</small></section>':
+  '<section class="pf-stable-trial"><strong>🎁 7 dias de teste grátis</strong><p id="pf-stable-trial-status"></p><small>O prazo é registrado na conta e não gera cobrança automática.</small></section>')+
   '<div class="pf-stable-plans">'+
   '<article class="pf-stable-card promo" id="pf-stable-test-offer" hidden></article>'+
   '<article class="pf-stable-card"><small>SEM FIDELIDADE</small><b>Plano Quinzenal</b><div class="pf-stable-price">R$ 14,90</div><small>15 dias de acesso</small><p>Treinos, Coach IA, metas e acompanhamento.</p><button type="button" data-pf-stable-plan="quinzenal">Selecionar 15 dias</button></article>'+
@@ -341,6 +343,8 @@
  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",maintain,{once:true});
  else maintain();
  window.addEventListener("hashchange",maintain);
+ window.addEventListener("pulso-open-plan-manager",()=>{closedOnRoute=false;hide();show();void load(true)});
+ window.addEventListener("pulso-payment-confirmed",()=>void load(true));
  window.addEventListener("pageshow",()=>autoVerifyPix(true));
  window.addEventListener("focus",()=>autoVerifyPix(true));
  window.addEventListener("online",()=>autoVerifyPix(true));
