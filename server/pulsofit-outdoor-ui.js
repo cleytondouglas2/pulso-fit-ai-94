@@ -1,5 +1,5 @@
 /* PulsoFit AI • Outdoor GPS, live trail, sessions and Gemini analyses.
- * Browser foreground only. Location permission is requested ONLY by Iniciar.
+ * Supports native CoreLocation bridge where installed. Permission requested by Iniciar.
  * Coordinates never go to Gemini. Save requires explicit user confirmation.
  */
 (function(){
@@ -16,6 +16,12 @@ let view="choose",activity=null,history=[],historyError="",fetching=false,leafle
 let profileWeight=null,minor=false,openedHistory=null;
 const token=()=>{try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}};
 const logged=()=>!!token()&&!document.body.classList.contains("pf-account-locked");
+const nativeGPS=()=>Boolean(window.PulsoFitNative?.isAvailable&&window.webkit?.messageHandlers?.pulsoLocation);
+function nativeCommand(action){
+ if(!nativeGPS())return false;
+ try{window.webkit.messageHandlers.pulsoLocation.postMessage({action,kind:activity?.kind||"walk"});return true}
+ catch{return false}
+}
 const route=()=>String(location.hash||"#/home").replace(/^#\/?/,"").split("/")[0].toLowerCase();
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const nf=(n,d=1)=>Number(n||0).toLocaleString("pt-BR",{minimumFractionDigits:d,maximumFractionDigits:d});
@@ -246,7 +252,7 @@ function showTracker(){
  '<button id="pf-outdoor-pause" type="button" class="pf-outdoor-secondary" hidden>⏸ Pausar</button>'+
  '<button id="pf-outdoor-resume" type="button" class="pf-outdoor-primary" hidden>▶ Retomar GPS</button>'+
  '<button id="pf-outdoor-finish" type="button" class="pf-outdoor-danger" hidden>■ Finalizar</button></div>'+
- '<p class="pf-outdoor-foot">Passos por distância/sensor e andares equivalentes por altitude são apenas estimativas. O navegador não identifica escadas reais nem cria Live Activities nativas na tela bloqueada. Os avisos de progresso funcionam enquanto o app está aberto. Calorias são estimativas, não medições de suor ou gordura.</p>'+
+ '<p class="pf-outdoor-foot">Passos por distância/sensor e andares equivalentes por altitude são apenas estimativas. O Safari não garante GPS em segundo plano; para trajeto com tela bloqueada use o app iOS nativo com permissão Sempre. Notificações exigem autorização do aparelho. Calorias são estimativas, não medições de suor ou gordura.</p>'+
  '<p class="pf-outdoor-foot">Para sua segurança, observe o caminho e não manipule o celular enquanto corre, caminha ou pedala.</p>';
  box.querySelector("#pf-outdoor-change").addEventListener("click",()=>{if(activity.state==="running"||activity.state==="paused"){setStatus("Finalize a atividade antes de trocar de modalidade.");return}showChooser()});
  box.querySelector("#pf-outdoor-start").addEventListener("click",startGPS);
@@ -284,7 +290,7 @@ function captureWeight(){
 }
 function startGPS(){
  if(!activity||activity.state!=="ready")return;
- if(!window.isSecureContext||!navigator.geolocation){setStatus("O GPS precisa de HTTPS e de um navegador com Geolocalização. Abra o site no Safari ou Chrome e permita o acesso.",true);return}
+ if(!window.isSecureContext||(!navigator.geolocation&&!nativeGPS())){setStatus("O GPS precisa de HTTPS e de localização autorizada. Abra no Safari ou no app iOS nativo.",true);return}
  if(!captureWeight())return;
  const pushBox=document.getElementById("pf-outdoor-push-live");
  activity.notify=!!pushBox?.checked&&typeof Notification!=="undefined"&&Notification.permission==="granted";
@@ -302,6 +308,11 @@ function activateWatch(){
  if(!activity||activity.state!=="running")return;
  setStatus("Buscando sinal GPS… permita a localização precisa quando o navegador solicitar.");
  try{
+  if(nativeGPS()){
+   nativeCommand("start");
+   setStatus("Ativando localização nativa. Autorize 'Sempre' para continuar com a tela bloqueada.");
+   return;
+  }
   geoId=navigator.geolocation.watchPosition(onFix,onGeoError,{
    enableHighAccuracy:true,maximumAge:1000,timeout:20000
   });
@@ -358,13 +369,13 @@ function onFix(fix){
 function pause(){
  if(!activity||activity.state!=="running")return;
  activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="paused";companionEvent("pause");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="paused";companionEvent("pause");nativeCommand("pause");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
  updateControls();updateStats();
  setStatus("Atividade pausada. O GPS não registra novas posições até você retomar.");
 }
 function resume(){
  if(!activity||activity.state!=="paused")return;
- activity.state="running";activity.resumedAt=Date.now();companionEvent("resume");
+ activity.state="running";activity.resumedAt=Date.now();companionEvent("resume");nativeCommand("resume");
  // Break the route after any pause, even when points are geographically close.
  activity.segmentBreak=true;
  if(activity.motionActive)window.addEventListener("devicemotion",motionEvent);
@@ -374,7 +385,7 @@ function resume(){
 function finish(){
  if(!activity||!["running","paused"].includes(activity.state))return;
  if(activity.state==="running")activity.activeMs+=Math.max(0,Date.now()-activity.resumedAt);
- activity.state="finished";companionEvent("finish");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
+ activity.state="finished";companionEvent("finish");nativeCommand("finish");stopWatch();turnOffMotion();void releaseWake();clearInterval(timer);timer=null;
  if(activity.notify)liveNotice("🏁 Atividade finalizada • PulsoFit");
  showCompleted();
 }
@@ -397,7 +408,8 @@ function updateStats(){
   activity.lastCompanionAt=Date.now();companionEvent("update");
  }
  if(activity.state==="running"&&activity.lastFixAt&&Date.now()-activity.lastFixAt>35000)
-  setStatus("Sinal GPS interrompido. Mantenha o Safari aberto, com a tela ligada e a localização ativada.",true);
+  setStatus(nativeGPS()?"Sinal de localização interrompido. Verifique a permissão 'Sempre' e o GPS do iPhone.":
+    "Safari pode suspender o GPS em segundo plano. Para registrar trajeto com tela bloqueada, use o app iOS nativo.",true);
 }
 function loadLeaflet(){
  if(window.L?.map)return Promise.resolve(true);
@@ -636,12 +648,24 @@ function boot(){
  window.addEventListener("pageshow",schedule);
  window.addEventListener("pulso-auth-ready",schedule);
  window.addEventListener("pulso-open-outdoor",open);
- document.addEventListener("visibilitychange",()=>{
-  if(document.hidden&&activity?.state==="running"&&/iPad|iPhone|iPod/i.test(navigator.userAgent)){
-   pause();setStatus("O iOS pode suspender o GPS em segundo plano. Atividade pausada por segurança; retome quando voltar.",true);
-  }
+ window.addEventListener("pulso-native-location",e=>{
+  if(!nativeGPS()||!activity||activity.state!=="running")return;
+  const p=e.detail||{},c=p.coords||{};
+  if(!Number.isFinite(Number(c.latitude))||!Number.isFinite(Number(c.longitude)))return;
+  onFix({coords:{latitude:Number(c.latitude),longitude:Number(c.longitude),
+   accuracy:Number(c.accuracy),altitude:c.altitude==null?null:Number(c.altitude),
+   altitudeAccuracy:c.altitudeAccuracy==null?null:Number(c.altitudeAccuracy)},
+   timestamp:Number(p.timestamp)||Date.now()});
  });
- window.addEventListener("pagehide",()=>{if(activity?.state==="running")pause()});
+ window.addEventListener("pulso-native-location-error",e=>{
+  if(activity?.state==="running")setStatus(String(e.detail?.message||"Localização nativa indisponível. Verifique permissões."),true);
+ });
+ document.addEventListener("visibilitychange",()=>{
+  if(document.hidden&&activity?.state==="running"&&!nativeGPS()&&/iPad|iPhone|iPod/i.test(navigator.userAgent)){
+   pause();setStatus("O Safari não mantém GPS contínuo em segundo plano. Atividade pausada para não contar distância fictícia.",true);
+  }else if(!document.hidden&&activity?.state==="running")updateStats();
+ });
+ window.addEventListener("pagehide",()=>{if(activity?.state==="running"&&!nativeGPS())pause()});
  window.addEventListener("beforeunload",e=>{if(activity?.state==="running"&&!activity.saved){e.preventDefault();e.returnValue=""}});
  schedule();
 }
