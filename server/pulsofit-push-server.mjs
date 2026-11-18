@@ -126,6 +126,19 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS tips_per_day smallint NOT NULL DEFAULT 1");
    await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS first_name varchar(40) NOT NULL DEFAULT 'você'");
    await pool.query("CREATE INDEX IF NOT EXISTS pf_push_subscriptions_active ON pf_push_subscriptions(enabled,reminder_hour)");
+   await pool.query(`CREATE TABLE IF NOT EXISTS pf_push_active_workouts (
+    user_id uuid PRIMARY KEY REFERENCES pf_users(id) ON DELETE CASCADE,
+    session_key varchar(80) NOT NULL,
+    kind varchar(16) NOT NULL,
+    title varchar(90) NOT NULL,
+    state varchar(10) NOT NULL CHECK(state IN ('running','paused')),
+    elapsed_ms bigint NOT NULL DEFAULT 0,
+    resumed_at timestamptz,
+    started_at timestamptz NOT NULL DEFAULT now(),
+    detail varchar(100) NOT NULL DEFAULT '',
+    last_notified_at timestamptz
+   )`);
+   await pool.query("CREATE INDEX IF NOT EXISTS pf_push_workouts_due ON pf_push_active_workouts(state,last_notified_at)");
    await pool.query(`CREATE TABLE IF NOT EXISTS pf_push_deliveries (
     subscription_id uuid NOT NULL REFERENCES pf_push_subscriptions(id) ON DELETE CASCADE,
     notification_key varchar(40) NOT NULL,
@@ -275,6 +288,72 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   }catch(e){console.warn("[pulso-push] Scheduler temporary issue: "+String(e.code||"runtime").replace(/[^a-zA-Z0-9]/g,"").slice(0,20))}
   finally{checking=false}
  }
+ const liveElapsed=x=>Math.max(0,Math.min(4*3600000,Number(x.elapsed_ms||0)+
+  (x.state==="running"&&x.resumed_at?Math.max(0,Date.now()-new Date(x.resumed_at).getTime()):0)));
+ function liveTime(x){
+  let s=Math.floor(liveElapsed(x)/1000);
+  return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,"0")).join(":");
+ }
+ async function sendLive(x){
+  const rows=await pool.query("SELECT id,endpoint,p256dh,auth_key FROM pf_push_subscriptions WHERE user_id=$1::uuid AND enabled=true AND training=true LIMIT 8",[x.user_id]);
+  let successful=0;
+  for(const sub of rows.rows){
+   const notice={title:"⏱ "+x.title+" • PulsoFit",
+    body:(x.state==="paused"?"Pausado • ":"Tempo transcorrido ")+liveTime(x)+(x.detail?" • "+x.detail:""),
+    tag:"pulsofit-live-workout",url:"/?source=live#/workouts",live:true,requireInteraction:true};
+   try{
+    const sent=await send(sub,notice);
+    if(sent.ok)successful++;
+    else if([404,410].includes(sent.status))await removeInvalid(sub);
+   }catch{}
+  }
+  return successful;
+ }
+ async function liveTick(){
+  if(!ready)return;
+  try{
+   await pool.query("DELETE FROM pf_push_active_workouts WHERE started_at<now()-interval '4 hours'");
+   const q=await pool.query(\`UPDATE pf_push_active_workouts SET last_notified_at=now()
+    WHERE state='running' AND (last_notified_at IS NULL OR last_notified_at<now()-interval '3 minutes')
+    RETURNING *\`);
+   for(const x of q.rows.slice(0,60))await sendLive(x);
+  }catch(e){console.warn("[pulso-push] Live scheduler code="+String(e.code||"runtime").replace(/[^A-Za-z0-9]/g,"").slice(0,30))}
+ }
+ setInterval(()=>{void liveTick()},180000).unref?.();
+ async function liveAction(req,res,user){
+  const d=await body(req,2400),action=String(d.action||""),key=String(d.sessionKey||"");
+  if(!["start","pause","resume","update","finish"].includes(action)||!/^[A-Za-z0-9_-]{8,80}$/.test(key))
+   throw fail(422,"Identificador de treino inválido.");
+  const kind=String(d.kind||"workout");
+  if(!["workout","walk","run","cycle"].includes(kind))throw fail(422,"Modalidade inválida.");
+  const title=String(d.title||"Treino em andamento").trim().replace(/[<>]/g,"").slice(0,85);
+  const detail=String(d.detail||"").trim().replace(/[<>]/g,"").slice(0,90);
+  if(action==="start"){
+   const subs=await pool.query("SELECT count(*)::int n FROM pf_push_subscriptions WHERE user_id=$1::uuid AND enabled=true AND training=true",[user]);
+   if(!subs.rows[0]?.n)return json(res,409,{error:"Ative as notificações de treino nas configurações do PulsoFit primeiro."});
+   const q=await pool.query(\`INSERT INTO pf_push_active_workouts
+    (user_id,session_key,kind,title,state,resumed_at,detail,last_notified_at)
+    VALUES($1::uuid,$2,$3,$4,'running',now(),$5,now())
+    ON CONFLICT(user_id) DO UPDATE SET session_key=EXCLUDED.session_key,kind=EXCLUDED.kind,
+    title=EXCLUDED.title,state='running',elapsed_ms=0,resumed_at=now(),started_at=now(),
+    detail=EXCLUDED.detail,last_notified_at=now() RETURNING *\`,[user,key,kind,title,detail]);
+   const sent=await sendLive(q.rows[0]);
+   return json(res,200,{active:true,state:"running",sent,periodMinutes:3});
+  }
+  if(action==="finish"){
+   const q=await pool.query("DELETE FROM pf_push_active_workouts WHERE user_id=$1::uuid AND session_key=$2 RETURNING user_id",[user,key]);
+   return json(res,200,{active:false,removed:q.rowCount>0});
+  }
+  const sql=action==="pause"?
+   "UPDATE pf_push_active_workouts SET state='paused',elapsed_ms=elapsed_ms+GREATEST(0,EXTRACT(EPOCH FROM(now()-resumed_at))*1000)::bigint,resumed_at=NULL,detail=$3 WHERE user_id=$1::uuid AND session_key=$2 AND state='running' RETURNING *":
+   action==="resume"?
+   "UPDATE pf_push_active_workouts SET state='running',resumed_at=now(),detail=$3,last_notified_at=now() WHERE user_id=$1::uuid AND session_key=$2 AND state='paused' RETURNING *":
+   "UPDATE pf_push_active_workouts SET detail=$3 WHERE user_id=$1::uuid AND session_key=$2 RETURNING *";
+  const q=await pool.query(sql,[user,key,detail]);
+  if(!q.rows.length)return json(res,404,{error:"Sessão de treino encerrada ou em outro estado."});
+  if(action!=="update")await sendLive(q.rows[0]);
+  return json(res,200,{active:true,state:q.rows[0].state});
+ }
  // Render Free services sleep when idle. This timer only runs when the server
  // is awake; no guarantee of delivery time is made to the user.
  const schedule=setInterval(()=>{void dispatchReminders()},180000);
@@ -286,6 +365,11 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   if(url.pathname===prefix+"/config"&&req.method==="GET")
    return json(res,200,{publicKey:vapid.public,ready:true});
   if(!user)return json(res,401,{error:"Entre na sua conta para configurar notificações."});
+  if(url.pathname===prefix+"/activity"&&req.method==="POST")return liveAction(req,res,user);
+  if(url.pathname===prefix+"/activity"&&req.method==="GET"){
+   const q=await pool.query("SELECT session_key,kind,title,state,elapsed_ms,resumed_at,started_at,detail FROM pf_push_active_workouts WHERE user_id=$1::uuid",[user]);
+   const x=q.rows[0];return json(res,200,{active:Boolean(x),state:x?.state||"stopped",elapsedMs:x?liveElapsed(x):0,kind:x?.kind||null,title:x?.title||null});
+  }
   if(url.pathname===prefix+"/status"&&req.method==="GET"){
    const q=await pool.query("SELECT id,endpoint,enabled,reminder_hour,timezone,training,performance,wellness,tips_per_day,created_at,last_sent_at FROM pf_push_subscriptions WHERE user_id=$1::uuid ORDER BY created_at DESC LIMIT 20",[user]);
    return json(res,200,{devices:q.rows.map(x=>({
