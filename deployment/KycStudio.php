@@ -76,7 +76,7 @@ final class KycStudio {
         if(!is_string($plain))self::fail('Falha de integridade do arquivo',503);
         return $plain;
     }
-    private static function id():string {return bin2hex(random_bytes(16));}
+    private static function id():string {return sprintf('%016x',(int)(microtime(true)*1000000)).bin2hex(random_bytes(8));}
     public static function required(string $type):array {
         return $type==='PJ'?self::REQUIRED_PJ:self::REQUIRED_PF;
     }
