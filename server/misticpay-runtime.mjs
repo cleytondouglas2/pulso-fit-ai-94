@@ -13,6 +13,7 @@ import "./pulsofit-plans-patch.mjs";
 import "./pulsofit-private-features.mjs";
 import "./pulsofit-fitness-assessment.mjs";
 import "./pulsofit-training-lab.mjs";
+import "./pulsofit-outdoor-api.mjs";
 import "./pulsofit-gemini-recovery.mjs";
 import {Server} from "node:http";
 import {basename} from "node:path";
