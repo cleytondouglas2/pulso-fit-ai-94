@@ -136,8 +136,10 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
     resumed_at timestamptz,
     started_at timestamptz NOT NULL DEFAULT now(),
     detail varchar(100) NOT NULL DEFAULT '',
+    endpoint text,
     last_notified_at timestamptz
    )`);
+   await pool.query("ALTER TABLE pf_push_active_workouts ADD COLUMN IF NOT EXISTS endpoint text");
    await pool.query("CREATE INDEX IF NOT EXISTS pf_push_workouts_due ON pf_push_active_workouts(state,last_notified_at)");
    await pool.query(`CREATE TABLE IF NOT EXISTS pf_push_deliveries (
     subscription_id uuid NOT NULL REFERENCES pf_push_subscriptions(id) ON DELETE CASCADE,
@@ -295,7 +297,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   return [Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(n=>String(n).padStart(2,"0")).join(":");
  }
  async function sendLive(x){
-  const rows=await pool.query("SELECT id,endpoint,p256dh,auth_key FROM pf_push_subscriptions WHERE user_id=$1::uuid AND enabled=true AND training=true LIMIT 8",[x.user_id]);
+  const rows=await pool.query("SELECT id,endpoint,p256dh,auth_key FROM pf_push_subscriptions WHERE user_id=$1::uuid AND endpoint=$2 AND enabled=true AND training=true LIMIT 1",[x.user_id,x.endpoint]);
   let successful=0;
   for(const sub of rows.rows){
    const notice={title:"⏱ "+x.title+" • PulsoFit",
@@ -329,14 +331,16 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   const title=String(d.title||"Treino em andamento").trim().replace(/[<>]/g,"").slice(0,85);
   const detail=String(d.detail||"").trim().replace(/[<>]/g,"").slice(0,90);
   if(action==="start"){
-   const subs=await pool.query("SELECT count(*)::int n FROM pf_push_subscriptions WHERE user_id=$1::uuid AND enabled=true AND training=true",[user]);
+   const endpoint=String(d.endpoint||"");
+   if(!validEndpoint(endpoint))throw fail(422,"Inscrição push do aparelho inválida.");
+   const subs=await pool.query("SELECT count(*)::int n FROM pf_push_subscriptions WHERE user_id=$1::uuid AND endpoint=$2 AND enabled=true AND training=true",[user,endpoint]);
    if(!subs.rows[0]?.n)return json(res,409,{error:"Ative as notificações de treino nas configurações do PulsoFit primeiro."});
    const q=await pool.query(\`INSERT INTO pf_push_active_workouts
-    (user_id,session_key,kind,title,state,resumed_at,detail,last_notified_at)
-    VALUES($1::uuid,$2,$3,$4,'running',now(),$5,now())
+    (user_id,session_key,kind,title,state,resumed_at,detail,endpoint,last_notified_at)
+    VALUES($1::uuid,$2,$3,$4,'running',now(),$5,$6,now())
     ON CONFLICT(user_id) DO UPDATE SET session_key=EXCLUDED.session_key,kind=EXCLUDED.kind,
     title=EXCLUDED.title,state='running',elapsed_ms=0,resumed_at=now(),started_at=now(),
-    detail=EXCLUDED.detail,last_notified_at=now() RETURNING *\`,[user,key,kind,title,detail]);
+    detail=EXCLUDED.detail,endpoint=EXCLUDED.endpoint,last_notified_at=now() RETURNING *\`,[user,key,kind,title,detail,endpoint]);
    const sent=await sendLive(q.rows[0]);
    return json(res,200,{active:true,state:"running",sent,periodMinutes:3});
   }
