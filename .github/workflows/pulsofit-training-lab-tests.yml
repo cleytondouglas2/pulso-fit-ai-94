@@ -1,0 +1,30 @@
+name: PulsoFit - Treino Vivo checks
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/pulsofit-training-lab-ui.js'
+      - 'server/pulsofit-training-lab.mjs'
+      - 'server/pulsofit-training-lab.test.mjs'
+      - 'server/pulsofit-plans-patch.mjs'
+      - 'server/misticpay-runtime.mjs'
+      - '.github/workflows/pulsofit-training-lab-tests.yml'
+  pull_request:
+    paths:
+      - 'server/pulsofit-training-lab-ui.js'
+      - 'server/pulsofit-training-lab.mjs'
+      - 'server/pulsofit-training-lab.test.mjs'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check server/pulsofit-training-lab.mjs
+      - run: node --check server/pulsofit-training-lab-ui.js
+      - run: node --check server/pulsofit-plans-patch.mjs
+      - run: node --test server/pulsofit-training-lab.test.mjs
