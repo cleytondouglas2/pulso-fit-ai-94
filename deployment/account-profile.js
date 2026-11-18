@@ -25,6 +25,7 @@
     '<div class="modal-actions"><button class="btn primary" type="submit">Salvar dados cadastrais</button></div>'+
     '</form>';
    dialog('Complete seu cadastro PF ou PJ',html,'SEGURANÇA CADASTRAL');
+   document.getElementById('modal').addEventListener('close',()=>{pendingPrompt=false;},{once:true});
    const type=document.getElementById('argus-profile-type'),name=document.querySelector('#argus-profile-form [name=legal_name]'),
      doc=document.querySelector('#argus-profile-form [name=document_number]');
    type.value=initialType;name.value=profile.legal_name||'';
