@@ -34,6 +34,14 @@ try {
     }
     // Only prerequisite names. Never log provider secrets or connection strings.
     error_log('ARGUS_LIVE_READINESS status='.($report['ready'] ? 'ready' : 'blocked').' missing='.($missing ? implode(',', $missing) : 'none'));
+
+    // Only readiness flags; NEVER log or hash-identify private encryption secrets.
+    $identitySecret=(string)(getenv('ARGUS_DOC_HMAC_KEY')?:getenv('ARGUS_PAYER_HMAC_KEY')?:'');
+    $identitySafe=strlen($identitySecret)>=32&&function_exists('sodium_crypto_secretbox')
+        &&function_exists('sodium_crypto_secretbox_open')&&function_exists('hash_hkdf');
+    error_log('ARGUS_IDENTITY_ENCRYPTION status='.($identitySafe?'ready':'missing'));
+    unset($identitySecret);
+
     // Show only whether Finance QR credentials are syntactically present, not their values.
     $financeId = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_ID') ?: ''));
     $financeSecret = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET') ?: ''));
