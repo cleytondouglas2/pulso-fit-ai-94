@@ -26,11 +26,13 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    providerAuth:"unchecked",supportedMethods:[],webhookPath:"/api/billing/webhook",
    plans:{quinzenal:{days:15,amountCents:1490},mensal:{days:30,amountCents:2490}}};
  let pool=null,store=null,billing=null,configured=false;
- const requiredFlags=()=>{
-  return process.env.PULSO_BILLING_STABLE_DB==="1" &&
-   process.env.PULSO_BILLING_PREMIUM_API_ENFORCED==="1" &&
-   process.env.PULSO_MISTICPAY_ENABLE_CHARGES==="1";
- };
+ const premiumRoutes = new Set(["/api/coach/plan","/api/videos","/api/progress","/api/nutrition/lookup"]);
+ const premiumGuardInstalled=true;
+ const premiumRoute=(p)=>premiumRoutes.has(p)||p.startsWith("/api/ai/")||p.startsWith("/api/videos/")||p.startsWith("/api/coach/");
+ const temporaryDatabaseApproved=()=>process.env.PULSO_BILLING_TEMP_DB_ACK==="1";
+ const requiredFlags=()=>(
+   process.env.PULSO_BILLING_STABLE_DB==="1"||temporaryDatabaseApproved()
+  )&&premiumGuardInstalled&&process.env.PULSO_MISTICPAY_ENABLE_CHARGES==="1";
  function respond(res,status,data){
   if(res.writableEnded)return;
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
@@ -115,6 +117,20 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   }
   await billing(req,res);
  }
+ async function checkPremiumAccess(server,req,res){
+  await bootPromise;
+  if(!configured)return respond(res,503,{error:"Verificação de assinatura temporariamente indisponível."});
+  const user=await authenticate(req);
+  if(!user?.id)return respond(res,401,{error:"Entre na sua conta para começar seu período gratuito de 7 dias.",code:"LOGIN_REQUIRED"});
+  if(user.role==="admin")return originalEmit.call(server,"request",req,res);
+  const [trialStart,entitlement]=await Promise.all([
+   store.firstTrialUse(String(user.id)),store.getEntitlement(String(user.id))
+  ]);
+  const trialEnds=new Date(trialStart).getTime()+7*86400000;
+  const trialActive=Number.isFinite(trialEnds)&&trialEnds>Date.now();
+  if(trialActive||entitlement?.active)return originalEmit.call(server,"request",req,res);
+  return respond(res,402,{error:"Seu período de teste terminou. Contrate um dos planos para continuar.",code:"SUBSCRIPTION_REQUIRED",plansUrl:"/#/subscription"});
+ }
  const originalEmit=Server.prototype.emit;
  Server.prototype.emit=function(event,...args){
   if(event==="request"&&args.length>=2){
@@ -123,6 +139,13 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    if(managed.has(path)){
     void Promise.resolve(handle(req,res,path)).catch(()=>{
      if(!res.headersSent)respond(res,503,{error:"Sistema de pagamentos indisponível"});
+     else if(!res.writableEnded)res.end();
+    });
+    return true;
+   }
+   if(premiumRoute(path)&&process.env.PULSO_MISTICPAY_ENABLE_CHARGES==="1"){
+    void Promise.resolve(checkPremiumAccess(this,req,res)).catch(()=>{
+     if(!res.headersSent)respond(res,503,{error:"Não foi possível verificar a assinatura."});
      else if(!res.writableEnded)res.end();
     });
     return true;
