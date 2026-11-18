@@ -68,7 +68,8 @@ if (basename(process.argv[1]||"")==="server.mjs") {
       (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-bootfix"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
-     const revised=freshHtml.slice(0,last.index)+inject+freshHtml.slice(last.index);
+     const lastBody=Array.from(freshHtml.matchAll(/<\/body\s*>/gi)).at(-1);
+     const revised=freshHtml.slice(0,lastBody.index)+inject+freshHtml.slice(lastBody.index);
      writeFileSync(full,revised);
      found.push(full);
     }catch{console.warn("[pulso-ui] Não foi possível atualizar arquivo HTML (continua disponível sem patch).")}
