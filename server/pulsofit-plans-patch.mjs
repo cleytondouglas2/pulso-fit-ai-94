@@ -19,6 +19,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const socialJS=readFileSync(new URL("./pulsofit-social-ui.js",import.meta.url),"utf8");
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const assessmentJS=readFileSync(new URL("./pulsofit-assessment-ui.js",import.meta.url),"utf8");
+  const mealJS=readFileSync(new URL("./pulsofit-meal-ui.js",import.meta.url),"utf8");
   const profilePolishJS=readFileSync(new URL("./pulsofit-profile-polish.js",import.meta.url),"utf8");
   const profileRescueJS=readFileSync(new URL("./pulsofit-profile-rescue.js",import.meta.url),"utf8");
   const maisJS=readFileSync(new URL("./pulsofit-mais-menu.js",import.meta.url),"utf8");
@@ -42,6 +43,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   if(!outdoorJS.includes("pf-outdoor-steps")||!outdoorJS.includes("pf-outdoor-live-widget"))throw Error("PULSO_OUTDOOR_PROGRESS_MISSING");
   if(!trainingLabJS.includes("bulgarian_squat")||!trainingLabJS.includes("showExercisePicker("))throw Error("PULSO_EXERCISE_EDITOR_MISSING");
   if(!authJS.includes("pulsofit-session-remember-v1"))throw Error("PULSO_PERSISTENT_LOGIN_MISSING");
+  new JavaScriptSyntax(mealJS,{filename:"pulsofit-meal-ui.js"});
   new JavaScriptSyntax(socialJS,{filename:"pulsofit-social-ui.js"});
   new JavaScriptSyntax(pushUI,{filename:"pulsofit-push-ui.js"});
   new JavaScriptSyntax(companionJS,{filename:"pulsofit-live-companion.js"});
@@ -57,6 +59,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-social-ui-20261118">'+socialJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-meal-assessment-20261118">'+mealJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-profile-rescue-20261118">'+profileRescueJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-mais-menu-20261118">'+maisJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
