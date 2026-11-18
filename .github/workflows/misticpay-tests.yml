@@ -1,0 +1,27 @@
+name: MisticPay integration checks
+on:
+  push:
+    paths:
+      - 'server/misticpay-*.mjs'
+      - '.github/workflows/misticpay-tests.yml'
+  pull_request:
+    paths:
+      - 'server/misticpay-*.mjs'
+      - '.github/workflows/misticpay-tests.yml'
+permissions:
+  contents: read
+jobs:
+  check-misticpay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Validate ESM modules
+        run: |
+          node --check server/misticpay-adapter.mjs
+          node --check server/misticpay-billing.mjs
+          node --check server/misticpay-postgres-store.mjs
+      - name: Run adapter tests without creating charges
+        run: node --test server/misticpay-adapter.test.mjs
