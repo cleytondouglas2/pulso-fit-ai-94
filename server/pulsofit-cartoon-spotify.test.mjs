@@ -31,7 +31,7 @@ test("Model supports full body exercises and user-driven scaling",()=>{
  for(const kind of ["squat","lunge","jumping_jack","curl","arm_raise","march","pushup","plank","bridge"]){
   assert.match(cartoon,new RegExp('exercise==="'+kind+'"'));
  }
- assert.match(cartoon,/knee\.add/);
+ assert.match(cartoon,/hip\.add\(knee\)/);
  assert.match(cartoon,/pf-ar-size/);
  assert.match(cartoon,/pf-ar-x/);
  assert.match(cartoon,/pf-ar-cartoon-y/);
