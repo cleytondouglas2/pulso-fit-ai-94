@@ -19,6 +19,14 @@ try {
         }
     }
     error_log('ARGUS_STORAGE_PROBE status=connected driver='.$driver.' shared='.($shared?'yes':'no').' schema_isolated=yes');
+    require '/var/www/html/src/LivePix.php';
+    $report = \ArgusPayments\LivePix::readiness($database);
+    $missing = [];
+    foreach ($report['checks'] as $label => $passed) {
+        if (!$passed) $missing[] = $label;
+    }
+    // Only prerequisite names. Never log provider secrets or connection strings.
+    error_log('ARGUS_LIVE_READINESS status='.($report['ready'] ? 'ready' : 'blocked').' missing='.($missing ? implode(',', $missing) : 'none'));
 } catch (Throwable $error) {
     error_log('ARGUS_STORAGE_PROBE status=unavailable driver='.$driver.' shared='.($shared?'yes':'no').' error_type='.get_class($error));
     // Keep the web server running so /health can report a precise HTTP 503 status.
