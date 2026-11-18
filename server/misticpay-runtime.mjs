@@ -10,6 +10,7 @@
 import "./pulsofit-plans-patch.mjs";
 import "./pulsofit-private-features.mjs";
 import "./pulsofit-fitness-assessment.mjs";
+import "./pulsofit-gemini-recovery.mjs";
 import {Server} from "node:http";
 import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
