@@ -36,6 +36,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   new JavaScriptSyntax(trainingLabJS,{filename:"pulsofit-training-lab-ui.js"});
   new JavaScriptSyntax(homeGreetingJS,{filename:"pulsofit-home-greeting.js"});
   new JavaScriptSyntax(outdoorJS,{filename:"pulsofit-outdoor-ui.js"});
+  if(!outdoorJS.includes("pf-outdoor-steps")||!outdoorJS.includes("pf-outdoor-live-widget"))throw Error("PULSO_OUTDOOR_PROGRESS_MISSING");
+  if(!trainingLabJS.includes("bulgarian_squat")||!trainingLabJS.includes("showExercisePicker("))throw Error("PULSO_EXERCISE_EDITOR_MISSING");
+  if(!authJS.includes("pulsofit-session-remember-v1"))throw Error("PULSO_PERSISTENT_LOGIN_MISSING");
   new JavaScriptSyntax(pushUI,{filename:"pulsofit-push-ui.js"});
   if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
@@ -102,7 +105,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      // Bust only the script URL; the generated app.js itself is repaired
      // before this file is updated by pulsofit-js-boot-repair.mjs.
      const freshHtml=html5.html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
-      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-push-pwa-v7"+quote);
+      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-session-gps-workouts-v8"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
      const pwaHead='<link rel="manifest" href="/pulsofit.webmanifest">'+
@@ -125,6 +128,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   console.log("[pulso-treino] UI Treino Vivo integrado; estilos=ok JS=syntax-ok.");
   console.log("[pulso-outdoor] Saudação e atividades GPS integradas; UI=syntax-ok, CSS=ok.");
   console.log("[pulso-push] PWA head icons and notification interface integrated; JS=syntax-ok CSS=ok.");
+  console.log("[pulso-upgrade] Login persistente, editor de treinos, passos GPS e painel ao vivo carregados.");
  }catch(error){
   console.warn("[pulso-ui] Não foi possível integrar portal de assinatura: "+String(error.code||"init_error"));
  }
