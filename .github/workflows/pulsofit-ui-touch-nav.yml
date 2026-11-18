@@ -8,6 +8,8 @@ on:
       - "server/pulsofit-touch-feedback.js"
       - "server/pulsofit-live-companion.js"
       - "server/pulsofit-plans-patch.mjs"
+      - "server/pulsofit-html5-responsive.css"
+      - "server/pulsofit-responsive-layout.test.mjs"
       - "server/pulsofit-ui-touch-nav.test.mjs"
       - "server/pulsofit-ux-v3.test.mjs"
       - ".github/workflows/pulsofit-ui-touch-nav.yml"
@@ -33,4 +35,4 @@ jobs:
           node --check server/pulsofit-touch-feedback.js
           node --check server/pulsofit-live-companion.js
           node --check server/pulsofit-plans-patch.mjs
-      - run: node --test server/pulsofit-ui-touch-nav.test.mjs server/pulsofit-ux-v3.test.mjs server/pulsofit-mobile-fixes.test.mjs
+      - run: node --test server/pulsofit-ui-touch-nav.test.mjs server/pulsofit-ux-v3.test.mjs server/pulsofit-mobile-fixes.test.mjs server/pulsofit-responsive-layout.test.mjs
