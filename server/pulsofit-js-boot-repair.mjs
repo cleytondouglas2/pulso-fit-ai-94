@@ -1,0 +1,116 @@
+/**
+ * PulsoFit 9.5 — emergency build-output syntax repair.
+ * The build supplied by PULSO_BUILD_BR sometimes emits more than one lexical
+ * "mobileNavItems" declaration. Safari then refuses to execute the whole app.
+ * This runs on generated public files before server.mjs begins serving them.
+ * No auth, billing, database or user data is read or changed.
+ */
+import {basename,join} from "node:path";
+import {existsSync,readdirSync,readFileSync,statSync,writeFileSync} from "node:fs";
+import {Script} from "node:vm";
+
+if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REPAIR__){
+ globalThis.__PULSO_BOOT_JS_REPAIR__=true;
+ const id="mobileNavItems";
+ const decl=/\b(?:const|let)\s+mobileNavItems\s*=/g;
+ const fn=()=>null;
+ function countDeclarations(code){return [...code.matchAll(decl)].map(m=>m.index);}
+ function parse(code,filename){try{new Script(code,{filename,displayErrors:false});return {ok:true}}catch(e){return {ok:false,error:String(e.message||e).slice(0,190)}}}
+ function uniqueSegments(code){
+  // Keep the newest navigation definition under its original identifier.
+  // Earlier implementations receive a private identifier and keep their own
+  // existing references. This preserves both old/new render logic.
+  const found=countDeclarations(code);if(found.length<2)return null;
+  let result="";
+  for(let i=0;i<found.length-1;i++){
+   const begin=i===0?0:found[i],end=found[i+1];
+   const slice=code.slice(begin,end);
+   result+=slice.replace(/\bmobileNavItems\b/g,"pfLegacyMobileNavItems_"+(i+1));
+  }
+  result+=code.slice(found[found.length-1]);
+  return result;
+ }
+ const roots=[".","dist","public","build","out","site","web","client"];
+ const seen=new Set(),locations=[];
+ function visit(dir,depth){
+  if(depth>2||seen.has(dir)||!existsSync(dir))return;
+  seen.add(dir);let items;try{items=readdirSync(dir,{withFileTypes:true})}catch{return}
+  for(const entry of items){
+   if(entry.name.startsWith(".")||entry.name==="node_modules")continue;
+   const loc=join(dir,entry.name);
+   if(entry.isDirectory()){if(depth<2)visit(loc,depth+1);continue}
+   if(!entry.isFile()||!(/\.html?$/i.test(entry.name)||/\.js$/i.test(entry.name)))continue;
+   const size=statSync(loc).size;
+   if(size>7000000||size<1000)continue;
+   // Generated app.js and generated HTML only, not our standalone extensions.
+   if(!/\.html?$/i.test(entry.name)&&!/^app(?:\.[a-z0-9-]+)?\.js$/i.test(entry.name))continue;
+   locations.push(loc);
+  }
+ }
+ for(const root of roots)visit(root,0);
+ function rewriteFile(loc){
+  let source;try{source=readFileSync(loc,"utf8")}catch{return}
+  if(!source.includes(id))return;
+  if(/\.js$/i.test(loc)){
+   const declarations=countDeclarations(source);
+   const before=parse(source,loc);
+   let fixed=false,after=before;
+   if(declarations.length>=2 && (!before.ok && /already been declared|declared twice|Identifier/.test(before.error))){
+    const candidate=uniqueSegments(source);
+    if(candidate){
+     after=parse(candidate,loc);
+     if(after.ok){writeFileSync(loc,candidate);fixed=true}
+    }
+   }
+   console.log("[pulso-boot] "+loc+" mobileNavDeclarations="+declarations.length+
+    " parseBefore="+(before.ok?"ok":before.error)+
+    " fixed="+fixed+" parseAfter="+(after.ok?"ok":after.error));
+   return;
+  }
+  // HTML may include several separate classic scripts which share a global
+  // lexical environment, or a repeated generated app.js script reference.
+  let revised=source, changed=false, inlineCount=0;
+  const scripts=[...source.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)];
+  const inline=scripts.filter(m=>!/\bsrc\s*=/.test(m[1])&&!/\btype\s*=\s*["']module["']/.test(m[1]));
+  inlineCount=inline.reduce((n,m)=>n+countDeclarations(m[2]).length,0);
+  if(inlineCount>1){
+   // Last declaration wins. Rewrite earlier scripts in reverse to preserve
+   // offsets and avoid modifying the size of subsequent script locations.
+   let remaining=inlineCount;
+   for(let i=scripts.length-1;i>=0;i--){
+    const m=scripts[i];
+    if(/\bsrc\s*=/.test(m[1])||/\btype\s*=\s*["']module["']/.test(m[1]))continue;
+    const n=countDeclarations(m[2]).length;if(!n)continue;
+    const shouldKeep=remaining===n?0:1;
+    // Simpler and conservative: modify only if one script contains multiple
+    // colliding declarations and the corrected script parses successfully.
+    if(n>1){
+     const before=parse(m[2],loc+"#inline");
+     const cand=uniqueSegments(m[2]);
+     if(cand&&(!before.ok)&&parse(cand,loc+"#inline").ok){
+      const start=m.index+m[0].indexOf(">")+1;
+      revised=revised.slice(0,start)+cand+revised.slice(start+m[2].length);changed=true;
+     }
+    }
+    remaining-=n;
+   }
+  }
+  // Avoid loading the same classic app bundle twice through identical tags.
+  let srcCount=0;
+  const unique=new Set();
+  const tag=/<script\b[^>]*\bsrc\s*=\s*(["'])([^"']+)\1[^>]*>\s*<\/script\s*>/gi;
+  revised=revised.replace(tag,(all,quote,url)=>{
+   if(!/(?:^|\/)app(?:\.[a-z0-9-]+)?\.js(?:\?|$)/i.test(url))return all;
+   srcCount++;
+   if(unique.has(url)){changed=true;return ""}
+   unique.add(url);return all;
+  });
+  if(changed){try{writeFileSync(loc,revised)}catch{changed=false}}
+  console.log("[pulso-boot] "+loc+" inlineMobileNavDeclarations="+inlineCount+
+   " appBundleReferences="+srcCount+" modified="+changed);
+ }
+ for(const loc of new Set(locations))try{rewriteFile(loc)}catch(e){
+  console.warn("[pulso-boot] Could not analyze "+loc+": "+String(e.code||"check_error").slice(0,30));
+ }
+ console.log("[pulso-boot] JavaScript initialization sanity pass complete.");
+}
