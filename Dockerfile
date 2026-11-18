@@ -57,6 +57,7 @@ COPY deployment/composer.json /var/www/html/composer.json
 RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader --no-scripts
 COPY deployment/Notifications.php /var/www/html/src/Notifications.php
 COPY deployment/notifications-ui.js deployment/notifications-ui.css /var/www/html/public/static/
+COPY deployment/install.html /var/www/html/public/static/install.html
 COPY deployment/sw.js /var/www/html/public/sw.js
 COPY deployment/pix-cachorro.svg /var/www/html/public/static/assets/pix-cachorro.svg
 RUN rsvg-convert -w 512 -h 512 /var/www/html/public/static/assets/pix-cachorro.svg -o /var/www/html/public/static/assets/pix-cachorro.png \
