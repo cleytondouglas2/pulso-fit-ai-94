@@ -1,0 +1,37 @@
+name: PulsoFit - personagens cartoon e Spotify OAuth
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-cartoon-ar.js"
+      - "server/pulsofit-camera-ar.js"
+      - "server/pulsofit-ar-real-person.js"
+      - "server/pulsofit-spotify-oauth.js"
+      - "server/pulsofit-spotify-config.mjs"
+      - "server/pulsofit-plans-patch.mjs"
+      - "server/misticpay-runtime.mjs"
+      - "server/pulsofit-cartoon-spotify.test.mjs"
+      - ".github/workflows/pulsofit-cartoon-spotify.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-cartoon-spotify.test.mjs"
+      - "server/pulsofit-cartoon-ar.js"
+      - "server/pulsofit-spotify-oauth.js"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check server/pulsofit-cartoon-ar.js
+          node --check server/pulsofit-camera-ar.js
+          node --check server/pulsofit-spotify-oauth.js
+          node --check server/pulsofit-spotify-config.mjs
+          node --check server/pulsofit-plans-patch.mjs
+          node --check server/misticpay-runtime.mjs
+      - run: node --test server/pulsofit-cartoon-spotify.test.mjs server/pulsofit-ar-music.test.mjs server/pulsofit-ar-vision.test.mjs server/pulsofit-ui-touch-nav.test.mjs
