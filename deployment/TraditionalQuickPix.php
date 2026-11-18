@@ -95,16 +95,94 @@ final class TraditionalQuickPix
             default=>'unknown',
         };
     }
-    public static function readChecked(array $response,int $expectedCents):array {
+    public static function readChecked(array $response,int $expectedCents,?string $providerId=null):array {
         $row=$response['transaction']??null;
         if(!is_array($row))throw new \RuntimeException('Status da transação ausente');
+        // Never settle from a webhook, cached QR code, or a response for another charge.
+        if($providerId!==null){
+            $received=$row['transactionId']??null;
+            if(!is_string($received)&&!is_int($received))throw new \RuntimeException('Identificador ausente na confirmação');
+            if(!hash_equals($providerId,(string)$received))throw new \RuntimeException('Transação diferente da cobrança original');
+        }
         $state=self::status((string)($row['transactionState']??''));
+        if(isset($row['transactionType'])&&strtoupper((string)$row['transactionType'])!=='DEPOSITO')
+            throw new \RuntimeException('Resposta não é de depósito Pix');
+        if(isset($row['transactionMethod'])&&strtoupper((string)$row['transactionMethod'])!=='PIX')
+            throw new \RuntimeException('Método de pagamento diferente');
         if(isset($row['value'])){
             $value=$row['value'];
             if(!is_int($value)&&!is_float($value)&&!is_string($value))throw new \RuntimeException('Valor inválido');
             if(!is_numeric($value)||abs((int)round((float)$value*100)-$expectedCents)>0)throw new \RuntimeException('Valor informado pelo provedor diverge');
+        }elseif($state==='paid'){
+            throw new \RuntimeException('Confirmação sem valor verificado');
         }
         return ['status'=>$state];
+    }
+
+    /** Test TRANSACTION_READ without touching an actual payment or knowing a customer ID. */
+    public static function readPermission():array {
+        try{
+            self::request('/transactions/check','POST',['transactionId'=>'argus_read_probe_'.bin2hex(random_bytes(12))]);
+            return ['status'=>'unverified'];
+        }catch(ApiError $e){
+            $error=$e->getMessage();
+            if(str_contains($error,'TRANSACTION_NOT_FOUND'))return ['status'=>'verified'];
+            if(str_contains($error,'API_SCOPE_DENIED'))return ['status'=>'denied'];
+            if(str_contains($error,'INVALID_API_CREDENTIAL')||str_contains($error,'IP_NOT_ALLOWED'))return ['status'=>'credentials_rejected'];
+            return ['status'=>'unverified'];
+        }catch(\Throwable){
+            return ['status'=>'unavailable'];
+        }
+    }
+
+    /** Only verified data from POST /api/transactions/check can change payment status. */
+    public static function reconcileRow(Database $db,array $row):array {
+        $p=(string)($row['provider_id']??'');
+        if(!str_starts_with($p,'tr_'))throw new \RuntimeException('Cobrança não pertence à API tradicional');
+        $providerId=substr($p,3);
+        if(!preg_match('/^[a-zA-Z0-9_.-]{1,110}$/D',$providerId))throw new \RuntimeException('Identificador do provedor inválido');
+        $result=self::request('/transactions/check','POST',['transactionId'=>$providerId]);
+        $checked=self::readChecked($result,(int)$row['amount_cents'],$providerId);
+        $new=$checked['status'];
+        if(in_array((string)$row['status'],['pending','unknown'],true)){
+            $updated=$db->run("UPDATE admin_quick_pix SET status=?,checked_at=? WHERE id=? AND status IN ('pending','unknown')",
+                [$new,gmdate('Y-m-d H:i:s'),$row['id']]);
+            if($new==='paid'&&$updated->rowCount()>0){
+                try{Notifications::adminPixReceived($db,(string)$row['id'],(int)$row['amount_cents']);}
+                catch(\Throwable $e){error_log('ARGUS traditional Pix notification failed: '.get_class($e));}
+            }
+        }
+        $latest=$db->one('SELECT * FROM admin_quick_pix WHERE id=?',[$row['id']]);
+        return $latest?:$row;
+    }
+
+    /** Runs on the existing notification worker, whether or not an admin has the app open. */
+    public static function worker(Database $db):array {
+        if(getenv('ARGUS_QUICK_PIX_PROVIDER')!=='traditional' || !in_array($db->driver(),['pgsql','mysql'],true))
+            return ['checked'=>0,'paid'=>0,'errors'=>0];
+        $cutoff=gmdate('Y-m-d H:i:s',time()-7*86400);
+        $stale=gmdate('Y-m-d H:i:s',time()-45);
+        $rows=$db->all("SELECT * FROM admin_quick_pix WHERE provider_id LIKE 'tr_%' AND status IN ('pending','unknown') AND created_at>=? AND (checked_at IS NULL OR checked_at<?) ORDER BY checked_at ASC LIMIT 16",[$cutoff,$stale]);
+        $stats=['checked'=>0,'paid'=>0,'errors'=>0];
+        foreach($rows as $row){
+            if(!str_starts_with((string)($row['provider_id']??''),'tr_'))continue;
+            try{
+                $fresh=self::reconcileRow($db,$row);
+                $stats['checked']++;
+                if($fresh['status']==='paid')$stats['paid']++;
+            }catch(\Throwable $e){
+                $stats['errors']++;
+                // Throttle outages and missing TRANSACTION_READ while retaining unresolved status.
+                $db->run("UPDATE admin_quick_pix SET checked_at=? WHERE id=? AND status IN ('pending','unknown')",
+                    [gmdate('Y-m-d H:i:s'),$row['id']]);
+                if($e instanceof ApiError&&str_contains($e->getMessage(),'API_SCOPE_DENIED'))
+                    error_log('ARGUS traditional Pix reconciliation blocked: missing TRANSACTION_READ permission');
+                else
+                    error_log('ARGUS traditional Pix reconciliation unavailable: '.get_class($e));
+            }
+        }
+        error_log('ARGUS traditional Pix reconciliation cycle: checked='.$stats['checked'].' paid='.$stats['paid'].' errors='.$stats['errors']);
+        return $stats;
     }
     private static function access():array {
         try {
@@ -136,9 +214,11 @@ final class TraditionalQuickPix
             $valid=false;
             try{self::credentials();$valid=true;}catch(\Throwable){}
             $access=$valid?self::access():['status'=>'missing','provider_http_status'=>null];
+            $readScope=$valid?self::readPermission():['status'=>'missing'];
             self::reply(['configured'=>$valid,'provider_access'=>$access['status'],
                 'provider_http_status'=>$access['provider_http_status'],
-                'ready'=>$valid&&$access['status']==='verified'&&in_array($db->driver(),['pgsql','mysql'],true),
+                'transaction_read_scope'=>$readScope['status'],
+                'ready'=>$valid&&$access['status']==='verified'&&$readScope['status']==='verified'&&in_array($db->driver(),['pgsql','mysql'],true),
                 'min_cents'=>100,'max_cents'=>10000,'recipient'=>'Conta MisticPay vinculada',
                 'provider'=>'traditional','payer_fields_required'=>true,'split'=>false]);
         }
@@ -195,13 +275,8 @@ final class TraditionalQuickPix
             if($method==='POST'&&!empty($m[2])){
                 $p=(string)$row['provider_id'];
                 if(!str_starts_with($p,'tr_'))self::fail('Esta cobrança não foi emitida pela API tradicional e não pode ser conciliada nessa integração',409);
-                $providerId=substr($p,3);
-                $result=self::request('/transactions/check','POST',['transactionId'=>$providerId]);
-                $checked=self::readChecked($result,(int)$row['amount_cents']);
-                $db->run('UPDATE admin_quick_pix SET status=?,checked_at=? WHERE id=?',
-                    [$checked['status'],gmdate('Y-m-d H:i:s'),$row['id']]);
-                $row['status']=$checked['status'];
-                self::reply(['charge'=>self::publicCharge($row),'status'=>$checked['status']]);
+                $fresh=self::reconcileRow($db,$row);
+                self::reply(['charge'=>self::publicCharge($fresh),'status'=>$fresh['status']]);
             }
         }
         self::fail('Rota indisponível',404);
