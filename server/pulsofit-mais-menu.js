@@ -57,6 +57,7 @@ function openMenu(){
   ["subscription","💎","Planos e validade","7 dias grátis e assinatura"],
   ["goals","🎯","Minhas metas","Objetivos e resultados"],
   ["workouts","🏋️","Treinos","Casa, academia e CrossFit"],
+  ["training-lab","⚡","Treino Vivo","10 missões, substituições e histórico"],
   ["coach","✨","Coach IA","Converse sobre seus treinos"]
  ];
  var grid=el.querySelector(".pf-more-grid");
@@ -119,6 +120,7 @@ async function logout(){
 async function act(action){
  if(!logged()){closeMenu();return}
  if(action==="logout")return logout();
+ if(action==="training-lab"){closeMenu();window.dispatchEvent(new Event("pulso-open-training-lab"));return}
  if(action==="performance"||action==="assessment")return openFeature(action);
  var allowed=new Set(["profile","account","subscription","goals","workouts","coach"]);
  if(allowed.has(action))goTo(action);
