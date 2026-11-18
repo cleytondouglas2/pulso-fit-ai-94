@@ -134,7 +134,7 @@
   try{const reg=await navigator.serviceWorker.ready;return await reg.pushManager?.getSubscription()}catch{return null}
  }
  function localNotice(){
-  if(!liveEnabled||!workout||Notification.permission!=="granted"||!("serviceWorker" in navigator))return;
+  if(!liveEnabled||!workout||typeof Notification==="undefined"||Notification.permission!=="granted"||!("serviceWorker" in navigator))return;
   if(Date.now()-lastLocalNotice<90000)return;
   lastLocalNotice=Date.now();
   navigator.serviceWorker.ready.then(reg=>reg.showNotification("⏱ "+workout.title+" • PulsoFit",{
@@ -146,10 +146,10 @@
   })).catch(()=>{});
  }
  async function serverAction(action){
-  if(!workout||!liveEnabled||!token())return;
+  const w=workout;
+  if(!w||!liveEnabled||!token())return;
   const sub=await pushSubscription();
   if(!sub){status("Para acompanhamento em segundo plano, ative as notificações em Mais → Notificações.");serverEnabled=false;return}
-  const w=workout;
   try{
    const response=await fetch("/api/push/activity",{method:"POST",cache:"no-store",credentials:"same-origin",
     headers:{Authorization:"Bearer "+token(),"Content-Type":"application/json"},
@@ -295,7 +295,7 @@
    if(db)db.close();
    pauseAudio();cleanupURL();audio.removeAttribute("src");
    tracks=[];order=[];index=-1;db=null;accountId=id;
-   try{db=await openDB(accountId);await loadTracks()}catch{}
+   try{db=await openDB(accountId);await loadTracks();if(tracks.length)await chooseTrack(0,false)}catch{}
   }catch{}
  }
  function boot(){
