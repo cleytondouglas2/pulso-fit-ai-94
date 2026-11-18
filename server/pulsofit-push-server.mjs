@@ -56,8 +56,10 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
   const h=Number(d?.reminderHour);
   const hour=Number.isInteger(h)&&h>=6&&h<=21?h:9;
   const tz=tzValid(d?.timezone);
-  const categories={training:d?.training!==false,performance:d?.performance!==false};
-  return {hour,timezone:tz,categories};
+  const categories={training:d?.training!==false,performance:d?.performance!==false,wellness:d?.wellness!==false};
+  const perDay=Number(d?.tipsPerDay);
+  const tipsPerDay=Number.isInteger(perDay)&&perDay>=1&&perDay<=3?perDay:3;
+  return {hour,timezone:tz,categories,tipsPerDay};
  }
  async function body(req,max=8000){
   if(!/^application\/json\b/i.test(String(req.headers["content-type"]||"")))throw fail(415,"Envie JSON.");
@@ -75,6 +77,19 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    const j=await r.json(),u=j.user||j,id=String(u?.id||"");
    return /^[a-f0-9-]{36}$/i.test(id)?id:null;
   }catch{return null}
+ }
+ async function verifiedFirstName(req){
+  const authorization=String(req.headers.authorization||"");
+  if(!authorization.startsWith("Bearer "))return "você";
+  try{
+   const r=await fetch("http://127.0.0.1:"+(process.env.PORT||"10000")+"/api/me",{
+    headers:{Authorization:authorization},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(4000)});
+   if(!r.ok)return "você";
+   const d=await r.json(),u=d?.user||d;
+   const raw=String(u?.name||u?.fullName||u?.full_name||"").trim().split(/\s+/)[0]||"";
+   const value=raw.replace(/[^\p{L}\p{M}'-]/gu,"").slice(0,35);
+   return value.length>=2?value:"você";
+  }catch{return "você"}
  }
  async function initialize(){
   if(!dbVar){state="database_not_configured";return}
@@ -99,11 +114,17 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
     reminder_hour smallint NOT NULL DEFAULT 9,
     training boolean NOT NULL DEFAULT true,
     performance boolean NOT NULL DEFAULT true,
+    wellness boolean NOT NULL DEFAULT true,
+    tips_per_day smallint NOT NULL DEFAULT 3,
+    first_name varchar(40) NOT NULL DEFAULT 'você',
     enabled boolean NOT NULL DEFAULT true,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     last_sent_at timestamptz
    )`);
+   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS wellness boolean NOT NULL DEFAULT true");
+   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS tips_per_day smallint NOT NULL DEFAULT 3");
+   await pool.query("ALTER TABLE pf_push_subscriptions ADD COLUMN IF NOT EXISTS first_name varchar(40) NOT NULL DEFAULT 'você'");
    await pool.query("CREATE INDEX IF NOT EXISTS pf_push_subscriptions_active ON pf_push_subscriptions(enabled,reminder_hour)");
    await pool.query(`CREATE TABLE IF NOT EXISTS pf_push_deliveries (
     subscription_id uuid NOT NULL REFERENCES pf_push_subscriptions(id) ON DELETE CASCADE,
@@ -179,35 +200,70 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    return Math.min(100,Number(q.rows[0]?.gym||0)+Number(q.rows[0]?.outdoor||0));
   }catch{return 0}
  }
- function messageFor(count,day,sub){
-  const p=(Number(day.replace(/-/g,""))%3);
-  if(sub.performance&&count>0&&p===0)return {
-   title:"📈 Seu progresso no PulsoFit",
-   body:"Você registrou "+count+" atividade"+(count===1?"":"s")+" nos últimos 7 dias. Continue no seu ritmo!",
-   tag:"pulsofit-performance",url:"/?source=push#/goals"
-  };
-  const reminders=[
-   "Seu próximo treino começa com uma decisão: mover-se hoje. Que tal 10 min?",
-   "O progresso vem da consistência. Escolha uma missão que combine com seu dia.",
-   "Uma caminhada leve ou um treino curto também contam. Você consegue!"
+ function slotsFor(sub){
+  // The chosen reminder time is the first notification. Optional reminders
+  // follow at least 3 hours apart and never run later than 21:00 local time.
+  const first=Math.max(6,Math.min(21,Number(sub.reminder_hour)||9));
+  const hours=[first,Math.min(21,first+4),Math.min(21,first+8)];
+  return [...new Set(hours)].slice(0,Math.max(1,Math.min(3,Number(sub.tips_per_day)||3)))
+    .map((hour,i)=>({hour,index:i}));
+ }
+ function firstName(sub){
+  const n=String(sub.first_name||"você").replace(/[^\p{L}\p{M}'-]/gu,"").slice(0,35);
+  return n.length>1?n:"você";
+ }
+ function messageFor(count,day,sub,slot){
+  const name=firstName(sub),hour=slot.hour,hello=hour<12?"Bom dia":hour<18?"Boa tarde":"Boa noite";
+  const seed=Number(day.replace(/-/g,""))||1,index=(seed+slot.index*3)%6;
+  const ideas=[
+   "Que tal hoje uma caminhada de 15 minutos em ritmo confortável? Comece sem pressa.",
+   "Antes de treinar, faça 5 minutos de aquecimento progressivo e respeite seu ritmo.",
+   "Para evoluir na força, foque na técnica e anote suas repetições em vez de se apressar.",
+   "Se estiver com pouca energia, uma sessão leve de mobilidade também conta.",
+   "Experimente um treino curto de força com movimentos de empurrar, puxar e agachar.",
+   "Varie os estímulos: um passeio de bicicleta em ritmo leve pode tornar o dia mais ativo."
   ];
-  return {title:"💜 PulsoFit: hora de cuidar de você",body:reminders[p],tag:"pulsofit-training",url:"/?source=push#/workouts"};
+  const wellness=[
+   "Dica de hoje: beba água regularmente, especialmente antes e depois da atividade.",
+   "Seu corpo também progride no descanso. Priorize uma rotina de sono suficiente.",
+   "Que tal levantar e se movimentar por alguns minutos depois de muito tempo sentado?",
+   "Inclua frutas, legumes e fontes variadas de proteína nas refeições, conforme sua rotina.",
+   "Um alongamento leve e confortável pode ser uma boa pausa entre as tarefas.",
+   "Respeite os sinais do corpo. Dor fora do habitual pede pausa, não insistência."
+  ];
+  const performance=[
+   count>0?"Você registrou "+count+" atividade"+(count===1?"":"s")+" nos últimos 7 dias. Parabéns pela constância!":"Que tal registrar sua primeira atividade da semana e acompanhar a evolução?",
+   "Olhe para sua evolução nas repetições, na regularidade e no conforto dos movimentos — não apenas no peso.",
+   "Registre hoje como foi sua energia e recuperação. Pequenos dados ajudam a ajustar os treinos.",
+   "Se treinou intensamente ontem, considere hoje uma sessão mais leve e mantenha a técnica.",
+   "Sua melhor referência é seu próprio progresso: compare treinos similares ao longo das semanas.",
+   "Que tal revisar suas metas? Uma meta pequena e possível é melhor que uma promessa impossível."
+  ];
+  const topic=slot.index===0?(sub.training?"training":sub.wellness?"wellness":"performance"):
+   slot.index===1?(sub.wellness?"wellness":sub.training?"training":"performance"):
+   (sub.performance?"performance":sub.wellness?"wellness":"training");
+  const text=topic==="training"?ideas[index]:topic==="wellness"?wellness[index]:performance[index];
+  return {title:(slot.index===0?"☀️ ":"🌿 ")+hello+", "+name+"! • PulsoFit",
+   body:text,tag:"pulsofit-"+day+"-"+slot.index,
+   url:topic==="performance"?"/?source=push#/goals":topic==="training"?"/?source=push#/workouts":"/?source=push#/home"};
  }
  async function dispatchReminders(){
   if(checking||!ready)return;
   checking=true;
   try{
-   const q=await pool.query("SELECT id,user_id,endpoint,p256dh,auth_key,timezone,reminder_hour,training,performance FROM pf_push_subscriptions WHERE enabled=true AND (training=true OR performance=true) ORDER BY updated_at DESC LIMIT 500");
+   const q=await pool.query("SELECT id,user_id,endpoint,p256dh,auth_key,timezone,reminder_hour,training,performance,wellness,tips_per_day,first_name FROM pf_push_subscriptions WHERE enabled=true AND (training=true OR performance=true OR wellness=true) ORDER BY updated_at DESC LIMIT 500");
    let sent=0,skipped=0;
    for(const sub of q.rows){
-    const now=localParts(sub.timezone),hour=Number(sub.reminder_hour);
-    if(now.hour<hour||now.hour>Math.min(23,hour+3))continue;
-    const key=now.key+":daily";
+    const now=localParts(sub.timezone);
+    // Send at most one time slot per scheduler pass, never catch up with a burst.
+    const due=slotsFor(sub).filter(x=>now.hour>=x.hour&&now.hour<=x.hour+1).at(-1);
+    if(!due)continue;
+    const key=now.key+":slot-"+due.index;
     const done=await pool.query("INSERT INTO pf_push_deliveries(subscription_id,notification_key) VALUES ($1::uuid,$2) ON CONFLICT DO NOTHING RETURNING notification_key",[sub.id,key]);
     if(!done.rowCount)continue;
     try{
      const n=await weeklySessions(sub.user_id);
-     const msg=messageFor(n,now.key,sub);
+     const msg=messageFor(n,now.key,sub,due);
      const r=await send(sub,msg);
      if(r.ok){sent++;await pool.query("UPDATE pf_push_deliveries SET success=true WHERE subscription_id=$1::uuid AND notification_key=$2",[sub.id,key]);
       await pool.query("UPDATE pf_push_subscriptions SET last_sent_at=now() WHERE id=$1::uuid",[sub.id]);}
@@ -231,29 +287,30 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_WEB_PUSH_RU
    return json(res,200,{publicKey:vapid.public,ready:true});
   if(!user)return json(res,401,{error:"Entre na sua conta para configurar notificações."});
   if(url.pathname===prefix+"/status"&&req.method==="GET"){
-   const q=await pool.query("SELECT id,endpoint,enabled,reminder_hour,timezone,training,performance,created_at,last_sent_at FROM pf_push_subscriptions WHERE user_id=$1::uuid ORDER BY created_at DESC LIMIT 20",[user]);
+   const q=await pool.query("SELECT id,endpoint,enabled,reminder_hour,timezone,training,performance,wellness,tips_per_day,created_at,last_sent_at FROM pf_push_subscriptions WHERE user_id=$1::uuid ORDER BY created_at DESC LIMIT 20",[user]);
    return json(res,200,{devices:q.rows.map(x=>({
     id:x.id,endpoint:x.endpoint,enabled:x.enabled,reminderHour:x.reminder_hour,timezone:x.timezone,
-    training:x.training,performance:x.performance,lastSentAt:x.last_sent_at
+    training:x.training,performance:x.performance,wellness:x.wellness,tipsPerDay:x.tips_per_day,lastSentAt:x.last_sent_at
    })),ready:true});
   }
   if(url.pathname===prefix+"/subscribe"&&req.method==="POST"){
-   const data=await body(req),sub=verifySub(data),opt=parseOptions(data);
-   const q=await pool.query(`INSERT INTO pf_push_subscriptions (user_id,endpoint,p256dh,auth_key,platform,reminder_hour,timezone,training,performance,enabled)
-    VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,true)
+   const data=await body(req),sub=verifySub(data),opt=parseOptions(data),firstName=await verifiedFirstName(req);
+   const q=await pool.query(`INSERT INTO pf_push_subscriptions (user_id,endpoint,p256dh,auth_key,platform,reminder_hour,timezone,training,performance,wellness,tips_per_day,first_name,enabled)
+    VALUES($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,true)
     ON CONFLICT(endpoint) DO UPDATE SET p256dh=EXCLUDED.p256dh,auth_key=EXCLUDED.auth_key,
      reminder_hour=EXCLUDED.reminder_hour,timezone=EXCLUDED.timezone,training=EXCLUDED.training,
-     performance=EXCLUDED.performance,enabled=true,updated_at=now()
+     performance=EXCLUDED.performance,wellness=EXCLUDED.wellness,tips_per_day=EXCLUDED.tips_per_day,
+     first_name=EXCLUDED.first_name,enabled=true,updated_at=now()
     WHERE pf_push_subscriptions.user_id=EXCLUDED.user_id RETURNING id`,
-    [user,sub.endpoint,sub.p256dh,sub.auth,String(data.platform||"web").slice(0,25),opt.hour,opt.timezone,opt.categories.training,opt.categories.performance]);
+    [user,sub.endpoint,sub.p256dh,sub.auth,String(data.platform||"web").slice(0,25),opt.hour,opt.timezone,opt.categories.training,opt.categories.performance,opt.categories.wellness,opt.tipsPerDay,firstName]);
    if(!q.rows.length)throw fail(409,"Este dispositivo já está vinculado a outra conta. Desative as notificações da conta anterior primeiro.");
-   return json(res,200,{subscribed:true,id:q.rows[0].id,reminderHour:opt.hour,timezone:opt.timezone});
+   return json(res,200,{subscribed:true,id:q.rows[0].id,reminderHour:opt.hour,timezone:opt.timezone,tipsPerDay:opt.tipsPerDay});
   }
   if(url.pathname===prefix+"/preferences"&&req.method==="POST"){
    const data=await body(req),sub=verifySub(data),opt=parseOptions(data);
    const q=await pool.query(`UPDATE pf_push_subscriptions SET reminder_hour=$3,timezone=$4,training=$5,performance=$6,
-    enabled=$7,updated_at=now() WHERE user_id=$1::uuid AND endpoint=$2 RETURNING id`,
-    [user,sub.endpoint,opt.hour,opt.timezone,opt.categories.training,opt.categories.performance,data.enabled!==false]);
+    wellness=$7,tips_per_day=$8,enabled=$9,updated_at=now() WHERE user_id=$1::uuid AND endpoint=$2 RETURNING id`,
+    [user,sub.endpoint,opt.hour,opt.timezone,opt.categories.training,opt.categories.performance,opt.categories.wellness,opt.tipsPerDay,data.enabled!==false]);
    if(!q.rowCount)return json(res,404,{error:"Este celular não tem inscrição ativa nesta conta."});
    return json(res,200,{saved:true});
   }
