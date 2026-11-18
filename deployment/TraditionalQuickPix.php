@@ -51,7 +51,8 @@ final class TraditionalQuickPix
             $code=strtoupper((string)($data['code']??'UNCLASSIFIED'));
             if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$code))$code='UNCLASSIFIED';
             // Explicit 401/403 are safe to show, not PII or raw server responses.
-            self::fail('MisticPay recusou a operação (HTTP '.$http.', '.$code.'). Verifique a permissão TRANSACTION_CREATE e o IP autorizado.', $http===429?429:503);
+            $requiredScope=$path==='/transactions/check'?'TRANSACTION_READ':($path==='/transactions/create'?'TRANSACTION_CREATE':'BALANCE_READ');
+            self::fail('MisticPay recusou a operação (HTTP '.$http.', '.$code.'). Verifique a permissão '.$requiredScope.' e o IP autorizado.', $http===429?429:503);
         }
         if($http<200||$http>=300)self::fail('Resposta inesperada da API Pix',503);
         return $data;
