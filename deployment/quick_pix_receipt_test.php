@@ -5,7 +5,7 @@ $html=file_get_contents($root.'admin.html');
 $js=file_get_contents($root.'quick-pix-receipt.js');
 $css=file_get_contents($root.'quick-pix-receipt.css');
 if(!is_string($html)||!is_string($js)||!is_string($css))throw new RuntimeException('Receipt UI assets missing');
-foreach(['quick-pix-receipt.css?v=2','quick-pix-receipt.js?v=2',
+foreach(['quick-pix-receipt.css?v=3','quick-pix-receipt.js?v=3',
           'id="charge-receipt"','id="charge-qr"'] as $needle){
   if($needle==='id="charge-qr"')continue; // Created lazily by QR renderer, tested below.
   if(!str_contains($html,$needle))throw new RuntimeException('Receipt integration missing '.$needle);
@@ -39,5 +39,25 @@ if(str_contains($js,'code.scrollHeight+10')||str_contains($css,'min-height:144px
 if(!str_contains($js,'navigator.clipboard')&&
    !str_contains((string)file_get_contents($root.'admin.js'),'navigator.clipboard.writeText'))
     throw new RuntimeException('Copy icon must preserve complete Pix code copying');
+
+// The ID is hidden, not deleted: reconciliation continues to receive the same
+// charge ID, and the original Verify action is moved, not recreated.
+foreach(["identifier.hidden=true","identifier.previousElementSibling",
+         "heading.hidden=true","reconcile.classList.add('argus-pix-verify')",
+         "actions.appendChild(reconcile)","aria-label','Verificar pagamento'",
+         "reconcile.textContent='Verificar'"] as $needle){
+ if(!str_contains($js,$needle))throw new RuntimeException('Compact actions/hidden ID missing: '.$needle);
+}
+foreach(["grid-template-columns:repeat(3,minmax(0,1fr))",
+         ".argus-pix-hidden-identifier","height:46px!important",
+         "height:44px!important"] as $needle){
+ if(!str_contains($css,$needle))throw new RuntimeException('Compact three-button layout missing: '.$needle);
+}
+if(str_contains($js,"identifier.remove()")||str_contains($js,"reconcile.remove()"))
+ throw new RuntimeException('Never remove charge ID or verification button');
+if(!str_contains($js,"qr('argus-pix-download').addEventListener('click',downloadImage)") ||
+   !str_contains($js,"qr('argus-pix-new').addEventListener('click',newCharge)"))
+ throw new RuntimeException('Download and new QR actions must keep their handlers');
+echo "PASS: Hide charge ID visually; three small grouped actions preserve all existing Pix handlers.\n";
 
 echo "PASS: Only generated QR receipt changes, with full copy text, adjacent copy, download and new QR without issuing payment.\n";
