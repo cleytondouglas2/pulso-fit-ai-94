@@ -28,8 +28,10 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
    const p=CATALOG[order.planCode];
    if(!p||p.amount!==order.amountCents||order.currency!=="BRL"||!String(order.userId||""))throw Error("Pedido inválido");
    if(order.planCode==="teste7d"){
-    const old=await pool.query("SELECT 1 FROM pf_billing_orders WHERE user_id=$1 AND plan_code='teste7d' AND status='COMPLETO' LIMIT 1",[String(order.userId)]);
-    if(old.rowCount)throw Object.assign(Error("O teste promocional é limitado a uma contratação por conta."),{status:409});
+    const previous=await pool.query("SELECT status FROM pf_billing_orders WHERE user_id=$1 AND plan_code='teste7d' AND (status='COMPLETO' OR (status='PENDENTE' AND provider_payment_id IS NOT NULL AND created_at>now()-interval '48 hours')) LIMIT 1",[String(order.userId)]);
+    if(previous.rowCount)throw Object.assign(Error(previous.rows[0].status==="COMPLETO"?
+     "Seu Pix de teste já foi confirmado. Consulte a validade do seu plano.":
+     "Já existe um Pix de R$ 1,00 nesta conta. Não gere outro: use 'Já paguei' para consultar o pagamento."),{status:409});
    }
    await pool.query("INSERT INTO pf_billing_orders(reference,user_id,plan_code,amount_cents,currency) VALUES($1,$2,$3,$4,$5)",
     [order.reference,String(order.userId),order.planCode,order.amountCents,order.currency]);
