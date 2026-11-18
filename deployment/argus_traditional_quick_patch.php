@@ -59,8 +59,8 @@ if(!is_string($code)||!str_contains($code,"ARGUS notification reconciliation cyc
     throw new RuntimeException('Traditional Pix worker base missing');
 $code.="\n// Read-only automatic reconciliation of traditional MisticPay Pix. App need not be open.\n";
 $code.="if(getenv('ARGUS_QUICK_PIX_PROVIDER')==='traditional'){\n";
-$code.=" try{ \\\\ArgusPayments\\\\TraditionalQuickPix::worker(\\$db); }\n";
-$code.=" catch(\\\\Throwable \\$e){ error_log('ARGUS traditional Pix worker unavailable: '.get_class(\\$e)); }\n}\n";
+$code.=" try{ \\ArgusPayments\\TraditionalQuickPix::worker(\$db); }\n";
+$code.=" catch(\\Throwable \$e){ error_log('ARGUS traditional Pix worker unavailable: '.get_class(\$e)); }\n}\n";
 file_put_contents($worker,$code);
 // Add a separate cache-busted script for Safari foreground status checks and recovery.
 tradReplace("$root/public/static/admin.html",
