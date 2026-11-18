@@ -1,0 +1,27 @@
+name: PulsoFit - cadastro automatico e avaliacao
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-auth-ui.js"
+      - "server/pulsofit-assessment-ui.js"
+      - "server/pulsofit-registration-assessment.test.mjs"
+      - ".github/workflows/pulsofit-registration-assessment.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-auth-ui.js"
+      - "server/pulsofit-assessment-ui.js"
+      - "server/pulsofit-registration-assessment.test.mjs"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check server/pulsofit-auth-ui.js
+      - run: node --check server/pulsofit-assessment-ui.js
+      - run: node --test server/pulsofit-registration-assessment.test.mjs
