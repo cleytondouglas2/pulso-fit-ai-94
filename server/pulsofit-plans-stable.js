@@ -7,7 +7,8 @@
  if(window.__PULSO_STABLE_PLANS_20261118__)return;
  window.__PULSO_STABLE_PLANS_20261118__=true;
  var opened=false,closedOnRoute=false,lastRoute="",lastToken=null,details=null,offer=null,offerCheckedAt=0,offerLoading=false;
- var css='#pf-stable-open{position:fixed!important;right:12px!important;bottom:calc(89px + env(safe-area-inset-bottom,0px))!important;z-index:2147480000!important;background:linear-gradient(125deg,#7133c5,#9f51ec)!important;border:1px solid #d4b4ff!important;color:#fff!important;box-shadow:0 10px 35px #16072a9c!important;border-radius:16px!important;padding:12px 15px!important;font:800 13px/1.3 system-ui,sans-serif!important;cursor:pointer!important;max-width:min(320px,calc(100vw - 24px))!important;text-align:left!important}'+
+ var css='#pf-stable-open[hidden]{display:none!important}'+
+ '#pf-stable-open{position:fixed!important;right:12px!important;bottom:calc(112px + env(safe-area-inset-bottom,0px))!important;z-index:2147480000!important;background:linear-gradient(125deg,#7133c5,#9f51ec)!important;border:1px solid #d4b4ff!important;color:#fff!important;box-shadow:0 10px 35px #16072a9c!important;border-radius:16px!important;padding:8px 10px!important;font:800 11px/1.3 system-ui,sans-serif!important;cursor:pointer!important;max-width:min(180px,calc(100vw - 24px))!important;text-align:left!important}'+
  '#pf-stable-open small{display:block;font:500 11px/1.4 system-ui,sans-serif;color:#efe3ff;margin-top:3px}'+
  '#pf-stable-modal{position:fixed!important;inset:0!important;z-index:2147482000!important;background:#070816e8!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow-y:auto!important;padding:16px!important;box-sizing:border-box!important;backdrop-filter:blur(8px)}'+
  '#pf-stable-modal .pf-stable-body{box-sizing:border-box;width:min(100%,760px);max-height:calc(100dvh - 32px);overflow-y:auto;border-radius:22px;padding:clamp(18px,4vw,30px);border:1px solid #8164bd;background:linear-gradient(150deg,#262044,#141d34 68%);color:#fff;font:14px/1.5 system-ui,sans-serif;box-shadow:0 20px 60px #0008;position:relative}'+
@@ -40,7 +41,14 @@
   return token()?"Consultando a validade da sua conta…":"Entre na sua conta para consultar a validade dos 7 dias grátis.";
  }
  function paint(){
-  var b=document.getElementById("pf-stable-open");if(b){var sm=b.querySelector("small");if(sm)sm.textContent=message()}
+  var b=document.getElementById("pf-stable-open");
+  if(b){
+   var sm=b.querySelector("small");if(sm)sm.textContent=message();
+   var activePaid=!!details?.planActive;
+   var activeTrial=Number.isFinite(Date.parse(details?.trialEndsAt))&&Date.parse(details.trialEndsAt)>Date.now();
+   // An active account already has Planos in Mais. Never obscure exercise controls.
+   b.hidden=activePaid||activeTrial||["workouts","coach","training-lab","outdoor","goals","profile","account"].includes(route());
+  }
   var p=document.getElementById("pf-stable-trial-status");if(p)p.textContent=message();
  }
  function offerActive(){
@@ -88,6 +96,14 @@
  function stopPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}
  var checkingPreviousPix=false;
  var autoLastCheckedAt=0,autoAccountToken="",autoPendingPix=false,autoWasConfirmed=false;
+ function paymentReceiptKey(data){
+  var id=String(data?.reference||"").trim();
+  // Reference is the immutable, per-order UUID returned by the signed-in API.
+  if(!/^[0-9a-f-]{32,40}$/i.test(id))return "";
+  return "pf-pix-confirmed-notification-v1:"+id;
+ }
+ function hasShownReceipt(data){var k=paymentReceiptKey(data);try{return !!k&&localStorage.getItem(k)==="shown"}catch{return false}}
+ function markReceiptShown(data){var k=paymentReceiptKey(data);if(k)try{localStorage.setItem(k,"shown")}catch{}}
  function paymentToast(message){
   if(!document.body)return;
   var old=document.getElementById("pf-auto-payment-notice");if(old)old.remove();
@@ -110,6 +126,7 @@
  }
  function renderPaid(data){
   autoWasConfirmed=true;autoPendingPix=false;
+  markReceiptShown(data);
   var root=document.querySelector("#pf-stable-modal .pf-stable-body");
   if(!root)return;
   stopPolling();
@@ -145,7 +162,10 @@
      else{
       try{localStorage.removeItem("pulsofit-pix-pending-ref-v1")}catch{}
       void load(true);
-      paymentToast(json.planActive?"✅ Pix confirmado! Seu plano foi ativado automaticamente.":"✅ Pix confirmado. Consulte sua assinatura para verificar a liberação.");
+      if(!hasShownReceipt(json)){
+       markReceiptShown(json);
+       paymentToast(json.planActive?"✅ Pix confirmado! Seu plano foi ativado automaticamente.":"✅ Pix confirmado. Consulte sua assinatura para verificar a liberação.");
+      }
       try{window.dispatchEvent(new Event("pulso-payment-confirmed"))}catch{}
      }
     }
