@@ -6,6 +6,7 @@
 if(window.__PULSO_FITNESS_ASSESSMENT_UI__)return;
 window.__PULSO_FITNESS_ASSESSMENT_UI__=true;
 var tokenSeen="",account=null,subscription=null,evaluation=null,progress=[],checked=false,loading=false,modal=null,activeTab="form",requesting=false,runId=0,lastLoaded=0;
+var draftCache=null,draftOwner="";
 var css=[
 '#pf-eval-overlay{position:fixed!important;inset:0!important;z-index:2147483200!important;background:#07081aef!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;box-sizing:border-box!important;overflow-y:auto!important;backdrop-filter:blur(11px)!important}',
 '#pf-eval-overlay .pf-eval-shell{box-sizing:border-box;width:min(100%,780px);max-height:calc(100dvh - 28px);overflow-y:auto;border:1px solid #8b77c3;border-radius:23px;background:linear-gradient(150deg,#2b2450,#131d35 60%);color:white;padding:clamp(18px,4vw,32px);font:14px/1.5 system-ui,-apple-system,sans-serif;box-shadow:0 18px 60px #000b}',
@@ -45,6 +46,37 @@ function firstName(){return String(account?.name||account?.fullName||"aluno").tr
 function todayDate(){var d=new Date();var off=d.getTimezoneOffset()*60000;return new Date(d.getTime()-off).toISOString().slice(0,10)}
 function fmt(v){if(!v)return"";var d=new Date(v);return Number.isFinite(d.getTime())?d.toLocaleDateString("pt-BR"):""}
 function str(v){return v==null?"":String(v)}
+// An unfinished questionnaire belongs exclusively to this signed-in account.
+// The draft lives only in the current browser session, never on the server.
+const draftFields=["weightKg","heightCm","ageYears","goal","place","level","daysPerWeek","sessionMinutes","limitations"];
+function draftKey(){return account?.id?"pf-eval-draft-v1-"+String(account.id):""}
+function readDraft(){
+ var key=draftKey();if(!key)return {};
+ if(draftOwner===key&&draftCache)return Object.assign({},draftCache);
+ draftOwner=key;draftCache=null;
+ try{
+  var raw=JSON.parse(sessionStorage.getItem(key)||"null");
+  if(raw&&raw.savedAt<=Date.now()&&Date.now()-raw.savedAt<24*60*60*1000&&raw.values&&typeof raw.values==="object"){
+   draftCache=raw.values;return Object.assign({},raw.values);
+  }
+  if(raw)sessionStorage.removeItem(key);
+ }catch{}
+ return {};
+}
+function saveDraft(form){
+ var key=draftKey();if(!key||!form)return;
+ var values={};
+ draftFields.forEach(function(name){
+  if(form.elements[name])values[name]=String(form.elements[name].value).slice(0,name==="limitations"?400:100);
+ });
+ values.consent=!!form.elements.consent?.checked;
+ draftOwner=key;draftCache=values;
+ try{sessionStorage.setItem(key,JSON.stringify({savedAt:Date.now(),values:values}))}catch{}
+}
+function clearDraft(){
+ var key=draftKey();draftOwner="";draftCache=null;
+ if(key)try{sessionStorage.removeItem(key)}catch{}
+}
 function getPlanLabel(){
  if(!subscription)return null;
  if(subscription.planActive){
@@ -167,16 +199,20 @@ function openModal(tab,automatic){
  switchTab(tab||"form");
  if(automatic&&!evaluation)updateStatus("Preencha o seu perfil inicial para receber uma metodologia personalizada.");
 }
-function closeModal(){if(modal)modal.remove();modal=null;requesting=false}
-function switchTab(tab){
+function closeModal(){
+ if(modal){var form=modal.querySelector("#pf-eval-form");if(form)saveDraft(form);modal.remove()}
+ modal=null;requesting=false;
+}
+function switchTab(tab,keepDraft){
  if(!modal)return;
+ if(keepDraft!==false){var previous=modal.querySelector("#pf-eval-form");if(previous)saveDraft(previous)}
  activeTab=tab;modal.querySelectorAll("[data-pf-eval-tab]").forEach(b=>b.classList.toggle("active",b.dataset.pfEvalTab===tab));
  var content=modal.querySelector("#pf-eval-content");
  if(tab==="form")renderForm(content);else if(tab==="plan")renderPlan(content);else renderProgress(content);
  updateStatus("");
 }
 function renderForm(content){
- var v=evaluation?.answers||{};
+ var v=Object.assign({},evaluation?.answers||{},readDraft());
  content.innerHTML='<form id="pf-eval-form" autocomplete="on">'+
  '<h3>Conhecendo seu corpo e sua rotina</h3><p>Estas respostas vão orientar a IA. Não é necessário enviar foto nesta avaliação.</p>'+
  '<div class="pf-eval-grid">'+
@@ -203,7 +239,10 @@ function renderForm(content){
  '<button class="pf-eval-button" type="submit">✦ Salvar avaliação e criar metodologia com IA</button>'+
  '<button class="pf-eval-button pf-eval-secondary" type="button" id="pf-eval-later">Fazer mais tarde</button></form>';
  var form=content.querySelector("form");
- ["weightKg","heightCm","ageYears","goal","place","level","daysPerWeek","sessionMinutes","limitations"].forEach(function(k){if(v[k]!=null&&form.elements[k])form.elements[k].value=str(v[k])});
+ draftFields.forEach(function(k){if(v[k]!=null&&form.elements[k])form.elements[k].value=str(v[k])});
+ form.elements.consent.checked=v.consent===true;
+ form.addEventListener("input",function(){saveDraft(form)});
+ form.addEventListener("change",function(){saveDraft(form)});
  content.querySelector("#pf-eval-later").addEventListener("click",function(){
   if(account?.id){try{sessionStorage.setItem("pf-eval-dismissed-"+account.id,"1")}catch{}}
   closeModal();
@@ -228,7 +267,8 @@ function renderForm(content){
     await api("/api/fitness/progress",{method:"POST",headers:{"Authorization":"Bearer "+authToken(),"Content-Type":"application/json"},body:JSON.stringify({weightKg:d.weightKg,date:todayDate(),note:"Avaliação inicial"})});
     await reloadProgress();
    }catch{}
-   switchTab("plan");
+   clearDraft();
+   switchTab("plan",false);
    updateStatus(response.aiError?"Avaliação salva. "+response.aiError:"Sua avaliação e metodologia foram salvas! Você pode acompanhar sua evolução.");
   }catch(e){updateStatus("Não foi possível salvar: "+str(e.message));btn.disabled=false}
   finally{requesting=false}
@@ -288,7 +328,7 @@ function renderProgress(content){
   if(requesting)return;requesting=true;
   try{
    await api("/api/fitness/assessment",{method:"DELETE"});
-   evaluation=null;progress=[];renderForm(content);activeTab="form";modal.querySelectorAll("[data-pf-eval-tab]").forEach(b=>b.classList.toggle("active",b.dataset.pfEvalTab==="form"));
+   evaluation=null;progress=[];clearDraft();renderForm(content);activeTab="form";modal.querySelectorAll("[data-pf-eval-tab]").forEach(b=>b.classList.toggle("active",b.dataset.pfEvalTab==="form"));
    updateStatus("Seus dados de avaliação e histórico foram excluídos.");
   }catch(e){updateStatus("Não foi possível excluir: "+str(e.message))}
   finally{requesting=false}
