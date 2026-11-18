@@ -28,7 +28,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
  globalThis.__PULSO_BILLING_RUNTIME__=true;
  const origin="https://pulso-fit-ai-95-online.onrender.com";
  const managed=new Set(["/api/billing/config","/api/billing/health","/api/billing/checkout",
-  "/api/billing/payment","/api/billing/webhook","/api/admin/billing/config","/api/subscription/status"]);
+  "/api/billing/payment","/api/billing/recover","/api/billing/webhook","/api/admin/billing/config","/api/subscription/status"]);
  const dbVar=["PULSO_BILLING_DATABASE_URL","DATABASE_URL","PULSO_DATABASE_URL","POSTGRES_URL","PG_CONNECTION_STRING"].find(k=>!!process.env[k]);
  const gateway=createMisticPayAdapter();
  const state={provider:"misticpay",backendMounted:true,ready:false,production:true,
