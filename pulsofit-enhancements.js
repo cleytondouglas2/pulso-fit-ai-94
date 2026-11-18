@@ -80,7 +80,7 @@
       nav.replaceChildren(
         clone("home","Início","⌂"),clone("workouts","Treinos","🏋"),
         clone("coach","Coach IA","✦"),clone("goals","Metas","◎"),
-        clone("profile","Perfil","◉")
+        clone("profile","Mais","☰")
       );
       els=Array.from(nav.querySelectorAll("[data-route]"));
     }
