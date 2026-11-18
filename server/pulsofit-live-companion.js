@@ -9,6 +9,44 @@
  let playing=false,shuffle=false,repeat=true,autoPlay=true,volume=.8;
  let workout=null,lastServerUpdate=0,lastLocalNotice=0,liveEnabled=false,serverEnabled=false;
  const audio=new Audio();audio.preload="metadata";audio.volume=volume;
+ // Original, locally synthesized instrumental patterns; no copyrighted recordings.
+ const originalPresets={
+  foco:{title:"Foco leve",tempo:94,notes:[0,4,7,11,7,4,2,7],base:196,wave:"sine"},
+  energia:{title:"Energia",tempo:120,notes:[0,7,5,10,7,3,8,5],base:220,wave:"triangle"},
+  calma:{title:"Calma",tempo:74,notes:[0,3,7,5,2,7,3,0],base:174.61,wave:"sine"}
+ };
+ let originalCtx=null,originalTimer=null,originalChoice="",originalStep=0;
+ function stopOriginal(keepChoice=false){
+  if(originalTimer){clearInterval(originalTimer);originalTimer=null}
+  if(originalCtx){void originalCtx.close().catch(()=>{});originalCtx=null}
+  if(!keepChoice)originalChoice="";
+  refresh();
+ }
+ function originalBeat(){
+  if(!originalCtx||!originalChoice)return;
+  const p=originalPresets[originalChoice],ctx=originalCtx;
+  if(!p||ctx.state!=="running")return;
+  const note=p.notes[originalStep++%p.notes.length];
+  const oscillator=ctx.createOscillator(),gain=ctx.createGain();
+  oscillator.type=p.wave;oscillator.frequency.value=p.base*Math.pow(2,note/12);
+  gain.gain.setValueAtTime(0.0001,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.055*volume+0.0002,ctx.currentTime+.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+.26);
+  oscillator.connect(gain);gain.connect(ctx.destination);
+  oscillator.start(ctx.currentTime);oscillator.stop(ctx.currentTime+.28);
+ }
+ async function startOriginal(id){
+  if(!originalPresets[id])return;
+  pauseAudio();stopOriginal();
+  const AudioCtx=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtx){status("Áudio sintetizado não disponível neste navegador.");return}
+  try{
+   originalCtx=new AudioCtx();originalChoice=id;originalStep=0;await originalCtx.resume();
+   originalBeat();originalTimer=setInterval(originalBeat,60000/originalPresets[id].tempo);
+   status("♫ "+originalPresets[id].title+" • instrumental original do PulsoFit.");
+  }catch{stopOriginal();status("Toque em Reproduzir para autorizar áudio no aparelho.")}
+  refresh();
+ }
  const by=id=>document.getElementById(id);
  const escape=s=>String(s??"").replace(/[&<>"']/g,x=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));
  const token=()=>{try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}};
@@ -66,6 +104,7 @@
   refresh();
  }
  async function playAudio(){
+  if(originalChoice)stopOriginal();
   if(!tracks.length){status("Adicione suas músicas para iniciar a playlist.");return}
   try{
    if(index<0){await chooseTrack(0,false)}
@@ -168,7 +207,8 @@
     title:String(detail.title||"Treino em andamento").slice(0,85),
     detail:String(detail.detail||"").slice(0,90),elapsedMs:0,resumedAt:Date.now(),state:"running"};
    lastLocalNotice=0;lastServerUpdate=0;
-   if(autoPlay&&tracks.length)void playAudio();
+   if(autoPlay&&originalChoice)void startOriginal(originalChoice);
+   else if(autoPlay&&tracks.length)void playAudio();
    if(liveEnabled){localNotice();void serverAction("start")}
   }else if(workout&&workout.key===detail.sessionKey){
    if(detail.detail!==undefined)workout.detail=String(detail.detail).slice(0,90);
@@ -182,7 +222,7 @@
     if(liveEnabled&&Date.now()-lastServerUpdate>60000){lastServerUpdate=Date.now();void serverAction("update")}
    }else if(action==="finish"){
     if(liveEnabled)void serverAction("finish");
-    workout=null;pauseAudio();
+    workout=null;pauseAudio();stopOriginal();
     try{navigator.serviceWorker.ready.then(reg=>reg.getNotifications({tag:"pulsofit-live-workout"})
      .then(list=>list.forEach(n=>n.close()))).catch(()=>{})}catch{}
    }
@@ -247,7 +287,11 @@
   modal.setAttribute("aria-label","Playlist e notificações do treino");
   modal.innerHTML='<section class="pf-companion-card"><header><div><small>🎵 PULSOFIT • TREINO COM MÚSICA</small>'+
    '<h2>Sua playlist de treino</h2></div><button type="button" id="pf-companion-close" aria-label="Fechar">×</button></header>'+
-   '<p>Escolha as músicas do seu aparelho. Os arquivos ficam salvos apenas neste dispositivo, sem envio ao servidor.</p>'+
+   '<p>Trilhas instrumentais originais geradas pelo app ou arquivos do seu aparelho. Nenhuma faixa comercial é fornecida.</p>'+
+   '<div class="pf-companion-original"><h3>♫ Trilhas originais</h3><p>Melodias sintetizadas pelo PulsoFit, sem streaming nem biblioteca comercial.</p>'+
+   '<div class="pf-companion-original-buttons"><button type="button" data-pf-original="foco">🌿 Foco leve</button>'+
+   '<button type="button" data-pf-original="energia">⚡ Energia</button><button type="button" data-pf-original="calma">🌙 Calma</button>'+
+   '<button type="button" data-pf-original-stop>⏸ Parar</button></div></div>'+
    '<label class="pf-companion-file">＋ Adicionar músicas<input id="pf-companion-files" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac,.opus" multiple></label>'+
    '<div class="pf-companion-playing"><strong id="pf-companion-now">Escolha suas músicas</strong><div class="pf-companion-buttons">'+
    '<button type="button" id="pf-companion-prev" aria-label="Anterior">⏮</button>'+
@@ -266,6 +310,8 @@
   document.body.appendChild(modal);document.body.classList.add("pf-companion-open");
   const close=()=>{modal?.remove();modal=null;document.body.classList.remove("pf-companion-open")};
   by("pf-companion-close").addEventListener("click",close);
+  modal.querySelectorAll("[data-pf-original]").forEach(b=>b.addEventListener("click",()=>void startOriginal(b.dataset.pfOriginal)));
+  modal.querySelector("[data-pf-original-stop]")?.addEventListener("click",()=>stopOriginal());
   modal.addEventListener("click",e=>{if(e.target===modal)close()});
   by("pf-companion-files").addEventListener("change",e=>{void addFiles(e.target.files);e.target.value=""});
   by("pf-companion-play").addEventListener("click",()=>{if(playing)pauseAudio();else void playAudio()});
@@ -293,7 +339,7 @@
    const data=await r.json(),id=String(data?.user?.id||data?.id||"");
    if(!/^[a-f0-9-]{36}$/i.test(id)||accountId===id)return;
    if(db)db.close();
-   pauseAudio();cleanupURL();audio.removeAttribute("src");
+   pauseAudio();stopOriginal();cleanupURL();audio.removeAttribute("src");
    tracks=[];order=[];index=-1;db=null;accountId=id;
    try{db=await openDB(accountId);await loadTracks();if(tracks.length)await chooseTrack(0,false)}catch{}
   }catch{}
@@ -303,6 +349,7 @@
   const app=by("app");
   if(app)new MutationObserver(()=>{place()}).observe(app,{childList:true,subtree:false});
   window.addEventListener("hashchange",place);
+  window.addEventListener("pulso-open-playlist",()=>{void connect();show()});
   window.addEventListener("pageshow",()=>{place();void connect()});
   window.addEventListener("pulso-auth-ready",()=>void connect());
   setInterval(()=>{if(token()&&!accountId)void connect()},8000);
