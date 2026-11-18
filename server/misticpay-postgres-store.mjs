@@ -4,13 +4,14 @@
  * initialize:true cria tabelas isoladas, sem modificar contas legadas.
  */
 const SQL=[
-  "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference UUID PRIMARY KEY, user_id TEXT NOT NULL, plan_code TEXT NOT NULL CHECK (plan_code IN ('quinzenal','mensal')), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), currency TEXT NOT NULL CHECK(currency='BRL'), provider_payment_id TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'PENDENTE', created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+  "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference UUID PRIMARY KEY, user_id TEXT NOT NULL, plan_code TEXT NOT NULL CHECK (plan_code IN ('quinzenal','mensal','teste7d')), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), currency TEXT NOT NULL CHECK(currency='BRL'), provider_payment_id TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'PENDENTE', created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
+  "DO $ BEGIN IF EXISTS(SELECT 1 FROM pg_constraint WHERE conname='pf_billing_orders_plan_code_check' AND conrelid='pf_billing_orders'::regclass) THEN ALTER TABLE pf_billing_orders DROP CONSTRAINT pf_billing_orders_plan_code_check; END IF; ALTER TABLE pf_billing_orders ADD CONSTRAINT pf_billing_orders_plan_code_check CHECK (plan_code IN ('quinzenal','mensal','teste7d')); END $",
   "CREATE INDEX IF NOT EXISTS pf_billing_orders_user_idx ON pf_billing_orders(user_id,created_at DESC)",
   "CREATE TABLE IF NOT EXISTS pf_billing_entitlements (user_id TEXT PRIMARY KEY, expires_at TIMESTAMPTZ NOT NULL DEFAULT '-infinity', blocked BOOLEAN NOT NULL DEFAULT false, updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
   "CREATE TABLE IF NOT EXISTS pf_billing_events (provider_payment_id TEXT NOT NULL, kind TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY(provider_payment_id,kind))",
   "CREATE TABLE IF NOT EXISTS pf_billing_trials (user_id TEXT PRIMARY KEY, started_at TIMESTAMPTZ NOT NULL DEFAULT now())"
 ];
-const CATALOG={quinzenal:{amount:1490,days:15},mensal:{amount:2490,days:30}};
+const CATALOG={quinzenal:{amount:1490,days:15},mensal:{amount:2490,days:30},teste7d:{amount:100,days:7}};
 function rowToOrder(o){return o&&{reference:o.reference,userId:o.user_id,planCode:o.plan_code,amountCents:o.amount_cents,currency:o.currency,providerPaymentId:o.provider_payment_id,status:o.status};}
 export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
  if(typeof pool?.query!=="function"||typeof pool?.connect!=="function")throw Error("Pool PostgreSQL necessário");
@@ -24,6 +25,10 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
   async createPendingCheckout(order){
    const p=CATALOG[order.planCode];
    if(!p||p.amount!==order.amountCents||order.currency!=="BRL"||!String(order.userId||""))throw Error("Pedido inválido");
+   if(order.planCode==="teste7d"){
+    const old=await pool.query("SELECT 1 FROM pf_billing_orders WHERE user_id=$1 AND plan_code='teste7d' AND status='COMPLETO' LIMIT 1",[String(order.userId)]);
+    if(old.rowCount)throw Object.assign(Error("O teste promocional é limitado a uma contratação por conta."),{status:409});
+   }
    await pool.query("INSERT INTO pf_billing_orders(reference,user_id,plan_code,amount_cents,currency) VALUES($1,$2,$3,$4,$5)",
     [order.reference,String(order.userId),order.planCode,order.amountCents,order.currency]);
   },
@@ -54,7 +59,10 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
      [o.user_id,evt.durationDays]);
     await db.query("UPDATE pf_billing_orders SET status='COMPLETO',updated_at=now() WHERE reference=$1",[o.reference]);
     // A UI legada consulta pf_users.plan: manter em sincronia com o entitlement validado.
-    await db.query("UPDATE pf_users SET plan=$2,updated_at=now() WHERE id=$1",[o.user_id,o.plan_code]);
+    // O backend legado aceita planos pré-existentes; o acesso efetivo dura
+    // exatamente os 7 dias do entitlement, não os 15 dias do nome legado.
+    const legacyPlan=o.plan_code==="teste7d"?"quinzenal":o.plan_code;
+    await db.query("UPDATE pf_users SET plan=$2,updated_at=now() WHERE id=$1",[o.user_id,legacyPlan]);
     return true;
    });
   },
