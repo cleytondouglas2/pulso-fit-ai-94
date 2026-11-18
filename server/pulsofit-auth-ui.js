@@ -54,6 +54,14 @@ var css=[
 '#pf-auth-landing .pf-land-feature>span{font-size:25px;display:block;margin-bottom:7px}',
 '#pf-auth-landing .pf-land-feature strong{font:850 13px system-ui,sans-serif;display:block;margin:0 0 6px;color:#fff}',
 '#pf-auth-landing .pf-land-feature p{font:11px/1.55 system-ui,sans-serif;margin:0;color:#c7c6de}',
+'#pf-auth-landing .pf-land-tips{margin:23px 0 0;padding:20px;border:1px solid #6574a077;border-radius:20px;background:linear-gradient(120deg,#1d2943,#202241)}',
+'#pf-auth-landing .pf-land-tips h2{font:850 clamp(19px,3vw,24px) system-ui,sans-serif;letter-spacing:-.03em;color:#f9f5ff;margin:0 0 10px}',
+'#pf-auth-landing .pf-land-tips-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}',
+'#pf-auth-landing .pf-land-tip{padding:12px;border-radius:13px;background:#ffffff0c;border:1px solid #ffffff1c}',
+'#pf-auth-landing .pf-land-tip strong{display:block;color:#c0ffe0;font:800 12px system-ui,sans-serif}',
+'#pf-auth-landing .pf-land-tip p{color:#c5c4dc;font:11px/1.55 system-ui,sans-serif;margin:6px 0 0}',
+'@media(max-width:770px){#pf-auth-landing .pf-land-tips-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}',
+'@media(max-width:420px){#pf-auth-landing .pf-land-tips-grid{grid-template-columns:1fr}}',
 '#pf-auth-landing .pf-land-footer{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-top:1px solid #65598490;padding-top:18px;margin-top:24px;color:#aaaaca;font:11px/1.55 system-ui,sans-serif}',
 '#pf-account-lock .pf-auth-dialog:not(.pf-land){width:min(100%,450px);max-height:calc(100dvh - 32px);overflow:auto;background:linear-gradient(145deg,#2e2551,#171f3a);border:1px solid #8f7ac6;border-radius:24px}',
 '#pf-account-lock .pf-auth-dialog:not(.pf-land):before{content:"✦ PULSOFIT AI";display:block;color:#b9ffec;font:900 12px system-ui,sans-serif;letter-spacing:.12em;margin-bottom:10px}',
@@ -98,7 +106,13 @@ function show(mode,notice){
   '<article class="pf-land-feature"><span>🧠</span><strong>Coach IA que orienta</strong><p>Converse sobre sua rotina e receba sugestões de métodos e progressão conforme os dados que informar.</p></article>'+
   '<article class="pf-land-feature"><span>📸</span><strong>Performance e alimentação</strong><p>Envie fotos com autorização para observações visuais e estimativas alimentares, com limites explicados.</p></article>'+
   '<article class="pf-land-feature"><span>📈</span><strong>Resultados que você acompanha</strong><p>Registre treinos, metas, peso voluntário e evolução. Compare sua consistência ao longo das semanas.</p></article>'+
-  '</div><footer class="pf-land-footer"><span>1. Crie sua conta → 2. Conte seu objetivo → 3. Receba orientação → 4. Salve seu progresso</span>'+
+  '</div><section class="pf-land-tips"><h2>O caminho para evoluir com segurança</h2><div class="pf-land-tips-grid">'+
+  '<div class="pf-land-tip"><strong>01 • Defina um objetivo</strong><p>Registre seu ponto de partida, disponibilidade e experiência.</p></div>'+
+  '<div class="pf-land-tip"><strong>02 • Crie consistência</strong><p>Comece com uma frequência que consiga manter e ajuste gradualmente.</p></div>'+
+  '<div class="pf-land-tip"><strong>03 • Equilibre seus treinos</strong><p>Combine força, condicionamento, mobilidade e dias de recuperação.</p></div>'+
+  '<div class="pf-land-tip"><strong>04 • Acompanhe os sinais</strong><p>Registre seus treinos, sua disposição e progresso; priorize sono e alimentação adequada.</p></div>'+
+  '</div></section>'+
+  '<footer class="pf-land-footer"><span>1. Crie sua conta → 2. Conte seu objetivo → 3. Receba orientação → 4. Salve seu progresso</span>'+
   '<span>Resultados individuais variam. O app não substitui avaliação profissional.</span></footer>'+
   '</section>';
   el.querySelectorAll("[data-pf-auth-go]").forEach(function(button){button.addEventListener("click",function(){show(button.dataset.pfAuthGo)})});
