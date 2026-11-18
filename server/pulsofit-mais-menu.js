@@ -54,7 +54,7 @@ function openMenu(){
   ["performance","📸","Performance IA","Análise corporal por foto"],
   ["meal","🥗","Avaliar meu prato","Foto, calorias, proteínas e dicas da IA"],
    ["playlist","🎵","Playlist de treino","Trilhas originais e músicas do aparelho"],
-   ["camera-ar","🎥","Pessoa real no ambiente","Treinador filmado, recorte por IA e análise de movimentos"],
+   ["camera-ar","🎬","Treino com avatar animado","Personagens de desenho 3D e análise corporal por IA"],
   ["assessment","📈","Avaliação e progresso","Método da IA e evolução"],
   ["account","☁️","Conta online","Dados, sincronização e plano"],
    ["subscription","💎","Renovação e upgrade","Gerencie seu plano no Meu Perfil"],
