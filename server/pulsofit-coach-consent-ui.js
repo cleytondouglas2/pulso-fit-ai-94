@@ -11,7 +11,7 @@ const consentKey=()=>"pf-coach-consent-v2-"+account;
 const permitted=()=>{try{return Boolean(account&&localStorage.getItem(consentKey())==="1")}catch{return false}};
 function update(){
  const input=$("pf-coach-consent"),btn=$("pf-coach-send"),status=$("pf-coach-status");
- if(input)input.checked=permitted();
+ if(input){input.checked=permitted();input.disabled=!account}
  if(btn)btn.disabled=busy||!permitted();
  if(status&&!busy)status.textContent=permitted()?"✓ IA generativa conectada. Nenhuma URL é necessária.":"Autorize acima para ativar a conversa com IA.";
 }
@@ -59,8 +59,16 @@ function hideLegacy(){
  for(const input of app?.querySelectorAll('input[placeholder*="seu-servidor"],input[placeholder*="https://seu-"]')||[]){
   if(!input.closest("#pf-coach-secure"))(input.closest("label")||input.parentElement)?.setAttribute("data-pf-worker","1");
  }
+ for(const title of app?.querySelectorAll("h2,h3,h4")||[]){
+  if(title.textContent.trim()==="Pulso Coach IA"){
+   const section=title.closest("section");
+   if(section&&!section.contains($("pf-coach-secure"))&&section.textContent.length<24000)
+    section.setAttribute("data-pf-legacy-chat","1");
+  }
+ }
  for(const lab of app?.querySelectorAll("label,summary")||[]){
-  if(lab.textContent.includes("URL HTTPS do servidor"))(lab.closest("label,details")||lab.parentElement)?.setAttribute("data-pf-worker","1");
+  if(lab.textContent.includes("URL HTTPS do servidor")||lab.textContent.includes("Configurar conexão com IA"))
+   (lab.closest("details")||lab.closest("label")||lab.parentElement)?.setAttribute("data-pf-worker","1");
  }
 }
 function mount(){
