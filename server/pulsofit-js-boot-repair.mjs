@@ -114,7 +114,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
       !candidateSource.includes("const names=[\"renderAdmin\",\"renderSubscription\"]");
    console.log("[pulso-boot] Missing renderer declarations: "+missingRenderers.join(","));
    const missingPrelude=missingRenderers.length?
-     ";(function(){for(const n of "+JSON.stringify(missingRenderers)+"){if(typeof globalThis[n]!==\"function\")globalThis[n]=function(){return '<section class=\\\"pro-surface\\\" style=\\\"padding:18px\\\"><h2>Seção indisponível</h2><p>Use o menu para navegar ou tente novamente.</p></section>';}}})();\\n":"";
+    ";(function(){for(const n of "+JSON.stringify(missingRenderers)+"){if(typeof globalThis[n]!=='function')globalThis[n]=function(){return '<section><h2>Seção indisponível</h2><p>Use o menu para navegar.</p></section>';};}})();\n":"";
 
    if(needsSub||needsAdmin||missingRenderers.length){
     const candidate=missingPrelude+globalRenderPrelude+(needsSub?prelude:"")+candidateSource;
