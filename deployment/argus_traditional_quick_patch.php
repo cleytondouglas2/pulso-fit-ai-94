@@ -17,16 +17,28 @@ tradReplace("$root/src/Admin.php",
     'MFA and CSRF protected traditional Pix route');
 tradReplace("$root/public/static/admin.html",
     '<div id="pix-config-alert"',
-    '<div id="argus-payer-details" class="argus-payer-details" hidden><h4>Dados do pagador</h4><p class="muted">Para emitir pela API tradicional da MisticPay, informe os dados reais de quem vai pagar. Não use CPF inventado.</p><label>Nome completo do pagador<input id="argus-payer-name" name="payer_name" type="text" autocomplete="name" minlength="3" maxlength="120" placeholder="Nome completo"></label><label>CPF do pagador<input id="argus-payer-cpf" name="payer_document" type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label><p class="muted">Esses dados são enviados de forma protegida diretamente à MisticPay e não são exibidos no QR Code.</p></div><div id="pix-config-alert"',
+    '<div id="argus-payer-details" class="argus-payer-details"><h4>Dados do pagador</h4><p class="muted">Para emitir pela API tradicional da MisticPay, informe os dados reais de quem vai pagar. Não use CPF inventado.</p><label>Nome completo do pagador<input id="argus-payer-name" name="payer_name" type="text" autocomplete="name" minlength="3" maxlength="120" required placeholder="Nome completo"></label><label>CPF do pagador<input id="argus-payer-cpf" name="payer_document" type="text" inputmode="numeric" autocomplete="off" maxlength="14" required placeholder="000.000.000-00"></label><p class="muted">Esses dados são enviados de forma protegida diretamente à MisticPay e não são exibidos no QR Code.</p></div><div id="pix-config-alert"',
     'payer details inline amount form');
+tradReplace("$root/public/static/admin.html",
+    'Digite apenas o valor para gerar um Pix na conta ARGUS, sem preencher dados do pagador.',
+    'Informe o valor e preencha os dados reais do pagador para emitir a cobrança pela MisticPay.',
+    'explain payer data');
+tradReplace("$root/public/static/admin.html",
+    'Apenas o valor: sem cadastro de empresa ou CPF.',
+    'Digite o valor e informe nome completo e CPF do pagador.',
+    'update amount form hint');
+tradReplace("$root/public/static/admin.html",
+    '<script src="/static/admin.js?v=8" defer></script>',
+    '<script src="/static/admin.js?v=12" defer></script>',
+    'cache-bust admin script for iOS Safari');
 $js="$root/public/static/admin.js";
 tradReplace($js,
     "const cfg=await api('/api/admin/quick-pix/config');",
-    "const cfg=await api('/api/admin/quick-pix/config');\n   window.argusQuickPixTraditional=cfg.provider==='traditional';\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane && !window.argusQuickPixTraditional){payerPane.hidden=true; payerPane.querySelectorAll('input').forEach(el=>el.required=false);}",
+    "const cfg=await api('/api/admin/quick-pix/config');\n   window.argusQuickPixTraditional=cfg.provider==='traditional';\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane){payerPane.hidden=!window.argusQuickPixTraditional; payerPane.querySelectorAll('input').forEach(el=>el.required=!!window.argusQuickPixTraditional);}",
     'provider option in configuration');
 tradReplace($js,
     "\$('#charge-create-form').onsubmit=async event=>{",
-    "\$('#charge-create-form').onsubmit=async event=>{\n  event.preventDefault();\n  if(window.argusQuickPixTraditional){\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane.hidden){\n    payerPane.hidden=false;\n    payerPane.querySelectorAll('input').forEach(el=>el.required=true);\n    const submit=document.getElementById('charge-submit');\n    submit.textContent='Confirmar dados e gerar Pix';\n    payerPane.querySelector('input').focus();return;\n   }\n   const payerName=document.getElementById('argus-payer-name').value.trim();\n   const payerCpf=document.getElementById('argus-payer-cpf').value.replace(/\\D/g,'');\n   if(payerName.length<3||!/^\\d{11}$/.test(payerCpf)){toast('Preencha nome completo e CPF válido do pagador.',true);return;}\n  }",
+    "\$('#charge-create-form').onsubmit=async event=>{\n  event.preventDefault();\n  if(window.argusQuickPixTraditional){\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane.hidden){\n    payerPane.hidden=false;\n    payerPane.querySelectorAll('input').forEach(el=>el.required=true);\n    const submit=document.getElementById('charge-submit');\n    submit.textContent='Confirmar dados e gerar Pix';\n    payerPane.scrollIntoView({behavior:'smooth',block:'nearest'}); payerPane.querySelector('input').focus();return;\n   }\n   const payerName=document.getElementById('argus-payer-name').value.trim();\n   const payerCpf=document.getElementById('argus-payer-cpf').value.replace(/\\D/g,'');\n   if(payerName.length<3||!/^\\d{11}$/.test(payerCpf)){toast('Preencha nome completo e CPF válido do pagador.',true);return;}\n  }",
     'two-stage form');
 tradReplace($js,
     "const result=await post('/api/admin/quick-pix',{amount_cents:amount,idempotency_key:key});",
