@@ -82,25 +82,36 @@ if (basename(process.argv[1] || "") === "server.mjs" && !globalThis.__PULSO_PRIV
   const photo=imageData(raw,950000);
   const selectedGoal=String(goal||"condicionamento geral").slice(0,70).replace(/[<>]/g,"");
   const prompt=[
-   "Você é um assistente de educação física. Faça uma análise VISUAL CUIDADOSA de uma foto corporal, em português do Brasil, com objetivo de acompanhamento de desempenho.",
-   "Objetivo informado pelo próprio usuário: "+selectedGoal+".",
-   "Só descreva características de fato observáveis na imagem: posição aparente de ombros, tronco, quadril e membros, alinhamento visível, iluminação, enquadramento, se partes do corpo são visíveis, e possíveis limitações de avaliação.",
-   "A partir de uma única foto estática NÃO é possível concluir composição corporal, percentual de gordura, massa muscular real, peso, saúde, força, lesões, diagnóstico, evolução entre datas ou qualidade de movimento. Não invente esses números ou afirmações. Não assuma idade, gênero, identidade ou diagnóstico.",
-   "Use linguagem respeitosa e neutra, nunca vergonha corporal, insultos, notas de beleza ou promessas de transformação. Se a pessoa não aparecer por inteiro, explique o que fica impossível avaliar. Se a imagem não apresentar uma pessoa identificável para fins de postura, informe que não foi possível analisar.",
-   "Responda detalhadamente em seções Markdown: 1. Observações visuais objetivas; 2. Postura e alinhamento aparentes (com limites); 3. O que a imagem NÃO permite medir; 4. Orientações práticas de treino para o objetivo informado, progressivas e seguras; 5. Como acompanhar a evolução usando medidas funcionais, treinos e fotos padronizadas. Termine com nota breve de que não substitui avaliação profissional.",
-   "Não prescreva dietas restritivas, calorias personalizadas, suplemento ou tratamento médico. Informe que foto corporal não serve para estimar riscos médicos."
+   "Você é um especialista em treinamento físico com capacidade de interpretação visual de imagens. Realize uma AVALIAÇÃO VISUAL FÍSICA FUNCIONAL da PESSOA NA FOTO, em português brasileiro, com conteúdo objetivo, útil e específico. Não faça uma simples legenda, descrição de roupa, acessórios, cenário ou estilo da fotografia.",
+   "Objetivo de treino declarado: "+selectedGoal+".",
+   "A imagem foi enviada voluntariamente pelo titular da conta para acompanhar o próprio treinamento. Examine a imagem recebida neste pedido, não use um resultado genérico e nunca afirme ter visto partes ocultas.",
+   "Priorize, conforme visibilidade: (1) CONTORNO E PROPORÇÕES CORPORAIS APARENTES: tronco em relação a membros, largura e contornos aparentes da região dos ombros, tórax, cintura e quadril; (2) REGIÕES MUSCULARES VISÍVEIS: ombros, braços, tórax, dorso, abdômen, glúteos, coxas e panturrilhas; relate apenas definição/contorno VISUAL aparente quando realmente perceptível; (3) SIMETRIA E ALINHAMENTO APARENTES: diferenças visíveis entre lados e posicionamento de ombros, tronco, quadril, joelhos, com cautela por ângulo/posição; (4) O QUE PODE SER ACOMPANHADO: quais regiões são comparáveis em fotos futuras e quais estão encobertas, fora da foto ou pouco nítidas.",
+   "É expressamente proibido transformar contornos visuais em medições de massa muscular, percentual de gordura, peso, saúde metabólica, força, condição clínica, presença de lesão, deformidade, diagnóstico, deficiência, idade, identidade ou aptidão física. Uma foto também NÃO permite provar mudança corporal ou evolução sem comparação padronizada. Não faça afirmações 'você tem X% de gordura' nem declare hipertrofia mensurada.",
+   "Se uma região não estiver visível, escreva 'não avaliável nesta imagem', em vez de inventar avaliação. Se o corpo completo não aparecer, avalie COM DETALHES as regiões visíveis e limite as demais. Se a imagem não mostrar corpo humano suficiente, explique claramente e solicite uma foto melhor.",
+   "Não comente se a pessoa está vestida, sem camisa, com roupa, com biquíni, ou descreva roupas/cenário, salvo uma frase estritamente necessária para dizer que determinada região não pode ser observada. Não atribua padrões de beleza nem nota ao corpo; mantenha linguagem respeitosa, motivadora e sem julgamento. Não diga que tem gordura a perder ou recomende emagrecimento apenas pela aparência.",
+   "Formato obrigatório do relatório em Markdown, com estas seções, nesta ordem:",
+   "## Panorama físico visível — detalhe em 3–5 frases as proporções e os contornos efetivamente identificáveis; não use clichês como 'corpo em forma'.",
+   "## Análise por região — com subitens OMBROS E BRAÇOS, TÓRAX E DORSO, ABDÔMEN/TRONCO, QUADRIL E GLÚTEOS, COXAS E PANTURRILHAS. Para cada região observável, registre 1–3 observações visuais concretas; para as não visíveis, diga 'não avaliável nesta imagem'.",
+   "## Simetria e postura aparentes — descreva alinhamentos que a foto permite observar, considerando ângulo, pose e perspectiva. Não diagnostique desvios posturais.",
+   "## Interpretação para seu objetivo — conecte as observações ao objetivo declarado e proponha 3 recomendações PRÁTICAS de treinamento baseadas em movimentos e progressão gradual (e.g. agachar, empurrar, puxar, caminhar); não prescreva tratamentos.",
+   "## Como acompanhar a evolução — descreva 3 maneiras verificáveis (medidas voluntárias, cargas/repetições, fotos de mesmo ângulo/iluminação) e quais conclusões dependem dessas medições.",
+   "## Confiança e limitações — indique quais regiões realmente puderam ser analisadas, sem estimar gordura, massa muscular, calorias nem resultados clínicos.",
+   "Dê preferência ao conteúdo da avaliação visual, não gaste espaço narrando a captura. Seja específico dentro do que é justificável pela foto, mas admita incerteza; nada de dados pessoais ou sensíveis inferidos. Não indique dietas restritivas, suplementos ou medicamentos.",
+   "A resposta precisa ser substancial, bem organizada e diretamente vinculada à IMAGEM enviada; nenhuma foto de exemplo deve substituir a foto recebida."
   ].join("\n");
   const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",{
    method:"POST",redirect:"error",signal:AbortSignal.timeout(35000),
    headers:{"x-goog-api-key":process.env[aiVar],"Content-Type":"application/json"},
    body:JSON.stringify({contents:[{role:"user",parts:[{text:prompt},{inline_data:{mime_type:photo.mime,data:photo.base64}}]}],
-    generationConfig:{temperature:0.25,maxOutputTokens:2100}})
+    generationConfig:{temperature:0.2,maxOutputTokens:3600}})
   });
   if(!response.ok){console.warn("[pulso-private] Gemini body analysis unavailable; status="+response.status);throw Object.assign(Error("A IA está indisponível agora. Nenhuma análise simulada foi produzida."),{status:503})}
   const result=await response.json();
   const answer=(result.candidates||[]).flatMap(x=>x?.content?.parts||[]).map(x=>typeof x.text==="string"?x.text:"").join("\n").trim();
-  if(answer.length<50)throw Object.assign(Error("A IA não conseguiu analisar essa foto. Envie outra com melhor iluminação e enquadramento."),{status:422});
-  return {analysis:answer.slice(0,13000),model,stored:false,disclaimer:"A análise é apenas informativa e não estima gordura corporal, peso, saúde ou diagnóstico a partir de uma foto."};
+  if(answer.length<250||!/ombros|braços|tórax|dorso|tronco|quadril|coxas|panturrilhas/i.test(answer)){
+   throw Object.assign(Error("A IA não produziu uma avaliação física específica desta foto. Tente uma imagem com corpo bem enquadrado, braços visíveis e boa iluminação."),{status:422});
+  }
+  return {analysis:answer.slice(0,18000),model,stored:false,analysisType:"visual_physical_structure",disclaimer:"Esta interpretação é apenas visual: não mede massa muscular, percentual de gordura, composição corporal, força ou problemas médicos."};
  }
  async function route(req,res,path,user){
   await init;
