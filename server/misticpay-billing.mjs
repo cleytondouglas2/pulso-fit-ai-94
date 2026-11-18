@@ -70,7 +70,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     const entitlement=await store.getEntitlement(String(user.id));
     const endsAt=new Date(new Date(trialStart).getTime()+7*86400000);
     const trialActive=endsAt>Date.now(),active=!!entitlement.active;
-    reply(res,200,{billingEnforced:true,checkoutEnabled:true,trialEndsAt:endsAt.toISOString(),
+    reply(res,200,{billingEnforced:process.env.PULSO_BILLING_ENFORCE_ACCESS==="1",checkoutEnabled:true,trialEndsAt:endsAt.toISOString(),
       trialActive,planActive:active,planExpiresAt:entitlement.expiresAt,
       hasAccess:user.role==="admin"||active||trialActive});
     return true;
