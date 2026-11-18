@@ -53,6 +53,8 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
     await db.query("INSERT INTO pf_billing_entitlements(user_id,expires_at,blocked) VALUES($1,now()+$2::integer*interval '1 day',false) ON CONFLICT(user_id) DO UPDATE SET expires_at=greatest(pf_billing_entitlements.expires_at,now())+$2::integer*interval '1 day',blocked=false,updated_at=now()",
      [o.user_id,evt.durationDays]);
     await db.query("UPDATE pf_billing_orders SET status='COMPLETO',updated_at=now() WHERE reference=$1",[o.reference]);
+    // A UI legada consulta pf_users.plan: manter em sincronia com o entitlement validado.
+    await db.query("UPDATE pf_users SET plan=$2,updated_at=now() WHERE id=$1",[o.user_id,o.plan_code]);
     return true;
    });
   },
@@ -66,8 +68,14 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
     await db.query("UPDATE pf_billing_orders SET status=$2,updated_at=now() WHERE reference=$1",[o.reference,evt.status]);
     // Suspender acesso até auditoria evita manter benefício por pagamento estornado.
     await db.query("INSERT INTO pf_billing_entitlements(user_id,expires_at,blocked) VALUES($1,now(),true) ON CONFLICT(user_id) DO UPDATE SET blocked=true,updated_at=now()",[o.user_id]);
+    await db.query("UPDATE pf_users SET plan='free',updated_at=now() WHERE id=$1 AND plan IN ('quinzenal','mensal')",[o.user_id]);
     return true;
    });
+  },
+  async revokeExpired(){
+   // Mantém o catálogo de assinaturas do backend legado coerente com o vencimento real.
+   const r=await pool.query("UPDATE pf_users u SET plan='free',updated_at=now() FROM pf_billing_entitlements e WHERE e.user_id=u.id::text AND (e.expires_at<=now() OR e.blocked=true) AND u.plan IN ('quinzenal','mensal')");
+   return r.rowCount;
   },
   async firstTrialUse(userId){
    const r=await pool.query("INSERT INTO pf_billing_trials(user_id) VALUES($1) ON CONFLICT(user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING started_at",[String(userId)]);
