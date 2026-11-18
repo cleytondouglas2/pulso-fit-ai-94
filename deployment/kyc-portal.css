@@ -1,0 +1,35 @@
+/* KYC onboarding: scoped to the client dashboard only */
+.kyc-client-root{margin:17px 0 25px;color:#eee}
+.kyc-customer-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:13px;background:linear-gradient(125deg,#2c2930,#191c26);border:1px solid #746042;border-radius:18px;padding:23px}
+.kyc-customer-head small{letter-spacing:.14em;color:#d7b579;font-size:11px;font-weight:700}
+.kyc-customer-head h2{margin:8px 0;color:#f7dcab;font-size:clamp(22px,5vw,32px)}
+.kyc-customer-head p{margin:0;color:#c5c6cf;line-height:1.6}
+.kyc-pill{background:#4c3a27;color:#f7d495;border-radius:20px;padding:8px 12px;font-size:12px;font-weight:700;height:fit-content}
+.kyc-customer-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.kyc-customer-stages span{padding:13px 8px;text-align:center;background:#20232d;border-radius:10px;color:#a5aab6;font-size:12px}
+.kyc-customer-stages span.ready{background:#244333;color:#b8ecd1}
+.kyc-lock{padding:15px;background:#22222a;border:1px solid #71604b;border-radius:13px;margin:12px 0}
+.kyc-lock strong{color:#ffdd9c}.kyc-lock p{color:#c2c4cb;margin:6px 0 0;line-height:1.55}
+.kyc-customer-form{background:#191c24;border:1px solid #353744;border-radius:17px;padding:19px}
+.kyc-customer-form h3,.kyc-history h3{color:#f3d5a2;margin:0 0 6px;font-size:19px}
+.kyc-customer-form p{color:#aeb3be;line-height:1.5}
+.kyc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:16px}
+.kyc-card{background:#242731;border:1px solid #57505b;border-radius:14px;padding:15px;min-width:0}
+.kyc-card.received{border-color:#2f815c}.kyc-card strong{display:block;margin:13px 0 0;color:#f7f0e2}
+.kyc-card p{min-height:35px;font-size:12px}
+.kyc-card-status{font-size:12px;color:#eac68b;font-weight:700}
+.kyc-card.received .kyc-card-status{color:#99e4b6}
+.kyc-upload-btn{display:block;position:relative;cursor:pointer;border:1px solid #ccaa73;background:#2c2925;color:#f5d6a0;border-radius:10px;padding:12px;text-align:center;font-size:13px;font-weight:bold}
+.kyc-upload-btn input{position:absolute;opacity:0;inset:0;width:100%;height:100%;cursor:pointer}
+.kyc-upload-btn:focus-within{outline:2px solid #ffd89e;outline-offset:3px}
+.kyc-owner{background:#222631;border-radius:14px;border:1px solid #5b5150;margin-top:16px;padding:16px}
+.kyc-owner form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.kyc-owner label{font-size:13px;color:#e0d9cb}
+.kyc-owner input,.kyc-owner select{display:block;box-sizing:border-box;width:100%;margin-top:7px;padding:11px;background:#131720;color:#fff;border:1px solid #515667;border-radius:9px;font-size:16px}
+.kyc-owner button{border:0;background:#e1b977;color:#1c1a17;border-radius:10px;padding:11px;font-weight:800}
+.kyc-owner-verified{color:#9fe1b9!important}
+.kyc-info{font-size:12px;margin:15px 0 0}
+.kyc-history{background:#1d202a;border:1px solid #393c49;border-radius:15px;padding:17px;margin-top:13px}
+.kyc-history>div{padding:12px 0;border-top:1px solid #3d414d}.kyc-history small{float:right;color:#9b9fae}
+.kyc-history p{color:#dfd1b7;margin:5px 0}
+@media(max-width:610px){.kyc-customer-head,.kyc-customer-form{padding:14px}.kyc-customer-stages{grid-template-columns:repeat(2,minmax(0,1fr))}.kyc-cards,.kyc-owner form{grid-template-columns:1fr}}
