@@ -10,6 +10,10 @@ function notifyReplace(string $path,string $old,string $new,string $label):void 
 }
 // Load the audited Web Push library; nothing financial uses notifications for state changes.
 notifyReplace("$root/src/Gateway.php",
+    "// Real-operation console: legacy demo pages, test checkout and demo login are removed.",
+    "if (\$method === 'GET' && \$path === '/instalar') {self::htmlFile('install.html');return;}\n            // Real-operation console: legacy demo pages, test checkout and demo login are removed.",
+    'public installation guide');
+notifyReplace("$root/src/Gateway.php",
     "require_once __DIR__ . '/Portal.php';",
     "require_once __DIR__ . '/Portal.php';\nrequire_once __DIR__ . '/Notifications.php';\nrequire_once dirname(__DIR__) . '/vendor/autoload.php';",
     'notification dependencies');
@@ -47,6 +51,7 @@ $admin="$root/public/static/admin.html";
 foreach([$portal,$admin] as $file){
  $html=file_get_contents($file);
  if($html===false||substr_count($html,'</head>')!==1||substr_count($html,'</body>')!==1)throw new RuntimeException('Invalid ARGUS notification HTML structure');
+ if($file===$admin)$html=str_replace('Conhecer a API</a></p>','Conhecer a API</a> · <a href="/instalar">Instalar no celular</a></p>',$html);
  $html=str_replace('</head>','<link rel="stylesheet" href="/static/notifications-ui.css?v=1"></head>',$html);
  $html=str_replace('</body>','<script src="/static/notifications-ui.js?v=1" defer></script></body>',$html);
  if($file===$portal){
