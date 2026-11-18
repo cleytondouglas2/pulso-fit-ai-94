@@ -1,0 +1,37 @@
+#pf-companion-fab{position:fixed;z-index:2147483100;right:max(14px,env(safe-area-inset-right));bottom:calc(max(78px,env(safe-area-inset-bottom)) + 6px);border:1px solid #c3a6fa;border-radius:999px;background:linear-gradient(115deg,#542396,#8144bd);color:#fff;font:800 12px system-ui,-apple-system,sans-serif;box-shadow:0 8px 28px #0307198c;padding:12px 15px;cursor:pointer;max-width:min(84vw,250px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pf-companion-fab[hidden]{display:none!important}
+#pf-companion-modal{position:fixed!important;inset:0!important;z-index:2147483650!important;background:#040916e8;color:#fff;display:flex;justify-content:center;align-items:center;padding:14px;box-sizing:border-box;overflow-y:auto;font:14px/1.5 system-ui,-apple-system,sans-serif;backdrop-filter:blur(8px)}
+body.pf-companion-open{overflow:hidden}
+#pf-companion-modal .pf-companion-card{box-sizing:border-box;max-height:calc(100dvh - 26px);overflow:auto;width:min(100%,580px);border:1px solid #9176cf;border-radius:22px;background:linear-gradient(140deg,#30244c,#14213b 72%);padding:clamp(16px,3vw,27px);box-shadow:0 14px 65px #0009}
+#pf-companion-modal header{display:flex;justify-content:space-between;align-items:start;gap:12px}
+#pf-companion-modal header small{color:#b7ffe6;letter-spacing:.08em;font:800 11px system-ui}
+#pf-companion-modal h2{color:#fff;font:850 clamp(22px,5vw,28px) system-ui;letter-spacing:-.02em;margin:7px 0}
+#pf-companion-modal h3{color:#eaf4ff;font:850 15px system-ui;margin:14px 0 8px}
+#pf-companion-modal p{font-size:12px;color:#dfd8ee;line-height:1.55}
+#pf-companion-modal button{cursor:pointer;color:#fff;font:800 13px system-ui;border:1px solid #8e79ba;border-radius:10px;padding:9px 11px;background:#35385e;min-height:40px}
+#pf-companion-modal button[aria-pressed="true"]{background:#7642b9;border-color:#c1a4f6}
+#pf-companion-close{font-size:23px!important;width:40px;height:40px;padding:0!important}
+#pf-companion-modal .pf-companion-file{position:relative;display:block;text-align:center;border-radius:13px;cursor:pointer;background:#8f4cdc;color:#fff;padding:13px;margin:12px 0;font-weight:850}
+#pf-companion-modal .pf-companion-file input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+#pf-companion-modal .pf-companion-playing{padding:13px;background:#111b32;border-radius:15px;border:1px solid #48577a}
+#pf-companion-modal #pf-companion-now{font-size:15px;overflow-wrap:anywhere}
+#pf-companion-modal .pf-companion-buttons{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px}
+#pf-companion-modal #pf-companion-play{background:#8b49d5;min-width:125px}
+#pf-companion-modal .pf-companion-options{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;margin:12px 0}
+#pf-companion-modal .pf-companion-options label{display:flex;gap:5px;align-items:center;font-size:12px}
+#pf-companion-modal .pf-companion-options input{max-width:85px;accent-color:#a66bee}
+#pf-companion-modal .pf-companion-auto{display:block;font-size:12px;color:#ebe9ff}
+#pf-companion-modal .pf-companion-auto input{accent-color:#9d68d8}
+#pf-companion-tracklist{display:grid;gap:6px;padding:0;margin:8px 0;list-style:none;max-height:205px;overflow:auto}
+#pf-companion-tracklist li{border:1px solid #5d5a83;background:#17213b;border-radius:10px;padding:5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+#pf-companion-tracklist li.active{border-color:#9ce6b0}
+#pf-companion-tracklist li>button{flex:1;min-width:0;text-align:left;background:transparent;border:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#pf-companion-tracklist li>div{display:flex;gap:3px;flex:none}
+#pf-companion-tracklist li>div button{padding:4px 8px;min-height:31px}
+#pf-companion-modal .pf-empty-song{font-size:12px;color:#d4cae2;padding:12px}
+#pf-companion-modal .pf-companion-live{border:1px solid #618ec0;background:#16304a99;border-radius:15px;padding:14px;margin-top:14px}
+#pf-companion-modal #pf-companion-time{display:block;font-size:25px;letter-spacing:.04em;font-variant-numeric:tabular-nums;color:#abffde}
+#pf-companion-modal #pf-companion-live{margin-top:10px;background:#7042ac}
+#pf-companion-modal .pf-companion-warning{color:#ffdfae}
+#pf-companion-status{min-height:17px;color:#c8ffdc!important;font-size:12px}
+@media(max-width:380px){#pf-companion-modal .pf-companion-buttons{gap:3px}#pf-companion-modal .pf-companion-buttons button{padding:6px}#pf-companion-modal .pf-companion-options{flex-direction:column;align-items:stretch}}
