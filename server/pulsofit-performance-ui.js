@@ -5,6 +5,9 @@ if(window.__PULSO_PERFORMANCE_UI__)return;
 window.__PULSO_PERFORMANCE_UI__=true;
 var avatar=null,avatarFor="",photoBusy=false,working=false,selectedImage=null,photoStatus=null;
 var css=[
+'.mobile-nav.pf-performance-six{grid-template-columns:repeat(6,minmax(0,1fr))!important}',
+'.mobile-nav.pf-performance-six .nav-link{font-size:9px!important;min-width:0!important;width:100%!important;overflow:hidden!important;gap:2px!important;padding:6px 1px!important}',
+
 '#pf-performance-window{position:fixed!important;inset:0!important;z-index:2147482500!important;background:#050819ee!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;box-sizing:border-box!important;overflow-y:auto!important;color:white!important;font:14px/1.5 system-ui,sans-serif!important}',
 '#pf-performance-window .pf-perf-box{box-sizing:border-box;width:min(100%,790px);max-height:calc(100dvh - 28px);overflow-y:auto;border:1px solid #8a74bd;border-radius:23px;padding:clamp(18px,4vw,30px);background:linear-gradient(145deg,#2d244f,#111b32)}',
 '#pf-performance-window h2{font-size:clamp(23px,4vw,31px);margin:4px 0;color:#fff}',
@@ -169,12 +172,15 @@ function ensureNavigation(){
   item.addEventListener("click",openPerformance);side.appendChild(item);
  }
  var mobile=app.querySelector(".mobile-nav");
- if(mobile&&mobile.querySelector('[data-route="performance"]')){
-  mobile.querySelector('[data-route="performance"]').classList.add("pf-performance-launch");
+ if(mobile){
+  mobile.classList.add("pf-performance-six");
+  if(!mobile.querySelector("[data-pf-open-performance]")){
+   var item=document.createElement("button");item.type="button";item.className="nav-link pf-performance-launch";
+   item.setAttribute("data-pf-open-performance","1");
+   item.innerHTML='<span aria-hidden="true">📈</span><span>Performance</span>';
+   item.addEventListener("click",openPerformance);mobile.appendChild(item);
+  }
   document.getElementById("pf-performance-float")?.remove();
- }else if(mobile&&!document.getElementById("pf-performance-float")){
-  var float=document.createElement("button");float.type="button";float.id="pf-performance-float";
-  float.textContent="📸 Performance";float.addEventListener("click",openPerformance);document.body.appendChild(float);
  }
 }
 function enhance(){
