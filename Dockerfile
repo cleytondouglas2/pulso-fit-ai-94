@@ -76,6 +76,21 @@ RUN php -l /tmp/argus_notification_patch.php \
  && php /var/www/html/tests/notifications_test.php \
  && php -l /usr/local/share/argus/notify_worker.php
 RUN php -l src/Integrations/MisticPayFinance.php && php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/finance_qr_unit.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php && php tests/ui_contract.php
+# ARGUS IA: Groq is optional. Aggregated insights/heuristic alerts work without a paid API.
+COPY deployment/AI.php /var/www/html/src/AI.php
+COPY deployment/ai-ui.js deployment/ai-ui.css /var/www/html/public/static/
+COPY deployment/ai_test.php /var/www/html/tests/ai_test.php
+COPY deployment/argus_ai_patch.php /tmp/argus_ai_patch.php
+RUN php -l /var/www/html/src/AI.php \
+ && php -l /tmp/argus_ai_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_ai_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /usr/local/share/argus/notify_worker.php \
+ && php /var/www/html/tests/ai_test.php \
+ && php /var/www/html/tests/ui_contract.php \
+ && php /var/www/html/tests/notifications_test.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
