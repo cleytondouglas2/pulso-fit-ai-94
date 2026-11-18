@@ -145,6 +145,65 @@
       "<button type='button' class='"+(p.featured?"btn":"btn-alt")+" wide' data-pf-select-plan='"+p.code+"'>Selecionar "+p.title+"</button>";
     return d;
   }
+  /* Portal de planos acessível em qualquer tela, sem depender da rota do app */
+  function planStatusText(){
+    var state=billingServerStatus;
+    if(state&&state.planActive&&state.planExpiresAt){
+      var paidEnd=new Date(state.planExpiresAt);
+      return Number.isFinite(paidEnd.getTime())?"Plano ativo até "+paidEnd.toLocaleDateString("pt-BR"):"Plano ativo";
+    }
+    if(state&&state.trialEndsAt){
+      var trialEnd=new Date(state.trialEndsAt);
+      if(Number.isFinite(trialEnd.getTime())){
+        var days=Math.max(0,Math.ceil((trialEnd.getTime()-Date.now())/86400000));
+        return days>0?"Restam "+days+" dia(s) grátis · até "+trialEnd.toLocaleDateString("pt-BR"):"Teste grátis encerrado em "+trialEnd.toLocaleDateString("pt-BR");
+      }
+    }
+    var token="";try{token=sessionStorage.getItem("pulso-fit-token")||""}catch(e){}
+    return token?"Consultando sua validade de 7 dias no servidor…":"Entre na sua conta para consultar os 7 dias grátis";
+  }
+  function openPlansOverlay(){
+    var already=document.getElementById("pf-plans-portal");
+    if(already){updatePlansPortal();return}
+    var overlay=document.createElement("div");
+    overlay.id="pf-plans-portal";overlay.className="pf-plans-portal";
+    overlay.innerHTML='<section class="pf-plans-dialog" role="dialog" aria-modal="true" aria-labelledby="pf-plans-title">'+
+     '<button type="button" class="pf-plans-close" aria-label="Fechar planos">×</button>'+
+     '<div class="pf-plans-heading"><img src="./pulsofit-brand.svg" alt="" loading="lazy"><div><span>ASSINATURA PULSOFIT AI</span>'+
+     '<h2 id="pf-plans-title">Seu treino não pode parar</h2></div></div>'+
+     '<div class="pf-plans-free"><strong>🎁 Teste grátis de 7 dias</strong><p id="pf-plans-status"></p>'+
+     '<small>O período começa no primeiro acesso registrado na sua conta. Não há renovação automática.</small></div>'+
+     '<div class="pf-plans-options"></div>'+
+     '<p class="pf-plans-fineprint">Pix pela MisticPay. Cartão ainda indisponível. A liberação ocorre após a confirmação do pagamento pelo servidor.</p>'+
+     '</section>';
+    var grid=overlay.querySelector(".pf-plans-options");
+    grid.appendChild(offerCard(prices[0]));grid.appendChild(offerCard(prices[1]));
+    document.body.appendChild(overlay);
+    function close(){overlay.remove();document.removeEventListener("keydown",onKey)}
+    function onKey(e){if(e.key==="Escape")close()}
+    document.addEventListener("keydown",onKey);
+    overlay.addEventListener("click",function(e){if(e.target===overlay||e.target.closest(".pf-plans-close"))close()});
+    overlay.querySelector(".pf-plans-close").focus();
+    updatePlansPortal();
+  }
+  function updatePlansPortal(){
+    var launcher=document.getElementById("pf-plans-shortcut");
+    if(!launcher){
+      launcher=document.createElement("button");launcher.type="button";
+      launcher.id="pf-plans-shortcut";launcher.className="pf-plans-shortcut";
+      launcher.setAttribute("aria-label","Ver planos e validade do teste grátis");
+      launcher.innerHTML='<span class="pf-plans-shortcut-icon">🎁</span><span class="pf-plans-shortcut-copy"><strong>7 dias grátis · Planos</strong><small></small></span><span class="pf-plans-shortcut-chevron">›</span>';
+      launcher.addEventListener("click",openPlansOverlay);
+      document.body.appendChild(launcher);
+    }
+    var state=billingServerStatus;
+    var title=launcher.querySelector("strong");
+    var label=launcher.querySelector("small");
+    if(title)title.textContent=state&&state.planActive?"Sua assinatura · Planos":"🎁 7 dias grátis · Planos";
+    if(label)label.textContent=planStatusText();
+    var status=document.getElementById("pf-plans-status");
+    if(status)status.textContent=planStatusText();
+  }
   function enhancePlans(root){
     var route=activeRoute();
     var main=root.querySelector(".main");
@@ -232,7 +291,7 @@
     var root=document.getElementById("app");if(!root||observerBusy)return;
     observerBusy=true;
     try{
-      enhanceNav(root);enhanceCoach(root);enhanceNutrition(root);enhancePlans(root);enhanceGate(root);
+      enhanceNav(root);enhanceCoach(root);enhanceNutrition(root);enhancePlans(root);enhanceGate(root);updatePlansPortal();
     }finally{observerBusy=false}
   }
 
@@ -313,11 +372,12 @@
   }
 
   document.addEventListener("click",function(e){
-    var button=e.target.closest("[data-pf-select-plan],[data-pf2026-action=plan],[data-pf-open-plans],[data-pf-open-account]");
+    var button=e.target.closest("[data-pf-select-plan],[data-pf2026-action=plan],[data-pf-open-plans],[data-pf-open-account],[data-route=subscription]");
     if(!button)return;e.preventDefault();e.stopImmediatePropagation();
     var planCode=button.dataset.pfSelectPlan||(button.dataset.pf2026Action==="plan"?button.dataset.plan:null);
-    if(planCode){openPlanCheckout(planCode);return;}
-    location.hash=button.hasAttribute("data-pf-open-account")?"#/account":"#/subscription";
+    if(planCode){document.getElementById("pf-plans-portal")?.remove();openPlanCheckout(planCode);return;}
+    if(button.hasAttribute("data-pf-open-account")){location.hash="#/account";return;}
+    openPlansOverlay();
   },true);
   document.addEventListener("keydown",function(e){
     if(e.target&&e.target.id==="pfaiChatInput"&&e.key==="Enter"&&!e.shiftKey&&!e.isComposing){
@@ -332,7 +392,8 @@
     enhance();checkToken();
     var observer=new MutationObserver(function(){enhance();checkToken()});
     observer.observe(root,{childList:true,subtree:true});
-    window.addEventListener("hashchange",function(){enhance();checkToken()});
+    window.addEventListener("hashchange",function(){enhance();checkToken();if(activeRoute()==="subscription")openPlansOverlay()});
+    if(activeRoute()==="subscription")openPlansOverlay();
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
