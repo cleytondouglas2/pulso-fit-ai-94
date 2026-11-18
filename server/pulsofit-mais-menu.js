@@ -53,9 +53,10 @@ function openMenu(){
   ["profile","👤","Meu perfil","Foto, informações e preferências"],
   ["performance","📸","Performance IA","Análise corporal por foto"],
   ["meal","🥗","Avaliar meu prato","Foto, calorias, proteínas e dicas da IA"],
+   ["playlist","🎵","Playlist de treino","Trilhas originais e músicas do aparelho"],
   ["assessment","📈","Avaliação e progresso","Método da IA e evolução"],
   ["account","☁️","Conta online","Dados, sincronização e plano"],
-  ["subscription","💎","Planos e validade","7 dias grátis e assinatura"],
+   ["subscription","💎","Renovação e upgrade","Gerencie seu plano no Meu Perfil"],
   ["goals","🎯","Minhas metas","Objetivos e resultados"],
   ["workouts","🏋️","Treinos","Casa, academia e CrossFit"],
   ["training-lab","⚡","Treino Vivo","10 missões, substituições e histórico"],
@@ -128,6 +129,8 @@ async function act(action){
  if(action==="outdoor"){closeMenu();window.dispatchEvent(new Event("pulso-open-outdoor"));return}
  if(action==="notifications"){closeMenu();window.dispatchEvent(new Event("pulso-open-push-settings"));return}
  if(action==="meal"){closeMenu();window.dispatchEvent(new Event("pulso-open-meal"));return}
+  if(action==="playlist"){closeMenu();window.dispatchEvent(new Event("pulso-open-playlist"));return}
+  if(action==="subscription"){goTo("profile");return}
  if(action==="performance"||action==="assessment")return openFeature(action);
  var allowed=new Set(["profile","account","subscription","goals","workouts","coach"]);
  if(allowed.has(action))goTo(action);
