@@ -101,13 +101,27 @@ function bootPulsoUpgrade(){
       ev.preventDefault();ev.target.closest("form")?.requestSubmit();
     }
   });
-  var oldRender=render,lastPage=null;
+  // Repaint directly: WebKit view-transition snapshots flashed the prior route.
+  var oldRender=render,lastPage=null,overlayPending=false;
+  var loadStyle=document.createElement("style");loadStyle.id="pf-no-route-flicker";
+  loadStyle.textContent="#pf-route-loading{position:fixed;inset:0;z-index:199999998;background:#090e22eb;color:#bffff0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;font:850 14px system-ui;pointer-events:none}"+
+   "#pf-route-loading .pf-spin{width:32px;height:32px;border:3px solid #7256ad;border-top-color:#9effdb;border-radius:50%;animation:pf-rotate .75s linear infinite}"+
+   "@keyframes pf-rotate{to{transform:rotate(360deg)}}"+
+   "#app .pf-page-enter,#app [class*=page-enter]{animation:none!important;transition:none!important}"+
+   "@media(prefers-reduced-motion:reduce){#pf-route-loading .pf-spin{animation:none}}";
+  document.head.appendChild(loadStyle);
+  function loading(on){
+   var el=document.getElementById("pf-route-loading");
+   if(on&&!el){el=document.createElement("div");el.id="pf-route-loading";el.setAttribute("role","status");
+    el.innerHTML='<span class="pf-spin" aria-hidden="true"></span><span>Carregando…</span>';document.body.appendChild(el)}
+   if(!on&&el)el.remove();
+  }
   render=function(){
-    var page=currentSection(),changed=lastPage!==null&&lastPage!==page;
-    function paint(){oldRender();fixMobileNavigation();upgradeNutritionUI();}
-    if(changed&&document.startViewTransition&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches)document.startViewTransition(paint);
-    else paint();
-    lastPage=page;
+   var page=currentSection(),changed=lastPage!==null&&lastPage!==page;
+   lastPage=page;
+   if(changed)loading(true);
+   oldRender();fixMobileNavigation();upgradeNutritionUI();
+   if(changed&&!overlayPending){overlayPending=true;requestAnimationFrame(()=>{overlayPending=false;loading(false)})}
   };
   if(typeof env!=="undefined")env.render=render;
   render();
