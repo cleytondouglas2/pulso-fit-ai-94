@@ -16,6 +16,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
  try {
   const script=readFileSync(new URL("./pulsofit-plans-stable.js",import.meta.url),"utf8");
   const authJS=readFileSync(new URL("./pulsofit-auth-ui.js",import.meta.url),"utf8");
+  const socialJS=readFileSync(new URL("./pulsofit-social-ui.js",import.meta.url),"utf8");
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
   const assessmentJS=readFileSync(new URL("./pulsofit-assessment-ui.js",import.meta.url),"utf8");
   const profilePolishJS=readFileSync(new URL("./pulsofit-profile-polish.js",import.meta.url),"utf8");
@@ -39,6 +40,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   if(!outdoorJS.includes("pf-outdoor-steps")||!outdoorJS.includes("pf-outdoor-live-widget"))throw Error("PULSO_OUTDOOR_PROGRESS_MISSING");
   if(!trainingLabJS.includes("bulgarian_squat")||!trainingLabJS.includes("showExercisePicker("))throw Error("PULSO_EXERCISE_EDITOR_MISSING");
   if(!authJS.includes("pulsofit-session-remember-v1"))throw Error("PULSO_PERSISTENT_LOGIN_MISSING");
+  new JavaScriptSyntax(socialJS,{filename:"pulsofit-social-ui.js"});
   new JavaScriptSyntax(pushUI,{filename:"pulsofit-push-ui.js"});
   if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
@@ -49,6 +51,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-social-ui-20261118">'+socialJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-performance-20261118">'+performanceJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-onboarding-assessment-20261118">'+assessmentJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-profile-polish-20261118">'+profilePolishJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
