@@ -41,12 +41,12 @@ file_put_contents($admin,$html);
 // Eliminate browser payer inputs entirely, including the shadowed two-stage submit handler.
 $jsPath="$root/public/static/admin.js";$js=file_get_contents($jsPath);
 if(!is_string($js))throw new RuntimeException('Admin JS missing');
-$start="$('#charge-create-form').onsubmit=async event=>{\n  event.preventDefault();\n  if(window.argusQuickPixTraditional){";
-$original="  event.preventDefault();if(!canWrite())return;";
+$start="$('#charge-create-form').onsubmit=async event=>{";
+$original="const form=event.target,amount=pixAmountCents();";
 $st=strpos($js,$start);
 $finish=$st===false?false:strpos($js,$original,$st+strlen($start));
-if($st===false||$finish===false)throw new RuntimeException('Two-stage Pix handler not found');
-$js=substr($js,0,$st)."$('#charge-create-form').onsubmit=async event=>{\n".substr($js,$finish);
+if($st===false||$finish===false)throw new RuntimeException('Pix submission handler not found');
+$js=substr($js,0,$st).$start."\n  event.preventDefault();if(!canWrite())return;\n  ".substr($js,$finish);
 $amount='const payload={amount_cents:amount,idempotency_key:key};';
 $index=strpos($js,$amount);
 if($index===false)throw new RuntimeException('Pix amount payload missing');
