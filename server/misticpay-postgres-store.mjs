@@ -44,6 +44,11 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
   async getByReference(ref){
    const r=await pool.query("SELECT * FROM pf_billing_orders WHERE reference=$1",[String(ref)]);return rowToOrder(r.rows[0]);
   },
+  async getLatestUserOrder(userId){
+   // Recovery can only reveal an order owned by the signed-in user.
+   const r=await pool.query("SELECT * FROM pf_billing_orders WHERE user_id=$1 AND provider_payment_id IS NOT NULL AND created_at > now()-interval '7 days' ORDER BY created_at DESC LIMIT 1",[String(userId)]);
+   return rowToOrder(r.rows[0]);
+  },
   async applyVerifiedEventOnce(evt){
    if(evt?.status!=="paid"||evt.currency!=="BRL"||CATALOG[evt.planCode]?.days!==evt.durationDays)throw Error("Pagamento inválido");
    return transaction(async(db)=>{
