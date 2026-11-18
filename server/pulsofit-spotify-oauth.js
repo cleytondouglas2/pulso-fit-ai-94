@@ -74,7 +74,7 @@ async function connect(){
   say("Abrindo o site oficial do Spotify para você autorizar suas playlists…");
   window.location.assign(url.href);
  }catch(err){say(String(err?.message||"Não foi possível abrir a autorização Spotify."))}
- finally{busy=false}
+ finally{busy=false;updateControls()}
 }
 async function fetchToken(body){
  const r=await fetch("https://accounts.spotify.com/api/token",{
