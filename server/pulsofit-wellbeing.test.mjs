@@ -38,7 +38,8 @@ test("O player é incorporado ao PulsoFit, nunca abre janela externa",()=>{
  assert.ok(!uiJS.includes("window.open("));
  assert.ok(!uiJS.includes('target="_blank"'));
  assert.ok(!uiJS.includes("classLink("));
- assert.match(uiJS,/youtube-nocookie\.com\/embed/);
+ assert.match(uiJS,/https:\/\/www\.youtube\.com/);
+ assert.match(uiJS,/https:\/\/www\.youtube-nocookie\.com/);
  assert.match(uiJS,/frame\.allowFullscreen=true|player\.allowFullscreen=true/);
  assert.match(uiJS,/searchParams\.set\("playsinline","1"\)/);
  assert.match(uiJS,/searchParams\.set\("origin",location\.origin\)/);
@@ -47,6 +48,21 @@ test("O player é incorporado ao PulsoFit, nunca abre janela externa",()=>{
  assert.match(uiJS,/stage\.appendChild\(player\)/);
  assert.match(uiJS,/Assistir aqui no PulsoFit/);
  assert.match(uiJS,/Reiniciar vídeo nesta tela/);
+});
+test("Safari/iPhone: exige origem HTTPS, toque explícito e retorno dentro do app",()=>{
+ assert.match(uiJS,/referrerPolicy="strict-origin-when-cross-origin"/);
+ assert.match(uiJS,/url\.searchParams\.set\("autoplay","0"\)/);
+ assert.match(uiJS,/url\.searchParams\.set\("playsinline","1"\)/);
+ assert.match(uiJS,/url\.searchParams\.set\("widget_referrer",location\.origin\+"\/"\)/);
+ assert.match(uiJS,/event\.source!==activeFrame\.contentWindow/);
+ assert.match(uiJS,/onReady/);
+ assert.match(uiJS,/onStateChange/);
+ assert.match(uiJS,/onAutoplayBlocked/);
+ assert.match(uiJS,/playerHost===0/);
+ assert.match(uiJS,/showInAppVideo\(item,stage,1\)/);
+ assert.match(uiJS,/unavailableVideos\.add\(item\.id\)/);
+ assert.match(uiJS,/frameErrorTimer=setTimeout/);
+ assert.ok(!uiJS.includes("window.open("));
 });
 test("Não tenta contornar restrições: erro sugere outra aula no próprio app",()=>{
  assert.match(uiJS,/function videoPlayerMessage/);
