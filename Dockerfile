@@ -47,6 +47,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends imagemagick \
  && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 180x180 \
     /var/www/html/public/static/assets/argus-icon-180.png \
  && identify /var/www/html/public/static/assets/argus-icon-192.png
+# iOS web clips require an opaque PNG. Compose the ORIGINAL ARGUS mark over its dark brand background.
+RUN convert -size 512x512 xc:'#10141a' /var/www/html/public/static/assets/argus-icon-512.png \
+     -compose Over -composite -alpha off -strip /tmp/argus-opaque-512.png \
+ && mv /tmp/argus-opaque-512.png /var/www/html/public/static/assets/argus-icon-512.png \
+ && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 192x192 /var/www/html/public/static/assets/argus-icon-192.png \
+ && convert /var/www/html/public/static/assets/argus-icon-512.png -resize 180x180 /var/www/html/public/static/assets/argus-icon-180.png \
+ && cp /var/www/html/public/static/assets/argus-icon-180.png /var/www/html/public/apple-touch-icon.png \
+ && identify /var/www/html/public/apple-touch-icon.png
 # Standards-based VAPID Web Push: HTTPS payload encryption and browser push transports.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libcurl4-openssl-dev libonig-dev libgmp-dev librsvg2-bin \
@@ -89,6 +97,21 @@ RUN php -l /var/www/html/src/AI.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /usr/local/share/argus/notify_worker.php \
  && php /var/www/html/tests/ai_test.php \
+ && php /var/www/html/tests/ui_contract.php \
+ && php /var/www/html/tests/notifications_test.php
+# Validity checks and Pix authentication probes are read-only; only the original payment provider creates charges.
+COPY deployment/DocumentValidation.php deployment/PixDiagnostics.php /var/www/html/src/
+COPY deployment/pix-diagnostics.js /var/www/html/public/static/
+COPY deployment/document_validation_test.php /var/www/html/tests/document_validation_test.php
+COPY deployment/argus_document_pix_patch.php /tmp/argus_document_pix_patch.php
+RUN php -l /var/www/html/src/DocumentValidation.php \
+ && php -l /var/www/html/src/PixDiagnostics.php \
+ && php -l /tmp/argus_document_pix_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_document_pix_patch.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php /var/www/html/tests/document_validation_test.php \
  && php /var/www/html/tests/ui_contract.php \
  && php /var/www/html/tests/notifications_test.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
