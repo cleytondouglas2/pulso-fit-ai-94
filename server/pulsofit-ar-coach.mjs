@@ -83,7 +83,7 @@ export const SUPPORTED_AR_EXERCISES=Object.freeze(Object.keys(AR_CATALOG_LABELS)
 const normalize=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 export function matchARExercise(text){
  const n=normalize(text);if(!n)return null;
- const key=SUPPORTED_AR_EXERCISES.find(id=>id===n||normalize(AR_CATALOG_LABELS[id])===n);
+ const key=SUPPORTED_AR_EXERCISES.find(id=>id===String(text||"").trim()||normalize(AR_CATALOG_LABELS[id])===n);
  if(key)return key;
  const aliases={"agachamento bulgaro":"bulgarian_squat","flexao nordica":"nordic_curl","flexao diamante":"diamond_pushup","flexao declinada":"decline_pushup",
   "flexao pseudo planche":"pseudo_planche","barra supinada":"chinup_supinated","polichinelo sem salto":"low_jack"};
