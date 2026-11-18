@@ -508,3 +508,41 @@
  #app .pro-price-grid{grid-template-columns:1fr!important}
  #app .pro-price-card.pf-offer{padding:19px}
 }
+
+
+/* Portal de assinatura sempre acessível — PulsoFit 2026.11.18 */
+.pf-plans-shortcut{position:fixed;right:14px;bottom:calc(98px + env(safe-area-inset-bottom,0px));z-index:6000;display:flex;align-items:center;gap:10px;box-sizing:border-box;max-width:min(340px,calc(100vw - 28px));padding:10px 13px;border-radius:19px;border:1px solid rgba(184,144,255,.85);background:linear-gradient(135deg,#352163,#5d2dae 65%,#7c41cc);color:#fff;box-shadow:0 10px 35px rgba(38,15,77,.35);font:13px/1.3 system-ui,-apple-system,sans-serif;text-align:left;cursor:pointer;animation:pf-plans-enter .45s ease-out both}
+.pf-plans-shortcut .pf-plans-shortcut-icon{font-size:21px;flex:none}
+.pf-plans-shortcut .pf-plans-shortcut-copy{display:grid;gap:2px;min-width:0}
+.pf-plans-shortcut strong{font-size:12px;font-weight:900;letter-spacing:.01em}
+.pf-plans-shortcut small{font-size:10px;color:#e6dcff;line-height:1.3;max-width:220px}
+.pf-plans-shortcut .pf-plans-shortcut-chevron{font-size:22px;margin-left:4px}
+.pf-plans-shortcut:focus-visible{outline:3px solid #d5bcff;outline-offset:3px}
+.pf-plans-portal{position:fixed;inset:0;z-index:80000;padding:20px 14px;display:flex;justify-content:center;align-items:center;background:rgba(7,10,24,.83);backdrop-filter:blur(12px);overflow-y:auto}
+.pf-plans-dialog{position:relative;box-sizing:border-box;width:min(100%,800px);max-height:min(94vh,950px);overflow:auto;padding:clamp(20px,4vw,32px);border-radius:24px;background:radial-gradient(circle at 90% 0%,rgba(121,60,210,.24),transparent 50%),#10182d;border:1px solid rgba(195,155,255,.4);box-shadow:0 25px 80px rgba(0,0,0,.55);color:#fff;font:14px/1.5 system-ui,-apple-system,sans-serif}
+.pf-plans-close{position:absolute;right:14px;top:14px;width:36px;height:36px;border-radius:50%;border:1px solid #625279;background:#252340;color:#fff;font-size:24px;cursor:pointer}
+.pf-plans-heading{display:flex;align-items:center;gap:13px;padding-right:30px;margin-bottom:18px}
+.pf-plans-heading img{width:57px;height:57px;object-fit:contain}
+.pf-plans-heading span{display:block;color:#b1f5d8;font-size:10px;letter-spacing:.12em;font-weight:800}
+.pf-plans-heading h2{font-size:clamp(22px,4vw,31px);line-height:1.1;margin:5px 0;color:#fff}
+.pf-plans-free{padding:17px 19px;margin-bottom:18px;border:1px solid #8056ba;border-radius:17px;background:linear-gradient(115deg,rgba(104,53,166,.44),rgba(48,39,91,.7))}
+.pf-plans-free strong{font-size:18px}
+.pf-plans-free p{font-size:15px;color:#e4dcff;margin:8px 0}
+.pf-plans-free small{font-size:11px;color:#d5c6ec}
+.pf-plans-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.pf-plans-options .pf-offer{box-sizing:border-box;min-width:0;margin:0;padding:20px 18px;background:#1b233b;border:1px solid #525272;border-radius:19px;color:#f6f1ff}
+.pf-plans-options .pf-offer.featured{border:2px solid #a076fc;background:linear-gradient(160deg,#33284e,#1b233b 70%)}
+.pf-plans-options .pf-offer h2{margin:8px 0;font-size:19px;color:#fff}
+.pf-plans-options .eyebrow{font-size:10px;color:#b8a4ff;letter-spacing:.12em;font-weight:800}
+.pf-plans-options .pro-price{font-size:29px;color:#b4ffcf;font-weight:900;white-space:nowrap}
+.pf-plans-options .pro-price small{display:block;font-size:12px;color:#d1c9e7;font-weight:500}
+.pf-plans-options .pf-offer p{font-size:12px;color:#e1ddef}
+.pf-plans-options .pro-features{margin:12px 0 16px}
+.pf-plans-options .pro-features p{margin:5px 0}
+.pf-plans-options .pf-offer button{width:100%;margin-top:auto;min-height:43px;border:0;border-radius:12px;background:linear-gradient(110deg,#a04bf6,#7333d6);color:#fff;font:800 13px system-ui,-apple-system,sans-serif;padding:9px;cursor:pointer}
+.pf-plans-options .pf-offer:not(.featured) button{background:#3b365b;border:1px solid #9272d9}
+.pf-plans-fineprint{color:#c9c2db;font-size:12px;margin:18px 0 0}
+@keyframes pf-plans-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(min-width:850px){.pf-plans-shortcut{bottom:24px;right:24px}}
+@media(max-width:540px){.pf-plans-dialog{max-height:92vh}.pf-plans-options{grid-template-columns:1fr}.pf-plans-shortcut{max-width:min(325px,calc(100vw - 20px));right:10px;bottom:calc(88px + env(safe-area-inset-bottom,0px))}.pf-plans-shortcut small{max-width:210px}}
+@media(prefers-reduced-motion:reduce){.pf-plans-shortcut{animation:none}}
