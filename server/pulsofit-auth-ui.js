@@ -72,7 +72,41 @@ var css=[
 '@media(prefers-reduced-motion:reduce){#pf-auth-landing *{animation:none!important;transition:none!important}}',
 '[data-pro-action="offline-continue"]{display:none!important}'
 ].join("\n");
-function token(){try{return sessionStorage.getItem("pulso-fit-token")||""}catch{return ""}}
+const PULSO_REMEMBER_KEY="pulsofit-session-remember-v1";
+const MAX_REMEMBER_AGE=30*24*60*60*1000;
+function expiryFor(t){
+ // JWT exp is authoritative if the existing login issues a JWT.
+ try{const part=String(t||"").split(".")[1];if(!part)return Date.now()+MAX_REMEMBER_AGE;
+  const raw=atob(part.replace(/-/g,"+").replace(/_/g,"/")),j=JSON.parse(raw);
+  if(Number.isFinite(Number(j.exp)))return Math.min(Number(j.exp)*1000,Date.now()+MAX_REMEMBER_AGE);
+ }catch{}
+ return Date.now()+MAX_REMEMBER_AGE;
+}
+function saveRemember(t){
+ try{
+  const expiresAt=expiryFor(t);
+  if(expiresAt<=Date.now()){clearRemember();return}
+  localStorage.setItem(PULSO_REMEMBER_KEY,JSON.stringify({token:t,createdAt:Date.now(),expiresAt}));
+ }catch{}
+}
+function clearRemember(){
+ try{localStorage.removeItem(PULSO_REMEMBER_KEY)}catch{}
+ try{sessionStorage.removeItem("pulso-fit-token")}catch{}
+}
+function token(){
+ try{
+  const current=sessionStorage.getItem("pulso-fit-token")||"";
+  if(current)return current;
+  const record=JSON.parse(localStorage.getItem(PULSO_REMEMBER_KEY)||"null");
+  if(!record||typeof record.token!=="string"||record.token.length>5000||!record.createdAt||!record.expiresAt||
+   record.expiresAt<Date.now()||record.createdAt>Date.now()+60000||Date.now()-record.createdAt>MAX_REMEMBER_AGE){
+    if(record)localStorage.removeItem(PULSO_REMEMBER_KEY);
+    return "";
+  }
+  sessionStorage.setItem("pulso-fit-token",record.token);
+  return record.token;
+ }catch{return ""}
+}
 function overlay(){
  if(!document.body)return null;
  document.body.classList.add("pf-account-locked");
@@ -168,6 +202,7 @@ function show(mode,notice){
    sessionStorage.setItem("pulso-fit-token",j.token);
    var check=await fetch("/api/me",{cache:"no-store",headers:{"Authorization":"Bearer "+j.token}});
    if(!check.ok)throw Error("Sessão não confirmada. Entre novamente.");
+   saveRemember(j.token);
    status.textContent="Conta conectada. Abrindo seu aplicativo...";
    location.reload();
   }catch(err){status.textContent=String(err.message||err);button.disabled=false}
@@ -182,17 +217,30 @@ async function verify(){
  var el=overlay();el.innerHTML='<section class="pf-auth-dialog"><h2>Validando sua conta…</h2><p>Consultando a sessão segura.</p></section>';
  try{
   var r=await fetch("/api/me",{cache:"no-store",headers:{"Authorization":"Bearer "+current},signal:AbortSignal.timeout(7000)});
-  if(!r.ok)throw Error("Sua sessão terminou. Entre novamente.");
+  if(r.status===401||r.status===403)throw Object.assign(Error("Sua sessão expirou. Entre novamente."),{invalidAuth:true});
+  if(!r.ok)throw Error("O servidor está temporariamente indisponível. Sua conta continuará salva no aparelho.");
   var d=await r.json();
   if(!d?.user?.id||token()!==current)throw Error("Sessão não confirmada");
   valid=true;verifiedToken=current;
+  saveRemember(current);
   document.body.classList.remove("pf-account-locked");
   document.getElementById("pf-account-lock")?.remove();
   window.dispatchEvent(new Event("pulso-auth-ready"));
- }catch(err){valid=false;verifiedToken="";try{sessionStorage.removeItem("pulso-fit-token")}catch{}show("login",String(err.message||err))}
+ }catch(err){
+  valid=false;verifiedToken="";
+  if(err.invalidAuth){clearRemember();show("login",String(err.message||err));}
+  else {
+   const status=String(err.message||"Falha de conexão");
+   el.innerHTML='<section class="pf-auth-dialog"><h2>🔄 Reestabelecendo a conexão</h2><p id="pf-session-retry"></p><button type="button" id="pf-session-try-again">Tentar novamente</button></section>';
+   el.querySelector("#pf-session-retry").textContent=status+". O login está preservado e será reconectado automaticamente.";
+   el.querySelector("#pf-session-try-again").addEventListener("click",()=>verify());
+  }
+}
  finally{busy=false}
 }
 function init(){
+ // Restore previous login before any authenticated app module initializes.
+ token();
  var cssEl=document.createElement("style");cssEl.id="pf-auth-css";cssEl.textContent=css;(document.head||document.documentElement).appendChild(cssEl);
  overlay();verify();
  window.addEventListener("pageshow",verify);
