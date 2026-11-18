@@ -18,6 +18,7 @@ final class PixDiagnostics
         $idEnv=trim((string)getenv('ARGUS_FINANCE_QR_CLIENT_ID'));
         $secretEnv=trim((string)getenv('ARGUS_FINANCE_QR_CLIENT_SECRET'));
         $wrongFamily=\ArgusPayments\Integrations\MisticPayFinance::isLegacyKey($idEnv)||\ArgusPayments\Integrations\MisticPayFinance::isLegacyKey($secretEnv);
+        $traditionalStyle=(bool)preg_match('/^(?:pk_|ci_)/',$idEnv)||(bool)preg_match('/^(?:sk_|cs_)/',$secretEnv);
         $readiness=LivePix::readiness($db);
         $storage=(bool)($readiness['checks']['storage_policy']??false);
         $provider=$wrongFamily?'legacy_misticpay_keys':'not_configured';
@@ -44,7 +45,8 @@ final class PixDiagnostics
         $message=match(true){
             !$persistent=>'Banco persistente indisponível. Configure PostgreSQL ou MySQL antes de emitir Pix.',
             !$storage=>'Política de armazenamento não está pronta. Revise a infraestrutura.',
-            $wrongFamily=>'Identifiquei credenciais da API MisticPay tradicional (pk/sk ou ci/cs) nos campos da MisticPay Finance. Elas podem ser válidas, mas pertencem a outro sistema. Gere um novo Client ID e Client Secret em MisticPay Finance → Configurações → API QR Codes e substitua as duas variáveis ARGUS_FINANCE_QR_* no Render.',
+            $wrongFamily=>'Credenciais antigas ci/cs identificadas. Elas não são compatíveis com a API Finance QRCODES. Crie Client ID e Client Secret em MisticPay Finance → Configurações → API QR Codes.',
+            $traditionalStyle&&$provider==='credentials_rejected'=>'O provedor Finance recusou a autenticação. O par apresenta prefixo também usado pela API MisticPay tradicional, mas o prefixo sozinho não prova a origem. Verifique em qual painel a credencial foi criada, se o par está ativo e se o IP de saída do Render está autorizado. Use credenciais de Configurações → API QR Codes da MisticPay Finance.',
             !$configured=>'Credenciais da API Finance QRCODES não configuradas. Atualize as variáveis protegidas no Render.',
             $provider==='credentials_rejected'=>'O provedor recusou as credenciais Pix (401/403). Confira Client ID, Client Secret, autorização QRCODES e restrições de IP no painel do provedor.',
             $provider==='authorized'=>'Consulta autenticada ao provedor aceita. A emissão ainda depende da autorização da conta e da operação.',
@@ -52,7 +54,7 @@ final class PixDiagnostics
         };
         self::out(['ready_to_attempt'=>$canTry,'provider'=>$provider,'provider_http'=>$http,
             'persistent_db'=>$persistent,'storage_ready'=>$storage,'credentials_present'=>$configured,
-            'wrong_credential_family'=>$wrongFamily,
+            'wrong_credential_family'=>$wrongFamily,'traditional_prefix_detected'=>$traditionalStyle,
             'message'=>$message,'read_only'=>true]);
     }
 }
