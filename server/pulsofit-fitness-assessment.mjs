@@ -134,7 +134,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_FITNESS_ASS
    return respond(res,200,{saved:true,aiMethodology:plan});
   }
   if(path==="/api/fitness/progress"&&req.method==="GET"){
-   const q=await pool.query("SELECT id,weight_kg,note,logged_on,created_at FROM pf_fitness_progress WHERE user_id=$1::uuid ORDER BY logged_on DESC,created_at DESC LIMIT 60",[user.id]);
+   const q=await pool.query("SELECT id,weight_kg,note,to_char(logged_on,'YYYY-MM-DD') AS logged_on,created_at FROM pf_fitness_progress WHERE user_id=$1::uuid ORDER BY logged_on DESC,created_at DESC LIMIT 60",[user.id]);
    return respond(res,200,{items:q.rows.map(x=>({id:x.id,weightKg:Number(x.weight_kg),note:x.note,date:x.logged_on,createdAt:x.created_at}))});
   }
   if(path==="/api/fitness/progress"&&req.method==="POST"){
