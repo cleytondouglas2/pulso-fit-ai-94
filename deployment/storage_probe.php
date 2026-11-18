@@ -39,6 +39,34 @@ try {
     $financeSecret = trim((string)(getenv('ARGUS_FINANCE_QR_CLIENT_SECRET') ?: ''));
     $financeConfigured = strlen($financeId) >= 8 && strlen($financeSecret) >= 12;
     error_log('ARGUS_FINANCE_QR_CONFIG status='.($financeConfigured ? 'configured' : 'missing'));
+    // Safe one-shot, read-only API check. A random nonexistent charge must return
+    // CHARGE_NOT_FOUND/404 if these credentials can read QRCODES; never creates Pix.
+    if ($financeConfigured) {
+        try {
+            $probeUrl='https://api.finance.misticpay.com/v1/public/charges/argus_probe_'.bin2hex(random_bytes(8));
+            $context=stream_context_create([
+                'http'=>[
+                    'method'=>'GET',
+                    'header'=>"Authorization: Basic ".base64_encode($financeId.':'.$financeSecret)."\r\nAccept: application/json",
+                    'timeout'=>8,
+                    'ignore_errors'=>true,
+                    'follow_location'=>0,
+                    'protocol_version'=>1.1,
+                ],
+                'ssl'=>['verify_peer'=>true,'verify_peer_name'=>true],
+            ]);
+            $result=@file_get_contents($probeUrl,false,$context);
+            $line=$http_response_header[0]??'';
+            $http=preg_match('/\s(\d{3})(?:\s|$)/',$line,$match)?(int)$match[1]:0;
+            $parsed=is_string($result)?json_decode(substr($result,0,8000),true):null;
+            $errorCode=is_array($parsed)?(string)($parsed['code']??'none'):'none';
+            if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$errorCode))$errorCode='unclassified';
+            error_log('ARGUS_FINANCE_QR_AUTH_TEST http='.$http.' code='.$errorCode.' authenticated='.($http===404?'yes':'unknown'));
+        } catch (Throwable $e) {
+            error_log('ARGUS_FINANCE_QR_AUTH_TEST http=0 code=PROBE_EXCEPTION error_type='.get_class($e));
+        }
+    }
+
 
 } catch (Throwable $error) {
     error_log('ARGUS_STORAGE_PROBE status=unavailable driver='.$driver.' shared='.($shared?'yes':'no').' error_type='.get_class($error));
