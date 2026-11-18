@@ -131,6 +131,13 @@ try {
         }
     }
 
+    // Check MisticPay TRANSACTION_READ scope with a random nonexistent transaction ID.
+    // No actual charge is queried; no credential, payer or response body is logged.
+    if(getenv('ARGUS_QUICK_PIX_PROVIDER')==='traditional'){
+        $traditionalRead=\ArgusPayments\TraditionalQuickPix::readPermission();
+        error_log('ARGUS_TRADITIONAL_PIX_READ_SCOPE status='.$traditionalRead['status']);
+    }
+
     // Read-only Groq authentication probe; never sends a conversation or exposes the key.
     $groqKey=trim((string)(getenv('GROQ_API_KEY')?:''));
     error_log('ARGUS_GROQ_CONFIG status='.($groqKey!==''?'configured':'missing'));
