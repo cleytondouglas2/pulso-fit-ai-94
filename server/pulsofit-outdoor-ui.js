@@ -121,6 +121,8 @@ function selectKind(kind){
  activity={kind,state:"ready",started:0,resumedAt:0,activeMs:0,distance:0,points:[],lastFix:null,lastFixAt:0,
   gpsAccuracy:null,skipped:0,weight:profileWeight,ascent:0,prevAltitude:null,splits:[],nextSplit:1000,
   key:"pf"+Date.now().toString(36)+Math.random().toString(36).slice(2,12),saved:false,savedId:null,
+  strideM:kind==="run"?1.05:.75,motionWanted:false,motionActive:false,motionSteps:0,motionSamples:0,motionReady:false,
+  lastStepAt:0,notify:false,lastNoticeMs:0,
   signal:"Ao iniciar, o navegador solicitará sua localização."};
  showTracker();refreshWeightHint();
 }
@@ -137,6 +139,65 @@ function showChooser(){
  box.querySelectorAll("[data-pf-outdoor-kind]").forEach(b=>b.addEventListener("click",()=>selectKind(b.dataset.pfOutdoorKind)));
  box.querySelector("#pf-outdoor-history").addEventListener("click",()=>{showHistory();void loadHistory()});
 }
+/* Optional sensor + GPS indicators are ESTIMATES, never medical/pedometer measurements. */
+function stepsEstimated(){
+ if(!activity||activity.kind==="bike")return null;
+ const gps=Math.round(activity.distance/(activity.strideM||.75));
+ if(activity.motionActive&&activity.motionSamples>=20&&activity.motionSteps>=8){
+  const sensor=activity.motionSteps;
+  if(activity.distance<50||(sensor<=gps*2.5&&sensor>=gps*.35))
+   return {value:sensor,source:"sensor estimativo"};
+ }
+ return {value:gps,source:"distância GPS"};
+}
+function floorsEstimated(){
+ if(!activity||!Number.isFinite(activity.ascent)||activity.ascent<3)return null;
+ return Math.floor(activity.ascent/3);
+}
+function motionEvent(ev){
+ if(!activity||activity.state!=="running"||activity.kind==="bike")return;
+ const v=ev.accelerationIncludingGravity||ev.acceleration;
+ if(!v||![v.x,v.y,v.z].every(n=>Number.isFinite(n)))return;
+ const signal=Math.abs(Math.hypot(v.x,v.y,v.z)-9.81),now=Date.now();
+ activity.motionSamples=(activity.motionSamples||0)+1;
+ if(signal<.75){activity.motionReady=true;return}
+ if(activity.motionReady&&signal>1.5&&signal<14){
+  if(now-(activity.lastStepAt||0)>320&&now-(activity.lastStepAt||0)<1500)activity.motionSteps++;
+  activity.lastStepAt=now;activity.motionReady=false;
+ }
+}
+function turnOffMotion(){window.removeEventListener("devicemotion",motionEvent)}
+function initMotion(){
+ if(!activity||activity.kind==="bike"||!activity.motionWanted||typeof DeviceMotionEvent==="undefined")return;
+ if(typeof DeviceMotionEvent.requestPermission==="function"){
+  let permit;try{permit=DeviceMotionEvent.requestPermission()}catch{return}
+  Promise.resolve(permit).then(result=>{
+   if(result==="granted"&&activity?.state==="running"){activity.motionActive=true;window.addEventListener("devicemotion",motionEvent)}
+  }).catch(()=>{});
+ }else{activity.motionActive=true;window.addEventListener("devicemotion",motionEvent)}
+}
+function liveNotice(title){
+ if(!activity?.notify||typeof Notification==="undefined"||Notification.permission!=="granted"||!navigator.serviceWorker)return;
+ const dist=nf(activity.distance/1000,2)+" km",time=clock(elapsed()/1000),step=stepsEstimated();
+ const body=dist+" • "+time+" • "+nf(speed(),1)+" km/h"+
+  (step&&step.value>0?" • ≈ "+step.value.toLocaleString("pt-BR")+" passos":"");
+ navigator.serviceWorker.ready.then(reg=>reg.showNotification(title||labels[activity.kind][1]+" • PulsoFit",{
+  body,icon:"/pulsofit-icon-192.png",badge:"/pulsofit-icon-192.png",
+  tag:"pulsofit-outdoor-progress",renotify:false,silent:true,
+  data:{url:"/?source=outdoor#/home"}
+ })).catch(()=>{});
+}
+function refreshLiveSummary(){
+ const x=document.getElementById("pf-outdoor-live-caption");
+ if(x&&activity){
+  const step=stepsEstimated();
+  x.textContent=clock(elapsed()/1000)+" • "+nf(activity.distance/1000,2)+" km"+
+   (step?" • ≈ "+step.value.toLocaleString("pt-BR")+" passos":"");
+ }
+ if(activity?.state==="running"&&activity.notify&&elapsed()-(activity.lastNoticeMs||0)>=5*60*1000){
+  activity.lastNoticeMs=elapsed();liveNotice("⏱ Seu treino continua • PulsoFit");
+ }
+}
 function summaryBars(){
  return '<div class="pf-outdoor-stats">'+
   '<div><small>⏱ Tempo ativo</small><strong id="pf-outdoor-time">00:00:00</strong></div>'+
@@ -145,6 +206,9 @@ function summaryBars(){
   '<div><small>🏃 Ritmo médio</small><strong id="pf-outdoor-pace">—</strong></div>'+
   '<div><small>🔥 Calorias estimadas</small><strong id="pf-outdoor-kcal">—</strong></div>'+
   '<div><small>🛰 Precisão GPS</small><strong id="pf-outdoor-accuracy">—</strong></div>'+
+  '<div><small>👣 Passos estimados</small><strong id="pf-outdoor-steps">—</strong></div>'+
+  '<div><small>⛰ Subida acumulada</small><strong id="pf-outdoor-uphill">—</strong></div>'+
+  '<div><small>🏢 Andares equivalentes</small><strong id="pf-outdoor-floors">—</strong></div>'+
  '</div>';
 }
 function mapMarkup(){
@@ -160,12 +224,17 @@ function showTracker(){
  '<div class="pf-outdoor-weight"><label for="pf-outdoor-weight">Peso em kg (somente para estimar calorias)</label>'+
  '<input id="pf-outdoor-weight" min="30" max="250" step="0.1" type="number" inputmode="decimal" placeholder="Opcional"><small id="pf-outdoor-weight-hint"></small></div>'+
  '<div id="pf-outdoor-status" role="status" aria-live="polite" class="pf-outdoor-status">Clique em Iniciar para ativar o GPS.</div>'+
+ '<div class="pf-outdoor-live-widget" aria-label="Resumo ao vivo"><strong>● ACOMPANHAMENTO AO VIVO</strong><span id="pf-outdoor-live-caption">00:00:00 • 0,00 km</span></div>'+
+ '<div class="pf-outdoor-optional"><label><input id="pf-outdoor-push-live" type="checkbox"> Avisos de progresso a cada 5 minutos com o app aberto (notificações previamente autorizadas)</label>'+
+ (activity.kind==="bike"?"":'<label><input id="pf-outdoor-motion" type="checkbox"> Usar sensor do celular para auxiliar estimativa de passos</label>'+
+ '<label>Passada média <select id="pf-outdoor-stride"><option value="0.6">60 cm</option><option value="0.7">70 cm</option>'+
+ '<option value="0.75" selected>75 cm</option><option value="0.85">85 cm</option><option value="1.05">105 cm</option><option value="1.2">120 cm</option></select></label>')+'</div>'+
  mapMarkup()+summaryBars()+
  '<div class="pf-outdoor-actions"><button class="pf-outdoor-primary" id="pf-outdoor-start" type="button">▶ Iniciar e ativar GPS</button>'+
  '<button id="pf-outdoor-pause" type="button" class="pf-outdoor-secondary" hidden>⏸ Pausar</button>'+
  '<button id="pf-outdoor-resume" type="button" class="pf-outdoor-primary" hidden>▶ Retomar GPS</button>'+
  '<button id="pf-outdoor-finish" type="button" class="pf-outdoor-danger" hidden>■ Finalizar</button></div>'+
- '<p class="pf-outdoor-foot">Estimativas de calorias usam METs aproximados do Compêndio de Atividades Físicas de 2024, não sensores de gasto energético. Passos, suor, batimentos e gordura corporal não são medidos por GPS.</p>'+
+ '<p class="pf-outdoor-foot">Passos por distância/sensor e andares equivalentes por altitude são apenas estimativas. O navegador não identifica escadas reais nem cria Live Activities nativas na tela bloqueada. Os avisos de progresso funcionam enquanto o app está aberto. Calorias são estimativas, não medições de suor ou gordura.</p>'+
  '<p class="pf-outdoor-foot">Para sua segurança, observe o caminho e não manipule o celular enquanto corre, caminha ou pedala.</p>';
  box.querySelector("#pf-outdoor-change").addEventListener("click",()=>{if(activity.state==="running"||activity.state==="paused"){setStatus("Finalize a atividade antes de trocar de modalidade.");return}showChooser()});
  box.querySelector("#pf-outdoor-start").addEventListener("click",startGPS);
