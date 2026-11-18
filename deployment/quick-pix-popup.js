@@ -72,7 +72,7 @@
      '<section class="argus-pix-success-card" role="dialog" aria-modal="true" aria-labelledby="argus-pix-success-title" aria-describedby="argus-pix-success-description" tabindex="-1">',
      '<div class="argus-pix-success-symbol" aria-hidden="true">✓</div>',
      '<h2 id="argus-pix-success-title">Parabéns! 🎉</h2>',
-     '<p id="argus-pix-success-description">Seu Pix foi recebido e confirmado pela MisticPay.</p>',
+     '<p id="argus-pix-success-description">Seu Pix foi recebido e confirmado pela ARGUS Pay.</p>',
      '<strong id="argus-pix-success-amount"></strong>',
      '<button id="argus-pix-success-ok" class="btn primary" type="button">OK</button>',
      '</section>'
