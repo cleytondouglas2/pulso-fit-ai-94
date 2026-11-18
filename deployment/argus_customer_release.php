@@ -37,6 +37,13 @@ $src=str_replace('Pix real','Pix',$src);
 $src=str_replace('MisticPay · Pix real','ARGUS Payments',$src);
 $src=str_replace('class="live-label"','class="live-label" hidden',$src);
 file_put_contents($html,$src);
+
+/* Native form fallback must never leak passwords, OTP or Pix keys in query strings. */
+$src=file_get_contents($html);
+foreach(['login-form','password-form','mfa-form','payout-form','charge-create-form'] as $formId){
+ $src=preg_replace('~<form id="'.preg_quote($formId,'~').'"(?![^>]*\bmethod=)~','<form method="post" id="'.$formId.'"',$src,1);
+}
+file_put_contents($html,$src);
 $js="$root/public/static/admin.js";
 $script=file_get_contents($js);
 $script=str_replace([
@@ -81,6 +88,44 @@ $script .= <<<'JS'
   host.hidden=!data.pix_copy_paste;
  };
 })();
+JS;
+/* Ensure every financial action uses fetch POST rather than the browser's default GET. */
+$script .= <<<'JS'
+
+async function loadWallet(){
+ if(state.user?.role!=='superadmin')return;
+ await Promise.allSettled([loadWalletBalance(),loadPayoutHistory()]);
+}
+async function loadWalletBalance(){
+ try{const result=await api('/api/admin/wallet/balance');$('#wallet-balance').textContent=fmt(result.available_cents);$('#wallet-state').textContent='Saldo atualizado por consulta autenticada.'}
+ catch(err){$('#wallet-balance').textContent='—';$('#wallet-state').textContent='Saldo indisponível: '+err.message;}
+}
+async function loadPayoutHistory(){
+ try{
+  const rows=await api('/api/admin/payouts');$('#payout-rows').innerHTML=rows.map(r=>'<tr><td>'+time(r.created_at)+'</td><td>'+esc(r.pix_key_type+' '+r.pix_key_masked)+'</td><td>'+fmt(r.amount_cents)+'</td><td>'+badge(r.status)+'</td><td>'+((r.provider_tx_id&&['queued','pending','unknown'].includes(r.status))?'<button type="button" class="mini" data-payout-reconcile="'+esc(r.id)+'">Conferir</button>':'—')+'</td></tr>').join('')||empty(5);
+ }catch(err){$('#payout-rows').innerHTML=empty(5,'Não foi possível consultar o histórico');toast(err.message,true);}
+}
+$('#wallet-refresh').onclick=loadWalletBalance;
+$('#payout-rows').onclick=async e=>{
+ const button=e.target.closest('button[data-payout-reconcile]');if(!button)return;
+ button.disabled=true;try{await post('/api/admin/payouts/'+encodeURIComponent(button.dataset.payoutReconcile)+'/reconcile');await loadPayoutHistory();toast('Situação consultada com segurança')}catch(err){toast(err.message,true)}finally{button.disabled=false}
+};
+$('#payout-form').setAttribute('method','post');$('#payout-form').setAttribute('action','/api/admin/payouts');
+$('#payout-form').onsubmit=async event=>{
+ event.preventDefault();if(state.user?.role!=='superadmin')return;
+ const form=event.target,raw=formValues(form),numeric=Number(String(raw.amount||'').replace(',','.'));
+ const amount=Math.round(numeric*100);
+ if(!Number.isFinite(numeric)||Math.abs(amount/100-numeric)>0.000001||amount<100||amount>10000){toast('Valor permitido: R$ 1,00 a R$ 100,00',true);return;}
+ if(!raw.confirm||!raw.otp){toast('Confirme e informe um novo código do autenticador',true);return}
+ if(!confirm('Confirma a transferência de '+fmt(amount)+' para chave informada? Essa ação movimenta dinheiro real.'))return;
+ const submit=form.querySelector('button[type="submit"]');submit.disabled=true;
+ const idempotency_key=form.dataset.idem||crypto.randomUUID();form.dataset.idem=idempotency_key;
+ try{
+  const response=await post('/api/admin/payouts',{amount_cents:amount,pix_key_type:raw.pix_key_type,pix_key:raw.pix_key,description:raw.description,otp:raw.otp,confirm:true,idempotency_key});
+  delete form.dataset.idem;form.reset();await loadPayoutHistory();toast('Solicitação registrada: '+response.id+'. Confira o histórico.');
+ }catch(err){toast('Não reenvie automaticamente: '+err.message,true)}
+ finally{submit.disabled=false}
+};
 JS;
 file_put_contents($js,$script);
 $css="$root/public/static/polish.css";
