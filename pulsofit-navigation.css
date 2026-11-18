@@ -461,3 +461,17 @@
 .pf-checkout-submit:disabled{opacity:.50;cursor:not-allowed}
 .pf-checkout-login{background:transparent;color:#e0cdfb;margin-top:7px;border:1px solid #50416c}
 @media(prefers-reduced-motion:reduce){.pf-checkout-logo{animation:none}}
+
+/* Checkout MisticPay Pix produção - QR Code e dados */
+.pf-checkout-payer{display:grid;gap:12px;margin:16px 0}
+.pf-checkout-payer label{display:grid;gap:5px;font:700 12px/1.4 system-ui,sans-serif;color:#d9d5ed}
+.pf-checkout-payer input{box-sizing:border-box;width:100%;padding:13px;color:white;background:#11192a;border:1px solid #59517c;border-radius:12px;font:500 15px system-ui,sans-serif}
+.pf-checkout-payer input:focus{outline:2px solid #9f77ec;outline-offset:2px}
+.pf-checkout-methods label:has(input:disabled){opacity:.45;cursor:not-allowed}
+.pf-checkout-pix[hidden],.pf-checkout-payer[hidden],.pf-checkout-submit[hidden] {display:none!important}
+.pf-checkout-pix{display:grid;justify-items:stretch;gap:10px;padding:14px;border-radius:16px;background:#1c2540;border:1px solid #5a4684;margin:16px 0}
+.pf-checkout-pix .pf-checkout-qr{width:min(75%,240px);height:auto;justify-self:center;border:8px solid #fff;border-radius:10px;background:white}
+.pf-checkout-pix .pf-checkout-qr[hidden]{display:none}
+.pf-checkout-pix textarea{box-sizing:border-box;width:100%;resize:none;border-radius:10px;border:1px solid #586083;background:#121a2c;color:#eff7ff;padding:11px;font:12px/1.35 ui-monospace,monospace;overflow-wrap:anywhere}
+.pf-checkout-pix button{border:0;border-radius:12px;padding:11px 15px;font:800 13px system-ui,sans-serif;cursor:pointer;background:#7640d4;color:#fff}
+.pf-checkout-pix .pf-checkout-verify{background:#26314d;border:1px solid #8b77af}
