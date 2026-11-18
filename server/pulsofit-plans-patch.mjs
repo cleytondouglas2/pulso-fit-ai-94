@@ -61,7 +61,14 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      if(html.includes(marker)){found.push(full+":already");continue}
      const matches=Array.from(html.matchAll(/<\/body\s*>/gi));
      const last=matches[matches.length-1];
-     const revised=html.slice(0,last.index)+inject+html.slice(last.index);
+     // Safari may cache the old syntactically invalid bundle after deploy.
+     // Bust only the script URL; the generated app.js itself is repaired
+     // before this file is updated by pulsofit-js-boot-repair.mjs.
+     const freshHtml=html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
+      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-bootfix"+quote);
+     const changedAssets=(freshHtml!==html);
+     if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
+     const revised=freshHtml.slice(0,last.index)+inject+freshHtml.slice(last.index);
      writeFileSync(full,revised);
      found.push(full);
     }catch{console.warn("[pulso-ui] Não foi possível atualizar arquivo HTML (continua disponível sem patch).")}
