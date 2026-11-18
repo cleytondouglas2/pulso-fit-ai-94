@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDisplayName</key>
+  <string>PulsoFit AI</string>
+  <key>NSLocationWhenInUseUsageDescription</key>
+  <string>O PulsoFit usa sua localização enquanto você caminha, corre ou pedala para calcular distância, percurso e ritmo.</string>
+  <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+  <string>Com sua autorização, o PulsoFit continua registrando a atividade durante a tela bloqueada ou em segundo plano. Você pode parar quando quiser.</string>
+  <key>NSMotionUsageDescription</key>
+  <string>O PulsoFit pode usar os sensores de movimento para estimar passos durante suas atividades.</string>
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>location</string>
+  </array>
+  <key>ITSAppUsesNonExemptEncryption</key>
+  <false/>
+</dict>
+</plist>
