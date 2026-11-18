@@ -1,0 +1,41 @@
+name: PulsoFit - correcoes mobile e GPS nativo
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-plans-stable.js"
+      - "server/pulsofit-coach-avatar.js"
+      - "server/pulsofit-home-greeting.js"
+      - "server/pulsofit-workout-editor-mobile.js"
+      - "server/pulsofit-workout-editor-mobile.css"
+      - "server/pulsofit-mobile-fixes.test.mjs"
+      - "server/pulsofit-outdoor-ui.js"
+      - "server/pulsofit-outdoor.css"
+      - "server/pulsofit-plans-patch.mjs"
+      - "ios-native/**"
+      - ".github/workflows/pulsofit-mobile-fixes.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-mobile-fixes.test.mjs"
+      - "server/pulsofit-plans-stable.js"
+      - "server/pulsofit-coach-avatar.js"
+      - "server/pulsofit-workout-editor-mobile.js"
+      - "server/pulsofit-outdoor-ui.js"
+      - "ios-native/**"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check server/pulsofit-plans-stable.js
+      - run: node --check server/pulsofit-coach-avatar.js
+      - run: node --check server/pulsofit-home-greeting.js
+      - run: node --check server/pulsofit-workout-editor-mobile.js
+      - run: node --check server/pulsofit-outdoor-ui.js
+      - run: node --check server/pulsofit-plans-patch.mjs
+      - run: node --test server/pulsofit-mobile-fixes.test.mjs server/pulsofit-outdoor.test.mjs
