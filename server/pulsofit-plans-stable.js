@@ -86,6 +86,47 @@
  }
  var paymentPoll=null;
  function stopPolling(){if(paymentPoll){clearInterval(paymentPoll);paymentPoll=null}}
+ var checkingPreviousPix=false;
+ function renderPaid(data){
+  var root=document.querySelector("#pf-stable-modal .pf-stable-body");
+  if(!root)return;
+  stopPolling();
+  try{localStorage.removeItem("pulsofit-pix-pending-ref-v1")}catch{}
+  root.innerHTML='<div class="pf-stable-top"><div><small>✅ PULSOFIT • PIX CONFIRMADO</small>'+
+   '<h2>Pagamento confirmado!</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
+   '<section class="pf-stable-trial"><strong>Seu pagamento foi reconhecido pelo servidor.</strong>'+
+   '<p id="pf-stable-paid-detail"></p></section>'+
+   '<button id="pf-stable-continue" type="button" style="width:100%;background:#6a42b4;border:0;border-radius:12px;color:white;padding:15px;font-weight:800">Continuar para o aplicativo</button>';
+  var expire=data?.planExpiresAt&&Number.isFinite(Date.parse(data.planExpiresAt))?
+   new Date(data.planExpiresAt).toLocaleString("pt-BR"):"";
+  root.querySelector("#pf-stable-paid-detail").textContent=
+    data.planActive?"Plano ativo"+(expire?" até "+expire:"")+". Aproveite seus treinos!":
+     "Pix confirmado. A liberação ainda não apareceu na assinatura; confira sua conta antes de tentar pagar novamente.";
+  root.querySelector(".pf-stable-close").addEventListener("click",function(){closedOnRoute=true;stopPolling();hide()});
+  root.querySelector("#pf-stable-continue").addEventListener("click",function(){stopPolling();hide();location.hash="#/home"});
+  void load(true);
+  try{window.dispatchEvent(new Event("pulso-payment-confirmed"))}catch{}
+ }
+ async function recoverPreviousPix(quiet){
+  if(checkingPreviousPix||!token())return;
+  checkingPreviousPix=true;
+  try{
+   const response=await fetch("/api/billing/recover",{cache:"no-store",headers:{Authorization:"Bearer "+token()}});
+   const json=await response.json().catch(()=>({}));
+   if(!response.ok)throw Error(json.error||"Não foi possível consultar o pagamento.");
+   if(json.paid){renderPaid(json);return}
+   const message=document.getElementById("pf-stable-recovery-status");
+   if(message&&json.found){
+    message.textContent=json.retryable?
+      "Não foi possível consultar a MisticPay agora. Se você pagou, não pague novamente; tente verificar mais tarde.":
+      "Pix encontrado nesta conta. Situação: "+String(json.status||"PENDENTE")+". Aguardando confirmação da MisticPay.";
+    if(!paymentPoll)paymentPoll=setInterval(function(){if(!document.hidden)void recoverPreviousPix(true)},16000);
+   }else if(message&&!quiet){message.textContent="Não encontrei Pix recente nesta conta. Confirme se entrou com o mesmo usuário usado no pagamento."}
+  }catch(e){
+   const message=document.getElementById("pf-stable-recovery-status");
+   if(message&&!quiet)message.textContent="Falha na consulta: "+String(e.message||e)+". Não gere outra cobrança.";
+  }finally{checkingPreviousPix=false}
+ }
  function select(code){
   var plan=code==="teste7d"&&offerActive()?{code:"teste7d",name:"Teste do Pix",price:"R$ 1,00",days:7}:
        code==="mensal"?{code:"mensal",name:"Mensal",price:"R$ 24,90",days:30}:
@@ -140,13 +181,17 @@
     headers:{Authorization:"Bearer "+token()}})
    .then(function(r){return r.json().then(function(j){if(!r.ok)throw Error(j.error||"Consulta indisponível");return j})})
    .then(function(j){
-    if(j.paid){stopPolling();status.textContent="Pagamento confirmado! Seu plano foi ativado. Atualize o aplicativo para consultar a validade.";load(true)}
+    if(j.paid){renderPaid(j)}
     else if(["DEVOLVIDO","DEVOLVIDO_PARCIAL","CANCELADO","FALHA"].includes(j.status)){stopPolling();status.textContent="Pagamento não concluído: "+j.status}
     else status.textContent="Aguardando o pagamento do Pix...";
-   }).catch(function(e){status.textContent="Consulta temporariamente indisponível: "+e.message})
+   }).catch(function(e){status.textContent="Confirmação temporariamente indisponível: "+e.message+". Não pague novamente. Vá a Planos para recuperar este Pix."})
     .finally(function(){processing=false});
   }
   body.querySelector("#pf-stable-pix-check").addEventListener("click",verify);
+  const onReturn=()=>{if(reference&&body.isConnected&&!processing&&!document.hidden)verify()};
+  document.addEventListener("visibilitychange",onReturn);
+  window.addEventListener("pageshow",onReturn);
+  window.addEventListener("focus",onReturn);
   var loggedIn=token();
   if(!loggedIn){
    status.textContent="Entre ou crie uma conta para gerar seu Pix.";
@@ -175,6 +220,7 @@
    .then(function(j){
     if(!j.reference||!j.copyPaste)throw Error("Cobrança sem código Pix válido");
     reference=j.reference;result.hidden=false;form.hidden=true;
+    try{localStorage.setItem("pulsofit-pix-pending-ref-v1",reference)}catch{}
     body.querySelector("#pf-stable-pix-code").value=j.copyPaste;
     var img=body.querySelector("#pf-stable-pix-image");
     var raw=String(j.qrCodeBase64||"").trim();
@@ -184,6 +230,7 @@
     status.textContent=data?"QR Code Pix gerado. Aguardando pagamento...":
        "Pix gerado. Use o código copia e cola abaixo no aplicativo do seu banco.";
     stopPolling();paymentPoll=setInterval(verify,12000);
+    setTimeout(verify,2500);
    }).catch(function(e){status.textContent="Não foi possível gerar Pix: "+e.message;btn.disabled=false})
     .finally(function(){processing=false});
   });
@@ -199,13 +246,17 @@
   '<article class="pf-stable-card promo" id="pf-stable-test-offer" hidden></article>'+
   '<article class="pf-stable-card"><small>SEM FIDELIDADE</small><b>Plano Quinzenal</b><div class="pf-stable-price">R$ 14,90</div><small>15 dias de acesso</small><p>Treinos, Coach IA, metas e acompanhamento.</p><button type="button" data-pf-stable-plan="quinzenal">Selecionar 15 dias</button></article>'+
   '<article class="pf-stable-card best"><small>MELHOR CUSTO-BENEFÍCIO</small><b>Plano Mensal</b><div class="pf-stable-price">R$ 24,90</div><small>30 dias de acesso</small><p>Todos os recursos, com mais economia.</p><button type="button" data-pf-stable-plan="mensal">Selecionar 30 dias</button></article>'+
-  '</div><p class="pf-stable-foot">Pix via MisticPay. O cartão ainda não está disponível. O pagamento somente libera o plano após confirmação no servidor.</p></section>';
+  '</div><button type="button" id="pf-stable-recover-button" style="display:block;width:100%;margin:15px 0;background:#33426a;color:white;border:1px solid #a78fe8;border-radius:12px;padding:14px;font-weight:800">✅ Já paguei — recuperar e confirmar meu Pix</button>'+
+  '<p id="pf-stable-recovery-status" role="status" style="color:#e1daff;font-size:13px"></p>'+
+  '<p class="pf-stable-foot">Pix via MisticPay. O cartão ainda não está disponível. O pagamento somente libera o plano após confirmação no servidor.</p></section>';
   outer.querySelector(".pf-stable-close").addEventListener("click",function(){closedOnRoute=true;hide()});
   outer.addEventListener("click",function(e){
    if(e.target===outer){closedOnRoute=true;hide();return}
    var btn=e.target.closest("[data-pf-stable-plan]");if(btn)select(btn.dataset.pfStablePlan);
   });
   document.body.appendChild(outer);paint();updateOffer();void refreshOffer(true);
+  outer.querySelector("#pf-stable-recover-button")?.addEventListener("click",()=>void recoverPreviousPix(false));
+  try{if(token()&&localStorage.getItem("pulsofit-pix-pending-ref-v1"))void recoverPreviousPix(true)}catch{}
  }
  async function load(force){
   var key=token();
