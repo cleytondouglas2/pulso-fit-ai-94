@@ -101,6 +101,36 @@ try {
     }
 
 
+
+    // Stronger diagnosis when keys have the documented traditional API pair shape.
+    // This is the provider's own read-only endpoint; never record its response body or PII.
+    if(preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$financeId) &&
+       preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$financeSecret) &&
+       function_exists('curl_init')){
+        try{
+            $legacyCh=curl_init('https://api.misticpay.com/api/users/info');
+            curl_setopt_array($legacyCh,[
+                CURLOPT_RETURNTRANSFER=>true,
+                CURLOPT_HTTPHEADER=>['Authorization: Basic '.base64_encode($financeId.':'.$financeSecret),'Accept: application/json'],
+                CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,CURLOPT_FOLLOWLOCATION=>false,
+                CURLOPT_MAXREDIRS=>0,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+            ]);
+            $legacyBody=curl_exec($legacyCh);
+            $legacyHttp=(int)curl_getinfo($legacyCh,CURLINFO_HTTP_CODE);
+            curl_close($legacyCh);
+            // Parse only the provider error code, never name, email, document, bank data, or body.
+            $legacyError=$legacyHttp>=400&&is_string($legacyBody)?json_decode(substr($legacyBody,0,3000),true):null;
+            $legacyCode=is_array($legacyError)?strtoupper((string)($legacyError['code']??'none')):'none';
+            if(!preg_match('/^[A-Z0-9_]{1,64}$/D',$legacyCode))$legacyCode='unclassified';
+            $legacyAuthenticated=$legacyHttp===200||($legacyHttp===403&&$legacyCode==='API_SCOPE_DENIED');
+            error_log('ARGUS_TRADITIONAL_MISTICPAY_READONLY_TEST http='.$legacyHttp.
+                ' code='.$legacyCode.' authenticated='.($legacyAuthenticated?'yes':'unconfirmed'));
+            unset($legacyBody,$legacyError);
+        }catch(Throwable $e){
+            error_log('ARGUS_TRADITIONAL_MISTICPAY_READONLY_TEST http=0 authenticated=unconfirmed error_type='.get_class($e));
+        }
+    }
+
     // Read-only Groq authentication probe; never sends a conversation or exposes the key.
     $groqKey=trim((string)(getenv('GROQ_API_KEY')?:''));
     error_log('ARGUS_GROQ_CONFIG status='.($groqKey!==''?'configured':'missing'));
