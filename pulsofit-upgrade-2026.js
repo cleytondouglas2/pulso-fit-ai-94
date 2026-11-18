@@ -81,24 +81,12 @@ function bootPulsoUpgrade(){
     var head='<section class="pf2026-coach-hero"><div class="pf2026-coach-orb">✦<span>IA</span></div><div><span class="pf2026-overline">PULSO FIT · ASSISTENTE INTELIGENTE</span><h1>Converse com seu <em>Coach IA.</em></h1><p>Seu espaço para planejar treinos, tirar dúvidas e ajustar sua rotina com sugestões que respeitam seus objetivos.</p><div class="pf2026-status">'+pfaiOnlineLabel()+'</div></div></section><div class="pf2026-journeys"><button type="button" data-pf-action="suggest" data-message="Crie um treino de 20 minutos para hoje de acordo com meu objetivo">⚡ Treino de hoje</button><button type="button" data-pf-action="suggest" data-message="Estou cansado e quero adaptar meu treino. O que você sugere?">🧘 Adaptar treino</button><button type="button" data-pf-action="suggest" data-message="Como melhorar minha alimentação para meu objetivo?">🥗 Alimentação</button><button type="button" data-pf-action="suggest" data-message="Analise minha evolução e me ajude a manter a constância">📈 Minha evolução</button></div>';
     return view.replace(/<section class="pfai-hero">[\s\S]*?<\/section>/,head);
   };
-  var oldSubscription=renderSubscription;
-  renderSubscription=function(){
-    var me=pro.me||null;
-    var trialEnd=me&&(me.trialEndsAt||me.trial_end_at||me.trialExpiresAt);
-    var remaining=trialEnd?Math.max(0,Math.ceil((new Date(trialEnd).getTime()-Date.now())/86400000)):null;
-    var status=remaining!==null?(remaining>0?'Seu teste registrado no servidor: '+remaining+' dia(s) restante(s).':'Teste expirado: escolha um plano para continuar.'):'O teste de 7 dias e a cobrança dependem de ativação no servidor. Nenhuma cobrança será iniciada nesta tela.';
-    return '<section class="pf2026-billing-hero"><span class="pf2026-overline">PULSO FIT · ASSINATURAS</span><h1>Seu treino merece <em>continuidade.</em></h1><p>Conheça os planos e experimente a experiência completa durante 7 dias quando o sistema de assinaturas estiver habilitado.</p><div class="pf2026-billing-status">'+status+'</div></section>'
-      +'<div class="pf2026-price-grid">'
-      +'<article class="pf2026-price-card"><span>FLEXÍVEL</span><h2>Quinzenal</h2><div class="pf2026-price">R$ 14,90 <small>/ 15 dias</small></div><p>Sem fidelidade • acesso por 15 dias após confirmação do pagamento.</p><ul><li>Treinos e exercícios</li><li>Coach IA, quando conectado</li><li>Meu Prato e metas</li></ul><button type="button" class="btn-alt wide" data-pf2026-action="plan" data-plan="quinzenal">Escolher quinzenal</button></article>'
-      +'<article class="pf2026-price-card highlighted"><span>MAIS VANTAJOSO</span><h2>Mensal</h2><div class="pf2026-price">R$ 24,90 <small>/ 30 dias</small></div><p>Economize R$ 4,90 em relação a duas quinzenas.</p><ul><li>Todos os treinos</li><li>Coach IA, quando conectado</li><li>Análise de refeições e relatórios</li></ul><button type="button" class="btn wide" data-pf2026-action="plan" data-plan="mensal">Escolher mensal</button></article></div>'
-      +'<section class="pf2026-trial"><h3>🎁 7 dias grátis</h3><p>Uma vez por conta, sem cobrança automática durante o teste. O início e o fim do período precisam ser confirmados pelo servidor para valer em qualquer aparelho.</p><button type="button" class="btn-alt" data-pf2026-action="trial">Conhecer o teste de 7 dias →</button></section>'
-      +'<p class="pf2026-billing-note">Importante: o checkout, os webhooks de pagamento, a ativação automática e o bloqueio seguro após o teste ainda não estão ativos. Os preços são propostas para configuração, não cobranças disponíveis. Não informe dados de cartão nesta tela.</p>';
-  };
+  // A página de assinaturas é definida dentro do módulo PRO; não pode ser substituída daqui.
   document.addEventListener("click",function(ev){
     var el=ev.target.closest&&ev.target.closest("[data-pf2026-action]");if(!el)return;
     ev.preventDefault();var action=el.dataset.pf2026Action;
     if(action==="plan"){flash("Plano "+el.dataset.plan+" selecionado. O pagamento ainda precisa ser integrado ao servidor; nenhuma cobrança foi realizada.");return;}
-    if(action==="trial"){if(pro.me){flash("O teste de 7 dias será disponibilizado após a integração do controle de assinaturas no servidor.");}else{pro.authMode="register";navigate("account");flash("Crie sua conta. O teste será iniciado somente após a ativação do controle de assinaturas.");}return;}
+    if(action==="trial"){navigate("account");flash("Cadastre-se ou entre para verificar seu período de avaliação. O pagamento online ainda está em implantação.");return;}
     if(action==="voice"){
       var Speech=window.SpeechRecognition||window.webkitSpeechRecognition;
       if(!Speech){flash("Ditado por voz indisponível neste navegador. Use o teclado.");return;}
