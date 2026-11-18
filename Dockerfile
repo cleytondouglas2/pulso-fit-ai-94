@@ -15,7 +15,7 @@ RUN unzip -q /tmp/argus-source.zip -d /tmp \
  && a2enconf argus-auth \
  && sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/public#g' /etc/apache2/sites-available/000-default.conf \
  && printf '<Directory /var/www/html/public>\nAllowOverride All\nRequire all granted\n</Directory>\n' >> /etc/apache2/sites-available/000-default.conf
-RUN php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/b2b_http.php
+RUN php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/b2b_http.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "/var/www/html/start-render.sh"]
