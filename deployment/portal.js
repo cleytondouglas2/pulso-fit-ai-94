@@ -28,6 +28,10 @@ function render(account){
  $('#hello').textContent=greeting+', '+account.display_name.split(' ')[0];
  $('#account-kind').textContent=account.account_type==='PF'?'Pessoa física':'Pessoa jurídica';
  $('#account-email').textContent=account.email;$('#account-doc').textContent='•••• '+account.document_last4;
+ const dv=account.document_validation||{};
+ $('#doc-check-status').textContent=dv.label||'Verificação cadastral pendente';
+ $('#document-recheck').hidden=dv.status!=='not_checked'&&dv.status!=='cnpj_unavailable';
+ $('#document-recheck').querySelector('input').placeholder=account.account_type==='PJ'?'CNPJ cadastrado':'CPF cadastrado';
  $('#company-document').disabled=account.account_type!=='PJ';
  const labels={documents_required:'Documentos necessários',documents_under_review:'Em análise documental',approved:'Aprovada',suspended:'Suspensa',rejected:'Recusada'};
  $('#status').textContent=labels[account.status]||'Em avaliação';
@@ -50,6 +54,13 @@ $('#create-key').onclick=async()=>{if(!state.account?.can_issue_live_keys)return
  const btn=$('#create-key');btn.disabled=true;
  try{const result=await request('/api/portal/keys',{method:'POST',body:{}});$('#once-key').value=result.api_key;$('#once-secret').value=result.api_secret;$('#secret-once').hidden=false;await loadKeys();notice('Chaves emitidas. Guarde a secreta em local seguro.')}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
 $('#copy-credentials').onclick=async()=>{try{await navigator.clipboard.writeText('ARGUS_API_KEY='+$('#once-key').value+'\nARGUS_API_SECRET='+$('#once-secret').value);notice('Credenciais copiadas')}catch{notice('Copie os campos manualmente',true)}};
+$('#document-recheck').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{
+ const number=e.target.elements.document_number.value;
+ const result=await request('/api/portal/validate-document',{method:'POST',body:{document_number:number}});
+ $('#doc-check-status').textContent=result.validation?.label||'Consulta pendente';
+ e.target.reset();notice(result.message);
+ const current=await request('/api/portal/session');render(current.account);
+})};
 $('#upload-form').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{
  const form=e.target,file=form.elements.document_file.files[0];
  if(!file||file.size>3200000||file.size<1024){notice('Envie arquivo entre 1 KB e 3,2 MB',true);return}
