@@ -367,3 +367,62 @@
   #app .mobile-nav button[data-route="coach"],#app .pfai-bubble {animation:none!important}
   #app .pfai-chat-log{scroll-behavior:auto}
 }
+
+
+/* PulsoFit AI — identidade, feedback de carregamento e painel de checkout */
+#pf-loading {
+  position:relative!important;
+  padding-top:122px!important;
+}
+#pf-loading::before,
+#app .pf-logo-wait::before {
+  content:"";
+  display:block;
+  position:absolute;
+  top:18px;
+  left:50%;
+  width:90px;
+  height:90px;
+  transform:translateX(-50%);
+  background:url("./pulsofit-brand.svg") center/contain no-repeat;
+  animation:pf-logo-breathe 1.85s ease-in-out infinite;
+  filter:drop-shadow(0 0 14px rgba(145,70,240,.36));
+}
+#app .pf-logo-wait {
+  position:relative!important;
+  min-height:135px!important;
+  padding-top:115px!important;
+  text-align:center;
+}
+@keyframes pf-logo-breathe{
+  0%,100% {opacity:1;filter:drop-shadow(0 0 13px rgba(145,70,240,.42));}
+  50% {opacity:.35;filter:drop-shadow(0 0 4px rgba(145,70,240,.15));}
+}
+#app .pf-new-brand {
+  display:flex;align-items:center;gap:8px;cursor:pointer;
+  min-width:0;padding:12px 10px 19px;text-decoration:none!important;color:#fff;
+}
+#app .pf-new-brand img{height:45px;width:45px;object-fit:contain;flex:none}
+#app .pf-new-brand strong {font:900 21px/1.1 system-ui,sans-serif;letter-spacing:-.7px;color:#e4ddff}
+#app .pf-new-brand strong b{color:#47edc3}
+#app .pf-new-brand .pf-brand-ai{margin-left:4px;display:inline-block;font:900 10px/1.4 system-ui,sans-serif;background:#7240d3;border-radius:9px;padding:2px 6px;vertical-align:middle}
+#app .pf-gateway-admin{
+  border:1px solid rgba(167,128,241,.34);border-radius:20px;padding:20px;
+  background:linear-gradient(135deg,rgba(38,27,67,.9),rgba(17,30,50,.9));
+  color:#e9e5ff;margin:20px 0;max-width:780px;
+}
+#app .pf-gateway-admin h3{font-size:19px;margin:0 0 8px;color:#fff}
+#app .pf-gateway-admin p,#app .pf-gateway-admin small{color:#c4bfdc;line-height:1.5}
+#app .pf-gateway-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0}
+#app .pf-gateway-form label{font-size:12px;font-weight:800;color:#ded4fb;display:flex;flex-direction:column;gap:6px;min-width:0}
+#app .pf-gateway-form input,#app .pf-gateway-form select{
+  box-sizing:border-box;width:100%;background:#111a2d;border:1px solid #4c436e;
+  border-radius:12px;padding:12px;color:#fff;font-size:14px;
+}
+#app .pf-gateway-form input:focus,#app .pf-gateway-form select:focus{outline:2px solid #9d71f1;outline-offset:1px}
+#app .pf-gateway-admin button{cursor:pointer;background:#7f43e1;border:0;border-radius:12px;padding:11px 14px;color:#fff;font-weight:800}
+#app .pf-gateway-status{margin-top:10px;min-height:20px;font-size:13px}
+#app .pf-gateway-full{grid-column:1/-1}
+#app .pf-gateway-admin .pf-checkout-warning{color:#c7ddf5}
+@media(max-width:600px){#app .pf-gateway-form{grid-template-columns:1fr}#app .pf-new-brand strong{font-size:19px}}
+@media(prefers-reduced-motion:reduce){#pf-loading::before,#app .pf-logo-wait::before{animation:none}}
