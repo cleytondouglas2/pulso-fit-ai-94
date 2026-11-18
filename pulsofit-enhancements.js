@@ -67,7 +67,7 @@
     els.forEach(function(el){
       el.classList.toggle("pf-coach-center",el.dataset.route==="coach");
       if(el.dataset.route==="coach"){
-        var s=el.querySelector("span:last-child");if(s)s.textContent="Coach IA";
+        var s=el.querySelector("span:last-child");if(s&&s.textContent!=="Coach IA")s.textContent="Coach IA";
         el.setAttribute("aria-label","Abrir Coach IA");
       }
       el.classList.toggle("active",el.dataset.route===activeRoute());
@@ -76,11 +76,11 @@
   function enhanceCoach(root){
     var chat=root.querySelector(".pfai-chat-panel");if(!chat)return;
     chat.classList.add("pf-coach-revamp");
-    var title=chat.querySelector(".pfai-chat-header h2");if(title)title.textContent="Seu espaço de conversa";
+    var title=chat.querySelector(".pfai-chat-header h2");if(title&&title.textContent!=="Seu espaço de conversa")title.textContent="Seu espaço de conversa";
     var textarea=chat.querySelector("#pfaiChatInput");
-    if(textarea)textarea.placeholder="Pergunte qualquer coisa sobre treino, recuperação ou alimentação...";
+    if(textarea&&textarea.placeholder!=="Pergunte qualquer coisa sobre treino, recuperação ou alimentação...")textarea.placeholder="Pergunte qualquer coisa sobre treino, recuperação ou alimentação...";
     var hero=root.querySelector(".pfai-hero h1");
-    if(hero)hero.innerHTML="Seu treino evolui.<br><em>A conversa também.</em>";
+    if(hero&&!hero.dataset.pfHeroReady){hero.dataset.pfHeroReady="true";hero.innerHTML="Seu treino evolui.<br><em>A conversa também.</em>";}
     var list=chat.querySelector("#pfaiChatLog");
     if(list&&!chat.querySelector(".pf-chat-modes")){
       var bar=document.createElement("div");bar.className="pf-chat-modes";
