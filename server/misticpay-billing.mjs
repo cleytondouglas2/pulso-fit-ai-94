@@ -39,7 +39,7 @@ const missing=(store)=>[
 export function createMisticPayBilling({authenticate,store,origin,gateway=createMisticPayAdapter()}={}){
  if(typeof authenticate!=="function")throw Error("Autenticação do servidor é obrigatória");
  if(!origin||!/^https:\/\/[^/]+$/.test(origin))throw Error("Origin HTTPS explícita obrigatória");
- const ready=()=>missing(store).length===0&&gateway.credentialsReady();
+ const ready=()=>missing(store).length===0&&typeof store?.firstTrialUse==="function"&&typeof store?.getEntitlement==="function"&&gateway.credentialsReady();
  async function settle(order,payment){
   if(!paymentMatchesOrder(payment,order))throw Object.assign(Error("Dados da transação divergem do pedido"),{status:409});
   if(payment.status==="COMPLETO") {
@@ -59,8 +59,22 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
  return async function handle(req,res){
   const url=new URL(req.url,origin);
   const path=url.pathname;
-  if(!path.startsWith("/api/billing/")&&!path.startsWith("/api/admin/billing/"))return false;
+  if(!path.startsWith("/api/billing/")&&!path.startsWith("/api/admin/billing/")&&path!=="/api/subscription/status")return false;
   try{
+   if(path==="/api/subscription/status"&&req.method==="GET"){
+    const user=await authenticate(req);
+    if(!user?.id){reply(res,401,{error:"Entre na sua conta"});return true;}
+    if(!ready()){reply(res,200,{billingEnforced:false,checkoutEnabled:false,
+       reason:"MisticPay ainda não foi conectada ao servidor e ao banco"});return true;}
+    const trialStart=await store.firstTrialUse(String(user.id));
+    const entitlement=await store.getEntitlement(String(user.id));
+    const endsAt=new Date(new Date(trialStart).getTime()+7*86400000);
+    const trialActive=endsAt>Date.now(),active=!!entitlement.active;
+    reply(res,200,{billingEnforced:true,checkoutEnabled:true,trialEndsAt:endsAt.toISOString(),
+      trialActive,planActive:active,planExpiresAt:entitlement.expiresAt,
+      hasAccess:user.role==="admin"||active||trialActive});
+    return true;
+   }
    if(path==="/api/billing/config"&&req.method==="GET"){
     reply(res,200,{provider:"misticpay",ready:ready(),supportedMethods:ready()?["pix"]:[],
      plans:PLANS,webhookPath:"/api/billing/webhook"});
