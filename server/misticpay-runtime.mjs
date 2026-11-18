@@ -192,7 +192,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
  }
  async function checkPremiumAccess(server,req,res){
   await bootPromise;
-  if(!configured)return respond(res,503,{error:"Verificação de assinatura temporariamente indisponível."});
+  if(!configured)return originalEmit.call(server,"request",req,res); // Não interromper o app se a cobrança ainda não estiver pronta.
   const user=await authenticate(req);
   if(!user?.id)return respond(res,401,{error:"Entre na sua conta para começar seu período gratuito de 7 dias.",code:"LOGIN_REQUIRED"});
   if(user.role==="admin")return originalEmit.call(server,"request",req,res);
