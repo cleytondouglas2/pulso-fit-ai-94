@@ -323,9 +323,10 @@ function observe(){
  var style=document.getElementById("pf-eval-css");
  if(!style){style=document.createElement("style");style.id="pf-eval-css";style.textContent=css;(document.head||document.documentElement).appendChild(style)}
  if(!accountIsReady()){
-  if(authToken()!==tokenSeen){tokenSeen="";account=null;subscription=null;evaluation=null;progress=[];checked=false;runId++}
+  if(authToken()!==tokenSeen){closeModal();tokenSeen="";account=null;subscription=null;evaluation=null;progress=[];checked=false;runId++}
   return;
  }
+ if(tokenSeen&&authToken()!==tokenSeen)closeModal();
  if(authToken()!==tokenSeen||(checked&&Date.now()-lastLoaded>=30000))void loadIdentity();
  modifyAccountCard();
 }
