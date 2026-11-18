@@ -8,6 +8,7 @@
  * componente incorporado diretamente na página de assinatura.
  */
 import {basename,join} from "node:path";
+import {ensureHTML5Document} from "./pulsofit-html5.mjs";
 import {existsSync,readFileSync,writeFileSync,readdirSync,statSync} from "node:fs";
 
 if (basename(process.argv[1]||"")==="server.mjs") {
@@ -60,13 +61,17 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      if(entry.name==="index.html")console.log("[pulso-ui] Backend AI paths referenced by frontend: "+(aiRoutes.length?aiRoutes.join(","):"none"));
 
      if(!/<\/body\s*>/i.test(html)||!/<html[\s>]/i.test(html))continue;
+     const html5=ensureHTML5Document(html);
+     if(!html5.valid)continue;
+     if(entry.name==="index.html")console.log("[pulso-html5] Documento validado: "+(html5.additions.length?html5.additions.join(","):"metadados HTML5 já presentes"));
+
      if(html.includes(marker)){found.push(full+":already");continue}
      const matches=Array.from(html.matchAll(/<\/body\s*>/gi));
      const last=matches[matches.length-1];
      // Safari may cache the old syntactically invalid bundle after deploy.
      // Bust only the script URL; the generated app.js itself is repaired
      // before this file is updated by pulsofit-js-boot-repair.mjs.
-     const freshHtml=html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
+     const freshHtml=html5.html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
       (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-renderer-recovery-v3"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
