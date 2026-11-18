@@ -72,6 +72,37 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BOOT_JS_REP
     // A fallback is intentionally not applied if parse still fails:
     // renaming lexical scopes can silently break variables after login.
    }
+   // A second build issue: renderSubscription is referenced by the
+   // generated subscription wrapper but not available in its global scope.
+   // Safari throws ReferenceError during bundle evaluation even though a
+   // nested function of the same name is present in source text.
+   // Define only a missing GLOBAL binding, before the bundle executes.
+   const prelude=";(function(){if(typeof globalThis.renderSubscription!=='function'){"+
+    "globalThis.renderSubscription=function(){return "+
+    "'<section class=\"pro-surface pf-subscription-rescue\" style=\"padding:20px;margin:16px 0\">'+"+
+    "'<h2>Seus planos PulsoFit AI</h2>'+"+
+    "'<p>7 dias de teste grátis para novas contas. Após o teste, escolha um plano:</p>'+"+
+    "'<div class=\"pro-price-grid\" style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px\">'+"+
+    "'<article class=\"pf-offer\"><h3>Quinzenal</h3><p><b>R$ 14,90</b> por 15 dias</p><button type=\"button\" data-pf-select-plan=\"quinzenal\">Contratar com Pix</button></article>'+"+
+    "'<article class=\"pf-offer\"><h3>Mensal</h3><p><b>R$ 24,90</b> por 30 dias</p><button type=\"button\" data-pf-select-plan=\"mensal\">Contratar com Pix</button></article>'+"+
+    "'</div></section>';};"+
+    "}})();\n";
+   // Do not re-add when server restarts or the file was already fixed.
+   let globalSubscriptionFixed=false;
+   const candidateSource=fixed?readFileSync(loc,"utf8"):source;
+   if(candidateSource.includes("var originalSubs=renderSubscription") &&
+      !candidateSource.includes("pf-subscription-rescue") &&
+      !/\b(?:globalThis|window)\.renderSubscription\s*=\s*function/.test(candidateSource)){
+    const candidate=prelude+candidateSource;
+    const check=parse(candidate,loc+"#subscription-fallback");
+    if(check.ok){
+      writeFileSync(loc,candidate);
+      globalSubscriptionFixed=true;
+    }else console.warn("[pulso-boot] Subscription bootstrap rejected by syntax check: "+check.error);
+   }
+   console.log("[pulso-boot] Subscription global fallback available="+globalSubscriptionFixed+
+     " wrapperReferenced="+candidateSource.includes("var originalSubs=renderSubscription"));
+
    const effective=fixed?readFileSync(loc,"utf8"):source;
    const targets=[...effective.matchAll(/\brenderSubscription\b/g)].slice(0,16);
    const declarationsFound=[...effective.matchAll(/\b(?:function\s+|(?:const|let|var)\s+)(render(?:Subscription|Plans|Pricing|Pro|Paywall)\b)/g)].map(m=>({name:m[1],at:m.index})).slice(0,25);
