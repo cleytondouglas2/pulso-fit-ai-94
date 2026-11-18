@@ -186,6 +186,7 @@ final class Portal
     }
 
     public static function handle(Database $db,string $method,string $path):never {
+        if(!in_array($db->driver(),['pgsql','mysql'],true)) self::fail('Esta instalação não possui banco persistente para cadastro e credenciais. Utilize o ambiente ARGUS com PostgreSQL ou MySQL para continuar.',503);
         self::install($db);
         if(str_starts_with($path,'/api/v1/')){
             $merchant=self::authPair($db);
