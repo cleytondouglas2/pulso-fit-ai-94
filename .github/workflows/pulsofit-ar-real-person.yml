@@ -1,0 +1,33 @@
+name: PulsoFit - pessoa real no ambiente
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/pulsofit-ar-real-person.js"
+      - "server/pulsofit-ar-real-person.test.mjs"
+      - "server/pulsofit-camera-ar.js"
+      - "server/pulsofit-mais-menu.js"
+      - "server/pulsofit-training-lab-ui.js"
+      - "server/pulsofit-plans-patch.mjs"
+      - ".github/workflows/pulsofit-ar-real-person.yml"
+  pull_request:
+    paths:
+      - "server/pulsofit-ar-real-person.js"
+      - "server/pulsofit-ar-real-person.test.mjs"
+      - "server/pulsofit-camera-ar.js"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: |
+          node --check server/pulsofit-ar-real-person.js
+          node --check server/pulsofit-ar-real-person.test.mjs
+          node --check server/pulsofit-camera-ar.js
+          node --check server/pulsofit-plans-patch.mjs
+      - run: node --test server/pulsofit-ar-real-person.test.mjs server/pulsofit-ar-music.test.mjs server/pulsofit-ar-vision.test.mjs
