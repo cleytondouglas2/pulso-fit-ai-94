@@ -204,6 +204,23 @@ RUN php -l /tmp/argus_pix_30m_patch.php \
  && php /var/www/html/tests/identity_profile_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Full PF/PJ KYC: encrypted documentary evidence in persistent Postgres, independent staff
+# review, immutable audit history, customer onboarding and provider-safe payment gates.
+COPY deployment/KycStudio.php /var/www/html/src/KycStudio.php
+COPY deployment/kyc-portal.js deployment/kyc-portal.css deployment/kyc-studio.js deployment/kyc-studio.css /var/www/html/public/static/
+COPY deployment/argus_kyc_studio_patch.php /tmp/argus_kyc_studio_patch.php
+COPY deployment/kyc_studio_test.php /var/www/html/tests/kyc_studio_test.php
+RUN php -l /var/www/html/src/KycStudio.php \
+ && php -l /tmp/argus_kyc_studio_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_kyc_studio_patch.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/KycStudio.php \
+ && php /var/www/html/tests/kyc_studio_test.php \
+ && php /var/www/html/tests/identity_profile_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
