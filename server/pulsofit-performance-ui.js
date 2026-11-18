@@ -26,6 +26,11 @@ var css=[
 '#pf-performance-window .pf-perf-preview-wrap img{width:100%;height:190px;object-fit:contain;background:#10172c;border:1px solid #6a5597;border-radius:12px}',
 '#pf-performance-window .pf-perf-selected-count{font-size:12px;color:#c5ffe0}',
 '#pf-performance-window .pf-perf-result{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #7967a4;border-radius:15px;padding:17px;background:#151b32;color:#f6f0ff;line-height:1.75;font-size:14px;margin-top:16px}',
+'#pf-performance-window .pf-perf-result h3{color:#d5b9ff;font-size:16px;line-height:1.35;margin:16px 0 8px;font-weight:850}',
+'#pf-performance-window .pf-perf-result h3:first-child{margin-top:0}',
+'#pf-performance-window .pf-perf-result p{color:#eef0ff;font-size:13px;line-height:1.75;margin:7px 0 11px}',
+'#pf-performance-window .pf-perf-result ul{margin:6px 0 12px;padding-left:22px}',
+'#pf-performance-window .pf-perf-result li{color:#eef0ff;line-height:1.65;font-size:13px;margin:5px 0}',
 '#pf-performance-window .pf-perf-note{font-size:11px;color:#c6b9df;margin-top:16px}',
 '#pf-performance-window [role="status"]{font-size:13px;color:#bef6d5;margin:12px 0}',
 '#pf-profile-photo-widget{margin:12px 0;display:flex;gap:9px;flex-wrap:wrap;padding:13px;border-radius:14px;background:#292440;border:1px solid #64558d;color:#fff}',
@@ -128,6 +133,40 @@ function avatarWidget(){
   }catch(err){notice.textContent=String(err.message||err)}
  });
 }
+
+function renderPerformanceReport(container,content){
+ container.replaceChildren();
+ const lines=String(content||"").split(/\r?\n/);
+ let paragraph=[],list=null;
+ function flush(){
+  if(paragraph.length){
+   const p=document.createElement("p");p.textContent=paragraph.join(" ").replace(/\*\*/g,"").trim();
+   if(p.textContent)container.appendChild(p);
+   paragraph=[];
+  }
+ }
+ for(const raw of lines){
+  const line=raw.trim();
+  if(!line){flush();list=null;continue}
+  const head=line.match(/^#{1,4}\s+(.+)$/);
+  if(head){
+   flush();list=null;
+   const h=document.createElement("h3");h.textContent=head[1].replace(/\*\*/g,"").trim();
+   container.appendChild(h);continue;
+  }
+  const bullet=line.match(/^(?:[-*•]\s+|\d+[.)]\s+)(.*)$/);
+  if(bullet){
+   flush();
+   if(!list){list=document.createElement("ul");container.appendChild(list)}
+   const item=document.createElement("li");item.textContent=bullet[1].replace(/\*\*/g,"").trim();
+   list.appendChild(item);continue;
+  }
+  list=null;paragraph.push(line);
+ }
+ flush();
+ if(!container.children.length)container.textContent=String(content||"");
+}
+
 function closePerformance(){document.getElementById("pf-performance-window")?.remove();selectedImage=null;selectedImages=[];performanceFile=null;}
 var performanceFile=null;
 function openPerformance(e){
@@ -182,7 +221,7 @@ function openPerformance(e){
     body:JSON.stringify({...selectedImages.length>1?{images:selectedImages}:{image:selectedImage},consent:true,goal:el.querySelector("#pf-perf-goal").value})});
    var d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"A IA não conseguiu analisar agora");
    if(typeof d.analysis!=="string"||d.analysis.length<30)throw Error("A IA não retornou um relatório válido");
-   report.textContent=d.analysis;report.hidden=false;
+   renderPerformanceReport(report,d.analysis);report.hidden=false;
    status.textContent="Avaliação visual concluída com base nas regiões visíveis. As fotos de Performance não foram armazenadas no histórico.";
   }catch(err){status.textContent="Não foi possível concluir: "+String(err.message||err)}
   finally{working=false;button.disabled=false}
