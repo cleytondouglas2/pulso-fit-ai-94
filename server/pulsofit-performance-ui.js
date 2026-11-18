@@ -3,7 +3,7 @@
 "use strict";
 if(window.__PULSO_PERFORMANCE_UI__)return;
 window.__PULSO_PERFORMANCE_UI__=true;
-var avatar=null,avatarFor="",photoBusy=false,working=false,selectedImage=null,photoStatus=null;
+var avatar=null,avatarFor="",photoBusy=false,working=false,selectedImage=null,selectedImages=[],photoStatus=null;
 var css=[
 
 '#pf-performance-window{position:fixed!important;inset:0!important;z-index:2147482500!important;background:#050819ee!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:14px!important;box-sizing:border-box!important;overflow-y:auto!important;color:white!important;font:14px/1.5 system-ui,sans-serif!important}',
@@ -21,6 +21,10 @@ var css=[
 '#pf-performance-window .pf-perf-consent input{width:19px;height:19px;flex:none;margin-top:2px}',
 '#pf-performance-window .pf-perf-submit{width:100%;border:0;border-radius:12px;padding:14px;color:white;background:linear-gradient(110deg,#9951ed,#783bd1);font:850 14px system-ui,sans-serif;cursor:pointer}',
 '#pf-performance-window .pf-perf-submit:disabled{opacity:.5}',
+'#pf-performance-window .pf-perf-preview-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:9px;margin:12px 0}',
+'#pf-performance-window .pf-perf-preview-wrap[hidden]{display:none}',
+'#pf-performance-window .pf-perf-preview-wrap img{width:100%;height:190px;object-fit:contain;background:#10172c;border:1px solid #6a5597;border-radius:12px}',
+'#pf-performance-window .pf-perf-selected-count{font-size:12px;color:#c5ffe0}',
 '#pf-performance-window .pf-perf-result{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #7967a4;border-radius:15px;padding:17px;background:#151b32;color:#f6f0ff;line-height:1.75;font-size:14px;margin-top:16px}',
 '#pf-performance-window .pf-perf-note{font-size:11px;color:#c6b9df;margin-top:16px}',
 '#pf-performance-window [role="status"]{font-size:13px;color:#bef6d5;margin:12px 0}',
@@ -124,7 +128,7 @@ function avatarWidget(){
   }catch(err){notice.textContent=String(err.message||err)}
  });
 }
-function closePerformance(){document.getElementById("pf-performance-window")?.remove();selectedImage=null;performanceFile=null;}
+function closePerformance(){document.getElementById("pf-performance-window")?.remove();selectedImage=null;selectedImages=[];performanceFile=null;}
 var performanceFile=null;
 function openPerformance(e){
  if(e){e.preventDefault();e.stopImmediatePropagation()}
@@ -134,42 +138,52 @@ function openPerformance(e){
  el.innerHTML='<section class="pf-perf-box" role="dialog" aria-modal="true" aria-labelledby="pf-perf-title">'+
  '<div class="pf-perf-top"><div><small style="color:#b6f6cf;font-weight:900;letter-spacing:.12em">PULSOFIT AI • ANÁLISE VISUAL</small>'+
  '<h2 id="pf-perf-title">📸 Performance</h2></div><button type="button" class="pf-perf-close" aria-label="Fechar">×</button></div>'+
- '<p>Analise uma foto corporal usando a IA já conectada. Receba comentários sobre postura aparente, aspectos visuais observáveis e recomendações gerais para seus objetivos.</p>'+
- '<label class="pf-perf-upload">Selecionar foto do meu corpo<input id="pf-perf-file" type="file" accept="image/*"></label>'+
- '<img id="pf-perf-preview" alt="Foto selecionada para análise" hidden>'+
+ '<p>Receba uma avaliação visual detalhada da <strong>estrutura física aparente</strong>: proporções, contorno muscular visível por região, simetria e postura. Sem descrever roupas ou cenário. Se desejar, envie até 3 ângulos (frente, lateral e costas) para observar mais regiões.</p>'+
+ '<label class="pf-perf-upload">Selecionar de 1 a 3 fotos corporais<input id="pf-perf-file" type="file" accept="image/*" multiple></label>'+
+ '<div class="pf-perf-preview-wrap" id="pf-perf-preview-wrap" hidden></div><p class="pf-perf-selected-count" id="pf-perf-selected-count"></p>'+
  '<label for="pf-perf-goal" style="display:block;font-weight:800;margin:16px 0 6px">Objetivo da análise</label>'+
  '<select id="pf-perf-goal"><option value="condicionamento geral">Melhorar condicionamento</option><option value="força e desenvolvimento muscular">Ganhar força e massa muscular</option>'+
  '<option value="postura e mobilidade">Postura e mobilidade</option><option value="reduzir medidas de forma saudável">Reduzir medidas com saúde</option><option value="acompanhar evolução">Acompanhar evolução</option></select>'+
- '<label class="pf-perf-consent"><input type="checkbox" id="pf-perf-consent"><span>Autorizo o envio desta foto à IA Gemini exclusivamente para gerar a análise. Entendo que o PulsoFit não salva a foto corporal no meu histórico.</span></label>'+
- '<button type="button" class="pf-perf-submit" id="pf-perf-submit">✦ Analisar minha foto com IA</button>'+
+ '<label class="pf-perf-consent"><input type="checkbox" id="pf-perf-consent"><span>Autorizo o envio das fotos selecionadas à IA Gemini somente para avaliação visual. Sei que as imagens de Performance não são gravadas no histórico do servidor e que a análise não é medição corporal clínica.</span></label>'+
+ '<button type="button" class="pf-perf-submit" id="pf-perf-submit">✦ Analisar minha estrutura física com IA</button>'+
  '<p id="pf-perf-status" role="status" aria-live="polite">Escolha uma foto para começar.</p>'+
  '<div class="pf-perf-result" id="pf-perf-result" hidden></div>'+
- '<p class="pf-perf-note">Uma foto isolada não permite medir percentual de gordura, peso, saúde, lesões ou força. Os comentários são orientativos e não substituem um profissional.</p></section>';
+ '<p class="pf-perf-note">A análise interpreta somente regiões <strong>visíveis</strong>. Não estima gordura, massa muscular em kg, peso, saúde, lesões nem força por fotografia. Não substitui avaliação presencial profissional.</p></section>';
  document.body.appendChild(el);
  var status=el.querySelector("#pf-perf-status"),button=el.querySelector("#pf-perf-submit"),report=el.querySelector("#pf-perf-result");
  el.querySelector(".pf-perf-close").addEventListener("click",closePerformance);
  el.addEventListener("click",function(ev){if(ev.target===el)closePerformance()});
  el.querySelector("#pf-perf-file").addEventListener("change",async function(ev){
-  var file=ev.target.files?.[0];if(!file)return;selectedImage=null;status.textContent="Preparando imagem...";
+  var files=Array.from(ev.target.files||[]);if(!files.length)return;
+  if(files.length>3){status.textContent="Escolha no máximo 3 fotos (frente, lateral e costas).";return}
+  selectedImage=null;selectedImages=[];status.textContent="Preparando "+files.length+" foto(s) para avaliação...";
+  var gallery=el.querySelector("#pf-perf-preview-wrap"),count=el.querySelector("#pf-perf-selected-count");
+  gallery.innerHTML="";gallery.hidden=true;
   try{
-   selectedImage=await shrink(file,930000,1100);
-   var img=el.querySelector("#pf-perf-preview");img.src=selectedImage;img.hidden=false;
-   status.textContent="Foto preparada. Marque o consentimento e toque em Analisar.";
-  }catch(err){status.textContent=String(err.message||err)}
+   for(var k=0;k<files.length;k++){
+    var reduced=await shrink(files[k],files.length===1?930000:285000,files.length===1?1100:850);
+    selectedImages.push(reduced);
+    var img=document.createElement("img");img.alt="Imagem corporal "+(k+1)+" selecionada";
+    img.src=reduced;img.loading="eager";gallery.appendChild(img);
+   }
+   selectedImage=selectedImages[0]||null;gallery.hidden=!selectedImage;
+   count.textContent=selectedImages.length+" foto(s) preparada(s). Avaliação visual de estrutura e regiões corporais observáveis.";
+   status.textContent="Imagens preparadas. Autorize o envio e toque em Analisar minha estrutura física.";
+  }catch(err){selectedImage=null;selectedImages=[];gallery.innerHTML="";gallery.hidden=true;status.textContent=String(err.message||err)}
  });
  button.addEventListener("click",async function(){
   if(working)return;
-  if(!selectedImage){status.textContent="Selecione uma foto do corpo.";return}
+  if(!selectedImage||!selectedImages.length){status.textContent="Selecione uma ou até três fotos do corpo.";return}
   if(!el.querySelector("#pf-perf-consent").checked){status.textContent="Marque o consentimento para enviar a foto à IA.";return}
-  working=true;button.disabled=true;status.textContent="IA analisando a foto...";
+  working=true;button.disabled=true;status.textContent="IA avaliando proporções, regiões musculares visíveis e postura aparente...";
   report.hidden=true;report.textContent="";
   try{
    var r=await fetch("/api/ai/body/analyze",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},
-    body:JSON.stringify({image:selectedImage,consent:true,goal:el.querySelector("#pf-perf-goal").value})});
+    body:JSON.stringify({...selectedImages.length>1?{images:selectedImages}:{image:selectedImage},consent:true,goal:el.querySelector("#pf-perf-goal").value})});
    var d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||"A IA não conseguiu analisar agora");
    if(typeof d.analysis!=="string"||d.analysis.length<30)throw Error("A IA não retornou um relatório válido");
    report.textContent=d.analysis;report.hidden=false;
-   status.textContent="Análise concluída. O PulsoFit não armazenou a foto corporal.";
+   status.textContent="Avaliação visual concluída com base nas regiões visíveis. As fotos de Performance não foram armazenadas no histórico.";
   }catch(err){status.textContent="Não foi possível concluir: "+String(err.message||err)}
   finally{working=false;button.disabled=false}
  });
