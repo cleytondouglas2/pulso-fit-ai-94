@@ -36,6 +36,7 @@ test("A navegação inferior tem cinco colunas e fica dentro da tela",()=>{
  assert.match(css,/#app \.mobile-nav\{left:0!important;right:0!important;bottom:0!important/);
  assert.match(css,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)!important/);
  assert.match(css,/button\[data-route="coach"\]/);
+ assert.match(css,/button\[data-route="coach"\]::after\{content:none!important;display:none!important\}/);
  assert.match(css,/var\(--pf-layout-safe-bottom\)/);
  assert.match(css,/padding-bottom:calc\(112px/);
 });
