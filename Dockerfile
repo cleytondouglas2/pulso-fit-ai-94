@@ -191,6 +191,19 @@ RUN php -l /tmp/argus_pix_popup_icon_patch.php \
  && php /var/www/html/tests/traditional_quick_unit.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Silent Pix UI: keep server reconciliation after QR popup closes, stop after 30 min.
+# Do not modify payment creation, status validation, permissions or other pages.
+COPY deployment/argus_pix_30m_patch.php /tmp/argus_pix_30m_patch.php
+COPY deployment/argus_pix_30m_ui_patch.php /tmp/argus_pix_30m_ui_patch.php
+COPY deployment/argus_pix_30m_test.php /var/www/html/tests/argus_pix_30m_test.php
+RUN php -l /tmp/argus_pix_30m_patch.php \
+ && php -l /tmp/argus_pix_30m_ui_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_pix_30m_ui_patch.php \
+ && php -l /var/www/html/src/TraditionalQuickPix.php \
+ && php /var/www/html/tests/argus_pix_30m_test.php \
+ && php /var/www/html/tests/identity_profile_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
