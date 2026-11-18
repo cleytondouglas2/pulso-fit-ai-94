@@ -87,7 +87,7 @@ final class Portal
         $root=(string)getenv('ARGUS_KYC_STORAGE_PATH');
         $keyB64=(string)getenv('ARGUS_KYC_ENCRYPTION_KEY');
         $key=base64_decode($keyB64,true);
-        if(!function_exists('sodium_crypto_secretbox')||!is_string($key)||strlen($key)!==SODIUM_CRYPTO_SECRETBOX_KEYBYTES||
+        if(getenv('ARGUS_KYC_PERSISTENT_STORAGE_CONFIRMED')!=='yes'||!function_exists('sodium_crypto_secretbox')||!is_string($key)||strlen($key)!==SODIUM_CRYPTO_SECRETBOX_KEYBYTES||
            $root===''||!str_starts_with($root,'/')||str_starts_with($root,'/var/www/html')||!is_dir($root)||!is_writable($root)) {
             self::fail('Envio documental indisponível até ativação de armazenamento persistente criptografado. Seu cadastro foi preservado.',503);
         }
