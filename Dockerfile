@@ -217,7 +217,7 @@ RUN php -d display_errors=1 -d log_errors=0 -l /var/www/html/src/KycStudio.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/src/KycStudio.php \
- && php /var/www/html/tests/kyc_studio_test.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/kyc_studio_test.php \
  && php /var/www/html/tests/identity_profile_test.php \
  && php /var/www/html/tests/ui_contract.php
 
