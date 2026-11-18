@@ -96,7 +96,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
       const result=await response.json().catch(()=>({}));
       const safeCode=String(result?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,48);
       const requestId=String(result?.requestId||"").replace(/[^a-zA-Z0-9-]/g,"").slice(0,80);
-      if(response.status===400&&safeCode==="VALIDATION_ERROR")state.providerAuth="verified";
+      if(response.status===400&&["VALIDATION_ERROR","TRANSACTION_ID_REQUIRED"].includes(safeCode))state.providerAuth="verified";
       else if(["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(safeCode))state.providerAuth="denied";
       console.log("[pulso-billing] Read scope fallback: http="+response.status+" code="+safeCode+
        " requestId="+(requestId||"not_provided")+" result="+state.providerAuth+"; no charge created.");
