@@ -42,7 +42,7 @@ try {
 
     // Only public credential category and boolean diagnostics, never raw values.
     $shape=static function(string $value):string {
-        if(preg_match('/^(pk_|sk_|ci_|cs_)/D',$value))return 'legacy_misticpay';
+        if(preg_match('/^(pk_|sk_|ci_|cs_)/D',$value))return 'traditional_api_prefix';
         if(str_starts_with(strtolower($value),'basic ')||str_starts_with(strtolower($value),'bearer '))return 'full_auth_header_pasted';
         if(str_starts_with($value,'$'.'{')||str_starts_with($value,'$('))return 'env_reference';
         if((str_starts_with($value,'"')&&str_ends_with($value,'"'))||(str_starts_with($value,"'")&&str_ends_with($value,"'")))return 'quoted';
