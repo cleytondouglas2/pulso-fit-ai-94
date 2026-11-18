@@ -29,11 +29,15 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const homeGreetingJS=readFileSync(new URL("./pulsofit-home-greeting.js",import.meta.url),"utf8");
   const outdoorJS=readFileSync(new URL("./pulsofit-outdoor-ui.js",import.meta.url),"utf8");
   const outdoorCSS=readFileSync(new URL("./pulsofit-outdoor.css",import.meta.url),"utf8");
+  const pushUI=readFileSync(new URL("./pulsofit-push-ui.js",import.meta.url),"utf8");
+  const pushCSS=readFileSync(new URL("./pulsofit-push.css",import.meta.url),"utf8");
   // Preflight: abort the new visual overlay if its JavaScript is invalid.
   new JavaScriptSyntax(html5AccessibilityJS,{filename:"pulsofit-html5-accessibility.js"});
   new JavaScriptSyntax(trainingLabJS,{filename:"pulsofit-training-lab-ui.js"});
   new JavaScriptSyntax(homeGreetingJS,{filename:"pulsofit-home-greeting.js"});
   new JavaScriptSyntax(outdoorJS,{filename:"pulsofit-outdoor-ui.js"});
+  new JavaScriptSyntax(pushUI,{filename:"pulsofit-push-ui.js"});
+  if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
   if(!trainingLabCSS.includes("#pf-tv-overlay")||!trainingLabCSS.includes("#app .pf-tv-launch"))throw Error("PULSO_TRAINING_LAB_STYLES_INCOMPLETE");
   if(!html5ResponsiveCSS.includes("#app .mobile-nav")||!html5ResponsiveCSS.includes("#pf-eval-overlay"))
@@ -53,7 +57,9 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-training-lab-ui-20261118">'+trainingLabJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<style id="pf-outdoor-css-20261118">'+outdoorCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
    '<script id="pf-home-greeting-20261118">'+homeGreetingJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
-   '<script id="pf-outdoor-ui-20261118">'+outdoorJS.replace(/<\/script/gi,"<\\/script")+"</script>";
+   '<script id="pf-outdoor-ui-20261118">'+outdoorJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<style id="pf-push-style-20261118">'+pushCSS.replace(/<\/style/gi,"<\\/style")+"</style>"+
+   '<script id="pf-push-ui-20261118">'+pushUI.replace(/<\/script/gi,"<\\/script")+"</script>";
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
@@ -96,11 +102,17 @@ if (basename(process.argv[1]||"")==="server.mjs") {
      // Bust only the script URL; the generated app.js itself is repaired
      // before this file is updated by pulsofit-js-boot-repair.mjs.
      const freshHtml=html5.html.replace(/(<script\b[^>]*\bsrc\s*=\s*["'])([^"']*\/assets\/app\.js)(?:\?[^"']*)?(["'])/gi,
-      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-outdoor-gps-v6"+quote);
+      (_,prefix,url,quote)=>prefix+url+"?pf_build=20261118-push-pwa-v7"+quote);
      const changedAssets=(freshHtml!==html);
      if(entry.name==="index.html")console.log("[pulso-ui] Safari bundle cache refresh="+changedAssets);
-     const lastBody=Array.from(freshHtml.matchAll(/<\/body\s*>/gi)).at(-1);
-     const revised=freshHtml.slice(0,lastBody.index)+inject+freshHtml.slice(lastBody.index);
+     const pwaHead='<link rel="manifest" href="/pulsofit.webmanifest">'+
+      '<meta name="apple-mobile-web-app-capable" content="yes">'+
+      '<meta name="apple-mobile-web-app-title" content="PulsoFit AI">'+
+      '<meta name="mobile-web-app-capable" content="yes">'+
+      '<link rel="apple-touch-icon" sizes="192x192" href="/pulsofit-icon-192.png">';
+     const pwaHtml=freshHtml.replace(/<head\b[^>]*>/i,head=>head+"\n"+pwaHead);
+     const lastBody=Array.from(pwaHtml.matchAll(/<\/body\s*>/gi)).at(-1);
+     const revised=pwaHtml.slice(0,lastBody.index)+inject+pwaHtml.slice(lastBody.index);
      writeFileSync(full,revised);
      found.push(full);
     }catch{console.warn("[pulso-ui] Não foi possível atualizar arquivo HTML (continua disponível sem patch).")}
@@ -112,6 +124,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   console.log("[pulso-html5] Verificações: metadados="+found.length+" arquivo(s), CSS=ok, acessibilidadeJS=syntax-ok; nenhuma rota ou dado de conta alterado.");
   console.log("[pulso-treino] UI Treino Vivo integrado; estilos=ok JS=syntax-ok.");
   console.log("[pulso-outdoor] Saudação e atividades GPS integradas; UI=syntax-ok, CSS=ok.");
+  console.log("[pulso-push] PWA head icons and notification interface integrated; JS=syntax-ok CSS=ok.");
  }catch(error){
   console.warn("[pulso-ui] Não foi possível integrar portal de assinatura: "+String(error.code||"init_error"));
  }
