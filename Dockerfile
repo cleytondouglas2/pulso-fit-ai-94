@@ -61,6 +61,7 @@ COPY deployment/sw.js /var/www/html/public/sw.js
 COPY deployment/pix-cachorro.svg /var/www/html/public/static/assets/pix-cachorro.svg
 RUN rsvg-convert -w 512 -h 512 /var/www/html/public/static/assets/pix-cachorro.svg -o /var/www/html/public/static/assets/pix-cachorro.png \
  && test -s /var/www/html/public/static/assets/pix-cachorro.png
+COPY deployment/notifications_test.php /var/www/html/tests/notifications_test.php
 COPY deployment/argus_notification_patch.php /tmp/argus_notification_patch.php
 RUN php -l /tmp/argus_notification_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_notification_patch.php \
@@ -69,7 +70,8 @@ RUN php -l /tmp/argus_notification_patch.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /var/www/html/src/LivePix.php \
- && php /var/www/html/tests/ui_contract.php
+ && php /var/www/html/tests/ui_contract.php \
+ && php /var/www/html/tests/notifications_test.php
 RUN php -l src/Integrations/MisticPayFinance.php && php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/finance_qr_unit.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php && php tests/ui_contract.php
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
