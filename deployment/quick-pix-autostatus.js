@@ -79,7 +79,15 @@
    if(!data||!isValid(data.id)||data.provider!=='MisticPay tradicional')return;
    chargeId=data.id;autoStopped=false;expiresAtMs=expiryFromCharge(data);
    if(timer)clearInterval(timer);
-   if(data.status==='paid'){showStatus('paid');return;}
+   if(data.status==='paid'){
+     if(data._fromHistory===true){
+       // Viewing an already-paid receipt is informational, not a new payment event.
+       const b=badge();if(b){b.textContent='Pagamento recebido e confirmado';b.className='status-badge paid';}
+       if(note()){note().hidden=false;note().textContent='Pix recebido e confirmado pela ARGUS Pay.';}
+       stop();return;
+     }
+     showStatus('paid');return;
+   }
    if(['failed','cancelled','expired'].includes(data.status)){showStatus(data.status);return;}
    if(!data.pix_copy_paste)return;
    showStatus(data.status||'pending');
