@@ -48,6 +48,30 @@ tradReplace($js,
     'form.reset();delete form.dataset.idempotencyKey;',
     "form.reset();delete form.dataset.idempotencyKey;\n   const payerPane=document.getElementById('argus-payer-details');\n   if(payerPane){payerPane.hidden=true;payerPane.querySelectorAll('input').forEach(el=>el.required=false);}\n   const submit=document.getElementById('charge-submit');submit.textContent='Gerar Pix →';",
     'form reset');
+// The existing Finance worker cannot validate traditional tr_... charges; bypass it in this mode.
+$worker='/usr/local/share/argus/notify_worker.php';
+tradReplace($worker,
+    'if(MisticPayFinance::configured()){',
+    "if(getenv('ARGUS_QUICK_PIX_PROVIDER')!=='traditional' && MisticPayFinance::configured()){",
+    'do not reconcile traditional Pix with Finance API');
+$code=file_get_contents($worker);
+if(!is_string($code)||!str_contains($code,"ARGUS notification reconciliation cycle complete:"))
+    throw new RuntimeException('Traditional Pix worker base missing');
+$code.="\n// Read-only automatic reconciliation of traditional MisticPay Pix. App need not be open.\n";
+$code.="if(getenv('ARGUS_QUICK_PIX_PROVIDER')==='traditional'){\n";
+$code.=" try{ \\\\ArgusPayments\\\\TraditionalQuickPix::worker(\\$db); }\n";
+$code.=" catch(\\\\Throwable \\$e){ error_log('ARGUS traditional Pix worker unavailable: '.get_class(\\$e)); }\n}\n";
+file_put_contents($worker,$code);
+// Add a separate cache-busted script for Safari foreground status checks and recovery.
+tradReplace("$root/public/static/admin.html",
+    '<script src="/static/admin.js?v=12" defer></script>',
+    '<script src="/static/admin.js?v=13" defer></script>',
+    'reload foreground Pix code on iPhone');
+tradReplace("$root/public/static/admin.html",
+    '</body>',
+    '<script src="/static/quick-pix-autostatus.js?v=1" defer></script></body>',
+    'poll confirmed Pix automatically while app is open');
+
 $css="$root/public/static/polish.css";
 file_put_contents($css,<<<'CSS'
 
