@@ -104,6 +104,42 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
     }
    }
   }
+  /* Confirmação diferencial dos escopos de criar e consultar sem cobrança */
+  if(state.credentialsConfigured&&state.providerAuth!=="denied"){
+   async function validateScope(url){
+    const id=process.env.PULSO_MISTICPAY_CLIENT_ID,secret=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
+    const data=JSON.stringify({}); // JSON sem campos obrigatórios: jamais gera PIX
+    async function call(user,pass){
+     const response=await fetch(url,{method:"POST",redirect:"error",signal:AbortSignal.timeout(6000),
+      headers:{"Authorization":"Basic "+Buffer.from(user+":"+pass).toString("base64"),
+        "Content-Type":"application/json","Accept":"application/json"},
+      body:data});
+     const result=await response.json().catch(()=>({}));
+     return {status:response.status,code:String(result?.code||"").slice(0,64)};
+    }
+    try{
+     const real=await call(id,secret);
+     const fake=await call("pk_invalid_pulsofit_scope_probe","sk_invalid_pulsofit_scope_probe");
+     const invalidFake=fake.status===401&&["INVALID_API_CREDENTIAL","IP_NOT_ALLOWED"].includes(fake.code);
+     const validReal=real.status===400&&!["INVALID_API_CREDENTIAL","API_CREDENTIAL_REQUIRED","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(real.code);
+     console.log("[pulso-billing] Scope contrast "+url.split("/").pop()+": realStatus="+real.status+
+      " realCode="+real.code.replace(/[^A-Z0-9_]/g,"")+" fakeStatus="+fake.status+
+      " fakeCode="+fake.code.replace(/[^A-Z0-9_]/g,"")+
+      " verified="+Boolean(invalidFake&&validReal)+"; no PIX created.");
+     return invalidFake&&validReal;
+    }catch{
+     console.log("[pulso-billing] Scope contrast unavailable, no PIX created.");
+     return false;
+    }
+   }
+   const readOk=await validateScope("https://api.misticpay.com/api/transactions/check");
+   const createOk=await validateScope("https://api.misticpay.com/api/transactions/create");
+   state.readScopeVerified=readOk;
+   state.createScopeVerified=createOk;
+   if(readOk&&createOk)state.providerAuth="verified";
+   else if(state.providerAuth!=="denied")state.providerAuth="checked";
+  }
+
   // O PostgreSQL atual é de teste e expira. Exigir banco permanente e
   // controle premium real nas APIs antes de transacionar dinheiro.
   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&
