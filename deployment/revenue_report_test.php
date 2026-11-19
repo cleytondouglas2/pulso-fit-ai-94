@@ -44,27 +44,29 @@ $add($a,500,400,'deposit_paid','2026-10-16 14:00:00');
 $add($a,300,200,'deposit_refund','2026-11-19 18:00:00');
 $add($b,2000,1900,'deposit_paid','2026-11-19 14:00:00');
 $add($b,9000,8900,'deposit_paid','2026-11-19 20:00:00'); // future: ignore
+// PDO drivers can expose exact integer cents as numeric scalars with distinct types.
+// Normalize only in test assertions; the stored financial values are unchanged.
 $own=R::build($db,$a,$now);
 if($own['timezone']!=='America/Sao_Paulo'||$own['basis']!=='confirmed_pix_ledger')
     throw new RuntimeException('Timezone/settlement source not declared');
-if($own['periods']['today']['gross_cents']!==700||
-   $own['periods']['today']['net_cents']!==700||
-   $own['periods']['yesterday']['gross_cents']!==1000||
-   $own['periods']['today_benchmark']['gross_cents']!==600||
-   $own['periods']['month']['gross_cents']!==1700||
-   $own['periods']['previous_month']['gross_cents']!==500)
+if((int)$own['periods']['today']['gross_cents']!==700||
+   (int)$own['periods']['today']['net_cents']!==700||
+   (int)$own['periods']['yesterday']['gross_cents']!==1000||
+   (int)$own['periods']['today_benchmark']['gross_cents']!==600||
+   (int)$own['periods']['month']['gross_cents']!==1700||
+   (int)$own['periods']['previous_month']['gross_cents']!==500)
     throw new RuntimeException('Seller day/month paid/refund totals or cutoff wrong: '.json_encode($own['periods']));
 if($own['comparison_today']['direction']!=='up'||$own['comparison_month']['direction']!=='up')
     throw new RuntimeException('Fair comparison of matched periods is incorrect');
 if(count($own['daily'])!==14||count($own['sellers'])!==0)
     throw new RuntimeException('Seller leaked portfolio data or chart is not fourteen days');
 $all=R::build($db,null,$now);
-if($all['periods']['today']['gross_cents']!==2700||
-   $all['periods']['month']['gross_cents']!==3700||
+if((int)$all['periods']['today']['gross_cents']!==2700||
+   (int)$all['periods']['month']['gross_cents']!==3700||
    count($all['sellers'])!==2||
    $all['sellers'][0]['account_id']!==$b||
    $all['sellers'][1]['account_id']!==$a||
-   $all['sellers'][0]['month']['gross_cents']!==2000)
+   (int)$all['sellers'][0]['month']['gross_cents']!==2000)
     throw new RuntimeException('Super Admin sum or per-merchant partition incorrect');
 $refundDay=array_values(array_filter($own['daily'],static fn($r)=>$r['date']==='2026-11-19'));
 if(count($refundDay)!==1||$refundDay[0]['refund_count']!==1)
