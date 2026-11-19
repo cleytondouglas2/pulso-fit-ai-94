@@ -197,13 +197,9 @@ $new=<<<'JS'
 const response=await post('/api/admin/payouts',{amount_cents:amount,pix_key_type:raw.pix_key_type,pix_key:raw.pix_key,description:raw.description,otp:raw.otp,confirm:true,idempotency_key,fee_acknowledged:true,fee_version:feeQuote.policy_version});
 JS;
 feeTxnReplace($js,$old,$new,'transaction receipt binds original fee version');
-$old=<<<'JS'
-'<td>'+esc(r.pix_key_type+' '+r.pix_key_masked)+'</td><td>'+fmt(r.amount_cents)+'</td><td>'+badge(r.status)
-JS;
-$new=<<<'JS'
-'<td>'+esc(r.pix_key_type+' '+r.pix_key_masked)+'</td><td>'+fmt(r.amount_cents)+(r.fees?'<small>Taxa ARGUS '+fmt(r.fees.argus_fee_cents)+' · Enviado '+fmt(r.fees.provider_amount_cents)+'</small>':'')+'</td><td>'+badge(r.status)
-JS;
-feeTxnReplace($js,$old,$new,'payout history shows net recipient and charge');
+// Existing admin payout history is rendered by multiple legacy layers. We
+// enrich it safely at runtime without changing unrelated amount cells.
+
 
 // Account for payments only after verified completion. Additional accounting
 // records do not make the provider debit the MisticPay fee a second time.
