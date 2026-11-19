@@ -6,7 +6,7 @@ function init(){
  const host=document.querySelector('main')||document.body;
  const root=document.createElement('section');root.id='argus-merchant-docs';root.className='argus-merchant-docs';
  root.innerHTML=[
-  '<div class="argus-doc-head"><small>DOCUMENTAÇÃO DE INTEGRAÇÃO · API V1</small>',
+  '<div class="argus-doc-head"><small>DOCUMENTAÇÃO DE INTEGRAÇÃO · API V2</small>',
   '<h2>Receba Pix no seu site ou bot do Telegram</h2>',
   '<p>Use suas credenciais individuais ARGUS Pay para gerar cobranças, acompanhar a confirmação e consultar seu saldo. Sem compartilhar as chaves entre vendedores.</p></div>',
   '<div class="argus-doc-grid"><article><h3>1. Gere suas credenciais</h3><p>Na <a href="/conta">Minha conta</a>, após KYC e autorização financeira, gere uma <code>Chave API</code> e uma <code>Chave secreta</code>. A secreta aparece apenas uma vez; não pode ser recuperada e deve ficar no servidor.</p></article>',
@@ -15,11 +15,11 @@ function init(){
   '<article><h3>4. Consulte seu saldo</h3><p>A cada depósito confirmado há uma única <strong>taxa de serviço de R$ 1,00</strong>. O saldo pertence exclusivamente ao vendedor autenticado. Saques também possuem taxa de serviço de R$ 1,00.</p></article></div>',
   '<h3>Autenticação e segurança</h3><p>Use HTTPS. Envie <code>X-Argus-Key</code> e <code>X-Argus-Secret</code> em todas as requisições de API. No navegador ou Telegram, faça sempre a chamada no seu servidor; nunca coloque a chave secreta no código JavaScript público, APK, webhook de bot ou URL.</p>',
   '<table><thead><tr><th>Método</th><th>Endpoint</th><th>Descrição</th></tr></thead><tbody>',
-  '<tr><td>POST</td><td><code>/api/v1/pix/charges</code></td><td>Gerar Pix com Idempotency-Key</td></tr>',
-  '<tr><td>GET</td><td><code>/api/v1/pix/charges/{id}</code></td><td>Consultar status da sua cobrança</td></tr>',
-  '<tr><td>GET</td><td><code>/api/v1/pix/charges</code></td><td>Listar somente suas cobranças</td></tr>',
-  '<tr><td>GET</td><td><code>/api/v1/wallet/balance</code></td><td>Consultar somente seu saldo</td></tr>',
-  '<tr><td>GET</td><td><code>/api/v1/wallet/transactions</code></td><td>Seu extrato contábil</td></tr>',
+  '<tr><td>POST</td><td><code>/api/v2/pix/charges</code></td><td>Gerar Pix com Idempotency-Key</td></tr>',
+  '<tr><td>GET</td><td><code>/api/v2/pix/charges/{id}</code></td><td>Consultar status da sua cobrança</td></tr>',
+  '<tr><td>GET</td><td><code>/api/v2/pix/charges</code></td><td>Listar somente suas cobranças</td></tr>',
+  '<tr><td>GET</td><td><code>/api/v2/wallet/balance</code></td><td>Consultar somente seu saldo</td></tr>',
+  '<tr><td>GET</td><td><code>/api/v2/wallet/transactions</code></td><td>Seu extrato contábil</td></tr>',
   '</tbody></table><p>Saques são solicitados no painel autenticado, em <a href="/conta">Minha conta</a>, e executados pelo Super Admin com 2FA. Não há endpoint público para sacar com apenas API Key e Secret.</p>',
   '<h3>Exemplo 1 · Gerar Pix via cURL</h3><pre><code id="argus-doc-curl"></code></pre>',
   '<h3>Exemplo 2 · Node.js (servidor)</h3><pre><code id="argus-doc-node"></code></pre>',
@@ -32,7 +32,7 @@ function init(){
  host.append(root);
  const snippets={
   'argus-doc-curl':[
-   'curl -X POST https://argus-payments-oregon-testes.onrender.com/api/v1/pix/charges \\',
+   'curl -X POST https://argus-payments-oregon-testes.onrender.com/api/v2/pix/charges \\',
    ' -H "X-Argus-Key: $ARGUS_API_KEY" \\',
    ' -H "X-Argus-Secret: $ARGUS_API_SECRET" \\',
    ' -H "Idempotency-Key: pedido-1234-venda-2026" \\',
@@ -41,14 +41,14 @@ function init(){
    '       "payer_document":"CPF_VALIDO_DO_CLIENTE",',
    '       "description":"Pedido 1234"}\'',
    '',
-   '# Consultar depois: GET /api/v1/pix/charges/mwc_<id>',
-   '# Consultar saldo:  GET /api/v1/wallet/balance'
+   '# Consultar depois: GET /api/v2/pix/charges/mwc_<id>',
+   '# Consultar saldo:  GET /api/v2/wallet/balance'
   ].join('\n'),
   'argus-doc-node':[
    '// Código de backend Node.js; credenciais no ambiente do servidor.',
    'const base = "https://argus-payments-oregon-testes.onrender.com";',
    'async function gerarPix(pedido, cliente) {',
-   '  const r = await fetch(base + "/api/v1/pix/charges", {',
+   '  const r = await fetch(base + "/api/v2/pix/charges", {',
    '    method: "POST",',
    '    headers: { "Content-Type": "application/json",',
    '      "X-Argus-Key": process.env.ARGUS_API_KEY,',
@@ -64,7 +64,7 @@ function init(){
    '}',
    '// Consulte a confirmação autenticada:',
    'async function consultarPix(id) {',
-   '  const r = await fetch(base + "/api/v1/pix/charges/" + encodeURIComponent(id), {',
+   '  const r = await fetch(base + "/api/v2/pix/charges/" + encodeURIComponent(id), {',
    '    headers: { "X-Argus-Key": process.env.ARGUS_API_KEY,',
    '      "X-Argus-Secret": process.env.ARGUS_API_SECRET }',
    '  });',
@@ -84,7 +84,7 @@ function init(){
    '    const customer = await getCustomerFromSecureDatabase(ctx.from.id);',
    '    if (!customer) return ctx.reply("Cadastre seus dados no site seguro.");',
    '    const idempotencyKey = "telegram-" + ctx.chat.id + "-" + customer.pedidoId;',
-   '    const r = await fetch("https://argus-payments-oregon-testes.onrender.com/api/v1/pix/charges", {',
+   '    const r = await fetch("https://argus-payments-oregon-testes.onrender.com/api/v2/pix/charges", {',
    '      method: "POST", headers: { "Content-Type": "application/json",',
    '        "X-Argus-Key": process.env.ARGUS_API_KEY,',
    '        "X-Argus-Secret": process.env.ARGUS_API_SECRET,',
