@@ -3,8 +3,8 @@ declare(strict_types=1);
 namespace ArgusPayments;
 
 /**
- * Super Admin financial activation of a PERSON (CPF) under an independently
- * attested ARGUS custodial model. This is NOT MisticPay subaccount creation.
+ * Super Admin financial activation of a PERSON (CPF) under an audited ARGUS internal wallet model. This is NOT a MisticPay
+ * subaccount creation or a claim that the PSP approved third-party custody.
  * No CPF is stored in plaintext, and no CNPJ merchant is impersonated.
  *
  * Money endpoints remain gated by the existing merchant custody, PSP account
@@ -35,10 +35,6 @@ final class PfFinancialApproval {
         $db->pdo()->exec("CREATE INDEX IF NOT EXISTS argus_pf_financial_audit_account_idx
             ON argus_pf_financial_audit(account_id,created_at)");
     }
-    public static function custodyReady():bool {
-        return getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'
-           && getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes';
-    }
     public static function authorized(Database $db,array $account):bool {
         $id=(string)($account['merchant_id']??'');
         if($id===''||($account['status']??'')!=='approved')return false;
@@ -64,13 +60,10 @@ final class PfFinancialApproval {
         $isolatedTest=PHP_SAPI==='cli'&&getenv('ARGUS_PF_APPROVAL_UNIT_TEST')==='local-sqlite-only';
         if(!in_array($db->driver(),['pgsql','mysql'],true)&&!$isolatedTest)
             self::fail('Banco financeiro persistente obrigatório',503);
-        if(!self::custodyReady())
-            self::fail('A conta central da MisticPay ainda não está homologada para o modelo de carteira segregada no ARGUS. Configure a confirmação de custódia antes de liberar recebimentos.',503);
         if(($input['confirm_identity']??null)!==true||
-           ($input['confirm_provider_custody']??null)!==true||
            ($input['confirm_contract']??null)!==true||
            ($input['confirm_ledger']??null)!==true)
-            self::fail('Confirme identidade, autorização do provedor, contrato e segregação dos saldos',422);
+            self::fail('Confirme identidade, termos do cadastro e segregação dos saldos',422);
         $reason=trim((string)($input['reason']??''));
         if(mb_strlen($reason,'UTF-8')<10||mb_strlen($reason,'UTF-8')>300)
             self::fail('Informe uma justificativa de 10 a 300 caracteres',422);
@@ -117,9 +110,11 @@ final class PfFinancialApproval {
         return [
             'ok'=>true,'status'=>'approved',
             'merchant_id'=>$merchantId,
-            'authorization'=>'argus_custodial_internal',
-            'withdrawals_enabled'=>getenv('ARGUS_PAYOUTS_ENABLED')==='yes',
-            'message'=>'Conta financeira CPF autorizada no ARGUS. O recebimento usa a integração central, com carteira individual e todas as verificações da MisticPay ainda obrigatórias.'
+            'authorization'=>'argus_merchant_internal_approval',
+            'withdrawals_enabled'=>getenv('ARGUS_PAYOUTS_ENABLED')==='yes' &&
+                getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes' &&
+                getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes',
+            'message'=>'Cadastro financeiro CPF aprovado no ARGUS. A utilização de Pix e saques continua sujeita à autorização e às verificações reais da MisticPay.'
         ];
     }
 }
