@@ -1,0 +1,124 @@
+/* ARGUS Pay — client registration, authenticated account and seller wallet.
+   Source: actual iPhone Safari screenshots Nov/2026.
+   Deliberately loaded AFTER layout-quality.css and all original component CSS.
+   No changes to account status, balances or payment logic.
+*/
+#argus-mobile-menu-toggle{display:none}
+.top.argus-client-top{isolation:isolate}
+#dashboard,#auth,#kyc-client-root,#argus-seller-root,#api-panel{min-width:0}
+#dashboard :where(.grid,.panel,.seller-panel,.kyc-customer-head,.kyc-customer-form){min-width:0;max-width:100%}
+#dashboard :where(.dash-top,.seller-head,.panel-header){min-width:0;max-width:100%}
+#dashboard :where(h1,h2,h3,p,small,span,button,label,strong,dd,dt){overflow-wrap:anywhere}
+#dashboard :where(.panel,.seller-panel,.kyc-client-root){scroll-margin-top:18px}
+#api-panel{scroll-margin-top:20px}
+#dashboard .dash-top>div{flex:1 1 265px;min-width:0}
+#dashboard .dash-top #hello{overflow-wrap:anywhere}
+#dashboard .dash-top #status-message{max-width:65ch;line-height:1.6}
+#dashboard .dash-top .outline{display:inline-flex;align-items:center;min-height:42px}
+#dashboard .panel-header>div{min-width:0}
+#dashboard dl{min-width:0;max-width:100%}
+#dashboard dl>div{min-width:0;flex-wrap:wrap}
+#dashboard dt,#dashboard dd{min-width:0;overflow-wrap:anywhere}
+#dashboard dd{text-align:right;flex:1 1 120px}
+#argus-seller-root .seller-panel{min-width:0}
+#argus-seller-root :where(input:not([type=checkbox]),select,textarea){min-width:0;max-width:100%;font-size:16px}
+#argus-seller-root .seller-checkbox{display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;gap:12px!important;margin:14px 0!important;min-width:0!important}
+#argus-seller-root .seller-checkbox :is(input[type=checkbox]){
+  appearance:auto!important;-webkit-appearance:checkbox!important;
+  box-sizing:border-box!important;display:block!important;
+  width:20px!important;min-width:20px!important;max-width:20px!important;
+  height:20px!important;min-height:20px!important;max-height:20px!important;
+  flex:0 0 20px!important;margin:2px 0 0!important;padding:0!important;
+  accent-color:#e8c38b!important;border-radius:4px!important;
+}
+#argus-seller-root .seller-checkbox span{display:block;min-width:0;flex:1 1 auto;line-height:1.55}
+#argus-seller-root .seller-panel input:disabled{opacity:.7}
+#argus-seller-root .seller-panel .seller-form-gate{padding:12px 14px;background:#27251f;border:1px solid #7d6748;border-radius:10px;color:#ebd5b0;font-size:13px;line-height:1.6;margin:12px 0}
+#argus-seller-root .seller-panel .seller-form-gate[hidden]{display:none!important}
+#argus-seller-root form[hidden]{display:none!important}
+#argus-seller-root .seller-columns{min-width:0}
+#argus-seller-root .seller-key-status{overflow-wrap:anywhere;max-width:100%}
+#argus-seller-root .seller-panel button{min-height:43px;white-space:normal;text-align:center;max-width:100%}
+#argus-seller-root .seller-panel :where(textarea,pre,code){overflow-wrap:anywhere}
+#argus-seller-root .seller-panel a{overflow-wrap:anywhere}
+#argus-seller-root .seller-item{align-items:flex-start}
+#argus-seller-root #seller-active-pix{max-width:100%;overflow:hidden}
+
+/* Preserve a single-row header on desktop and tablet. On phone the four
+   navigation links are collapsed into a tap-to-open menu instead of a sticky
+   4-row overlay obscuring the onboarding KYC and the finance forms. */
+@media(max-width:760px){
+ html{scroll-padding-top:12px!important}
+ body{overflow-x:clip}
+ .top.argus-client-top{
+   position:relative!important;top:auto!important;inset:auto!important;
+   display:grid!important;grid-template-columns:minmax(0,1fr) 44px!important;
+   align-items:center!important;justify-content:space-between!important;
+   padding:12px max(14px,env(safe-area-inset-right,0px)) 12px max(14px,env(safe-area-inset-left,0px))!important;
+   gap:11px!important;min-height:69px!important;max-width:100%!important;
+   border-bottom:1px solid #3a4150!important;background:#111822!important;
+ }
+ .top.argus-client-top .brand{grid-column:1;grid-row:1;min-width:0!important;max-width:calc(100vw - 100px)!important}
+ .top.argus-client-top .brand img{display:block;width:150px!important;max-width:100%!important;max-height:45px!important;object-fit:contain!important;object-position:left center!important}
+ #argus-mobile-menu-toggle{
+   grid-column:2;grid-row:1;display:flex!important;align-items:center;justify-content:center;
+   width:44px;height:44px;min-height:44px;border:1px solid #655641;
+   border-radius:11px;background:#222630;color:#f2d19c;font-size:24px;
+   line-height:1;font-weight:500;padding:0;cursor:pointer
+ }
+ #argus-mobile-menu-toggle:focus-visible{outline:2px solid #e3c086;outline-offset:3px}
+ .top.argus-client-top nav.argus-client-nav{
+   grid-column:1/-1;grid-row:2;display:grid!important;
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;
+   gap:8px!important;max-width:100%!important;min-width:0!important;
+   flex:none!important;padding:5px 0 0!important;margin:0!important
+ }
+ .top.argus-client-top nav.argus-client-nav[hidden]{display:none!important}
+ .top.argus-client-top nav.argus-client-nav a{
+   box-sizing:border-box;display:flex!important;align-items:center!important;
+   justify-content:center!important;text-align:center!important;
+   padding:11px 9px!important;min-width:0!important;max-width:100%!important;
+   width:100%!important;min-height:46px!important;font-size:12px!important;
+   line-height:1.35!important;white-space:normal!important;
+   color:#e7c38d!important;border:1px solid #554a3b!important;
+   border-radius:10px!important;background:#1b202c!important;
+   overflow-wrap:anywhere!important
+ }
+ .top.argus-client-top nav.argus-client-nav a:last-child{display:flex!important}
+ .top.argus-client-top nav.argus-client-nav a:hover{border-color:#dab278!important}
+ .wrap{padding:19px 14px 32px!important}
+ #auth .intro{min-width:0}
+ #auth .intro h1{margin:12px 0 16px}
+ #auth .intro ul{padding-left:21px}
+ #auth .sheet{padding:20px 16px!important}
+ #dashboard .dash-top{gap:12px;align-items:flex-start!important;margin-bottom:17px}
+ #dashboard .dash-top h1{font-size:clamp(26px,7vw,33px)!important;line-height:1.18!important}
+ #dashboard .dash-top #logout{margin-left:0!important}
+ #dashboard .dash-top .outline{width:auto;max-width:100%}
+ #dashboard .grid{grid-template-columns:minmax(0,1fr)!important;gap:14px!important}
+ #dashboard .panel{padding:17px 15px!important}
+ #dashboard dl>div{gap:9px}
+ #dashboard .kyc-customer-head{padding:17px 15px!important}
+ #dashboard .kyc-customer-head h2{font-size:clamp(23px,6.5vw,31px)}
+ #dashboard .kyc-customer-stages{gap:8px}
+ #dashboard .kyc-customer-stages span{font-size:12px;line-height:1.35;padding:11px 7px;min-width:0;white-space:normal}
+ #dashboard .kyc-history small{float:none!important;display:block;margin:6px 0}
+ #argus-seller-root .seller-head{align-items:flex-start}
+ #argus-seller-root .seller-panel{padding:17px 15px!important}
+ #argus-seller-root .seller-columns{grid-template-columns:minmax(0,1fr)!important}
+ #argus-seller-root .seller-panel label{font-size:14px}
+ #argus-seller-root .seller-panel button{min-height:44px}
+ #argus-seller-root .seller-checkbox span{font-size:13px}
+ #argus-seller-root .seller-balances{grid-template-columns:minmax(0,1fr)!important}
+ #argus-seller-root .seller-panel textarea{width:100%!important}
+ #api-panel .panel-header{align-items:flex-start}
+ #api-panel .actions{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+ #api-panel .actions .check{width:100%}
+ #api-panel .actions button{width:100%}
+}
+@media(max-width:390px){
+ .top.argus-client-top nav.argus-client-nav{grid-template-columns:minmax(0,1fr)!important}
+ #auth .sheet,#dashboard .panel{padding:13px!important}
+ #dashboard .dash-top h1{font-size:25px!important}
+}
+@media(prefers-reduced-motion:reduce){.top.argus-client-top *{scroll-behavior:auto}}
