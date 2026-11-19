@@ -100,7 +100,7 @@ final class MerchantWallet {
             self::fail('Aguardando aprovação documental e financeira',403);
         return $account;
     }
-    private static function auth(Database $db):array{
+    private static function auth(Database $db,bool $requireWithdrawScope=false):array{
         $public=(string)($_SERVER['HTTP_X_ARGUS_KEY']??'');
         $secret=(string)($_SERVER['HTTP_X_ARGUS_SECRET']??'');
         if(!preg_match('/^agp_live_[a-f0-9]{24}$/D',$public)||
@@ -109,6 +109,15 @@ final class MerchantWallet {
         $key=$db->one('SELECT * FROM argus_portal_keys WHERE public_key=? AND revoked_at IS NULL',[$public]);
         if(!$key||!hash_equals((string)$key['secret_hash'],hash('sha256',$secret)))
             self::fail('Chave de integração inválida ou revogada',401);
+        // A compromised checkout key must not silently become a payout key.
+        // The SELLER explicitly opts into withdrawals when issuing this pair.
+        // Old credentials are read/charge-only until the seller rotates them.
+        if($requireWithdrawScope){
+            $permission=$db->one('SELECT allow_withdrawal FROM argus_portal_key_permissions
+                WHERE key_id=? AND account_id=?',[$key['id'],$key['account_id']]);
+            if(!$permission||(int)$permission['allow_withdrawal']!==1)
+                self::fail('Esta chave não autoriza saques. Gere um novo par com permissão de saque na sua conta',403);
+        }
         return self::account($db,$key);
     }
     private static function body():array{
@@ -333,9 +342,26 @@ final class MerchantWallet {
         return ['checked'=>$checked,'errors'=>$errors];
     }
     public static function api(Database $db,string $method,string $path):never{
-        $account=self::auth($db);
+        $isPayoutSubmit=$method==='POST'&&$path==='/api/v2/wallet/withdrawals';
+        $account=self::auth($db,$isPayoutSubmit);
         if($method==='GET'&&$path==='/api/v2/wallet/balance')
             self::out(self::balancePublic($db,$account));
+        if($method==='POST'&&$path==='/api/v2/wallet/withdrawals'){
+            $input=self::prepareApiWithdraw($db,$account,self::body(),self::idem());
+            $withdrawal=self::requestWithdraw($db,$account,$input);
+            if($withdrawal['status']==='requested')
+                $withdrawal=self::sendWithdraw($db,(string)$withdrawal['id'],(string)$account['id']);
+            self::out(['withdrawal'=>$withdrawal,'wallet'=>self::balancePublic($db,$account)],201);
+        }
+        if($method==='GET'&&$path==='/api/v2/wallet/withdrawals'){
+            self::out(['withdrawals'=>self::payouts($db,(string)$account['id'])]);
+        }
+        if($method==='GET'&&preg_match('~^/api/v2/wallet/withdrawals/(mww_[a-f0-9]{32})$~D',$path,$match)){
+            $row=$db->one('SELECT * FROM argus_seller_withdrawals WHERE id=? AND account_id=?',
+                [$match[1],(string)$account['id']]);
+            if(!$row)self::fail('Saque não encontrado nesta carteira',404);
+            self::out(['withdrawal'=>self::payoutPublic($row)]);
+        }
         if($method==='GET'&&$path==='/api/v2/wallet/transactions'){
             self::install($db);
             self::out(['transactions'=>$db->all(
@@ -358,6 +384,30 @@ final class MerchantWallet {
         }
         self::fail('Endpoint de integração não encontrado',404);
     }
+    /**
+     * Payouts requested by a seller's own API keys use the verified CPF/CNPJ
+     * registered on that account. The caller CANNOT select another beneficiary,
+     * change merchant ownership, or pass a different recipient document.
+     * Registered identity is not made public or treated as the PIX *payer*.
+     */
+    private static function prepareApiWithdraw(Database $db,array $account,array $body,string $idem):array{
+        foreach(['account_id','merchant_id','recipient_name','recipient_cpf',
+                 'beneficiary_name','beneficiary_document','pix_key','pix_key_type',
+                 'payer_name','payer_document'] as $foreign){
+            if(array_key_exists($foreign,$body))
+                self::fail('O destinatário é definido exclusivamente pelo cadastro verificado, não pela API',422);
+        }
+        $identity=IdentityProfile::sellerForPayout($db,$account);
+        return [
+            'amount_cents'=>$body['amount_cents']??null,
+            'confirm'=>$body['confirm']??false,
+            'idempotency_key'=>$idem,
+            'pix_key_type'=>$identity['account_type']==='PJ'?'cnpj':'cpf',
+            'pix_key'=>$identity['document_number'],
+            'description'=>'Saque da carteira ARGUS Pay'
+        ];
+    }
+
     private static function payoutKey():string{
         $raw=(string)(getenv('ARGUS_MERCHANT_PAYOUT_ENCRYPTION_KEY')?:'');
         $key=base64_decode($raw,true);
