@@ -10,6 +10,7 @@ use ArgusPayments\ApiError;
 $db=new DB(require '/var/www/html/config.php');
 $db->installAndSeed();\ArgusPayments\Admin::install($db);
 Portal::install($db);KycStudio::install($db);Wallet::install($db);
+putenv('ARGUS_MERCHANT_UNIT_TEST=local-sqlite-only');
 putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=yes');
 putenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED=yes');
 putenv('ARGUS_PAYOUTS_ENABLED=yes');
