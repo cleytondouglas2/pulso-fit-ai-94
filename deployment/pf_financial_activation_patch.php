@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 /** Applied last. Add an audited, separate CPF financial-account path.
- * Only Super Admin + 2FA may approve; no PSP subaccount is fabricated.
+ * Only Super Admin + 2FA may approve; this does not assert PSP custody rights.
  */
 $root='/var/www/html';
 function pfReplace(string $file,string $old,string $new,string $label):void{
@@ -20,7 +20,7 @@ $admin=$root.'/src/Admin.php';
 $before="        if(str_starts_with(\$path,'/api/admin/kyc/'))KycStudio::admin(\$db,\$method,\$path,\$actor);";
 $handler=<<<'PHP'
         // Dedicated CPF wallet authorization. Requires Super Admin, CSRF,
-        // current 2FA and a verified platform custody account. Never turns
+        // current 2FA and approved KYC. Approval is internal to ARGUS. Never turns
         // an individual CPF into a made-up CNPJ or PSP subaccount.
         if($method==='POST'&&preg_match(
             '~^/api/admin/kyc/applications/([a-f0-9]{32})/finance-activate-pf$~D',$path,$pf)){
@@ -105,16 +105,16 @@ $old=<<<'JS'
 JS;
 $new=<<<'JS'
      }else if(a.account_type==='PF'){
-       html+='<p class="kyc-finance-info"><strong>Identidade aprovada.</strong> A autorização da carteira CPF é feita pelo Super Admin. O revendedor recebe uma carteira individual no ARGUS, enquanto o processamento utiliza a integração central homologada da MisticPay.</p>'+
+       html+='<p class="kyc-finance-info"><strong>Identidade aprovada.</strong> A autorização da carteira CPF é feita pelo Super Admin. O revendedor recebe uma carteira individual no ARGUS, mas Pix e saques dependem da autorização e dos controles reais do provedor.</p>'+
         '<form id="kyc-finance-pf-form" class="kyc-finance-pf-form">'+
         '<label class="kyc-confirm"><input type="checkbox" name="confirm_identity" required> Conferi o nome e CPF do revendedor e a aprovação documental</label>'+
-        '<label class="kyc-confirm"><input type="checkbox" name="confirm_provider_custody" required> Confirmei a autorização do provedor para o modelo de custódia central e carteiras individuais</label>'+
-        '<label class="kyc-confirm"><input type="checkbox" name="confirm_contract" required> Contrato e regras de recebimento conferidos</label>'+
+
+        '<label class="kyc-confirm"><input type="checkbox" name="confirm_contract" required> Conferi os termos e condições do cadastro do revendedor</label>'+
         '<label class="kyc-confirm"><input type="checkbox" name="confirm_ledger" required> Confirmo que saldo e saques pertencem exclusivamente a este CPF</label>'+
         '<label>Justificativa da autorização<input name="reason" type="text" minlength="10" maxlength="300" placeholder="Informe o fundamento da liberação" required></label>'+
         '<label>Código de segurança do Super Admin<input name="otp" type="text" autocomplete="one-time-code" inputmode="numeric" minlength="6" maxlength="6" pattern="[0-9]{6}" required></label>'+
-        '<button type="submit" class="kyc-finance-activate">Liberar recebimentos do revendedor CPF</button>'+
-        '<p class="kyc-finance-terms">A liberação somente será concluída se a custódia central da MisticPay estiver confirmada no servidor. Não cria conta bancária nem autorização fictícia no provedor.</p>'+
+        '<button type="submit" class="kyc-finance-activate">Aprovar cadastro financeiro CPF</button>'+
+        '<p class="kyc-finance-terms">Aprovação interna ao ARGUS. Não comprova autorização de custódia nem cria conta bancária. Pix e saques continuam sujeitos aos controles do provedor.</p>'+
         '</form>';
 JS;
 if(!is_string($js)||substr_count($js,$old)!==1)
@@ -135,12 +135,12 @@ $new=<<<'JS'
      const form=ev.currentTarget,button=form.querySelector('button[type=submit]');
      if(!button)return;
      const input=Object.fromEntries(new FormData(form));
-     for(const name of ['confirm_identity','confirm_provider_custody','confirm_contract','confirm_ledger'])
+     for(const name of ['confirm_identity','confirm_contract','confirm_ledger'])
        input[name]=form.elements[name]?.checked===true;
-     if(!['confirm_identity','confirm_provider_custody','confirm_contract','confirm_ledger'].every(name=>input[name])){
-       toast('Confirme os quatro requisitos obrigatórios antes de liberar.',true);return;
+     if(!['confirm_identity','confirm_contract','confirm_ledger'].every(name=>input[name])){
+       toast('Confirme os três requisitos para aprovar o cadastro.',true);return;
      }
-     if(!confirm('Liberar a carteira financeira do revendedor CPF? Confirme que o contrato e a autorização de custódia foram realmente verificados.'))return;
+     if(!confirm('Aprovar o cadastro financeiro deste CPF no ARGUS? Pix e saques continuam sujeitos às verificações do provedor.'))return;
      button.disabled=true;
      try{
        const response=await post('/api/admin/kyc/applications/'+encodeURIComponent(selected)+'/finance-activate-pf',input);
@@ -180,12 +180,12 @@ if(!is_string($html))throw new RuntimeException('Super Admin page missing');
 $old='/static/kyc-studio.js?v=finance-20261119-1';
 if(substr_count($html,$old)!==1)
     throw new RuntimeException('Current KYC JS version unexpected');
-$html=str_replace($old,'/static/kyc-studio.js?v=pf-activate-20261119-1',$html);
+$html=str_replace($old,'/static/kyc-studio.js?v=pf-activate-20261119-2',$html);
 $cssOld='/static/kyc-studio.css?v=finance-20261119-1';
 if(substr_count($html,$cssOld)!==1)
     throw new RuntimeException('Current KYC CSS version unexpected');
-$html=str_replace($cssOld,'/static/kyc-studio.css?v=pf-activate-20261119-1',$html);
+$html=str_replace($cssOld,'/static/kyc-studio.css?v=pf-activate-20261119-2',$html);
 if(file_put_contents($adminHtml,$html)===false)
     throw new RuntimeException('Super Admin JS cache cannot update');
 
-echo "PASS: real CPF Super Admin authorization workflow, protected 2FA and audit, secure PF wallet/link, KYC and PSP custody guards retained.\n";
+echo "PASS: audited CPF internal approval; 2FA, KYC, wallet isolation and independent PSP money guards retained.\n";
