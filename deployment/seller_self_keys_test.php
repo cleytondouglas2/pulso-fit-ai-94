@@ -15,7 +15,6 @@ foreach([
     "self::session(\$db)",
     "WHERE account_id=? AND revoked_at IS NULL",
     "KycStudio::identityApproved",
-    "m.status='approved_live'",
     "status='approved_live'",
     "in_array(\$db->driver(),['pgsql','mysql'],true)",
     "hash('sha256',\$secret)",
@@ -28,7 +27,7 @@ foreach([
 }
 $section=explode("if(\$method==='POST'&&\$path==='/api/portal/keys')",$portal,2)[1]??'';
 $section=explode("if(\$method==='POST'&&preg_match(",$section,2)[0];
-if(str_contains($section,'verifyMfaCode')||str_contains($section,'account_id']??'))
+if(str_contains($section,'verifyMfaCode')||str_contains($section,"account_id']??"))
     throw new RuntimeException('Seller credential issue incorrectly requires superadmin or accepts foreign account ID');
 foreach(['#api-panel','seller-key-create','Minhas chaves de integração',
     '/documentacao-api'] as $key){
