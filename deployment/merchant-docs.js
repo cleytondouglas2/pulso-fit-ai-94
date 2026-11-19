@@ -10,8 +10,8 @@ function init(){
   '<h2>Receba Pix no seu site ou bot do Telegram</h2>',
   '<p>Seu site ou bot conversa apenas com a API ARGUS Pay. O servidor ARGUS valida suas chaves e movimenta a conta de custódia central junto à MisticPay. Nenhuma chave ou segredo da MisticPay é compartilhado com revendedores.</p></div>',
   '<div class="argus-doc-grid"><article><h3>1. Gere suas credenciais</h3><p>Na <a href="/conta">Minha conta</a>, após KYC e autorização financeira, gere uma <code>Chave API</code> e uma <code>Chave secreta</code>. A secreta aparece apenas uma vez; não pode ser recuperada e deve ficar no servidor.</p></article>',
-  '<article><h3>2. Faça uma cobrança</h3><p>Envie o valor em centavos e o nome e CPF/CNPJ do verdadeiro pagador, quando exigidos pelo provedor. O revendedor é identificado automaticamente pela sua chave ARGUS e fica vinculado à cobrança.</p></article>',
-  '<article><h3>3. Confirme o pagamento</h3><p>Consulte o identificador no servidor. Somente uma confirmação autenticada pela MisticPay gera crédito. QR Codes vencem visualmente após 30 minutos.</p></article>',
+  '<article><h3>2. Faça uma cobrança</h3><p>O revendedor é identificado pela API Key e chave secreta e não precisa enviar sua identidade a cada pedido. Para pagamento de cliente, informe o nome e CPF/CNPJ verdadeiros do pagador. Se o próprio revendedor estiver pagando, use o modo seguro de identificação do cadastro.</p></article>',
+  '<article><h3>3. Exiba o QR Code</h3><p>A API devolve o Pix Copia e Cola e o ID. O painel do revendedor em <a href="/conta">Minha conta</a> mostra automaticamente o QR Code ativo gerado por seu site, com visualização e cópia local. Somente a confirmação da MisticPay credita a carteira.</p></article>',
   '<article><h3>4. Consulte seu saldo e saque</h3><p>A cada depósito confirmado há uma taxa de serviço de R$ 1,00. Para saques via API, ative a permissão ao gerar a chave: o ARGUS usa o CPF/CNPJ verificado no seu cadastro como chave Pix de destino. O nome legal identifica o titular internamente.</p></article></div>',
   '<h3>Autenticação e segurança</h3><p>Use HTTPS. Envie <code>X-Argus-Key</code> e <code>X-Argus-Secret</code> em todas as requisições de API. No navegador ou Telegram, faça sempre a chamada no seu servidor; nunca coloque a chave secreta no código JavaScript público, APK, webhook de bot ou URL.</p>',
   '<table><thead><tr><th>Método</th><th>Endpoint</th><th>Descrição</th></tr></thead><tbody>',
@@ -25,6 +25,7 @@ function init(){
   '<tr><td>GET</td><td><code>/api/v2/wallet/withdrawals/{id}</code></td><td>Consultar situação do seu saque</td></tr>',
   '</tbody></table><p>Ao gerar sua API Key em <a href="/conta">Minha conta</a>, marque expressamente a opção de habilitar saques via API. Chaves antigas e chaves criadas sem essa permissão continuam restritas a cobranças e consultas. Uma solicitação de saque exige Idempotency-Key e confirmação explícita, só permite saldo próprio disponível e retorna status para acompanhamento.</p>',
   '<h3>Exemplo 1 · Gerar Pix via cURL</h3><pre><code id="argus-doc-curl"></code></pre>',
+  '<h3>Exemplo de depósito pago pelo próprio revendedor</h3><p>Use este modo <strong>somente quando o titular do cadastro for realmente quem pagará o Pix</strong>. A ARGUS lê o nome legal e CPF/CNPJ previamente verificados e não aceita substituí-los no pedido. Nunca use os dados do revendedor para encobrir o verdadeiro pagador de uma venda de terceiro.</p><pre><code id="argus-doc-self-payer"></code></pre>',
   '<h3>Exemplo 2 · Node.js (servidor)</h3><pre><code id="argus-doc-node"></code></pre>',
   '<h3>Exemplo 3 · Bot do Telegram (Node.js)</h3><pre><code id="argus-doc-telegram"></code></pre>',
   '<h3>Exemplo 4 · Saque pela API, sem enviar nome/CPF</h3><pre><code id="argus-doc-withdraw"></code></pre>',
@@ -48,6 +49,16 @@ function init(){
    '',
    '# Consultar depois: GET /api/v2/pix/charges/mwc_<id>',
    '# Consultar saldo:  GET /api/v2/wallet/balance'
+  ].join('\n'),
+  'argus-doc-self-payer':[
+   'curl -X POST https://argus-payments-oregon-testes.onrender.com/api/v2/pix/charges \\',
+   ' -H "X-Argus-Key: $ARGUS_API_KEY" \\',
+   ' -H "X-Argus-Secret: $ARGUS_API_SECRET" \\',
+   ' -H "Idempotency-Key: deposito-proprio-unico-2026" \\',
+   ' -H "Content-Type: application/json" \\',
+   ' -d \'{"amount_cents":1000,"payer_mode":"registered_seller",',
+   '      "seller_is_payer":true,"description":"Deposito do titular"}\'',
+   '# O nome e CPF/CNPJ saem do cadastro verificado do próprio vendedor.'
   ].join('\n'),
   'argus-doc-node':[
    '// Código de backend Node.js; credenciais no ambiente do servidor.',
