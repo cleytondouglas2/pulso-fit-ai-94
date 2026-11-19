@@ -21,8 +21,10 @@ if(substr_count($h,'<header class="top argus-client-top">')!==1||
    substr_count($h,'<details ')!==1||
    substr_count($h,'</details>')!==1)
     throw new RuntimeException('Broken mobile menu or duplicate top header');
+if(!preg_match('~<header class="top argus-client-top">(.*?)</header>~s',$h,$matched))
+    throw new RuntimeException('Native menu header cannot be located');
 foreach(['/documentacao-api','/instalar','/conta#api-panel'] as $url){
-    if(substr_count($h,'href="'.$url.'"')!==2)
+    if(substr_count($matched[1],'href="'.$url.'"')!==2)
         throw new RuntimeException('Desktop/mobile navigation links differ: '.$url);
 }
 foreach([
