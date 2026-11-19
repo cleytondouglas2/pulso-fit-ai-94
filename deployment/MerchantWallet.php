@@ -385,7 +385,13 @@ final class MerchantWallet {
         if(($data['confirm']??null)!==true)self::fail('Confirme o valor do saque e a taxa de serviço de R$ 1,00');
         $type=$data['pix_key_type']??null;$pix=$data['pix_key']??null;
         if(!is_string($type)||!is_string($pix))self::fail('Chave Pix e tipo são obrigatórios');
-        $key=MisticPayPayout::validatePixKey($type,$pix);
+        $type=match(strtolower($type)){
+            'cpf'=>'CPF','cnpj'=>'CNPJ','email'=>'EMAIL',
+            'phone','telefone'=>'TELEFONE','evp','chave_aleatoria'=>'CHAVE_ALEATORIA',
+            default=>self::fail('Tipo de chave Pix inválido',422)
+        };
+        try{$key=MisticPayPayout::validatePixKey($type,$pix);}
+        catch(\InvalidArgumentException $e){self::fail($e->getMessage(),422);}
         $desc=trim((string)($data['description']??'Saque de vendas ARGUS Pay'));
         if(mb_strlen($desc)<3||mb_strlen($desc)>120)self::fail('Descrição inválida');
         $idem=$data['idempotency_key']??null;
