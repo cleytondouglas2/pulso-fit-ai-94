@@ -18,10 +18,10 @@ async function loadWallets(){
    (Number(a.debt_cents)>0?'<p class="seller-admin-problem">Ajuste pendente '+cash(a.debt_cents)+'</p>':'')+
    '</article>').join(''):'<p>Nenhuma carteira habilitada ainda.</p>';
   pending.innerHTML=items.length?items.map(r=>'<article class="seller-admin-line">'+
-    '<div><strong>'+cash(r.amount_cents)+'</strong><small>'+esc(r.pix_key_masked)+'</small>'+
+    '<div><strong>Solicitado '+cash(r.amount_cents)+'</strong><small>Pix líquido '+cash(Number(r.amount_cents)-100)+'</small><small>'+esc(r.pix_key_masked)+'</small>+
     '<small>Taxa de serviço R$ 1,00</small></div><div><strong>'+esc(r.status)+'</strong><small>'+esc(r.created_at)+'</small></div>'+
     '<div class="seller-admin-buttons">'+
-    (r.status==='requested'?'<button type="button" data-seller-execute="'+esc(r.id)+'">Autorizar com 2FA</button>':'')+
+    (r.status==='requested'?'<small>Aguardando processamento do próprio revendedor</small>':'')+
     (r.provider_tx_id&&['queued','unknown','pending','processing'].includes(r.status)?'<button type="button" data-seller-reconcile="'+esc(r.id)+'">Conciliar</button>':'')+
     '</div></article>').join(''):'<p>Nenhum saque solicitado.</p>';
  }catch(err){list.textContent='Não foi possível consultar as carteiras: '+err.message;}
