@@ -103,6 +103,19 @@ final class FeeExecution {
             [Database::stamp(),$operationId]);
         return $updated->rowCount()===1;
     }
+    /** Background repair is safe because initial 'paid' can only be set by
+     *  the authenticated /transactions/check path after our integration patch. */
+    public static function settlePaidSnapshots(Database $db):int{
+        self::install($db);
+        $rows=$db->all("SELECT f.operation_id FROM argus_fee_operations f
+            JOIN admin_quick_pix p ON p.id=f.operation_id
+            WHERE f.operation_kind='deposit' AND f.status='reserved'
+              AND p.status='paid' AND p.provider_id LIKE 'tr_%'
+            ORDER BY f.created_at ASC LIMIT 80");
+        $count=0;
+        foreach($rows as $row)if(self::depositPaid($db,(string)$row['operation_id']))$count++;
+        return $count;
+    }
     public static function payoutSubmitted(Database $db,string $operationId):void{
         self::install($db);
         $db->run("UPDATE argus_fee_operations SET status='submitted'
