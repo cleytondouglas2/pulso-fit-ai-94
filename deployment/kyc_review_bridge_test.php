@@ -73,6 +73,7 @@ try{$reviewer->invoke(null,['role'=>'viewer']);throw new RuntimeException('Viewe
 catch(ApiError $e){if($e->status!==403)throw $e;}
 $reviewer->invoke(null,['role'=>'superadmin']);
 $public='/var/www/html/public/static/';
+$adminPhp=(string)file_get_contents('/var/www/html/src/Admin.php');
 $admin=(string)file_get_contents($public.'admin.js');
 $kyc=(string)file_get_contents($public.'kyc-studio.js');
 $css=(string)file_get_contents($public.'kyc-studio.css');
@@ -95,6 +96,10 @@ foreach(["argus_kyc_encrypted_documents","document_viewed","self::decrypt",
          "hash('sha256',\$bytes)","identity_approved"] as $needle)
     if(!str_contains($service,$needle))
         throw new RuntimeException('KYC storage/review safeguards missing: '.$needle);
+if(!str_contains($adminPhp,"'/api/admin/kyc/applications/'")||
+   !str_contains($adminPhp,"self::writeAllowed(\$actor,true);")||
+   !str_contains($adminPhp,"KycStudio::admin(\$db,\$method"))
+    throw new RuntimeException('Old document URL must use authenticated audited KYC service');
 if(!str_contains($html,'kyc-studio.js?v=3')||
    !str_contains($html,'admin.js?v=kyc-nov19'))
     throw new RuntimeException('iPhone browser cache version not bumped');
