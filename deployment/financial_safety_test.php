@@ -74,6 +74,9 @@ $wallet=$db->one('SELECT * FROM argus_seller_wallets WHERE account_id=?',[$a['id
 if((int)$wallet['available_cents']!==3000||(int)$wallet['held_cents']!==0)
  throw new RuntimeException('Held funds were not released exactly once after paid');
 $denied(static fn()=>Wallet::requestWithdraw($db,$a,$next));
+$descriptionChanged=$next;
+$descriptionChanged['description']='Mesmo saque com outra descricao';
+$denied(static fn()=>Wallet::requestWithdraw($db,$a,$descriptionChanged));
 $alternative=Wallet::requestWithdraw($db,$a,$different);
 if($alternative['id']===$one['id'])
  throw new RuntimeException('Different beneficiary payout cannot be a reused ID');
@@ -92,7 +95,7 @@ $workerSource=(string)file_get_contents('/usr/local/share/argus/notify_worker.ph
 $opsSource=(string)file_get_contents('/var/www/html/src/FinanceOperations.php');
 foreach([
  'FinancialControl::assertWalletBalanced($db,$accountId,$w)',
- 'FinancialControl::assertPayoutNotDuplicated($db,$accountId,$bodyHash)',
+ 'FinancialControl::assertPayoutNotDuplicated($db,$accountId,$bodyHash,$amount,$type,$masked)',
  'status IN (\'pending\',\'unknown\')',
  "status='paid' AND (checked_at IS NULL OR checked_at",
  'self::reconcileOne($db,$row)',
