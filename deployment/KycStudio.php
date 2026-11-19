@@ -308,12 +308,39 @@ final class KycStudio {
         self::format($bytes,$mime,(string)$row['document_type']);
         // Access is audited without logging file content, document numbers or download URL.
         self::reviewLog($db,$actor,$accountId,'document_viewed','Visualização protegida de documento',[(string)$row['document_type']]);
-        header('Content-Type: '.$mime);
         header('Cache-Control: private, no-store, max-age=0');
         header('Pragma: no-cache');
         header('X-Content-Type-Options: nosniff');
+        header('Vary: Cookie');
+        // No blind iframe/blob PDF rendering in iOS Safari. Preview each page
+        // as same-origin PNG while preserving original protected bytes in DB.
+        // This request already passed reviewer role, ownership and SHA-256
+        // checks, and it has a document_viewed audit entry.
+        if($mime==='application/pdf'&&isset($_GET['preview'])){
+            require_once __DIR__.'/KycDocumentPreview.php';
+            $mode=(string)$_GET['preview'];
+            if($mode==='metadata'){
+                $metadata=KycDocumentPreview::info($bytes);
+                self::send(['pdf'=>$metadata]);
+            }
+            if($mode!=='page')self::fail('Modo de visualização indisponível',422);
+            $rawPage=$_GET['page']??'';
+            if(!is_string($rawPage)||!preg_match('/^[1-9][0-9]{0,2}$/D',$rawPage))
+                self::fail('Página do PDF inválida',422);
+            $png=KycDocumentPreview::png($bytes,(int)$rawPage);
+            header('Content-Type: image/png');
+            header('Content-Security-Policy: sandbox');
+            header('Content-Disposition: inline; filename="documento-argus-pagina.png"');
+            header('Content-Length: '.strlen($png));
+            echo $png;exit;
+        }
+        header('Content-Type: '.$mime);
         header('Content-Security-Policy: sandbox');
-        header('Content-Disposition: attachment; filename="documento-argus-'.$docId.'.'.($mime==='application/pdf'?'pdf':($mime==='image/png'?'png':'jpg')).'"');
+        // Same-origin <img src> avoids blob: CSP and WebKit object-URL issues.
+        // Unsafe PDF contents are never embedded as a same-origin document;
+        // the original PDF is downloaded, while raster previews appear in UI.
+        header('Content-Disposition: '.($mime==='application/pdf'?'attachment':'inline').
+            '; filename="documento-argus-'.$docId.'.'.($mime==='application/pdf'?'pdf':($mime==='image/png'?'png':'jpg')).'"');
         header('Content-Length: '.strlen($bytes));
         echo $bytes;exit;
     }
