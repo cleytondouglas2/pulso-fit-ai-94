@@ -237,15 +237,8 @@ final class MerchantWallet {
             self::uid('mwl'),$account,$kind,$op,$available,$held,$debt,$fee,self::now()
         ]);
     }
-    private static function reconcileOne(Database $db,array $charge):array{
-        if(!in_array($charge['status'],['pending','unknown','paid','refunded'],true)||
-           !str_starts_with((string)$charge['provider_id'],'tr_'))return $charge;
-        $providerId=substr($charge['provider_id'],3);
-        if(!preg_match('/^[A-Za-z0-9_.-]{1,110}$/D',$providerId))return $charge;
-        $result=self::provider('/transactions/check',['transactionId'=>$providerId]);
-        $checked=TraditionalQuickPix::readChecked($result,(int)$charge['amount_cents'],$providerId);
-        $state=$checked['status'];
-        if($state==='failed'&&$charge['status']==='paid')$state='refunded';
+    /** Only invoked after a verified MisticPay status query. No public endpoint can call it. */
+    private static function applyVerifiedStatus(Database $db,array $charge,string $state):void{
         $db->transaction(static function(Database $db) use($charge,$state){
             $id=$charge['id'];
             $sql='SELECT * FROM argus_seller_charges WHERE id=?';
@@ -284,6 +277,17 @@ final class MerchantWallet {
                 $db->run('UPDATE argus_seller_charges SET checked_at=? WHERE id=?',[self::now(),$id]);
             }
         });
+    }
+    private static function reconcileOne(Database $db,array $charge):array{
+        if(!in_array($charge['status'],['pending','unknown','paid','refunded'],true)||
+           !str_starts_with((string)$charge['provider_id'],'tr_'))return $charge;
+        $providerId=substr($charge['provider_id'],3);
+        if(!preg_match('/^[A-Za-z0-9_.-]{1,110}$/D',$providerId))return $charge;
+        $result=self::provider('/transactions/check',['transactionId'=>$providerId]);
+        $checked=TraditionalQuickPix::readChecked($result,(int)$charge['amount_cents'],$providerId);
+        $state=$checked['status'];
+        if($state==='failed'&&$charge['status']==='paid')$state='refunded';
+        self::applyVerifiedStatus($db,$charge,$state);
         return $db->one('SELECT * FROM argus_seller_charges WHERE id=?',[$charge['id']]);
     }
     public static function reconcile(Database $db,string $id,?string $accountId=null):array{
