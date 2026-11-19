@@ -350,7 +350,7 @@ RUN php -l /tmp/kyc_review_assets_patch.php \
  && php -d display_errors=1 -d log_errors=0 /tmp/kyc_review_assets_patch.php \
  && php -l /var/www/html/src/KycStudio.php \
  && php -l /var/www/html/tests/kyc_review_bridge_test.php \
- && php /var/www/html/tests/kyc_review_bridge_test.php
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_review_bridge_test.php
 
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
