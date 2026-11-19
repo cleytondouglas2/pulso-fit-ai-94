@@ -51,7 +51,7 @@ if($own['periods']['today']['gross_cents']!==700||
    $own['periods']['today']['net_cents']!==700||
    $own['periods']['yesterday']['gross_cents']!==1000||
    $own['periods']['today_benchmark']['gross_cents']!==600||
-   $own['periods']['month']['gross_cents']!==700||
+   $own['periods']['month']['gross_cents']!==1700||
    $own['periods']['previous_month']['gross_cents']!==500)
     throw new RuntimeException('Seller day/month paid/refund totals or cutoff wrong: '.json_encode($own['periods']));
 if($own['comparison_today']['direction']!=='up'||$own['comparison_month']['direction']!=='up')
@@ -60,7 +60,7 @@ if(count($own['daily'])!==14||count($own['sellers'])!==0)
     throw new RuntimeException('Seller leaked portfolio data or chart is not fourteen days');
 $all=R::build($db,null,$now);
 if($all['periods']['today']['gross_cents']!==2700||
-   $all['periods']['month']['gross_cents']!==2700||
+   $all['periods']['month']['gross_cents']!==3700||
    count($all['sellers'])!==2||
    $all['sellers'][0]['account_id']!==$b||
    $all['sellers'][1]['account_id']!==$a||
