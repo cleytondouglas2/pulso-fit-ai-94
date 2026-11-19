@@ -17,8 +17,12 @@ $portal=$root.'/src/Portal.php';
 // balances; never credit them as seller wallet deposits.
 merchantReplace($portal,
     "        if(str_starts_with(\$path,'/api/v1/')){",
-    "        if(str_starts_with(\$path,'/api/v1/'))MerchantWallet::api(\$db,\$method,\$path);\n        if(str_starts_with(\$path,'/api/v1/')){",
-    'segregated new API routes before older split endpoints');
+    "        if(str_starts_with(\$path,'/api/v2/'))MerchantWallet::api(\$db,\$method,\$path);\n        if(str_starts_with(\$path,'/api/v1/')){",
+    'seller custody API v2 without changing existing v1 split endpoints');
+merchantReplace($root.'/src/Gateway.php',
+    "str_starts_with(\$path, '/api/v1/'))",
+    "str_starts_with(\$path, '/api/v1/') || str_starts_with(\$path, '/api/v2/'))",
+    'allow v2 server integration routes');
 merchantReplace($portal,
     "        if(\$method!=='GET')self::csrf(\$account);",
     "        if(\$method!=='GET')self::csrf(\$account);\n        if(str_starts_with(\$path,'/api/portal/wallet'))MerchantWallet::portal(\$db,\$method,\$path,\$account);",
