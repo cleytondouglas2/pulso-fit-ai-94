@@ -561,6 +561,22 @@ RUN php -l /tmp/reseller_entry_admin_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_entry_admin_test.php \
  && apache2ctl configtest
 
+# Email-verified password recovery: random one-time links, finite token expiry,
+# owner-only password change and revocation of old portal sessions.
+# Resend email transport remains DISABLED until verified credentials configured.
+COPY deployment/PortalPasswordReset.php /var/www/html/src/PortalPasswordReset.php
+COPY deployment/reseller-password-recovery.js deployment/reseller-password-recovery.css /var/www/html/public/static/
+COPY deployment/password_recovery_patch.php /tmp/password_recovery_patch.php
+COPY deployment/password_recovery_test.php /var/www/html/tests/password_recovery_test.php
+RUN php -l /var/www/html/src/PortalPasswordReset.php \
+ && php -l /tmp/password_recovery_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/password_recovery_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/tests/password_recovery_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/password_recovery_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
