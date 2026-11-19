@@ -12,9 +12,9 @@ function ensure(){
  root.innerHTML=[
   '<div class="seller-head"><div><small>ARGUS PAY · REVENDEDOR</small><h2>Minha conta financeira</h2><p>Suas vendas, chaves API e saldo individual.</p></div><button id="seller-refresh" type="button">Atualizar</button></div>',
   '<div class="seller-balances" id="seller-balances" aria-live="polite">Carregando...</div>',
-  '<div class="seller-columns"><section class="seller-panel"><h3>Chaves de integração</h3><p>Gere uma chave pública e uma chave secreta para integrar sites e bots do Telegram. A chave secreta é exibida uma única vez.</p>',
-  '<button id="seller-key-create" type="button">Gerar chave API e secreta</button><div id="seller-key-once" hidden></div><div id="seller-key-list"></div>',
-  '<p><a href="/documentacao-api" target="_blank" rel="noopener">Documentação para sites e Telegram</a></p></section>',
+  '<div class="seller-columns"><section class="seller-panel"><h3>Minhas chaves de integração</h3><p>Você mesmo gera suas chaves API e secreta, sem pedir autorização ao administrador a cada geração. As credenciais são exclusivas da sua conta.</p>',
+  '<button id="seller-key-create" type="button">Gerar minhas chaves de API</button><div id="seller-key-status" class="seller-key-status" aria-live="polite">Conferindo autorização...</div><div id="seller-key-list"></div>',
+  '<p><a href="/documentacao-api" target="_blank" rel="noopener">Abrir documentação API para sites e Telegram</a></p></section>',
   '<section class="seller-panel"><h3>Sacar meu saldo</h3><p>Saque diretamente para sua chave Pix, sem autorização do administrador. R$ 1,00 de taxa já descontado do total.</p>',
   '<form id="seller-withdraw-form" autocomplete="off"><label>Valor total a sacar (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
   '<label>Tipo da chave Pix<select name="pix_key_type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Celular</option><option value="evp">Chave aleatória</option></select></label>',
@@ -32,7 +32,6 @@ function ensure(){
  top.after(root);
  E('seller-refresh').onclick=()=>load(true);
  E('seller-key-create').onclick=createKey;
- E('seller-key-list').onclick=revokeKey;
  E('seller-withdraw-form').onsubmit=withdraw;
  E('seller-withdraw-form').elements.amount.oninput=quote;
  E('seller-deposit-form').onsubmit=deposit;
@@ -51,10 +50,11 @@ function walletRender(w){
   (!w.withdrawals_enabled?'<p class="seller-warning">Saques aguardando habilitação financeira no provedor.</p>':'');
 }
 function keysRender(v){
- const keys=v?.keys||[];E('seller-key-create').disabled=!v?.can_issue;
- E('seller-key-list').innerHTML=keys.length?keys.map(k=>'<div class="seller-item"><code>'+escapeText(k.public_key)+'</code><small>'+escapeText(k.revoked_at?'Revogada':'Ativa')+'</small>'+
-  (k.revoked_at?'':'<button data-revoke="'+escapeText(k.id)+'" type="button">Revogar</button>')+'</div>').join(''):
-  '<p>Nenhuma chave criada. A geração depende de KYC e aprovação financeira.</p>';
+ const keys=v?.keys||[];
+ E('seller-key-create').disabled=!v?.can_issue;
+ E('seller-key-status').textContent=v?.reason||'Verifique suas credenciais e o status de aprovação da conta.';
+ const active=keys.filter(k=>!k.revoked_at).length;
+ E('seller-key-list').innerHTML='<p>'+active+' chave(s) ativa(s). <a href="#api-panel">Ver minhas chaves e revogar</a></p>';
 }
 function activities(){
  return Promise.allSettled([request('/api/portal/wallet'),request('/api/portal/wallet/charges')]).then(arr=>{
@@ -83,31 +83,11 @@ async function load(force=false){
  }catch(err){active=false;walletRender(null)}
  finally{working=false;}
 }
-async function createKey(){
- if(!active||!confirm('Criar uma credencial? A chave secreta só poderá ser exibida agora.'))return;
- const button=E('seller-key-create');button.disabled=true;
- try{
-  const v=await request('/api/portal/keys',{method:'POST',body:{}});
-  const box=E('seller-key-once');box.hidden=false;box.replaceChildren();
-  const title=document.createElement('strong');title.textContent='Chaves criadas! Copie agora; a secreta não poderá ser recuperada.';box.append(title);
-  [['Chave API',v.api_key],['Chave secreta',v.api_secret]].forEach(([name,secret])=>{
-   const label=document.createElement('label');label.textContent=name;
-   const input=document.createElement('textarea');input.value=secret;input.readOnly=true;input.rows=2;label.append(input);
-   const copy=document.createElement('button');copy.textContent='Copiar '+name;copy.type='button';
-   copy.onclick=()=>navigator.clipboard?.writeText(secret).catch(()=>input.select());
-   label.append(copy);box.append(label);
-  });
-  await load(true);
- }catch(err){notice('Falha ao gerar chave: '+err.message,true)}
- finally{button.disabled=false;}
-}
-async function revokeKey(event){
- const button=event.target.closest('button[data-revoke]');if(!button||!confirm('Revogar esta chave? As integrações que a usam serão interrompidas.'))return;
- button.disabled=true;
- try{await request('/api/portal/keys/'+encodeURIComponent(button.dataset.revoke)+'/revoke',{method:'POST',body:{}});
-  E('seller-key-once').hidden=true;await load(true);
- }catch(err){notice(err.message,true)}
- finally{button.disabled=false;}
+function createKey(){
+ const target=E('api-panel'),button=E('create-key');
+ target?.scrollIntoView({behavior:'smooth',block:'start'});
+ if(button&&!button.disabled)button.click();
+ else notice('Consulte os requisitos de emissão de chaves na sua conta.',true);
 }
 async function withdraw(event){
  event.preventDefault();if(working)return;
