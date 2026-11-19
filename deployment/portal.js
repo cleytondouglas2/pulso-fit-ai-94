@@ -57,7 +57,7 @@ $('#credentials').onclick=async e=>{const b=e.target.closest('button[data-revoke
  try{await request('/api/portal/keys/'+encodeURIComponent(b.dataset.revoke)+'/revoke',{method:'POST',body:{}});await loadKeys();notice('Chave revogada')}catch(e){notice(e.message,true)}};
 $('#create-key').onclick=async()=>{if(!state.account?.can_issue_live_keys){notice('Aguarde a verificação inicial da conta ou confira a mensagem de autorização.',true);return;}
  const btn=$('#create-key');btn.disabled=true;
- try{const result=await request('/api/portal/keys',{method:'POST',body:{}});$('#once-key').value=result.api_key;$('#once-secret').value=result.api_secret;$('#secret-once').hidden=false;await loadKeys();notice('Chaves emitidas. Guarde a secreta em local seguro.')}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
+ try{const result=await request('/api/portal/keys',{method:'POST',body:{}});$('#once-key').value=result.api_key;$('#once-secret').value=result.api_secret;$('#secret-once').hidden=false;await loadKeys();notice('Chaves emitidas. Guarde a secreta em local seguro.')}catch(e){notice(e.message,true)}finally{btn.disabled=!state.account?.can_issue_live_keys}};
 $('#copy-credentials').onclick=async()=>{try{await navigator.clipboard.writeText('ARGUS_API_KEY='+$('#once-key').value+'\nARGUS_API_SECRET='+$('#once-secret').value);notice('Credenciais copiadas')}catch{notice('Copie os campos manualmente',true)}};
 $('#document-recheck').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{
  const number=e.target.elements.document_number.value;
