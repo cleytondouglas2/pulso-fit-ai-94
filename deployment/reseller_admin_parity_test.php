@@ -50,7 +50,7 @@ if(str_contains($portal,"'<span><b>Recebido · análise pendente</b>'"))
 foreach([
  'let working=false,active=false,at=0,lastAccount=null',
  'Documentos e identidade aprovados.',
- 'A habilitação financeira',
+ 'A emissão de chaves depende da autorização financeira',
  'lastAccount=session.account',
  "state.account.status!==lastAccount.status",
  'render(lastAccount)',
