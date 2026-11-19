@@ -164,7 +164,7 @@ resellerParityReplace($client,
     '<script defer src="/static/reseller-experience.js?v=20261119-5"></script></body>',
     'final admin-like transitions');
 resellerParityReplace($client,
-    '/static/kyc-portal.js?v=1',
+    '/static/kyc-portal.js?v=3',
     '/static/kyc-portal.js?v=status-20261119-5',
     'refresh approved KYC client assets on Safari');
 resellerParityReplace($client,
