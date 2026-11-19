@@ -20,12 +20,12 @@ function init(){
   '<tr><td>GET</td><td><code>/api/v2/pix/charges</code></td><td>Listar somente suas cobranças</td></tr>',
   '<tr><td>GET</td><td><code>/api/v2/wallet/balance</code></td><td>Consultar somente seu saldo</td></tr>',
   '<tr><td>GET</td><td><code>/api/v2/wallet/transactions</code></td><td>Seu extrato contábil</td></tr>',
-  '</tbody></table><p>Saques são solicitados no painel autenticado, em <a href="/conta">Minha conta</a>, e executados pelo Super Admin com 2FA. Não há endpoint público para sacar com apenas API Key e Secret.</p>',
+  '</tbody></table><p>Saques são enviados automaticamente pelo próprio revendedor no painel autenticado, em <a href="/conta">Minha conta</a>. Não há endpoint público para sacar com apenas API Key e Secret.</p>',
   '<h3>Exemplo 1 · Gerar Pix via cURL</h3><pre><code id="argus-doc-curl"></code></pre>',
   '<h3>Exemplo 2 · Node.js (servidor)</h3><pre><code id="argus-doc-node"></code></pre>',
   '<h3>Exemplo 3 · Bot do Telegram (Node.js)</h3><pre><code id="argus-doc-telegram"></code></pre>',
   '<h3>Resposta e taxas</h3><pre><code id="argus-doc-response"></code></pre>',
-  '<p>Regras: valores em centavos, entre R$ 1,00 e R$ 100,00 no limite atual. O cliente paga o valor do QR. Uma cobrança de R$ 10,00 confirmada disponibiliza R$ 9,00 na sua carteira após a taxa de serviço de R$ 1,00. Para receber R$ 8,00 num saque, serão reservados R$ 9,00 da sua carteira (R$ 8,00 + R$ 1,00 de serviço).</p>',
+  '<p>Regras: valores em centavos, entre R$ 1,00 e R$ 100,00 no limite atual. O cliente paga o valor do QR. Uma cobrança de R$ 10,00 confirmada disponibiliza R$ 9,00 na sua carteira após a taxa de serviço de R$ 1,00. Um saque de R$ 10,00 debita exatamente R$ 10,00 da carteira e envia R$ 9,00 para a chave Pix, com R$ 1,00 de serviço.</p>',
   '<p><strong>Idempotência:</strong> use um identificador exclusivo por venda e reutilize o mesmo no caso de resposta incerta. Não gere um segundo Pix automaticamente. Se o provedor não confirmar uma emissão, ela fica com status <code>unknown</code> para conferência. Uma cobrança pendente não incrementa seu saldo.</p>',
   '<p><strong>Disponibilidade:</strong> a API de custódia dos revendedores só é habilitada após homologação da conta MisticPay de recebimentos e saques, e autorização operacional do ARGUS. Chaves e cadastro podem existir antes dessa liberação; um retorno 503 significa que não deve ser repetida a cobrança.</p>'
  ].join('');
