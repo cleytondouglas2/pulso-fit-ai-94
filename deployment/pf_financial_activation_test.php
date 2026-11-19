@@ -66,14 +66,14 @@ $reject=static function(callable $fn,int $status):void{
 };
 putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=no');
 putenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED=no');
-$reject(static fn()=>PF::approve($db,$actor,$id,$input),503);
+$reject(static fn()=> (new ReflectionMethod(Wallet::class,'enabled'))->invoke(null,$db),503);
 if($db->one('SELECT status FROM argus_portal_accounts WHERE id=?',[$id])['status']!=='identity_verified')
-    throw new RuntimeException('Missing PSP approval changed merchant account');
-putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=yes');
-putenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED=yes');
+    throw new RuntimeException('A prohibited money operation changed the seller account');
 $reject(static fn()=>PF::approve($db,['id'=>'staff','role'=>'admin'],$id,$input),403);
 $reject(static fn()=>PF::approve($db,$actor,$id,array_merge($input,['confirm_ledger'=>false])),422);
 $success=PF::approve($db,$actor,$id,$input);
+if($success['withdrawals_enabled']!==false)
+    throw new RuntimeException('Internal PF approval must not assert enabled payouts');
 if($success['status']!=='approved'||!str_starts_with($success['merchant_id'],'pfm_'))
     throw new RuntimeException('Real PF ledger merchant ID not created');
 $a=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$id]);
@@ -149,7 +149,7 @@ foreach([
     throw new RuntimeException('Wallet or real money PSP guard missing: '.$must);
 foreach([
  'id="kyc-finance-pf-form"',
- 'Liberar recebimentos do revendedor CPF',
+ 'Aprovar cadastro financeiro CPF',
  'function releasePf(ev)',
  "data.decision='approve';",
  'data-reseller-view',
@@ -158,8 +158,8 @@ foreach([
  if(!str_contains($studioJs,$must)&&$must!=="data.decision='approve';")
     throw new RuntimeException('CPF Super Admin release UI missing: '.$must);
 }
-if(!str_contains($studioHtml,'kyc-studio.js?v=pf-activate-20261119-1')||
-   !str_contains($studioHtml,'kyc-studio.css?v=pf-activate-20261119-1'))
+if(!str_contains($studioHtml,'kyc-studio.js?v=pf-activate-20261119-2')||
+   !str_contains($studioHtml,'kyc-studio.css?v=pf-activate-20261119-2'))
     throw new RuntimeException('Safari cached administration assets not invalidated');
 
-echo "PASS: Super Admin + KYC + custody attestation authorize a real isolated CPF merchant, audited and bound to original CPF; no approval if PSP flags absent, no cross-access, no balance minting, no legacy split, no network transfers.\n";
+echo "PASS: Super Admin + KYC approve an isolated CPF internal merchant without pretending PSP custody confirmation; real money stays blocked when custody flags are absent, identity/2FA and ledger controls remain.\n";
