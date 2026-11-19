@@ -22,7 +22,7 @@ foreach([
     if(!str_contains($admin,$required))throw new RuntimeException('Admin credential safeguard missing: '.$required);
 }
 foreach([
-    'admin-api-keys.js?v=2','admin-api-keys.css?v=2'
+    'admin-api-keys.js?v=3','admin-api-keys.css?v=3'
 ] as $asset)if(!str_contains($html,$asset))
     throw new RuntimeException('Admin API key component not loaded: '.$asset);
 foreach([
