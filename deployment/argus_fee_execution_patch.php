@@ -40,18 +40,25 @@ PHP;
 feeTxnReplace($quick,$old,$new,'atomic fee snapshot before Pix request');
 // A CREATE response is never proof of a settlement. Only reconciled deposits
 // may be recognized in the fee ledger.
-feeTxnReplace($quick,
-    "[$created['provider_id'],$created['copy'],$created['status'],gmdate('Y-m-d H:i:s'),$id,'creating']);",
-    "[$created['provider_id'],$created['copy'],$created['status']==='paid'?'pending':$created['status'],gmdate('Y-m-d H:i:s'),$id,'creating']);",
-    'no settlement from QR creation response');
+$old=<<<'PHP'
+[$created['provider_id'],$created['copy'],$created['status'],gmdate('Y-m-d H:i:s'),$id,'creating']);
+PHP;
+$new=<<<'PHP'
+[$created['provider_id'],$created['copy'],$created['status']==='paid'?'pending':$created['status'],gmdate('Y-m-d H:i:s'),$id,'creating']);
+PHP;
+feeTxnReplace($quick,$old,$new,'no settlement from QR creation response');
 feeTxnReplace($quick,
     "if(\$new==='paid'&&\$updated->rowCount()>0){\n                try{Notifications::adminPixReceived",
     "if(\$new==='paid'&&\$updated->rowCount()>0){\n                FeeExecution::depositPaid(\$db,(string)\$row['id']);\n                try{Notifications::adminPixReceived",
     'post fee only on authenticated paid payment');
-feeTxnReplace($quick,
-    "        error_log('ARGUS traditional Pix reconciliation cycle: checked='.$stats['checked'].' paid='.$stats['paid'].' errors='.$stats['errors']);",
-    "        FeeExecution::settlePaidSnapshots(\$db);\n        error_log('ARGUS traditional Pix reconciliation cycle: checked='.$stats['checked'].' paid='.$stats['paid'].' errors='.$stats['errors']);",
-    'idempotent background catch-up for fees');
+$old=<<<'PHP'
+        error_log('ARGUS traditional Pix reconciliation cycle: checked='.$stats['checked'].' paid='.$stats['paid'].' errors='.$stats['errors']);
+PHP;
+$new=<<<'PHP'
+        FeeExecution::settlePaidSnapshots($db);
+        error_log('ARGUS traditional Pix reconciliation cycle: checked='.$stats['checked'].' paid='.$stats['paid'].' errors='.$stats['errors']);
+PHP;
+feeTxnReplace($quick,$old,$new,'idempotent background catch-up for fees');
 // Separate quotes on new QR creation, but never change QR amount or send fees
 // as a second network transaction.
 $old=<<<'PHP'
