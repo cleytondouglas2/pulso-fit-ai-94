@@ -52,7 +52,8 @@ final class Portal
             "CREATE TABLE IF NOT EXISTS argus_portal_accounts (id VARCHAR(64) PRIMARY KEY, account_type VARCHAR(2) NOT NULL, display_name VARCHAR(180) NOT NULL, email VARCHAR(190) NOT NULL UNIQUE, document_digest VARCHAR(64) NOT NULL UNIQUE, document_last4 VARCHAR(4) NOT NULL, password_hash VARCHAR(255) NOT NULL, status VARCHAR(40) NOT NULL, merchant_id VARCHAR(120), failed_attempts INTEGER NOT NULL DEFAULT 0, locked_until BIGINT NOT NULL DEFAULT 0, created_at VARCHAR(32) NOT NULL, updated_at VARCHAR(32) NOT NULL)",
             "CREATE TABLE IF NOT EXISTS argus_portal_sessions (token_hash VARCHAR(64) PRIMARY KEY, account_id VARCHAR(64) NOT NULL, csrf_hash VARCHAR(64) NOT NULL, expires_at BIGINT NOT NULL, created_at VARCHAR(32) NOT NULL)",
             "CREATE TABLE IF NOT EXISTS argus_portal_documents (id VARCHAR(64) PRIMARY KEY, account_id VARCHAR(64) NOT NULL, document_type VARCHAR(40) NOT NULL, mime VARCHAR(80) NOT NULL, sealed_file VARCHAR(100) NOT NULL, file_digest VARCHAR(64) NOT NULL, created_at VARCHAR(32) NOT NULL, review_status VARCHAR(32) NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS argus_portal_keys (id VARCHAR(64) PRIMARY KEY, account_id VARCHAR(64) NOT NULL, merchant_id VARCHAR(120) NOT NULL, public_key VARCHAR(90) NOT NULL UNIQUE, secret_hash VARCHAR(64) NOT NULL, created_at VARCHAR(32) NOT NULL, revoked_at VARCHAR(32))"
+            "CREATE TABLE IF NOT EXISTS argus_portal_keys (id VARCHAR(64) PRIMARY KEY, account_id VARCHAR(64) NOT NULL, merchant_id VARCHAR(120) NOT NULL, public_key VARCHAR(90) NOT NULL UNIQUE, secret_hash VARCHAR(64) NOT NULL, created_at VARCHAR(32) NOT NULL, revoked_at VARCHAR(32))",
+            "CREATE TABLE IF NOT EXISTS argus_portal_key_permissions (key_id VARCHAR(64) PRIMARY KEY, account_id VARCHAR(64) NOT NULL, allow_withdrawal INTEGER NOT NULL DEFAULT 0, created_at VARCHAR(32) NOT NULL)"
         ];foreach($sql as $q)$db->pdo()->exec($q);
     }
     private static function session(Database $db):array {
@@ -265,6 +266,9 @@ final class Portal
             self::out(['keys'=>$v,'can_issue'=>$account['status']==='approved'&&!empty($account['merchant_id'])]);
         }
         if($method==='POST'&&$path==='/api/portal/keys'){
+            $request=self::body();
+            $payoutAllowed=$request['allow_withdrawal']??false;
+            if(!is_bool($payoutAllowed))self::fail('Permissão de saque deve ser verdadeira ou falsa',422);
             if($account['status']!=='approved'||!$account['merchant_id'])self::fail('A emissão de credenciais exige validação documental e liberação operacional',403);
             $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",[$account['merchant_id']]);
             if(!$merchant)self::fail('Aguardando aprovação do recebedor no sistema de pagamentos',403);
@@ -272,7 +276,13 @@ final class Portal
             $secret='ags_live_'.bin2hex(random_bytes(32));$id=self::id();
             $db->run('INSERT INTO argus_portal_keys(id,account_id,merchant_id,public_key,secret_hash,created_at) VALUES (?,?,?,?,?,?)',
                 [$id,$account['id'],$merchant['id'],$key,hash('sha256',$secret),self::now()]);
-            self::out(['id'=>$id,'api_key'=>$key,'api_secret'=>$secret,'message'=>'Salve a chave secreta agora. Ela não será exibida novamente.'],201);
+            $db->run('INSERT INTO argus_portal_key_permissions
+                (key_id,account_id,allow_withdrawal,created_at) VALUES(?,?,?,?)',[
+                $id,$account['id'],$payoutAllowed?1:0,self::now()
+            ]);
+            self::out(['id'=>$id,'api_key'=>$key,'api_secret'=>$secret,
+                'allow_withdrawal'=>$payoutAllowed,
+                'message'=>'Salve a chave secreta agora. Ela não será exibida novamente.'],201);
         }
         if($method==='POST'&&preg_match('~^/api/portal/keys/([a-f0-9]{32})/revoke$~D',$path,$m)){
             $db->run('UPDATE argus_portal_keys SET revoked_at=? WHERE id=? AND account_id=? AND revoked_at IS NULL',[self::now(),$m[1],$account['id']]);
