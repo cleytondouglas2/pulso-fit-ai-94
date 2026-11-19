@@ -37,9 +37,21 @@
      required.forEach(t=>{
        const isMissing=missing.has(t);
        html+='<article class="kyc-card '+(isMissing?'missing':'received')+'"><div class="kyc-card-status">'+(isMissing?'◷ Pendente':'✓ Recebido')+'</div><strong>'+safe(names[t]||t)+'</strong><p>'+(isMissing?'Documento obrigatório para concluir o envio.':'Arquivo protegido recebido. Pode substituir antes da decisão.')+'</p>';
-       html+='<label class="kyc-upload-btn">'+(isMissing?'Selecionar documento':'Substituir documento')+'<input type="file" data-kyc-upload="'+safe(t)+'" accept="'+(t==='selfie'?'image/png,image/jpeg':'image/png,image/jpeg,application/pdf')+'"></label></article>';
+       if(t==='selfie'){
+         html+='<button type="button" class="kyc-upload-btn kyc-face-start" data-kyc-face-open="1">'+
+           (isMissing?'Iniciar verificação facial':'Refazer captura facial')+'</button>'+
+           '<p class="kyc-face-status">Câmera frontal · piscar · mover o rosto. Não use foto da galeria.</p>';
+       }else{
+         html+='<label class="kyc-upload-btn">'+(isMissing?'Selecionar documento':'Substituir documento')+
+          '<input type="file" data-kyc-upload="'+safe(t)+'" accept="image/png,image/jpeg,application/pdf"></label>';
+       }
+       html+='</article>';
      });
      html+='</div>';
+     const face=kyc.face_capture||{};
+     html+='<p class="kyc-info">'+(face.guided_capture_completed?
+       '✓ Captura facial guiada recebida. Aguardando comparação humana com o documento.':
+       'Verificação facial guiada pendente. Usamos a câmera frontal e movimentos orientados; a equipe KYC ainda verificará a identidade.')+'</p>';
      if(account.account_type==='PJ'){
        const rep=kyc.legal_representative;
        html+='<section class="kyc-owner"><h3>Proprietário ou sócio responsável</h3><p>Preencha os dados do representante cuja identidade será enviada.</p>';
@@ -57,6 +69,10 @@
    }
    root.innerHTML=html;
    root.querySelectorAll('input[data-kyc-upload]').forEach(input=>input.addEventListener('change',upload));
+   root.querySelectorAll('[data-kyc-face-open]').forEach(b=>b.onclick=()=>{
+     if(window.ArgusFaceCapture?.open)window.ArgusFaceCapture.open(update);
+     else notice('A câmera de verificação ainda não carregou. Atualize a página.',true);
+   });
    E('kyc-owner-form')?.addEventListener('submit',owner);
    if(E('status-message'))E('status-message').textContent=title[1];
  }

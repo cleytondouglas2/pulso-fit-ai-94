@@ -1,0 +1,25 @@
+/* ARGUS guided camera capture for Android and iOS mobile browsers. */
+.argus-face-backdrop{position:fixed;z-index:2147483200;inset:0;background:rgba(3,6,10,.94);display:flex;justify-content:center;align-items:center;padding:env(safe-area-inset-top,12px) 12px env(safe-area-inset-bottom,12px);box-sizing:border-box;overflow:auto}
+.argus-face-sheet{max-height:96dvh;overflow:auto;box-sizing:border-box;width:min(100%,550px);background:#1a202a;color:#f2eee8;border:1px solid #b49364;border-radius:20px;padding:19px;box-shadow:0 20px 65px #0009}
+.argus-face-top{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.argus-face-top small{color:#e6c085;font-size:11px;letter-spacing:.13em;font-weight:700}
+.argus-face-top h2{font-size:clamp(20px,5vw,27px);line-height:1.2;margin:7px 0 18px;color:#f0d6a9}
+.argus-face-top button{border:1px solid #937657;background:#332e29;color:#f3dfc0;border-radius:12px;min-width:42px;min-height:42px;font-size:19px;cursor:pointer}
+.argus-face-camera{position:relative;overflow:hidden;aspect-ratio:4/5;background:#0a1019;border:1px solid #555b66;border-radius:16px;width:min(100%,340px);margin:0 auto 15px}
+.argus-face-camera video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+.argus-face-oval{position:absolute;inset:8% 12%;border:3px solid #e1ba77;border-radius:49%;box-shadow:0 0 0 200px #05070c49,0 0 18px #c2a5747c;pointer-events:none}
+.argus-face-step{margin:14px 0;padding:13px;background:#242b35;border:1px solid #445160;border-radius:11px;text-align:center}
+.argus-face-step strong{color:#e6c68c;font-size:13px}
+.argus-face-step p{font-size:15px;line-height:1.45;color:#f0f2f5;margin:6px 0 0}
+.argus-face-step p.error{color:#ffbcb1}
+.argus-face-consent{display:flex;align-items:start;gap:10px;font-size:13px;line-height:1.45;color:#d8dfeb;margin:12px 0}
+.argus-face-consent input{width:22px;height:22px;min-width:22px;accent-color:#e4bb77}
+.argus-face-consent[hidden],.argus-face-actions button[hidden]{display:none!important}
+.argus-face-privacy{font-size:12px;color:#b5bcc8;line-height:1.5}
+.argus-face-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px}
+.argus-face-actions button{flex:1 1 175px;min-height:48px;font-size:14px;font-weight:700;border:1px solid #d4ab6c;border-radius:11px;color:#151617;background:#e9bf77;cursor:pointer;padding:11px 12px}
+.argus-face-actions button.secondary{background:#2d313a;color:#f2d6a9}
+.argus-face-actions button:disabled{opacity:.55;cursor:progress}
+.kyc-face-status{font-size:12px!important;color:#d6c2a2!important;margin:10px 0 0}
+@media(max-width:500px){.argus-face-sheet{padding:13px;max-height:97dvh}.argus-face-camera{width:min(100%,300px);aspect-ratio:4/5}.argus-face-top h2{margin-bottom:12px}.argus-face-privacy{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.argus-face-oval{box-shadow:0 0 0 200px #05070c49}}
