@@ -417,6 +417,20 @@ RUN php -l /tmp/layout_install_patch.php \
  && php -l /var/www/html/tests/layout_quality_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/layout_quality_test.php
 
+
+# Public ARGUS Pay marketing site. New homepage and safe aliases; the existing
+# /admin, /conta and /api paths, money accounting, keys and KYC stay unchanged.
+# Independent HTML/CSS/JS means the page works even before customer login.
+COPY deployment/landing.html deployment/landing.css deployment/landing.js /var/www/html/public/static/
+COPY deployment/landing_route_patch.php /tmp/landing_route_patch.php
+COPY deployment/landing_test.php /var/www/html/tests/landing_test.php
+RUN php -l /tmp/landing_route_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/landing_route_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/landing_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/landing_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
