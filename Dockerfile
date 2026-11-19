@@ -340,6 +340,18 @@ RUN php -l /var/www/html/src/MerchantWallet.php \
  && php -l /var/www/html/tests/seller_pix_e2e_test.php \
  && php /var/www/html/tests/seller_pix_e2e_test.php
 
+
+# Admin approval fix: show uploaded documents in the authenticated Central KYC,
+# enforce identity review before finance, and replace the broken legacy 503 links.
+# This is a UI/navigation fix, NOT automatic KYC or financial approval.
+COPY deployment/kyc_review_assets_patch.php /tmp/kyc_review_assets_patch.php
+COPY deployment/kyc_review_bridge_test.php /var/www/html/tests/kyc_review_bridge_test.php
+RUN php -l /tmp/kyc_review_assets_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/kyc_review_assets_patch.php \
+ && php -l /var/www/html/src/KycStudio.php \
+ && php -l /var/www/html/tests/kyc_review_bridge_test.php \
+ && php /var/www/html/tests/kyc_review_bridge_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]

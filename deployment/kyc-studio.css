@@ -76,3 +76,36 @@
 .kyc-reveal-panel button{border:1px solid #b99766;border-radius:9px;padding:9px 12px;background:#322e2c;color:#f1d5ad;cursor:pointer}
 .kyc-reveal-panel button:disabled{opacity:.5}
 .kyc-reveal-panel p{margin:0;overflow-wrap:anywhere}
+
+/* Review queue bridging old Super Admin menu to secure KYC dossier. */
+#page-applications .argus-review-overview{min-width:0;max-width:100%;overflow:hidden}
+#page-applications .argus-review-start{display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:20px}
+#page-applications .argus-review-start>div{flex:1 1 290px;min-width:0}
+#page-applications .argus-review-start strong{color:#f4d3a0;font-size:17px}
+#page-applications .argus-review-start p{color:#c0c3cc;line-height:1.5;margin:7px 0}
+#page-applications .argus-review-start button{flex:0 1 auto;min-height:42px}
+#page-applications .argus-review-list{display:grid;gap:12px;min-width:0}
+#page-applications .argus-review-account{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:15px;align-items:center;padding:15px;border:1px solid #3b4150;border-radius:13px;background:#171d27;min-width:0}
+#page-applications .argus-review-account-main{display:grid;gap:5px;min-width:0}
+#page-applications .argus-review-account-main strong{color:#f1ddbd;font-size:15px;overflow-wrap:anywhere}
+#page-applications .argus-review-account-main small{color:#adb6c2;overflow-wrap:anywhere}
+#page-applications .argus-review-state{color:#e0b87b;font-weight:650;font-size:13px}
+#page-applications .argus-review-files{display:flex;flex-wrap:wrap;gap:7px;min-width:0}
+#page-applications .argus-review-file{display:inline-flex;border-radius:8px;padding:6px 8px;font-size:12px;line-height:1.35;overflow-wrap:anywhere;border:1px solid #535d6d;color:#cfdae7}
+#page-applications .argus-review-file.available{border-color:#406950;color:#b7e5c0;background:#183026}
+#page-applications .argus-review-file.missing{border-color:#7d544c;color:#f1bdb4;background:#33211e}
+#page-applications .argus-review-account button{min-height:40px;white-space:normal}
+.kyc-viewer-card{width:min(96vw,760px)}
+.kyc-viewer-card iframe{box-sizing:border-box;display:block;width:100%;height:min(65dvh,700px);border:0;background:#fff;border-radius:8px;margin:12px 0}
+.kyc-viewer-card a#kyc-viewer-file{display:inline-flex;min-height:40px;align-items:center;text-decoration:none}
+@media(max-width:850px){
+ #page-applications .argus-review-account{grid-template-columns:minmax(0,1fr);gap:12px}
+ #page-applications .argus-review-account button{justify-self:start}
+}
+@media(max-width:500px){
+ #page-applications .argus-review-overview{padding:14px}
+ #page-applications .argus-review-start button{width:100%;justify-content:center}
+ .kyc-viewer-card{max-height:92dvh;padding:11px}
+ .kyc-viewer-card iframe{height:58dvh}
+ .kyc-viewer-head{flex-wrap:wrap}
+}
