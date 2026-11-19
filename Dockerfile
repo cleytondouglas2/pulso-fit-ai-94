@@ -444,6 +444,19 @@ RUN php -l /tmp/client_mobile_layout_patch.php \
  && php -l /var/www/html/tests/client_mobile_layout_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/client_mobile_layout_test.php
 
+
+# Root-cause fix for Safari /cadastro still showing a 4-row sticky header.
+# Server-render the native <details> menu and mark /cadastro and /cliente as
+# no-store. No JavaScript dependency to collapse the navigation.
+COPY deployment/client-native-menu.css /var/www/html/public/static/client-native-menu.css
+COPY deployment/client_native_menu_patch.php /tmp/client_native_menu_patch.php
+COPY deployment/client_native_menu_test.php /var/www/html/tests/client_native_menu_test.php
+RUN php -l /tmp/client_native_menu_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/client_native_menu_patch.php \
+ && php -l /var/www/html/tests/client_native_menu_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/client_native_menu_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
