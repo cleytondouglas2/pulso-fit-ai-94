@@ -26,7 +26,7 @@ $after=<<<'PHP'
             // Hold the tenant row lock while checking the entire ledger and
             // every other not-yet-settled payout for this account.
             FinancialControl::assertWalletBalanced($db,$accountId,$w);
-            FinancialControl::assertPayoutNotDuplicated($db,$accountId,$bodyHash);
+            FinancialControl::assertPayoutNotDuplicated($db,$accountId,$bodyHash,$amount,$type,$masked);
             if((int)$w['debt_cents']>0||((int)$w['available_cents'])<$debit)
 PHP;
 financialSafetyReplace($wallet,$before,$after,'atomic tenant payout interlocks');
