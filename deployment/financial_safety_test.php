@@ -98,8 +98,8 @@ foreach([
  'self::reconcileOne($db,$row)',
 ] as $needle)if(!str_contains($merchantSource,$needle))
  throw new RuntimeException('Seller settlement or anti-duplicate guard missing: '.$needle);
-if(str_contains($quickSource,"$cutoff=gmdate('Y-m-d H:i:s',time()-1800);")||
- !str_contains($quickSource,"self::reconcileRow($db,$row)"))
+if(str_contains($quickSource,"\$cutoff=gmdate('Y-m-d H:i:s',time()-1800);")||
+ !str_contains($quickSource,'self::reconcileRow($db,$row)'))
  throw new RuntimeException('Traditional Pix reconciliation stops at QR expiration or lacks provider verification');
 if(!str_contains($workerSource,'FinancialControl::acquireWorkerLock')||
  !str_contains($workerSource,'FinancialControl::heartbeat')||
