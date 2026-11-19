@@ -157,6 +157,23 @@ $js=str_replace($old,$new,$js);
 if(file_put_contents($jsFile,$js)===false)
     throw new RuntimeException('CPF review frontend not saved');
 
+$cssFile=$root.'/public/static/kyc-studio.css';
+$css=file_get_contents($cssFile);
+if(!is_string($css))throw new RuntimeException('KYC mobile styles unavailable');
+$css.="\n".<<<'CSS'
+/* Super Admin CPF activation — responsive, separate from PJ and KYC review. */
+#page-kyc-studio .kyc-finance-pf-form{display:grid;gap:12px;min-width:0;max-width:100%;margin:17px 0 0}
+#page-kyc-studio .kyc-finance-pf-form>label:not(.kyc-confirm){display:grid;gap:7px;min-width:0}
+#page-kyc-studio .kyc-finance-pf-form :where(input[type=text],input[name=reason]){width:100%;min-width:0;max-width:100%;font-size:16px;box-sizing:border-box}
+#page-kyc-studio .kyc-finance-pf-form label.kyc-confirm{display:flex!important;align-items:flex-start!important;gap:11px!important;line-height:1.6}
+#page-kyc-studio .kyc-finance-pf-form label.kyc-confirm input[type=checkbox]{width:21px!important;height:21px!important;min-width:21px!important;max-width:21px!important;flex:0 0 21px!important;margin:3px 0 0!important;padding:0!important;accent-color:#ddb47b}
+#page-kyc-studio .kyc-finance-pf-form .kyc-finance-activate{display:block;min-height:51px;width:100%;max-width:100%;padding:12px;border-radius:11px;background:linear-gradient(105deg,#f2dba7,#bf9658);color:#292016;font-weight:800;white-space:normal}
+#page-kyc-studio .kyc-finance-pf-form .kyc-finance-activate:disabled{opacity:.6;cursor:not-allowed}
+#page-kyc-studio .kyc-finance-pf-form .kyc-finance-terms{font-size:12px;line-height:1.6;color:#d5c7ab}
+CSS;
+if(file_put_contents($cssFile,$css)===false)
+    throw new RuntimeException('CPF financial form CSS cannot update');
+
 $adminHtml=$root.'/public/static/admin.html';
 $html=file_get_contents($adminHtml);
 if(!is_string($html))throw new RuntimeException('Super Admin page missing');
@@ -164,6 +181,10 @@ $old='/static/kyc-studio.js?v=finance-20261119-1';
 if(substr_count($html,$old)!==1)
     throw new RuntimeException('Current KYC JS version unexpected');
 $html=str_replace($old,'/static/kyc-studio.js?v=pf-activate-20261119-1',$html);
+$cssOld='/static/kyc-studio.css?v=finance-20261119-1';
+if(substr_count($html,$cssOld)!==1)
+    throw new RuntimeException('Current KYC CSS version unexpected');
+$html=str_replace($cssOld,'/static/kyc-studio.css?v=pf-activate-20261119-1',$html);
 if(file_put_contents($adminHtml,$html)===false)
     throw new RuntimeException('Super Admin JS cache cannot update');
 
