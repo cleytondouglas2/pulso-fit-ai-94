@@ -28,8 +28,9 @@ function mount(){
  root.className='argus-admin-keys-console';root.setAttribute('aria-label','Gerador de chaves de API para revendedores');
  root.innerHTML=[
   '<div class="argus-api-head"><div><strong>Credenciais para revendedores</strong>',
-  '<p>Gere um par de API Key e chave secreta para uma conta aprovada. O segredo aparece apenas uma vez.</p></div>',
+  '<p>O próprio revendedor gera suas chaves ao entrar em Minha conta. A emissão administrativa abaixo é opcional para suporte.</p></div>',
   '<div class="argus-api-actions"><button type="button" id="argus-admin-generate-key">Gerar nova chave</button>',
+  '<a class="argus-api-docs" href="/conta#api-panel" target="_blank" rel="noopener">Acessar painel do revendedor</a>',
   '<a class="argus-api-docs" href="/documentacao-api" target="_blank" rel="noopener">Ver documentação API V2</a></div></div>',
   '<form id="argus-admin-key-form" hidden autocomplete="off">',
   '<label>Revendedor aprovado<select id="argus-admin-key-account" required><option value="">Selecione um revendedor</option></select></label>',
