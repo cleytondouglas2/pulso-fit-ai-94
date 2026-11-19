@@ -85,15 +85,18 @@ final class FinancialControl {
      * with a new idempotency key and same transfer fingerprint is blocked
      * for ten minutes even if the first payout already completed.
      */
-    public static function assertPayoutNotDuplicated(Database $db,string $accountId,string $bodyHash):void {
+    public static function assertPayoutNotDuplicated(Database $db,string $accountId,string $bodyHash,int $amount,string $pixType,string $masked):void {
         $open=$db->one("SELECT id FROM argus_seller_withdrawals WHERE account_id=?
             AND status IN ('requested','processing','queued','pending','unknown')
             ORDER BY created_at DESC LIMIT 1",[$accountId]);
         if($open)self::fail('Já existe um saque em andamento nesta conta. Aguarde a conciliação.');
         $recent=$db->one("SELECT id FROM argus_seller_withdrawals WHERE account_id=?
-           AND body_hash=? AND created_at>=? AND status='paid'
+           AND created_at>=? AND status='paid'
+           AND (body_hash=? OR
+                (amount_cents=? AND pix_key_type=? AND pix_key_masked=?))
            ORDER BY created_at DESC LIMIT 1",[
-             $accountId,$bodyHash,gmdate('Y-m-d H:i:s',time()-600)
+             $accountId,gmdate('Y-m-d H:i:s',time()-600),
+             $bodyHash,$amount,$pixType,$masked
         ]);
         if($recent)self::fail('Saque idêntico já foi concluído recentemente. Confira o extrato antes de solicitar outro.');
     }
