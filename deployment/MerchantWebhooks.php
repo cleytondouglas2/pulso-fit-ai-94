@@ -65,7 +65,7 @@ final class MerchantWebhooks {
             ON argus_merchant_webhook_deliveries(account_id,created_at)");
     }
     public static function validUrl(string $url):bool{
-        if(strlen($url)<18||strlen($url)>500||preg_match('/[\x00-\x20\\]/',$url))
+        if(strlen($url)<18||strlen($url)>500||preg_match('/[[:cntrl:][:space:]]/',$url)||str_contains($url,chr(92)))
             return false;
         $p=parse_url($url);
         if(!is_array($p)||($p['scheme']??'')!=='https'||!empty($p['user'])||
