@@ -85,7 +85,7 @@ foreach([
     if(!str_contains($merchant,$token))
         throw new RuntimeException('Customer account-first ordering or pending-finance form status missing: '.$token);
 }
-if(str_contains($merchant,'  top.after(root);'))
+if(str_contains($merchant,' top.after(root);'))
     throw new RuntimeException('Wallet still renders above account data');
 if(strpos($client,'client-mobile-fix.css?v=20261119-2')>
    strpos($client,'</head>'))
