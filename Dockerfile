@@ -352,6 +352,23 @@ RUN php -l /tmp/kyc_review_assets_patch.php \
  && php -l /var/www/html/tests/kyc_review_bridge_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_review_bridge_test.php
 
+
+# iOS KYC protected viewer: same-origin image URLs, page-by-page server PDF
+# rasterization instead of Safari blob: PDF iframes. Original evidence remains
+# encrypted in Postgres, with reviewer role/ownership and access audit unchanged.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends poppler-utils \
+ && rm -rf /var/lib/apt/lists/*
+COPY deployment/KycDocumentPreview.php /var/www/html/src/KycDocumentPreview.php
+COPY deployment/kyc_ios_preview_assets_patch.php /tmp/kyc_ios_preview_assets_patch.php
+COPY deployment/kyc_ios_preview_test.php /var/www/html/tests/kyc_ios_preview_test.php
+RUN php -l /var/www/html/src/KycDocumentPreview.php \
+ && php -l /var/www/html/src/KycStudio.php \
+ && php -l /tmp/kyc_ios_preview_assets_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/kyc_ios_preview_assets_patch.php \
+ && php -l /var/www/html/tests/kyc_ios_preview_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_ios_preview_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
