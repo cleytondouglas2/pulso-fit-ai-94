@@ -1,0 +1,39 @@
+/* Scoped ARGUS Super Admin API key generation. Responsive and keyboard accessible. */
+#argus-admin-keys-console{margin:20px 0 22px;max-width:100%;min-width:0;box-sizing:border-box;padding:20px;background:linear-gradient(145deg,rgba(25,30,38,.98),rgba(12,17,24,.96));border:1px solid #48433a;border-radius:18px;overflow-wrap:anywhere;box-shadow:0 12px 28px rgba(0,0,0,.16);color:#e7e9ed}
+#argus-admin-keys-console *{box-sizing:border-box;max-width:100%}
+#argus-admin-keys-console .argus-api-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+#argus-admin-keys-console .argus-api-head strong{font-size:18px;color:#f0d59b}
+#argus-admin-keys-console .argus-api-head p{color:#aab4c0;font-size:13px;max-width:560px;margin:8px 0}
+#argus-admin-keys-console .argus-api-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+#argus-admin-keys-console button,#argus-admin-keys-console .argus-api-docs{display:inline-flex;align-items:center;justify-content:center;min-height:42px;border-radius:11px;padding:11px 15px;text-decoration:none;border:1px solid #947448;background:linear-gradient(135deg,#b89459,#d3b274);color:#15191f;font:600 13px/1.3 system-ui,sans-serif;cursor:pointer;white-space:normal;text-align:center}
+#argus-admin-keys-console .argus-api-docs,#argus-admin-keys-console button.secondary{background:#212935;color:#eed19a;border-color:#5e5545}
+#argus-admin-keys-console button:disabled{opacity:.5;cursor:not-allowed}
+#argus-admin-keys-console button:focus-visible,#argus-admin-keys-console a:focus-visible,#argus-admin-keys-console select:focus-visible,#argus-admin-keys-console input:focus-visible{outline:2px solid #f4d7a1;outline-offset:3px}
+#argus-admin-keys-console [hidden]{display:none!important}
+#argus-admin-keys-console #argus-admin-key-form,#argus-admin-keys-console .argus-api-secret{background:#111a24;border:1px solid #4d5460;padding:16px;border-radius:13px;margin-top:18px}
+#argus-admin-keys-console #argus-admin-key-form{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,.9fr);gap:15px}
+#argus-admin-keys-console #argus-admin-key-form .argus-api-actions{grid-column:1/-1}
+#argus-admin-keys-console label{display:grid;gap:7px;font-weight:600;font-size:13px;color:#d9dde5}
+#argus-admin-keys-console select,#argus-admin-keys-console input,#argus-admin-keys-console textarea{width:100%;min-width:0;display:block;background:#0a121c;color:#f3f5f8;border:1px solid #4c5969;border-radius:9px;padding:11px 12px;font:14px/1.4 ui-monospace,monospace}
+#argus-admin-keys-console textarea{resize:vertical;overflow-wrap:anywhere;word-break:break-all}
+#argus-admin-keys-console .argus-api-secret label{margin:12px 0}
+#argus-admin-keys-console .argus-api-secret strong{color:#f4d59e}
+#argus-admin-keys-console .argus-api-hint{font-size:13px;color:#b7c1cf;margin:14px 0}
+#argus-admin-keys-console .argus-api-hint.is-error{color:#f2b7a9}
+#argus-admin-keys-console .argus-api-list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:20px 0 12px;flex-wrap:wrap}
+#argus-admin-keys-console .argus-api-list-head strong{font-size:15px;color:#f0d59b}
+#argus-admin-keys-console .argus-api-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr) auto;align-items:center;gap:12px;padding:14px 0;border-top:1px solid #384150}
+#argus-admin-keys-console .argus-api-row small{display:block;margin-top:5px;color:#adb6c2;overflow-wrap:anywhere}
+#argus-admin-keys-console .argus-api-row code{font-size:12px;display:block;white-space:normal;overflow-wrap:anywhere;color:#cbd6e7}
+#argus-admin-keys-console .argus-api-row .argus-api-revoked{font-size:12px;color:#9aa6b4}
+#argus-admin-doc-nav{display:flex;align-items:center;min-height:40px;gap:8px;color:#e6d0a1;text-decoration:none;font-weight:600;white-space:normal;padding:10px 12px}
+#argus-admin-doc-nav:hover,#argus-admin-doc-nav:focus-visible{color:#ffe3aa;text-decoration:underline}
+@media(max-width:760px){
+ #argus-admin-keys-console{margin:16px 0;padding:14px;border-radius:14px}
+ #argus-admin-keys-console .argus-api-actions{width:100%}
+ #argus-admin-keys-console .argus-api-head .argus-api-actions>*{flex:1 1 150px}
+ #argus-admin-keys-console #argus-admin-key-form{grid-template-columns:minmax(0,1fr)}
+ #argus-admin-keys-console #argus-admin-key-form .argus-api-actions{grid-column:1}
+ #argus-admin-keys-console .argus-api-row{grid-template-columns:minmax(0,1fr);gap:10px}
+ #argus-admin-keys-console .argus-api-row button{justify-self:start}
+}

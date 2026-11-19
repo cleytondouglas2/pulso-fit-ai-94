@@ -3,7 +3,7 @@
 'use strict';
 function init(){
  if(document.getElementById('argus-merchant-docs'))return;
- const host=document.querySelector('main')||document.body;
+ const host=document.querySelector('article.doc')||document.querySelector('main')||document.body;
  const root=document.createElement('section');root.id='argus-merchant-docs';root.className='argus-merchant-docs';
  root.innerHTML=[
   '<div class="argus-doc-head"><small>DOCUMENTAÇÃO DE INTEGRAÇÃO · API V2</small>',
@@ -29,7 +29,7 @@ function init(){
   '<p><strong>Idempotência:</strong> use um identificador exclusivo por venda e reutilize o mesmo no caso de resposta incerta. Não gere um segundo Pix automaticamente. Se o provedor não confirmar uma emissão, ela fica com status <code>unknown</code> para conferência. Uma cobrança pendente não incrementa seu saldo.</p>',
   '<p><strong>Disponibilidade:</strong> a API de custódia dos revendedores só é habilitada após homologação da conta MisticPay de recebimentos e saques, e autorização operacional do ARGUS. Chaves e cadastro podem existir antes dessa liberação; um retorno 503 significa que não deve ser repetida a cobrança.</p>'
  ].join('');
- host.append(root);
+ host.prepend(root);
  const snippets={
   'argus-doc-curl':[
    'curl -X POST https://argus-payments-oregon-testes.onrender.com/api/v2/pix/charges \\',
