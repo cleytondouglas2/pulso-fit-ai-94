@@ -245,6 +245,21 @@ RUN php -l /tmp/payout_readiness_patch.php \
  && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/payout_readiness_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Super Admin tariff controls: MisticPay provider costs vs ARGUS fixed/percentage
+# commercial rates, persisted in PostgreSQL and auditable. This stage does not
+# alter Pix creation, settlement, merchant ledgers, payout body or other screens.
+COPY deployment/FeePolicy.php /var/www/html/src/FeePolicy.php
+COPY deployment/fee-studio.js deployment/fee-studio.css /var/www/html/public/static/
+COPY deployment/argus_fee_studio_patch.php /tmp/argus_fee_studio_patch.php
+COPY deployment/fee_studio_test.php /var/www/html/tests/fee_studio_test.php
+RUN php -l /var/www/html/src/FeePolicy.php \
+ && php -l /tmp/argus_fee_studio_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/argus_fee_studio_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/fee_studio_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
