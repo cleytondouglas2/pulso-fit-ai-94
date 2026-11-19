@@ -431,6 +431,19 @@ RUN php -l /tmp/landing_route_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/landing_test.php \
  && apache2ctl configtest
 
+
+# Safari registration / customer account polish from real mobile screenshots:
+# compact accessible menu, no sticky overlay, correct checkbox geometry,
+# KYC and account details before finance forms, hide unauthorized actions.
+# Added AFTER all original payment/KYC tests, and after landing signup patch.
+COPY deployment/client-mobile-fix.css deployment/client-mobile-fix.js /var/www/html/public/static/
+COPY deployment/client_mobile_layout_patch.php /tmp/client_mobile_layout_patch.php
+COPY deployment/client_mobile_layout_test.php /var/www/html/tests/client_mobile_layout_test.php
+RUN php -l /tmp/client_mobile_layout_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/client_mobile_layout_patch.php \
+ && php -l /var/www/html/tests/client_mobile_layout_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/client_mobile_layout_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
