@@ -1,0 +1,72 @@
+/* ARGUS fee studio – dark/gold, responsive, isolated from checkout and payouts */
+#page-fees{color:#ebe8e2}
+.argus-fee-studio{max-width:1480px;margin:0 auto}
+.argus-fee-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:18px}
+.argus-fee-eyebrow{color:#dabb88;font-size:11px;font-weight:800;letter-spacing:.17em;margin:0}
+.argus-fee-top h1{font-size:clamp(26px,4.5vw,39px);color:#f8dfb6;margin:9px 0}
+.argus-fee-top p:not(.argus-fee-eyebrow){margin:0;color:#aeb2bb;line-height:1.6;max-width:660px}
+.argus-fee-top-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.argus-fee-version{font-size:12px;color:#edce9c;border:1px solid #685037;background:#302920;border-radius:22px;padding:10px 13px;font-weight:700}
+.argus-fee-banner{display:flex;align-items:flex-start;gap:10px;margin:15px 0 18px;padding:14px 17px;border:1px solid #775e36;border-radius:14px;background:rgba(111,83,41,.15)}
+.argus-fee-banner>span{color:#f5d49b;font-size:20px}
+.argus-fee-banner p{margin:0;color:#d4c7ad;font-size:13px;line-height:1.6}
+.argus-fee-banner strong{color:#f8dbac}
+.argus-fee-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.argus-fee-card{border:1px solid #47444c;border-radius:18px;background:linear-gradient(140deg,#252630,#1b1e28);padding:21px;min-width:0}
+.argus-fee-card-heading{display:flex;align-items:center;gap:13px}
+.argus-fee-icon{width:47px;height:47px;display:grid;place-items:center;flex:none;border-radius:14px;background:#533d28;color:#f9d6a0;border:1px solid #9d7749;font-size:25px;font-weight:900}
+.argus-fee-card-heading p{font-size:10px;color:#c3a479;font-weight:700;letter-spacing:.13em;margin:0 0 5px}
+.argus-fee-card-heading h2{color:#f7deba;font-size:21px;margin:0}
+.argus-fee-card-description{font-size:13px;color:#acafb9;line-height:1.6;min-height:64px;margin:17px 0 15px}
+.argus-fee-field-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.argus-fee-card label,.argus-fee-save label{display:block;color:#ede8e0;font-size:13px;font-weight:700;min-width:0}
+.argus-fee-card label small,.argus-fee-simulator-head label small{display:block;color:#989eae;font-size:11px;font-weight:400;margin:6px 0}
+.argus-fee-card input,.argus-fee-save input,.argus-fee-simulator input{display:block;width:100%;box-sizing:border-box;padding:12px 13px;border:1px solid #575560;border-radius:11px;background:#121722;color:#fff;font-size:17px;margin-top:9px;font-variant-numeric:tabular-nums;outline:none}
+.argus-fee-card input:focus,.argus-fee-save input:focus,.argus-fee-simulator input:focus{border-color:#ddb77f;box-shadow:0 0 0 3px rgba(222,174,109,.13)}
+.argus-fee-card input[aria-invalid="true"]{border-color:#e77c7c}
+.argus-fee-group{padding:11px 0 15px;border-top:1px solid #3b3b45}
+.argus-fee-group h3{color:#f0d4a2;font-size:14px;margin:0 0 12px}
+.argus-fee-footnote{font-size:11px;color:#a5a8b0;line-height:1.55;margin:17px 0 0}
+.argus-fee-simulator{margin:17px 0;padding:21px;border:1px solid #675339;border-radius:18px;background:linear-gradient(120deg,#26272f,#191c25)}
+.argus-fee-simulator-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:15px}
+.argus-fee-simulator-head h2{font-size:22px;color:#f8daac;margin:6px 0}
+.argus-fee-simulator-head p:not(.argus-fee-eyebrow){font-size:13px;color:#adb1bb;margin:0;line-height:1.5}
+.argus-fee-simulator-head label{min-width:185px;color:#d8d4ce;font-size:12px}
+.argus-fee-simulator-head input{max-width:220px}
+.argus-fee-sim-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:17px}
+.argus-fee-result{background:#1c2029;border:1px solid #43424a;border-radius:14px;padding:16px;min-width:0}
+.argus-fee-result-head{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #3e424b;padding-bottom:13px;margin-bottom:13px;flex-wrap:wrap}
+.argus-fee-result-head span{color:#abb0bb;font-size:11px}
+.argus-fee-result-head h3{color:#f5d8ab;font-size:16px;margin:6px 0 0}
+.argus-fee-result-head strong{color:#fff;font-size:20px}
+.argus-fee-result-row{display:flex;justify-content:space-between;gap:15px;font-size:13px;padding:8px 0;color:#b8bdc9}
+.argus-fee-result-row b{color:#e4e0d8}
+.argus-fee-result-row.emphasized{border-top:1px dashed #454b54;margin-top:7px;color:#f0d2a0}
+.argus-fee-result-row.emphasized strong{color:#f8dbac}
+.argus-fee-result-margin{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px;margin-top:9px;border-radius:11px;background:rgba(38,92,68,.23);border:1px solid #3c765a}
+.argus-fee-result-margin small{color:#badbc5}
+.argus-fee-result-margin strong{font-size:21px;color:#a5ecc4}
+.argus-fee-result-margin.negative{background:rgba(122,57,58,.2);border-color:#8c5555}
+.argus-fee-result-margin.negative small,.argus-fee-result-margin.negative strong{color:#ffb7ae}
+.argus-fee-sim-note{font-size:11px;color:#989eae;line-height:1.5;margin:16px 0 0}
+.argus-fee-validation{grid-column:1/-1;color:#e9bb9e;padding:20px;text-align:center}
+.argus-fee-save{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:19px 21px;border-radius:16px;background:#27272b;border:1px solid #575045}
+.argus-fee-save>div{flex:1;min-width:260px}
+.argus-fee-save h2{color:#f6d5a7;font-size:20px;margin:0 0 5px}
+.argus-fee-save p{color:#abb0b8;line-height:1.5;font-size:12px;margin:0 0 13px}
+.argus-fee-save label input{font-size:14px;max-width:670px}
+.argus-fee-save button{min-width:155px;padding:12px}
+.argus-fee-save button:disabled{opacity:.5;cursor:not-allowed}
+.argus-fee-audit{margin:18px 0;border:1px solid #43434c;border-radius:16px;background:#1c1f27;padding:20px}
+.argus-fee-history-head{display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.argus-fee-history-head h2{font-size:19px;color:#f5d7a9;margin:0 0 5px}
+.argus-fee-history-head p,.argus-fee-history-head>span{font-size:12px;color:#a5abb6;margin:0}
+.argus-fee-history-item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:15px 0;border-top:1px solid #3a404a}
+.argus-fee-history-item div{display:grid;gap:5px}
+.argus-fee-history-item strong{font-size:13px;color:#f5d7a9}
+.argus-fee-history-item span,.argus-fee-history-item small{font-size:11px;color:#a4aabc}
+.argus-fee-history-item p{margin:0;color:#ddd1bf;font-size:13px;line-height:1.5;overflow-wrap:anywhere;max-width:600px}
+.argus-fee-history-empty{padding:14px;color:#abb1be;font-size:13px}
+@media(max-width:900px){.argus-fee-grid{grid-template-columns:1fr}.argus-fee-card-description{min-height:0}}
+@media(max-width:620px){.argus-fee-sim-cards{grid-template-columns:1fr}.argus-fee-result-margin strong{font-size:18px}.argus-fee-simulator,.argus-fee-card,.argus-fee-audit{padding:15px}.argus-fee-history-item{flex-direction:column}.argus-fee-save>div{min-width:100%}.argus-fee-save button{width:100%}.argus-fee-field-grid{gap:10px}}
+@media(prefers-reduced-motion:reduce){.argus-fee-studio *{scroll-behavior:auto}}
