@@ -64,7 +64,7 @@ $db->run('INSERT INTO argus_portal_documents
   (id,account_id,document_type,mime,sealed_file,file_digest,created_at,review_status)
   VALUES(?,?,?,?,?,?,?,?)',[
   $legacyId,$id,'selfie','image/jpeg','kyc_'.bin2hex(random_bytes(16)).'.enc',
-  hash('sha256','legacy-not-present'),DB::stamp(),'awaiting_review'
+  hash('sha256','legacy-not-present'),gmdate('Y-m-d H:i:s',time()+60),'awaiting_review'
 ]);
 if(K::summary($db,$account)['complete'])
     throw new RuntimeException('Unrecoverable legacy metadata passed KYC');
