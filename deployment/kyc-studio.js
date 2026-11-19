@@ -5,7 +5,7 @@
  const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const labels={identidade_frente:'Identidade · frente',identidade_verso:'Identidade · verso',selfie:'Selfie do responsável',cnpj_comprovante:'Comprovante CNPJ',contrato_social:'Contrato social',responsavel_legal:'Responsável legal'};
  const statuses={documents_required:'Aguardando documentos',documents_under_review:'Aguardando revisão',identity_verified:'KYC aprovado',approved:'Financeiro habilitado',rejected:'Rejeitado',suspended:'Suspenso'};
- let queue=[],selected='',loading=false,activePreview=null,previewHref='';
+ let queue=[],selected='',loading=false;
  function staff(){return ['admin','superadmin'].includes(state?.user?.role)}
  function superuser(){return state?.user?.role==='superadmin'}
  function nav(){document.querySelectorAll('.kyc-staff-only').forEach(x=>{x.style.display=staff()?'flex':'none'})}
@@ -120,32 +120,80 @@
    if(!selected)return;
    const button=ev.currentTarget,id=button.dataset.kycPreview,mime=button.dataset.kycMime;
    button.disabled=true;
+   const base='/api/admin/kyc/applications/'+encodeURIComponent(selected)+
+     '/documents/'+encodeURIComponent(id);
    try{
-     const res=await fetch('/api/admin/kyc/applications/'+encodeURIComponent(selected)+'/documents/'+encodeURIComponent(id),
-       {credentials:'same-origin',cache:'no-store',headers:{Accept:'image/*,application/pdf'}});
-     if(!res.ok){
-       let details='';try{const p=await res.json();details=String(p.error||p.message||'').slice(0,160)}catch(_){}
-       throw Error(details||('Não foi possível abrir o documento (HTTP '+res.status+').'));
-     }
-     const blob=await res.blob();
-     if(blob.size>3400000||!['image/jpeg','image/png','application/pdf'].includes(mime))
-       throw Error('Formato de visualização inválido');
-     if(activePreview)URL.revokeObjectURL(activePreview);
-     activePreview=URL.createObjectURL(blob);
-     let modal=E('kyc-document-viewer');
-     if(!modal){modal=document.createElement('div');modal.id='kyc-document-viewer';modal.className='kyc-document-viewer';document.body.appendChild(modal);}
-     modal.innerHTML='<div class="kyc-viewer-card"><div class="kyc-viewer-head"><strong>Documento protegido · ARGUS</strong><button type="button" id="kyc-close-viewer">Fechar ×</button></div>'+
-       (mime==='application/pdf'?'<p>Documento PDF protegido. Visualização temporária somente para analistas autorizados.</p>'+
-        '<iframe id="kyc-viewer-pdf" title="Documento PDF do cliente" loading="lazy"></iframe>'+
-        '<a id="kyc-viewer-file" target="_blank" rel="noopener noreferrer">Abrir PDF em nova aba</a>':
-        '<img id="kyc-viewer-image" alt="Documento enviado pelo cliente para análise KYC">')+'</div>';
+     if(!['image/jpeg','image/png','application/pdf'].includes(mime))
+       throw Error('Formato de documento não suportado');
+     let pdf=null;
      if(mime==='application/pdf'){
-       E('kyc-viewer-pdf').src=activePreview;
-       E('kyc-viewer-file').href=activePreview;
-     }else E('kyc-viewer-image').src=activePreview;
-     E('kyc-close-viewer').onclick=()=>{modal.remove();URL.revokeObjectURL(activePreview);activePreview=null;};
-     modal.onclick=e=>{if(e.target===modal)E('kyc-close-viewer').click()};
-   }catch(error){toast(error.message,true)}finally{button.disabled=false}
+       const response=await fetch(base+'?preview=metadata',{
+         credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}
+       });
+       if(!response.ok){
+         let detail='';
+         try{const json=await response.json();detail=String(json.message||json.error||'').slice(0,170)}
+         catch(_){}
+         throw Error(detail||('Não foi possível preparar PDF (HTTP '+response.status+').'));
+       }
+       const payload=await response.json();
+       pdf=payload.pdf;
+       if(!pdf||!Number.isSafeInteger(Number(pdf.pages))||Number(pdf.pages)<1||
+          !Number.isSafeInteger(Number(pdf.preview_pages))||Number(pdf.preview_pages)<1)
+         throw Error('O arquivo PDF não retornou páginas válidas para exame.');
+     }
+     let modal=E('kyc-document-viewer');
+     if(!modal){
+       modal=document.createElement('div');modal.id='kyc-document-viewer';
+       modal.className='kyc-document-viewer';document.body.appendChild(modal);
+     }
+     modal.innerHTML='<div class="kyc-viewer-card" role="dialog" aria-modal="true" aria-label="Documento protegido">'+
+       '<div class="kyc-viewer-head"><strong>Documento protegido · ARGUS</strong>'+
+       '<button type="button" id="kyc-close-viewer">Fechar ×</button></div>'+
+       '<p class="kyc-viewer-notice">Prévia restrita à equipe de análise KYC. O acesso é registrado.</p>'+
+       (pdf?'<div class="kyc-pdf-controls"><button type="button" id="kyc-pdf-prev">Página anterior</button>'+
+        '<span id="kyc-pdf-counter" aria-live="polite"></span>'+
+        '<button type="button" id="kyc-pdf-next">Próxima página</button></div>':'')+
+       '<div class="kyc-preview-stage"><p id="kyc-preview-loading" role="status">Carregando documento protegido...</p>'+
+       '<img id="kyc-viewer-image" alt="Documento apresentado à equipe KYC"></div>'+
+       '<p id="kyc-preview-error" class="kyc-preview-error" hidden role="alert"></p>'+
+       (pdf?'<p class="kyc-pdf-download-note">Se a prévia não abrir no Safari, use o PDF original para conferência.'+
+        (pdf.truncated?' Este documento possui mais páginas do que o limite de prévia. Confira todas as páginas no original.':'')+'</p>'+
+        '<a id="kyc-viewer-file" href="'+base+'" download="documento-argus.pdf">Baixar PDF original</a>':'')+
+       '</div>';
+     const image=E('kyc-viewer-image'),loading=E('kyc-preview-loading'),error=E('kyc-preview-error');
+     const close=()=>{
+       image.onload=null;image.onerror=null;image.removeAttribute('src');modal.remove();
+     };
+     E('kyc-close-viewer').onclick=close;
+     modal.onclick=e=>{if(e.target===modal)close()};
+     const showPage=page=>{
+       error.hidden=true;error.textContent='';loading.hidden=false;
+       image.hidden=true;image.onload=null;image.onerror=null;
+       if(pdf){
+         const limit=Number(pdf.preview_pages);
+         if(page<1||page>limit)return;
+         E('kyc-pdf-counter').textContent='Página '+page+' de '+pdf.pages;
+         E('kyc-pdf-prev').disabled=page===1;
+         E('kyc-pdf-next').disabled=page===limit;
+         E('kyc-pdf-prev').onclick=()=>showPage(page-1);
+         E('kyc-pdf-next').onclick=()=>showPage(page+1);
+       }
+       image.onload=()=>{loading.hidden=true;image.hidden=false};
+       image.onerror=()=>{
+         loading.hidden=true;image.hidden=true;
+         error.hidden=false;
+         error.textContent=pdf?'Não foi possível renderizar esta página. Baixe o PDF original e confira todas as páginas.':
+           'Não foi possível exibir a foto no Safari. Atualize a página e tente novamente.';
+       };
+       // Same-origin image URLs work with restrictive Content Security Policy;
+       // the PDF was converted on the authenticated server to a safe PNG page.
+       image.src=pdf?(base+'?preview=page&page='+page):base;
+     };
+     showPage(1);
+     E('kyc-close-viewer').focus();
+   }catch(error){toast(error.message,true)}
+   finally{button.disabled=false}
  }
  async function decide(ev){
    ev.preventDefault();if(!staff()||!selected)return;
