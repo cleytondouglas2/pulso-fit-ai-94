@@ -91,6 +91,41 @@ try {
     }else{
         error_log('ARGUS_PAYOUT_BALANCE_SCOPE status=not_tested withdraw_create=unverified');
     }
+    // Read-only check of the payout account's operational restrictions. Never
+    // output account names, tax documents, emails, balances, or any response body.
+    if($payoutShape&&function_exists('curl_init')){
+        $accountHttp=0;$verified=false;$documentVerified=false;$withdrawBlocked=null;
+        try{
+            $ch=curl_init('https://api.misticpay.com/api/users/info');
+            curl_setopt_array($ch,[
+                CURLOPT_RETURNTRANSFER=>true,
+                CURLOPT_HTTPHEADER=>['Authorization: Basic '.base64_encode($payoutPk.':'.$payoutSk),'Accept: application/json'],
+                CURLOPT_CONNECTTIMEOUT=>4,CURLOPT_TIMEOUT=>8,CURLOPT_FOLLOWLOCATION=>false,
+                CURLOPT_MAXREDIRS=>0,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2
+            ]);
+            $body=curl_exec($ch);
+            $accountHttp=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if($accountHttp===200&&is_string($body)&&strlen($body)<250000){
+                $json=json_decode($body,true,16);
+                $data=is_array($json)?($json['data']??null):null;
+                if(is_array($data)){
+                    $verified=($data['accountVerified']??null)===true;
+                    $documentVerified=($data['documentVerified']??null)===true;
+                    if(is_bool($data['withdrawBlocked']??null))
+                        $withdrawBlocked=$data['withdrawBlocked'];
+                }
+            }
+            unset($body,$json,$data);
+        }catch(Throwable $error){}
+        error_log('ARGUS_PAYOUT_ACCOUNT_CHECK http='.$accountHttp.
+            ' account_verified='.($verified?'yes':'unconfirmed').
+            ' document_verified='.($documentVerified?'yes':'unconfirmed').
+            ' withdraw_blocked='.($withdrawBlocked===true?'yes':($withdrawBlocked===false?'no':'unconfirmed')).
+            ' withdraw_create=unverified');
+    }else{
+        error_log('ARGUS_PAYOUT_ACCOUNT_CHECK http=0 account_verified=unconfirmed document_verified=unconfirmed withdraw_blocked=unconfirmed withdraw_create=unverified');
+    }
     unset($payoutPk,$payoutSk);
 
     // Show only whether Finance QR credentials are syntactically present, not their values.
