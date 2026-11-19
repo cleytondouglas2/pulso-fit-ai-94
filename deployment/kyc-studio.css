@@ -109,3 +109,17 @@
  .kyc-viewer-card iframe{height:58dvh}
  .kyc-viewer-head{flex-wrap:wrap}
 }
+
+/* Native iPhone KYC preview: do not embed PDF as blob: iframe. */
+.kyc-viewer-card{width:min(96vw,780px);max-height:94dvh;min-width:0;box-sizing:border-box;overflow:auto}
+.kyc-preview-stage{min-height:180px;max-width:100%;background:#111827;border:1px solid #404a59;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:10px;margin:13px 0;box-sizing:border-box}
+.kyc-preview-stage img{display:block;max-width:100%;max-height:68dvh;width:auto;height:auto;object-fit:contain;box-sizing:border-box;border-radius:5px}
+.kyc-preview-stage img[hidden],.kyc-preview-stage p[hidden],.kyc-preview-error[hidden]{display:none!important}
+.kyc-viewer-notice,.kyc-pdf-download-note{color:#b8c4d3;font-size:13px;line-height:1.45}
+.kyc-pdf-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:13px 0}
+.kyc-pdf-controls button{border:1px solid #9e7b4f;border-radius:9px;padding:9px 12px;background:#302b2b;color:#f2d5aa;cursor:pointer;min-height:40px}
+.kyc-pdf-controls button:disabled{opacity:.42;cursor:default}
+.kyc-pdf-controls span{font-size:13px;color:#f4ddb8;font-weight:650;text-align:center}
+.kyc-preview-error{border:1px solid #b9776b;border-radius:9px;padding:11px;background:#492b2c;color:#ffe1da;font-size:13px}
+.kyc-viewer-card #kyc-viewer-file{display:inline-flex;align-items:center;min-height:42px;padding:8px 12px;background:#2c2728;border:1px solid #c4a06d;border-radius:10px;color:#f2d5aa;text-decoration:none}
+@media(max-width:500px){.kyc-viewer-card{padding:12px;max-height:94dvh}.kyc-preview-stage img{max-height:60dvh}.kyc-pdf-controls{justify-content:space-between}.kyc-pdf-controls button{flex:1 1 120px}}
