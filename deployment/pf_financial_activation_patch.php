@@ -126,7 +126,7 @@ if(substr_count($js,$old)!==1)
     throw new RuntimeException('CPF review form binding anchor changed');
 $js=str_replace($old,$new,$js);
 $old=<<<'JS'
-   async function loadQueue(focus){
+ async function loadQueue(focus){
 JS;
 $new=<<<'JS'
    async function releasePf(ev){
@@ -149,7 +149,7 @@ $new=<<<'JS'
      }catch(error){toast(error.message,true)}
      finally{button.disabled=false}
    }
-   async function loadQueue(focus){
+ async function loadQueue(focus){
 JS;
 if(substr_count($js,$old)!==1)
     throw new RuntimeException('CPF financial activation submission anchor changed');
