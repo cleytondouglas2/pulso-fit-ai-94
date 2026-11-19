@@ -168,3 +168,13 @@ body :where(.seller-item,.seller-admin-line,.key-row,.argus-api-row) :where(code
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto!important}
 }
+
+/* Legacy documents panel is hidden by the active KYC flow; do not reserve
+   its former 50% dashboard width for an empty column. */
+#dashboard>.grid.argus-kyc-legacy-hidden{grid-template-columns:minmax(0,1fr)!important}
+#dashboard>.grid.argus-kyc-legacy-hidden>article:not([hidden]){width:100%;max-width:100%}
+@media(max-width:760px){
+ body :where(input:not([type="checkbox"]):not([type="radio"]),textarea,select){
+  font-size:16px; /* avoid involuntary Safari zoom */
+ }
+}
