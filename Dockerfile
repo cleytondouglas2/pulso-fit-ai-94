@@ -294,6 +294,19 @@ RUN php -l /var/www/html/src/MerchantWallet.php \
  && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/merchant_wallet_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+
+# Administrator API Keys: selected verified seller, one-time secret and MFA.
+# The current v2 integration guide is prominent; legacy v1 stays available.
+COPY deployment/admin-api-keys.js deployment/admin-api-keys.css /var/www/html/public/static/
+COPY deployment/argus_admin_keys_patch.php /tmp/argus_admin_keys_patch.php
+COPY deployment/admin_api_keys_test.php /var/www/html/tests/admin_api_keys_test.php
+RUN php -l /tmp/argus_admin_keys_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/argus_admin_keys_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/admin_api_keys_test.php \
+ && php /var/www/html/tests/admin_api_keys_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
