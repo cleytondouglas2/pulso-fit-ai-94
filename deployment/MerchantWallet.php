@@ -21,7 +21,8 @@ final class MerchantWallet {
     private static function now():string{return Database::stamp();}
     private static function uid(string $prefix):string{return $prefix.'_'.bin2hex(random_bytes(16));}
     private static function enabled(Database $db):void{
-        if(!in_array($db->driver(),['pgsql','mysql'],true))self::fail('Banco financeiro persistente indisponível',503);
+        $isolatedUnitTest=PHP_SAPI==='cli'&&getenv('ARGUS_MERCHANT_UNIT_TEST')==='local-sqlite-only';
+        if(!in_array($db->driver(),['pgsql','mysql'],true)&&!$isolatedUnitTest)self::fail('Banco financeiro persistente indisponível',503);
         if(getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')!=='yes'||
            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')!=='yes')
             self::fail('Carteira financeira de revendedores aguardando homologação da conta de custódia na MisticPay',503);
