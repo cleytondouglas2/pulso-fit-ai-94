@@ -1,0 +1,95 @@
+/* Native responsive menu for the customer & registration pages.
+ * Markup is rendered on the server. It works without JS, with a real <details>.
+ * Prevent the original sticky, four-row desktop navigation from obscuring
+ * the registration form and finance sections on Safari mobile.
+ */
+.top.argus-client-top{max-width:100%;isolation:isolate}
+.top.argus-client-top>.argus-desktop-nav{display:flex;flex-wrap:wrap;gap:13px;align-items:center}
+.top.argus-client-top>.argus-mobile-details{display:none}
+.top.argus-client-top>.argus-mobile-details summary::-webkit-details-marker{display:none}
+.top.argus-client-top>.argus-mobile-details summary::marker{content:""}
+.top.argus-client-top>.argus-mobile-details summary{list-style:none;cursor:pointer}
+.top.argus-client-top>.argus-mobile-details[open] summary{border-color:#e2bd83!important}
+.top.argus-client-top>.argus-mobile-details nav a:focus-visible,
+.top.argus-client-top>.argus-mobile-details summary:focus-visible{outline:2px solid #e9c188;outline-offset:3px}
+@media(max-width:760px){
+ html{scroll-padding-top:12px!important}
+ header.top.argus-client-top{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  align-items:start!important;justify-content:stretch!important;
+  position:relative!important;top:auto!important;bottom:auto!important;
+  height:auto!important;min-height:70px!important;max-height:none!important;
+  width:100%!important;max-width:100%!important;
+  padding:12px 15px!important;gap:0!important;
+  background:#111822!important;border-bottom:1px solid #43404a!important;
+  transform:none!important;overflow:visible!important
+ }
+ header.top.argus-client-top>.brand{
+  display:flex!important;grid-column:1!important;grid-row:1!important;
+  align-items:center!important;align-self:start!important;
+  width:calc(100% - 114px)!important;min-width:0!important;
+  height:46px!important;margin:0!important;z-index:1!important
+ }
+ header.top.argus-client-top>.brand img{
+  display:block!important;width:148px!important;
+  max-width:100%!important;max-height:46px!important;
+  object-fit:contain!important;object-position:left center!important
+ }
+ header.top.argus-client-top>nav.argus-desktop-nav{display:none!important}
+ header.top.argus-client-top>#argus-mobile-menu-toggle{display:none!important}
+ header.top.argus-client-top>details.argus-mobile-details{
+  display:block!important;grid-column:1!important;grid-row:1!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  margin:0!important;padding:0!important;
+  z-index:2!important;pointer-events:none!important;overflow:visible!important
+ }
+ header.top.argus-client-top>details.argus-mobile-details>summary{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  gap:8px!important;box-sizing:border-box!important;
+  width:101px!important;min-width:101px!important;min-height:46px!important;
+  margin:0 0 0 auto!important;padding:9px 11px!important;
+  font-size:14px!important;line-height:1.3!important;font-weight:700!important;
+  color:#efd2a6!important;border:1px solid #736046!important;
+  border-radius:10px!important;background:#242730!important;
+  pointer-events:auto!important;user-select:none!important;
+  -webkit-tap-highlight-color:transparent!important
+ }
+ header.top.argus-client-top>details.argus-mobile-details>nav.argus-mobile-nav{
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  flex:none!important;gap:8px!important;
+  position:static!important;inset:auto!important;top:auto!important;
+  min-height:0!important;max-height:none!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  margin:10px 0 0!important;padding:8px 0 0!important;
+  background:transparent!important;border-top:1px solid #393c42!important;
+  overflow:visible!important;pointer-events:auto!important
+ }
+ header.top.argus-client-top>details.argus-mobile-details:not([open])>nav.argus-mobile-nav{
+  display:none!important
+ }
+ header.top.argus-client-top>details.argus-mobile-details>nav.argus-mobile-nav a{
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  text-align:center!important;min-width:0!important;max-width:100%!important;
+  min-height:46px!important;padding:11px 8px!important;
+  border:1px solid #615039!important;border-radius:10px!important;
+  background:#1d2430!important;color:#e9c58f!important;
+  font-size:12px!important;line-height:1.4!important;
+  overflow-wrap:anywhere!important;white-space:normal!important
+ }
+ body .wrap{max-width:100%!important}
+ body #dashboard .seller-checkbox input[type="checkbox"]{
+  width:21px!important;min-width:21px!important;max-width:21px!important;
+  height:21px!important;min-height:21px!important;max-height:21px!important;
+  padding:0!important;margin:2px 0 0!important;flex:0 0 21px!important
+ }
+ body #dashboard .seller-checkbox{
+  display:flex!important;flex-direction:row!important;align-items:flex-start!important;
+  gap:11px!important;min-width:0!important
+ }
+ body #dashboard .seller-checkbox span{flex:1 1 auto!important;min-width:0!important}
+}
+@media(max-width:380px){
+ header.top.argus-client-top>details.argus-mobile-details>nav.argus-mobile-nav{
+  grid-template-columns:minmax(0,1fr)!important
+ }
+}
