@@ -457,6 +457,17 @@ RUN php -l /tmp/client_native_menu_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/client_native_menu_test.php \
  && apache2ctl configtest
 
+
+# Screenshot/video regression: iPhone Safari must never show the guest login
+# underneath or instead of an authenticated account during an in-flight read.
+# Install AFTER all other PHP, auth, KYC, navigation and layout modifications.
+COPY deployment/portal_session_stability_patch.php /tmp/portal_session_stability_patch.php
+COPY deployment/portal_session_stability_test.php /var/www/html/tests/portal_session_stability_test.php
+RUN php -l /tmp/portal_session_stability_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/portal_session_stability_patch.php \
+ && php -l /var/www/html/tests/portal_session_stability_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/portal_session_stability_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
