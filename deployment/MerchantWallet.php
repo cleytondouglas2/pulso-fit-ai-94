@@ -326,25 +326,25 @@ final class MerchantWallet {
     }
     public static function api(Database $db,string $method,string $path):never{
         $account=self::auth($db);
-        if($method==='GET'&&$path==='/api/v1/wallet/balance')
+        if($method==='GET'&&$path==='/api/v2/wallet/balance')
             self::out(self::balancePublic($db,$account));
-        if($method==='GET'&&$path==='/api/v1/wallet/transactions'){
+        if($method==='GET'&&$path==='/api/v2/wallet/transactions'){
             self::install($db);
             self::out(['transactions'=>$db->all(
                 'SELECT operation_kind,operation_id,delta_available,delta_held,delta_debt,
                     service_fee_cents,created_at FROM argus_seller_ledger
                     WHERE account_id=? ORDER BY created_at DESC LIMIT 100',[$account['id']])]);
         }
-        if($method==='GET'&&$path==='/api/v1/pix/charges'){
+        if($method==='GET'&&$path==='/api/v2/pix/charges'){
             self::install($db);
             $rows=$db->all('SELECT * FROM argus_seller_charges WHERE account_id=?
                 ORDER BY created_at DESC LIMIT 100',[$account['id']]);
             self::out(['charges'=>array_map([self::class,'chargePublic'],$rows)]);
         }
-        if($method==='POST'&&$path==='/api/v1/pix/charges'){
+        if($method==='POST'&&$path==='/api/v2/pix/charges'){
             self::out(self::create($db,$account,self::body(),self::idem()),201);
         }
-        if($method==='GET'&&preg_match('~^/api/v1/pix/charges/(mwc_[a-f0-9]{32})$~D',$path,$m)){
+        if($method==='GET'&&preg_match('~^/api/v2/pix/charges/(mwc_[a-f0-9]{32})$~D',$path,$m)){
             $row=self::reconcile($db,$m[1],$account['id']);
             self::out(self::chargePublic($row));
         }
