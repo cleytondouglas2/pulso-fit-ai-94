@@ -30,7 +30,7 @@ $invalid=static function(callable $fn,int $code) : void{
 $invalid(static fn()=>Recovery::redeem($db,'not-a-token',$new),422);
 $invalid(static fn()=>Recovery::redeem($db,$token,'short1A'),422);
 $invalid(static fn()=>Recovery::redeem($db,$token,$old),422);
-if(!$db->one('SELECT id FROM argus_portal_sessions WHERE account_id=?',[$a]))
+if(!$db->one('SELECT token_hash FROM argus_portal_sessions WHERE account_id=?',[$a]))
  throw new RuntimeException('Invalid attempt revoked valid session');
 Recovery::redeem($db,$token,$new);
 $accA=$db->one('SELECT password_hash,failed_attempts,locked_until,status FROM argus_portal_accounts WHERE id=?',[$a]);
