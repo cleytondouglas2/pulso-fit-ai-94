@@ -353,9 +353,13 @@ final class MerchantWallet {
     private static function payoutKey():string{
         $raw=(string)(getenv('ARGUS_MERCHANT_PAYOUT_ENCRYPTION_KEY')?:'');
         $key=base64_decode($raw,true);
-        if(!is_string($key)||strlen($key)!==SODIUM_CRYPTO_SECRETBOX_KEYBYTES)
-            self::fail('Proteção de dados da chave de saque não configurada',503);
-        return $key;
+        if(is_string($key)&&strlen($key)===SODIUM_CRYPTO_SECRETBOX_KEYBYTES)return $key;
+        // Stable domain-separated key derived from the already configured KYC
+        // encryption secret: avoids storing a second unprotected merchant secret.
+        $kyc=base64_decode((string)(getenv('ARGUS_KYC_ENCRYPTION_KEY')?:''),true);
+        if(is_string($kyc)&&strlen($kyc)===SODIUM_CRYPTO_SECRETBOX_KEYBYTES)
+            return hash_hkdf('sha256',$kyc,SODIUM_CRYPTO_SECRETBOX_KEYBYTES,'argus-merchant-payout-v1');
+        self::fail('Proteção de dados da chave de saque não configurada',503);
     }
     private static function seal(string $value):string{
         $nonce=random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
@@ -515,6 +519,8 @@ final class MerchantWallet {
             if($m[2]==='reconcile'){
                 if(!$row['provider_tx_id'])self::fail('Transferência ainda sem identificador verificável',409);
                 $status=self::payoutClient()->status($row['provider_tx_id']);
+                if(!hash_equals((string)$row['provider_tx_id'],(string)($status['transaction_id']??'')))
+                    self::fail('Confirmação financeira não corresponde à transferência consultada',409);
                 $providerState=strtoupper((string)($status['state']??''));
                 $mapped=match($providerState){
                     'COMPLETO'=>'paid','FALHA'=>'failed',
