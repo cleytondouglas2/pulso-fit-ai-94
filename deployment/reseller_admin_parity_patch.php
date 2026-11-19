@@ -76,7 +76,7 @@ resellerParityReplace($merchant,
     " }",
     'wallet read error not equal documentary rejection');
 resellerParityReplace($merchant,
-    "  E('seller-key-status').textContent=v?.reason||'Verifique suas credenciais e o status de aprovação da conta.';",
+    " E('seller-key-status').textContent=v?.reason||'Verifique suas credenciais e o status de aprovação da conta.';",
     "  const kycDone=lastAccount&&(lastAccount.status==='identity_verified'||lastAccount.kyc_studio?.identity_approved===true);\n".
     "  E('seller-key-status').textContent=!v?.can_issue&&kycDone&&lastAccount?.status!=='approved'?'Identidade aprovada. A emissão de chaves depende da autorização financeira da conta.':(v?.reason||'Verifique suas credenciais e o status de aprovação da conta.');",
     'seller API key stage');
@@ -92,7 +92,7 @@ resellerParityReplace($merchant,
     "   }",
     'recheck staff approval without refreshing the tab');
 resellerParityReplace($merchant,
-    "  }catch(err){active=false;walletRender(null)}",
+    " }catch(err){active=false;walletRender(null)}",
     "  }catch(err){if(err?.httpStatus===401)active=false;walletRender(null)}",
     'do not confuse transient wallet failure with logout');
 if(file_put_contents($merchantPath,$merchant)===false)
