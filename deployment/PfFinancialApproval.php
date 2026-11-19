@@ -61,7 +61,8 @@ final class PfFinancialApproval {
     public static function approve(Database $db,array $actor,string $accountId,array $input):array {
         if(($actor['role']??null)!=='superadmin')
             self::fail('Somente o Super Admin pode liberar o cadastro financeiro',403);
-        if(!in_array($db->driver(),['pgsql','mysql'],true))
+        $isolatedTest=PHP_SAPI==='cli'&&getenv('ARGUS_PF_APPROVAL_UNIT_TEST')==='local-sqlite-only';
+        if(!in_array($db->driver(),['pgsql','mysql'],true)&&!$isolatedTest)
             self::fail('Banco financeiro persistente obrigatório',503);
         if(!self::custodyReady())
             self::fail('A conta central da MisticPay ainda não está homologada para o modelo de carteira segregada no ARGUS. Configure a confirmação de custódia antes de liberar recebimentos.',503);
