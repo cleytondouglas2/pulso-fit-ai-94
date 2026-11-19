@@ -321,6 +321,16 @@ RUN php -l /tmp/argus_seller_keys_patch.php \
  && php -l /var/www/html/tests/seller_key_auth_integration_test.php \
  && php /var/www/html/tests/seller_key_auth_integration_test.php
 
+
+# Centralized API V2 payout permissions: all PSP secrets stay in the ARGUS
+# server, sellers use their own key and verified CPF/CNPJ as Pix beneficiary.
+COPY deployment/central_api_proxy_test.php /var/www/html/tests/central_api_proxy_test.php
+RUN php -l /var/www/html/src/IdentityProfile.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/central_api_proxy_test.php \
+ && php /var/www/html/tests/central_api_proxy_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
