@@ -23,7 +23,7 @@ foreach([
  'não possui ativação financeira de recebedores PF',
  'Não use o CNPJ do administrador para aprovar este CPF.',
  "a.status==='approved'&&a.merchant_linked",
- 'E(\\'kyc-finance-form\\')?.addEventListener(\\'submit\\',release)',
+ "E('kyc-finance-form')?.addEventListener('submit',release)",
  "data.decision='approve';",
  "form id=\"kyc-finance-form\"",
  "id=\"kyc-finance-status\""
