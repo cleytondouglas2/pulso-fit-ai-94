@@ -4,7 +4,7 @@
  'use strict';
  const $=id=>document.getElementById(id);
  const fmt=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0)/100);
- const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;':'&quot;',"'":'&#39;'}[c]));
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const admin=()=>state?.user?.role==='superadmin';
  let ledgerBusy=false,depositTimer=0,payoutTimer=0;
  function toCents(raw){
