@@ -504,6 +504,17 @@ RUN php -l /tmp/reseller_admin_parity_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_admin_parity_test.php \
  && apache2ctl configtest
 
+
+# Super Admin finance eligibility should be visible for PF and PJ. PF receives
+# an explicit homologation notice: no hidden activation, no fake authorization.
+# Existing KYC/PJ activation and PSP safeguards remain untouched.
+COPY deployment/kyc_finance_visibility_patch.php /tmp/kyc_finance_visibility_patch.php
+COPY deployment/kyc_finance_visibility_test.php /var/www/html/tests/kyc_finance_visibility_test.php
+RUN php -l /tmp/kyc_finance_visibility_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/kyc_finance_visibility_patch.php \
+ && php -l /var/www/html/tests/kyc_finance_visibility_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_finance_visibility_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
