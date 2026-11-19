@@ -19,7 +19,7 @@ if($method==='GET'&&preg_match('~^/api/admin/portal/applications/([a-f0-9]{32})/
             // integrity and an immutable document_viewed audit entry.
             KycStudio::admin($db,$method,'/api/admin/kyc/applications/'.$documentMatch[1].'/documents/'.$documentMatch[2],$actor);
         }
-        PHP;
+PHP;
 $admin=str_replace($anchor,$bridge."\n        ".$anchor,$admin);
 if(file_put_contents($adminPath,$admin)===false)
     throw new RuntimeException('KYC review fix: cannot link legacy encrypted document endpoint');
