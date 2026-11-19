@@ -551,6 +551,7 @@ final class MerchantWallet {
     // Status checks only. These never submit transfers.
     private static function reconcilePayouts(Database $db,?string $accountId=null):void{
         if(getenv('ARGUS_PAYOUTS_ENABLED')!=='yes')return;
+        self::install($db);
         $cutoff=gmdate('Y-m-d H:i:s',time()-45);
         $where="status IN ('queued','pending','unknown') AND provider_tx_id IS NOT NULL
             AND (checked_at IS NULL OR checked_at<?)";
