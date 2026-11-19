@@ -3,6 +3,7 @@
 const E=id=>document.getElementById(id),BRL=x=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(x)||0)/100);
 const escapeText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let working=false,active=false,at=0;
+let ownCharges=new Map();
 const FEE=100;
 function cents(raw){const str=String(raw??'').trim();if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(str))return null;const n=Number(str.replace(',','.'));return Number.isFinite(n)?Math.round(n*100):null}
 function ensure(){
@@ -23,11 +24,13 @@ function ensure(){
   '<button type="submit">Solicitar saque</button></form><h4>Meus saques</h4><div id="seller-withdrawals"></div></section></div>',
   '<section class="seller-panel"><h3>Gerar Pix / depósito</h3><p>Receba diretamente na sua carteira. A taxa de serviço de R$ 1,00 é aplicada uma única vez após o pagamento.</p>',
   '<form id="seller-deposit-form" autocomplete="off"><label>Valor da cobrança (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
+  '<label class="seller-checkbox"><input id="seller-self-payer" name="self_payer" type="checkbox"><span>Eu mesmo pagarei este Pix: usar meu nome e CPF/CNPJ já verificados no Argus.</span></label>',
   '<label>Nome completo do pagador<input name="payer_name" maxlength="120" autocomplete="off" required></label>',
   '<label>CPF/CNPJ do pagador<input name="payer_document" inputmode="numeric" maxlength="18" autocomplete="off" required></label>',
   '<label>Descrição da venda<input name="description" maxlength="120" value="Pagamento de produto ou serviço" required></label>',
   '<button type="submit">Gerar Pix</button></form><div id="seller-pix-result" aria-live="polite"></div></section>',
-  '<section class="seller-panel"><h3>Minhas vendas Pix</h3><div id="seller-sales"></div></section>'
+  '<section class="seller-panel"><h3>Minhas cobranças e QR Codes</h3><p>Os Pix gerados pelo seu site, aplicativo ou Telegram aparecem aqui automaticamente. Somente pagamentos confirmados pela MisticPay entram no seu saldo.</p>',
+  '<div id="seller-active-pix" aria-live="polite"></div><div id="seller-sales"></div></section>'
  ].join('');
  top.after(root);
  E('seller-refresh').onclick=()=>load(true);
@@ -35,6 +38,50 @@ function ensure(){
  E('seller-withdraw-form').onsubmit=withdraw;
  E('seller-withdraw-form').elements.amount.oninput=quote;
  E('seller-deposit-form').onsubmit=deposit;
+ E('seller-self-payer').onchange=togglePayerMode;
+ E('seller-sales').onclick=openSellerPix;
+}
+function togglePayerMode(){
+ const form=E('seller-deposit-form');if(!form)return;
+ const enabled=!!E('seller-self-payer')?.checked;
+ for(const key of ['payer_name','payer_document']){
+  const input=form.elements.namedItem(key);if(!input)continue;
+  input.disabled=enabled;input.required=!enabled;
+  if(enabled)input.value='';
+ }
+}
+function drawSellerPix(charge){
+ const host=E('seller-active-pix');if(!host)return;
+ host.replaceChildren();
+ if(!charge?.pix_copy_paste){host.textContent='Nenhum QR Code Pix ativo no momento.';return}
+ const header=document.createElement('div');header.className='seller-qr-head';
+ const title=document.createElement('strong');title.textContent='QR Code Pix · '+BRL(charge.amount_cents);
+ const status=document.createElement('small');status.textContent='Aguardando pagamento · '+charge.id;
+ header.append(title,status);
+ const qr=document.createElement('div');qr.className='seller-qr-visual';qr.setAttribute('aria-label','QR Code da cobrança Pix '+charge.id);
+ if(typeof QRCode==='function'){
+  try{
+   new QRCode(qr,{text:charge.pix_copy_paste,width:206,height:206,
+    colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  }catch(_){qr.textContent='Use o Pix Copia e Cola abaixo';}
+ }else qr.textContent='Use o Pix Copia e Cola abaixo';
+ const field=document.createElement('textarea');field.rows=4;field.readOnly=true;
+ field.value=charge.pix_copy_paste;field.setAttribute('aria-label','Código Pix Copia e Cola');
+ const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar Pix Copia e Cola';
+ copy.onclick=async()=>{
+  try{await navigator.clipboard.writeText(field.value);notice('Código Pix copiado')}
+  catch(_){field.focus();field.select();notice('Selecione o texto para copiar manualmente')}
+ };
+ const details=document.createElement('small');details.textContent='Cobrança '+charge.id+' · '+charge.status+
+  ' · crédito previsto após confirmação '+BRL(charge.net_cents);
+ host.append(header,qr,field,copy,details);
+}
+function openSellerPix(event){
+ const button=event.target.closest('[data-seller-open-pix]');if(!button)return;
+ const charge=ownCharges.get(button.dataset.sellerOpenPix);
+ if(!charge||!charge.pix_copy_paste){notice('QR Code indisponível ou expirado',true);return}
+ drawSellerPix(charge);
+ E('seller-active-pix')?.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function quote(){
  const n=cents(E('seller-withdraw-form')?.elements.amount.value),host=E('seller-quote');if(!host)return;
@@ -66,9 +113,15 @@ function activities(){
   }else walletRender(null);
   if(arr[1].status==='fulfilled'){
    const rows=arr[1].value.charges||[];
+   ownCharges=new Map(rows.map(r=>[r.id,r]));
    const labels={paid:'Aprovado',pending:'Aguardando',expired:'Expirado',refunded:'Devolvido',unknown:'Conferindo',failed:'Não aprovado',creating:'Criando'};
-   E('seller-sales').innerHTML=rows.length?rows.slice(0,15).map(r=>'<div class="seller-item"><strong>'+BRL(r.amount_cents)+'</strong> · Taxa de serviço '+BRL(r.service_fee_cents)+' <small>'+escapeText(labels[r.display_status]||r.display_status)+'</small></div>').join(''):
-    '<p>Nenhuma cobrança Pix deste revendedor.</p>';
+   E('seller-sales').innerHTML=rows.length?rows.slice(0,15).map(r=>
+    '<div class="seller-item"><strong>'+BRL(r.amount_cents)+'</strong> · Taxa de serviço '+BRL(r.service_fee_cents)+
+    ' <small>'+escapeText(labels[r.display_status]||r.display_status)+' · '+escapeText(r.id)+'</small>'+
+    (r.pix_copy_paste&&r.display_status==='pending'?'<button type="button" data-seller-open-pix="'+escapeText(r.id)+'">Ver QR Code Pix</button>':'')+
+    '</div>').join(''):'<p>Nenhuma cobrança Pix deste revendedor.</p>';
+   const available=rows.find(r=>r.pix_copy_paste&&r.display_status==='pending');
+   drawSellerPix(available);
   }else E('seller-sales').textContent='Histórico de vendas indisponível.';
  });
 }
@@ -112,10 +165,14 @@ async function deposit(event){
  const button=form.querySelector('button[type="submit"]');button.disabled=true;working=true;
  const idem=form.dataset.idem||crypto.randomUUID();form.dataset.idem=idem;
  try{
-  const response=await request('/api/portal/wallet/charges',{method:'POST',body:{
-   amount_cents:amount,payer_name:String(v.get('payer_name')||'').trim(),
-   payer_document:String(v.get('payer_document')||''),description:String(v.get('description')||'').trim(),
-   idempotency_key:idem}});
+  const selfPayer=!!E('seller-self-payer')?.checked;
+  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),idempotency_key:idem};
+  if(selfPayer){payment.payer_mode='registered_seller';payment.seller_is_payer=true}
+  else{
+   payment.payer_name=String(v.get('payer_name')||'').trim();
+   payment.payer_document=String(v.get('payer_document')||'');
+  }
+  const response=await request('/api/portal/wallet/charges',{method:'POST',body:payment});
   const charge=response.charge,box=E('seller-pix-result');box.replaceChildren();
   const label=document.createElement('p');
   label.textContent='Cobrança '+BRL(charge.amount_cents)+' · crédito após pagamento '+BRL(charge.net_cents)+' · status '+charge.status;
@@ -128,7 +185,7 @@ async function deposit(event){
   }else{
    const p=document.createElement('p');p.textContent='Cobrança pendente de resposta do provedor. Não crie outra cobrança para a mesma venda.';box.append(p);
   }
-  delete form.dataset.idem;form.reset();notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');
+  delete form.dataset.idem;form.reset();togglePayerMode();notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');
   await activities();
  }catch(err){notice('Verifique o histórico antes de tentar novamente: '+err.message,true)}
  finally{button.disabled=false;working=false;}

@@ -110,7 +110,8 @@ if(!str_contains($adminPhp,'MerchantWallet::admin($db,$method,$path,$actor')||
 if(!str_contains($gateway,"require_once __DIR__ . '/MerchantWallet.php';"))
  throw new RuntimeException('Wallet class not loaded');
 foreach([
- ['/var/www/html/public/static/client.html','merchant-portal.js?v=3'],
+ ['/var/www/html/public/static/client.html','merchant-portal.js?v=4'],
+ ['/var/www/html/public/static/client.html','qrcode.min.js?v=1'],
  ['/var/www/html/public/static/docs.html','merchant-docs.js?v=1'],
  ['/var/www/html/public/static/admin.html','merchant-admin.js?v=1'],
  ['/var/www/html/public/static/admin.html','id="page-merchant-wallet"']

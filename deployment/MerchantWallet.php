@@ -196,6 +196,26 @@ final class MerchantWallet {
             'notice'=>'Saldo exclusivo de vendas Pix confirmadas da sua conta. Transferências pendentes ficam reservadas.'
         ];
     }
+    /**
+     * Use the account's verified name and CPF/CNPJ only when the seller is
+     * explicitly paying their own Pix. For a customer checkout, real buyer
+     * fields remain mandatory. Never represent a third party as this seller.
+     */
+    private static function payerDetails(Database $db,array $account,array $data):array{
+        $mode=$data['payer_mode']??'customer';
+        if($mode==='registered_seller'){
+            if(($data['seller_is_payer']??false)!==true)
+                self::fail('Confirme que o revendedor cadastrado é quem vai pagar este Pix',422);
+            if(array_key_exists('payer_name',$data)||array_key_exists('payer_document',$data))
+                self::fail('Use apenas o cadastro verificado ao selecionar o titular como pagador',422);
+            $identity=IdentityProfile::sellerForPayout($db,$account);
+            $data['payer_name']=$identity['legal_name'];
+            $data['payer_document']=$identity['document_number'];
+        }elseif($mode!=='customer'||array_key_exists('seller_is_payer',$data)){
+            self::fail('Modo de pagador inválido; informe o pagador real da compra',422);
+        }
+        return $data;
+    }
     public static function create(Database $db,array $account,array $data,string $idem):array{
         self::enabled($db);
         if(($account['status']??'')!=='approved'||!KycStudio::identityApproved($db,(string)$account['id']))
@@ -203,6 +223,7 @@ final class MerchantWallet {
         $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",[(string)($account['merchant_id']??'')]);
         if(!$merchant)self::fail('Conta financeira não autorizada a receber',403);
         $w=self::wallet($db,$account);
+        $data=self::payerDetails($db,$account,$data);
         $gross=$data['amount_cents']??null;
         if(!is_int($gross)||$gross<100||$gross>10000)self::fail('Valor Pix permitido: R$ 1 a R$ 100',422);
         $name=trim((string)($data['payer_name']??''));

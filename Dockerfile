@@ -331,6 +331,15 @@ RUN php -l /var/www/html/src/IdentityProfile.php \
  && php -l /var/www/html/tests/central_api_proxy_test.php \
  && php /var/www/html/tests/central_api_proxy_test.php
 
+
+# Synthetic merchant checkout E2E: authenticated seller key -> central MisticPay
+# request shape -> fake PSP QR -> own seller QR panel -> paid-only wallet credit.
+# No network requests, production credentials or monetary transfers.
+COPY deployment/seller_pix_e2e_test.php /var/www/html/tests/seller_pix_e2e_test.php
+RUN php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/seller_pix_e2e_test.php \
+ && php /var/www/html/tests/seller_pix_e2e_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
