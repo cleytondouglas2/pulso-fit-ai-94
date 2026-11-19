@@ -385,6 +385,27 @@ RUN php -l /var/www/html/src/FaceCapture.php \
  && php -l /var/www/html/tests/face_capture_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/face_capture_test.php
 
+
+# ARGUS defense in depth. Run after all legacy unit tests:
+# - strict browser/privacy headers and no sensitive cache
+# - hashed atomic request velocity / intrusion evidence (no PII in rate keys)
+# - seller authorization consistency, deposit/withdrawal throttling
+# - no cross-use of MisticPay Finance secrets for traditional Pix charges
+COPY deployment/SecurityShield.php /var/www/html/src/SecurityShield.php
+COPY deployment/argus_security_patch.php /tmp/argus_security_patch.php
+COPY deployment/security_regression_test.php /var/www/html/tests/security_regression_test.php
+COPY deployment/argus-security.conf /etc/apache2/conf-available/argus-security.conf
+RUN php -l /var/www/html/src/SecurityShield.php \
+ && php -l /tmp/argus_security_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_security_patch.php \
+ && a2enconf argus-security \
+ && apache2ctl configtest \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/security_regression_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/security_regression_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
