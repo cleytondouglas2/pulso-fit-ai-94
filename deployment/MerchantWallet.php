@@ -2,6 +2,8 @@
 declare(strict_types=1);
 namespace ArgusPayments;
 
+use ArgusPayments\Integrations\MisticPayPayout;
+
 /**
  * Isolated seller wallet. Only authenticated PSP-confirmed deposits into the
  * ARGUS custody account may credit it. Merchant KYC + operating permissions
