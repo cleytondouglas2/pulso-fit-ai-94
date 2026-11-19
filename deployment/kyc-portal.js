@@ -12,7 +12,15 @@
    if(!head)return;
    const panel=document.createElement('section');panel.id='kyc-client-root';panel.className='kyc-client-root';
    head.after(panel);
-   const old=E('upload-form')?.closest('article');if(old)old.style.display='none';
+   const old=E('upload-form')?.closest('article');
+   if(old){
+     old.hidden=true;
+     old.style.display='none';
+     // The former 2-column dashboard must become one full-width account card
+     // when the legacy document-upload card is replaced by KYC Studio.
+     const grid=old.closest('.grid');
+     if(grid)grid.classList.add('argus-kyc-legacy-hidden');
+   }
  }
  function renderKyc(account){
    ensure();
