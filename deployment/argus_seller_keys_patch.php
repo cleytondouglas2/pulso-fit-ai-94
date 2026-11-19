@@ -27,7 +27,8 @@ $new=<<<'PHP'
             $merchant=$approved?$db->one("SELECT id FROM b2b_merchants
                 WHERE id=? AND status='approved_live'",[$account['merchant_id']]):null;
             $verified=$approved&&KycStudio::identityApproved($db,(string)$account['id']);
-            $active=count(array_filter($v,static fn(array $k):bool=>$k['revoked_at']===null));
+            $count=$db->one('SELECT COUNT(*) AS total FROM argus_portal_keys WHERE account_id=? AND revoked_at IS NULL',[$account['id']]);
+            $active=(int)($count['total']??0);
             $reason=!$durable?'Banco financeiro persistente indisponível para armazenar as chaves':
                 (!$approved?'Finalize a análise inicial do cadastro e a autorização do recebedor':
                 (!$verified?'Sua identidade ainda está em validação documental':
