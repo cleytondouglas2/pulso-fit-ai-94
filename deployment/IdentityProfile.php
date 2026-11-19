@@ -116,6 +116,27 @@ final class IdentityProfile {
             self::fail('Documento de cadastro inconsistente; procure o suporte',503);
         return ['account_type'=>$type,'legal_name'=>$name,'document_number'=>$document];
     }
+    /**
+     * Unseal only the authenticated seller's own reviewed legal identity for
+     * central-custody API payout. Never expose this data to a public API result.
+     */
+    public static function sellerForPayout(Database $db,array $account):array{
+        if(($account['status']??'')!=='approved'||empty($account['merchant_id']))
+            self::fail('Cadastro financeiro do titular não autorizado',403);
+        self::install($db);
+        $row=$db->one('SELECT legal_type,legal_name,document_digest,document_sealed
+            FROM argus_account_identities WHERE owner_type=? AND owner_id=?',
+            ['portal',(string)$account['id']]);
+        if(!$row)self::fail('Confirme nome e CPF/CNPJ na área de cadastro antes de solicitar saques por API',409);
+        $document=self::unseal((string)$row['document_sealed']);
+        [$type,$name,$digits]=self::validate((string)$row['legal_type'],(string)$row['legal_name'],$document);
+        if($type!==($account['account_type']??null)||
+           !hash_equals((string)($account['document_digest']??''),(string)$row['document_digest'])||
+           !hash_equals((string)$row['document_digest'],self::digest($digits)))
+            self::fail('Identidade do recebedor inconsistente; revise o cadastro',409);
+        return ['account_type'=>$type,'legal_name'=>$name,'document_number'=>$digits];
+    }
+
     public static function admin(Database $db,string $method,string $path,array $actor):never{
         if($path!=='/api/admin/account-profile')self::fail('Rota indisponível',404);
         if($method==='GET')self::json(['profile'=>self::public($db,'admin',(string)$actor['id'])]);
