@@ -81,9 +81,9 @@ resellerParityReplace($merchant,
     "  E('seller-key-status').textContent=!v?.can_issue&&kycDone&&lastAccount?.status!=='approved'?'Identidade aprovada. A emissão de chaves depende da autorização financeira da conta.':(v?.reason||'Verifique suas credenciais e o status de aprovação da conta.');",
     'seller API key stage');
 resellerParityReplace($merchant,
-    "   const session=await request('/api/portal/session');active=!!session.account;\n   if(!active)return;",
-    "   const session=await request('/api/portal/session');active=!!session.account;\n".
-    "   if(!active)return;\n".
+    "  const session=await request('/api/portal/session');active=!!session.account;\n  if(!active)return;",
+    "  const session=await request('/api/portal/session');active=!!session.account;\n".
+    "  if(!active)return;\n".
     "   lastAccount=session.account;\n".
     "   if(state.account&&(state.account.status!==lastAccount.status||\n".
     "      !!state.account.kyc_studio?.identity_approved!==!!lastAccount.kyc_studio?.identity_approved||\n".
