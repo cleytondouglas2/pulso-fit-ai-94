@@ -135,7 +135,7 @@ if($public['pix_copy_paste']!==$copy||
     throw new RuntimeException('Seller QR missing in public own-charge payload');
 // The authenticated seller's own portal uses the same chargePublic() method.
 if($db->one('SELECT * FROM argus_seller_charges WHERE account_id=?',
-  [$other['id']])!==null)
+  [$other['id']]))
   throw new RuntimeException('Another seller can view foreign QR');
 $reject(static fn()=>Wallet::reconcile($db,$id,$other['id']),404);
 $available=$db->one('SELECT available_cents FROM argus_seller_wallets WHERE account_id=?',
@@ -153,7 +153,7 @@ $frontend=(string)file_get_contents('/var/www/html/public/static/merchant-portal
 $client=(string)file_get_contents('/var/www/html/public/static/client.html');
 $docs=(string)file_get_contents('/var/www/html/public/static/merchant-docs.js');
 foreach(['function drawSellerPix','new QRCode(qr,','ownCharges=new Map(',
- 'seller-active-pix','data-seller-open-pix','seller_is_payer:true'] as $token){
+ 'seller-active-pix','data-seller-open-pix','payment.seller_is_payer=true'] as $token){
  if(!str_contains($frontend,$token))
      throw new RuntimeException('External QR seller UI hook missing: '.$token);
 }
