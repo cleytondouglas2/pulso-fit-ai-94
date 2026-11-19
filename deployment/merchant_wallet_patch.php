@@ -84,11 +84,11 @@ $screen=<<<'HTML'
 <section class="page" id="page-merchant-wallet" hidden>
  <div class="merchant-admin-page">
   <div class="section-top"><div><p class="eyebrow">SUPER ADMIN · CARTEIRAS INDIVIDUAIS</p>
-  <h1>Saldos de revendedores</h1><p>Confira cada carteira isolada e aprove saques com autenticação 2FA, sem movimentar saldo de outro cliente.</p></div>
+  <h1>Saldos de revendedores</h1><p>Confira cada carteira isolada e acompanhe os saques solicitados e enviados pelos próprios revendedores, sem aprovação manual.</p></div>
   <button class="btn secondary" id="merchant-admin-refresh" type="button">Atualizar saldos</button></div>
   <div class="panel"><h2>Contas e saldos</h2><div id="merchant-admin-accounts" aria-live="polite"></div></div>
   <div class="panel"><h2>Solicitações de saque</h2><div id="merchant-admin-withdrawals" aria-live="polite"></div></div>
-  <p class="muted">Uma solicitação reserva o saldo imediatamente. Apenas o Super Admin executa o envio real mediante novo código autenticador. Em resultado incerto, não reenviar.</p>
+  <p class="muted">Cada saque reserva exatamente o total solicitado e envia o valor líquido após a taxa de serviço. Em resultado incerto, não reenviar automaticamente.</p>
  </div>
 </section>
 HTML;
