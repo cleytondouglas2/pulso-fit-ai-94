@@ -11,6 +11,7 @@ $css=(string)file_get_contents($static.'/landing.css');
 $js=(string)file_get_contents($static.'/landing.js');
 $gateway=(string)file_get_contents($root.'/src/Gateway.php');
 $client=(string)file_get_contents($static.'/client.html');
+$portalJs=(string)file_get_contents($static.'/portal.js');
 $docs=(string)file_get_contents($static.'/docs.html');
 $logo=$static.'/assets/argus-payments-logo-transparent.webp';
 
@@ -108,4 +109,7 @@ foreach(['fetch(','XMLHttpRequest','sendBeacon','document.cookie','localStorage'
 foreach([$client,$docs] as $page)
     if(!str_contains($page,'href="/" title="Conheça a plataforma ARGUS Pay"'))
         throw new RuntimeException('Existing customer/doc navigation does not link to public homepage');
+if(!str_contains($portalJs,"location.pathname==='/cadastro'")||
+   !str_contains($client,'portal.js?v=landing-1'))
+    throw new RuntimeException('Public CTA to /cadastro must open the register form without cached login JS');
 echo "PASS: branded public homepage, 4 live CTAs, responsive/mobile navigation, simulated revenue tool, transparent antifraud copy, FAQ and read-only API example; no financial/auth changes.\n";
