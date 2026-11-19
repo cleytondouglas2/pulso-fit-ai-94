@@ -11,6 +11,7 @@ $db->installAndSeed();
 Portal::install($db);
 MerchantWallet::install($db);
 $now=new DateTimeImmutable('2026-11-19T16:00:00-03:00');
+$baseline=R::build($db,null,$now); // Other build stages may have synthetic rows.
 $a=bin2hex(random_bytes(16));$b=bin2hex(random_bytes(16));
 foreach([[$a,'Loja Alfa','alfa@example.invalid'],[$b,'Loja Beta','beta@example.invalid']] as [$id,$name,$email]){
     $db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,
@@ -61,13 +62,14 @@ if($own['comparison_today']['direction']!=='up'||$own['comparison_month']['direc
 if(count($own['daily'])!==14||count($own['sellers'])!==0)
     throw new RuntimeException('Seller leaked portfolio data or chart is not fourteen days');
 $all=R::build($db,null,$now);
-if((int)$all['periods']['today']['gross_cents']!==2700||
-   (int)$all['periods']['month']['gross_cents']!==3700||
-   count($all['sellers'])!==2||
-   $all['sellers'][0]['account_id']!==$b||
-   $all['sellers'][1]['account_id']!==$a||
-   (int)$all['sellers'][0]['month']['gross_cents']!==2000)
-    throw new RuntimeException('Super Admin sum or per-merchant partition incorrect');
+$byAccount=array_column($all['sellers'],null,'account_id');
+if((int)$all['periods']['today']['gross_cents']-(int)$baseline['periods']['today']['gross_cents']!==2700||
+   (int)$all['periods']['month']['gross_cents']-(int)$baseline['periods']['month']['gross_cents']!==3700||
+   !isset($byAccount[$a],$byAccount[$b])||
+   (int)$byAccount[$a]['month']['gross_cents']!==1700||
+   (int)$byAccount[$b]['month']['gross_cents']!==2000||
+   (int)$byAccount[$b]['today']['gross_cents']!==2000)
+    throw new RuntimeException('Super Admin delta or individual seller partition incorrect: '.json_encode($all['periods']));
 $refundDay=array_values(array_filter($own['daily'],static fn($r)=>$r['date']==='2026-11-19'));
 if(count($refundDay)!==1||$refundDay[0]['refund_count']!==1)
     throw new RuntimeException('Refund day not accounted for');
