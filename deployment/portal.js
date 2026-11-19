@@ -21,7 +21,7 @@ async function action(form,callback){
 }
 $('#register-form').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{const data=formData(e.target);delete data[Object.keys(data).find(k=>k==='')];const result=await request('/api/portal/register',{method:'POST',body:data});notice(result.message);e.target.reset();tab('login');$('#login-form').querySelector('[name=email]').value=data.email})};
 $('#login-form').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{const result=await request('/api/portal/login',{method:'POST',body:formData(e.target)});e.target.reset();render(result.account);notice('Acesso realizado com segurança')})};
-$('#logout').onclick=async()=>{try{await request('/api/portal/logout',{method:'POST',body:{}})}catch{}state.account=null;$('#dashboard').hidden=true;$('#auth').hidden=false;tab('login')};
+$('#logout').onclick=async()=>{try{await request('/api/portal/logout',{method:'POST',body:{}})}catch{}state.account=null;$('#once-key').value='';$('#once-secret').value='';$('#secret-once').hidden=true;$('#dashboard').hidden=true;$('#auth').hidden=false;tab('login')};
 function render(account){
  state.account=account;$('#dashboard').hidden=false;$('#auth').hidden=true;
  const greeting=new Date().getHours()<12?'Bom dia':new Date().getHours()<18?'Boa tarde':'Boa noite';
@@ -37,22 +37,27 @@ function render(account){
  $('#status').textContent=labels[account.status]||'Em avaliação';
  $('#status-message').textContent=account.status==='approved'?'Seu cadastro está aprovado para os serviços autorizados.':'Envie os documentos solicitados. O uso financeiro depende de análise e liberação.';
  $('#documents').innerHTML=(account.documents||[]).map(d=>'<div><span>'+esc(({identidade_frente:'Identidade — frente',identidade_verso:'Identidade — verso',selfie:'Selfie',contrato_social:'Contrato social'})[d.document_type]||d.document_type)+'</span><b>Recebido · análise pendente</b></div>').join('');
- const enabled=!!account.can_issue_live_keys;$('#create-key').disabled=!enabled;$('#api-gate').hidden=enabled;
- if(enabled)$('#api-gate').textContent='Credenciais liberadas. Mantenha a chave secreta no seu servidor.';
- else $('#api-gate').textContent='As credenciais reais só serão liberadas após validação documental, análise e aprovação operacional.';
+ $('#create-key').disabled=true;$('#api-gate').hidden=false;
+ $('#api-gate').textContent='Conferindo a autorização da sua conta para gerar suas próprias chaves...';
  loadKeys();
 }
 async function loadKeys(){
  try{
   const result=await request('/api/portal/keys');
-  $('#credentials').innerHTML=result.keys.length?result.keys.map(k=>'<div class="key-row"><span><b>'+esc(k.public_key)+'</b><small> · '+esc(k.created_at)+'</small> '+(k.revoked_at?'(revogada)':'')+'</span>'+(k.revoked_at?'':'<button type="button" class="outline" data-revoke="'+esc(k.id)+'">Revogar</button>')+'</div>').join(''):'<p class="muted">Nenhuma chave foi criada ainda.</p>';
- }catch(e){notice(e.message,true)}
+  const available=!!result.can_issue;
+  if(state.account)state.account.can_issue_live_keys=available;
+  $('#create-key').disabled=!available;
+  $('#api-gate').hidden=false;
+  $('#api-gate').textContent=result.reason||(available?'Você pode gerar suas chaves agora, sem pedir autorização ao administrador.':'Aguardando requisitos de segurança para emitir chaves.');
+  $('#credentials').innerHTML=(result.keys||[]).length?result.keys.map(k=>'<div class="key-row"><span><b>'+esc(k.public_key)+'</b><small> · '+esc(k.created_at)+'</small> '+(k.revoked_at?'(revogada)':'')+'</span>'+(k.revoked_at?'':'<button type="button" class="outline" data-revoke="'+esc(k.id)+'">Revogar</button>')+'</div>').join(''):'<p class="muted">Nenhuma chave criada. Quando sua conta estiver aprovada, você poderá gerar as suas diretamente aqui.</p>';
+  document.getElementById('seller-key-create')?.toggleAttribute('disabled',!available);
+ }catch(e){$('#create-key').disabled=true;$('#api-gate').hidden=false;$('#api-gate').textContent='Não foi possível verificar sua autorização: '+e.message;notice(e.message,true)}
 }
 $('#credentials').onclick=async e=>{const b=e.target.closest('button[data-revoke]');if(!b||!confirm('Revogar esta chave? Seus sistemas deixarão de conseguir utilizá-la.'))return;
  try{await request('/api/portal/keys/'+encodeURIComponent(b.dataset.revoke)+'/revoke',{method:'POST',body:{}});await loadKeys();notice('Chave revogada')}catch(e){notice(e.message,true)}};
-$('#create-key').onclick=async()=>{if(!state.account?.can_issue_live_keys)return;
+$('#create-key').onclick=async()=>{if(!state.account?.can_issue_live_keys){notice('Aguarde a verificação inicial da conta ou confira a mensagem de autorização.',true);return;}
  const btn=$('#create-key');btn.disabled=true;
- try{const result=await request('/api/portal/keys',{method:'POST',body:{}});$('#once-key').value=result.api_key;$('#once-secret').value=result.api_secret;$('#secret-once').hidden=false;await loadKeys();notice('Chaves emitidas. Guarde a secreta em local seguro.')}catch(e){notice(e.message,true)}finally{btn.disabled=false}};
+ try{const result=await request('/api/portal/keys',{method:'POST',body:{}});$('#once-key').value=result.api_key;$('#once-secret').value=result.api_secret;$('#secret-once').hidden=false;await loadKeys();notice('Chaves emitidas. Guarde a secreta em local seguro.')}catch(e){notice(e.message,true)}finally{btn.disabled=!state.account?.can_issue_live_keys}};
 $('#copy-credentials').onclick=async()=>{try{await navigator.clipboard.writeText('ARGUS_API_KEY='+$('#once-key').value+'\nARGUS_API_SECRET='+$('#once-secret').value);notice('Credenciais copiadas')}catch{notice('Copie os campos manualmente',true)}};
 $('#document-recheck').onsubmit=e=>{e.preventDefault();action(e.target,async()=>{
  const number=e.target.elements.document_number.value;

@@ -102,9 +102,9 @@ if(!is_string($markup)||substr_count($markup,'</head>')!==1||
    substr_count($markup,'</body>')!==1)
     throw new RuntimeException('ARGUS admin keys: admin HTML missing');
 $markup=str_replace('</head>',
-    '<link rel="stylesheet" href="/static/admin-api-keys.css?v=2"></head>',$markup);
+    '<link rel="stylesheet" href="/static/admin-api-keys.css?v=3"></head>',$markup);
 $markup=str_replace('</body>',
-    '<script src="/static/admin-api-keys.js?v=2" defer></script></body>',$markup);
+    '<script src="/static/admin-api-keys.js?v=3" defer></script></body>',$markup);
 if(file_put_contents($html,$markup)===false)
     throw new RuntimeException('ARGUS admin keys: HTML write failed');
 echo "ARGUS admin merchant API key controls and documentation access added.\n";
