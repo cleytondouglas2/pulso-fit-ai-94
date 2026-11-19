@@ -20,8 +20,11 @@ $old=<<<'PHP'
 PHP;
 $new=<<<'PHP'
         if($method==='GET'&&$path==='/api/portal/keys'){
-            $v=$db->all('SELECT id,public_key,created_at,revoked_at FROM argus_portal_keys
-                WHERE account_id=? ORDER BY created_at DESC LIMIT 100',[$account['id']]);
+            $v=$db->all('SELECT k.id,k.public_key,k.created_at,k.revoked_at,
+                COALESCE(p.allow_withdrawal,0) AS allow_withdrawal
+                FROM argus_portal_keys k
+                LEFT JOIN argus_portal_key_permissions p ON p.key_id=k.id AND p.account_id=k.account_id
+                WHERE k.account_id=? ORDER BY k.created_at DESC LIMIT 100',[$account['id']]);
             $durable=in_array($db->driver(),['pgsql','mysql'],true);
             $approved=$account['status']==='approved'&&!empty($account['merchant_id']);
             $merchant=$approved?$db->one("SELECT id FROM b2b_merchants
