@@ -63,7 +63,9 @@
      const d=docs.find(x=>x.document_type===type&&x.review_status!=='needs_changes');
      const canView=isPresent&&d;
      return '<div class="kyc-review-doc '+(isPresent?'ok':'missing')+'"><div><strong>'+esc(labels[type]||type)+'</strong>'+
-       '<small>'+(isPresent?'✓ Recebido · '+esc(d?.created_at||''):'⚠ Não recebido / correção pendente')+'</small></div>'+
+       '<small>'+(isPresent?'✓ Protegido e disponível · '+esc(d?.created_at||''):
+       (d?'⚠ Enviado anteriormente, mas sem cópia acessível na Central KYC. Solicite reenvio.':
+       '⚠ Não recebido / correção pendente'))+'</small></div>'+
        (canView?'<button type="button" data-kyc-preview="'+esc(d.id)+'" data-kyc-mime="'+esc(d.mime)+'">Examinar arquivo</button>':'<span>Obrigatório</span>')+'</div>';
    }).join('')+'</div>';
    if(events.length)html+='<div class="kyc-timeline"><h3>Histórico de decisões</h3>'+events.slice(0,10).map(e=>
@@ -121,7 +123,10 @@
    try{
      const res=await fetch('/api/admin/kyc/applications/'+encodeURIComponent(selected)+'/documents/'+encodeURIComponent(id),
        {credentials:'same-origin',cache:'no-store',headers:{Accept:'image/*,application/pdf'}});
-     if(!res.ok)throw Error('Acesso ao documento não autorizado ou arquivo indisponível.');
+     if(!res.ok){
+       let details='';try{const p=await res.json();details=String(p.error||p.message||'').slice(0,160)}catch(_){}
+       throw Error(details||('Não foi possível abrir o documento (HTTP '+res.status+').'));
+     }
      const blob=await res.blob();
      if(blob.size>3400000||!['image/jpeg','image/png','application/pdf'].includes(mime))
        throw Error('Formato de visualização inválido');
@@ -130,10 +135,14 @@
      let modal=E('kyc-document-viewer');
      if(!modal){modal=document.createElement('div');modal.id='kyc-document-viewer';modal.className='kyc-document-viewer';document.body.appendChild(modal);}
      modal.innerHTML='<div class="kyc-viewer-card"><div class="kyc-viewer-head"><strong>Documento protegido · ARGUS</strong><button type="button" id="kyc-close-viewer">Fechar ×</button></div>'+
-       (mime==='application/pdf'?'<p>PDF protegido. Abra o arquivo somente no visualizador do dispositivo.</p><a id="kyc-viewer-file" download="documento-argus.pdf">Abrir PDF</a>':
-       '<img id="kyc-viewer-image" alt="Documento enviado pelo cliente para análise KYC">')+'</div>';
-     if(mime==='application/pdf')E('kyc-viewer-file').href=activePreview;
-     else E('kyc-viewer-image').src=activePreview;
+       (mime==='application/pdf'?'<p>Documento PDF protegido. Visualização temporária somente para analistas autorizados.</p>'+
+        '<iframe id="kyc-viewer-pdf" title="Documento PDF do cliente" loading="lazy"></iframe>'+
+        '<a id="kyc-viewer-file" target="_blank" rel="noopener noreferrer">Abrir PDF em nova aba</a>':
+        '<img id="kyc-viewer-image" alt="Documento enviado pelo cliente para análise KYC">')+'</div>';
+     if(mime==='application/pdf'){
+       E('kyc-viewer-pdf').src=activePreview;
+       E('kyc-viewer-file').href=activePreview;
+     }else E('kyc-viewer-image').src=activePreview;
      E('kyc-close-viewer').onclick=()=>{modal.remove();URL.revokeObjectURL(activePreview);activePreview=null;};
      modal.onclick=e=>{if(e.target===modal)E('kyc-close-viewer').click()};
    }catch(error){toast(error.message,true)}finally{button.disabled=false}
@@ -199,6 +208,13 @@
      drawQueue();const a=queue.find(x=>x.id===selected);if(a)detail(a);
    });
  }
+ // Link all legacy review entry points to the same audited KYC dossier.
+ window.argusOpenKycApplication=function(accountId){
+   if(!staff()){toast('Somente revisores autorizados podem examinar documentos.',true);return}
+   selected=typeof accountId==='string'&&/^[a-f0-9]{32}$/i.test(accountId)?accountId:'';
+   navigate('kyc-studio');
+   loadQueue(selected);
+ };
  const oldLoad=loadPage;
  loadPage=async function(page){if(page==='kyc-studio')return loadQueue(selected);return oldLoad(page)};
  const oldNavigate=navigate;
