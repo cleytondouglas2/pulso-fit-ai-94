@@ -39,8 +39,12 @@ $src=str_replace('<button class="menu-item super-only" data-nav="users">',
 '<button class="menu-item super-only" data-nav="applications"><span>▤</span> Verificação de clientes</button><button class="menu-item super-only" data-nav="users">',$src);
 $applicationHtml=<<<'HTML'
 <section class="page" id="page-applications" hidden>
-<div class="section-top"><div><p class="eyebrow">ANÁLISE RESTRITA</p><h1>Validação de clientes</h1><p>Área exclusiva do Super Admin. Revise documentos e autorizações antes da liberação financeira.</p></div><button id="reload-applications" type="button" class="btn secondary">Atualizar</button></div>
-<div class="panel table-container"><table><thead><tr><th>Cliente</th><th>Tipo</th><th>Documento</th><th>Situação</th><th>Arquivos</th><th>Ação</th></tr></thead><tbody id="application-rows"></tbody></table></div>
+<div class="section-top"><div><p class="eyebrow">ANÁLISE RESTRITA</p><h1>Validação de clientes</h1><p>Primeiro confira os arquivos originais e aprove a identidade na Central KYC. A liberação financeira é uma etapa separada.</p></div><button id="reload-applications" type="button" class="btn secondary">Atualizar</button></div>
+<div class="panel argus-review-overview">
+ <div class="argus-review-start"><div><strong>Revisão documental segura</strong><p>Aqui você vê quais arquivos foram realmente recebidos. Use <b>Examinar no KYC</b> para visualizar frente, verso e selfie e registrar a análise. Caixas de confirmação não aprovam documentos sozinhas.</p></div>
+ <button id="open-kyc-studio" type="button" class="btn primary">Abrir Central KYC</button></div>
+ <div id="application-rows" class="argus-review-list" aria-live="polite">Carregando cadastros...</div>
+</div>
 </section>
 HTML;
 $src=str_replace('<section class="page" id="page-users" hidden>', $applicationHtml.'<section class="page" id="page-users" hidden>', $src);
@@ -87,6 +91,8 @@ $script=str_replace([
 $script .= <<<'JS'
 
 /* Super Admin client onboarding actions; no customer-facing administrative data. */
+/* Legacy client list now routes directly to the authenticated, audited KYC
+   workbench. Financial approval must never be attempted before real KYC review. */
 let clientApplications=[];
 const previousLoadPage=loadPage;
 loadPage=async function(page){if(page==='applications')return loadApplications();return previousLoadPage(page)};
@@ -94,28 +100,44 @@ const previousNavigate=navigate;
 navigate=function(page){if(page==='applications'&&state.user?.role!=='superadmin')return;return previousNavigate(page)};
 async function loadApplications(){
  if(state.user?.role!=='superadmin')return;
- const list=await api('/api/admin/portal/applications');clientApplications=list;
  const target=document.getElementById('application-rows');
- target.innerHTML=list.map(a=>{
-  const docs=a.documents||[];
-  return '<tr><td><b>'+esc(a.display_name)+'</b><small>'+esc(a.email)+'</small><small>Validação automática: '+esc(a.validation?.label||'pendente')+'</small></td><td>'+esc(a.account_type)+'</td><td>•••• '+esc(a.document_last4)+'</td><td>'+esc(a.status)+'</td><td>'+docs.map(d=>'<a class="mini" href="/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/documents/'+encodeURIComponent(d.id)+'" target="_blank" rel="noopener">'+esc(d.document_type)+'</a>').join(' ')+'</td><td><button class="mini" type="button" data-review="'+esc(a.id)+'">Analisar</button></td></tr>';
- }).join('')||empty(6,'Nenhum pedido de cadastro');
+ target.textContent='Verificando documentos protegidos...';
+ try{
+  const data=await api('/api/admin/kyc/queue');
+  const list=Array.isArray(data.applications)?data.applications:[];
+  clientApplications=list;
+  const statusLabels={documents_required:'Documentação pendente',
+   documents_under_review:'Aguardando análise KYC',identity_verified:'KYC aprovado — análise financeira separada',
+   approved:'Conta aprovada',rejected:'Rejeitado',suspended:'Suspenso'};
+  target.innerHTML=list.map(a=>{
+   const k=a.kyc||{},available=new Set(k.received||[]),required=k.required||[];
+   const labels={identidade_frente:'Identidade · frente',identidade_verso:'Identidade · verso',
+    selfie:'Selfie',cnpj_comprovante:'CNPJ',contrato_social:'Contrato social'};
+   const files=required.map(t=>
+    '<span class="argus-review-file '+(available.has(t)?'available':'missing')+'">'+
+     esc(labels[t]||t)+': '+(available.has(t)?'Disponível para exame':'Reenvio pendente')+'</span>').join('');
+   return '<article class="argus-review-account"><div class="argus-review-account-main">'+
+    '<strong>'+esc(a.display_name)+'</strong><small>'+esc(a.email)+' · '+
+     esc(a.account_type==='PF'?'Pessoa física':'Pessoa jurídica')+'</small>'+
+    '<span class="argus-review-state">'+esc(statusLabels[a.status]||a.status)+'</span>'+
+    '<small>'+available.size+'/'+required.length+' documentos acessíveis no armazenamento KYC</small></div>'+
+    '<div class="argus-review-files">'+files+'</div>'+
+    '<button class="btn secondary" type="button" data-kyc-open="'+esc(a.id)+'">Examinar no KYC</button></article>';
+  }).join('')||'<p class="muted">Nenhum cadastro encontrado.</p>';
+ }catch(err){
+  target.textContent='Não foi possível consultar a Central KYC: '+err.message;
+  toast(err.message,true);
+ }
 }
 document.getElementById('reload-applications').onclick=()=>loadApplications().catch(err=>toast(err.message,true));
+document.getElementById('open-kyc-studio').onclick=()=>{
+ if(typeof window.argusOpenKycApplication==='function')window.argusOpenKycApplication('');
+ else toast('A Central KYC ainda não carregou. Atualize a página.',true);
+};
 document.getElementById('application-rows').onclick=e=>{
- const b=e.target.closest('button[data-review]');if(!b)return;
- const a=clientApplications.find(x=>x.id===b.dataset.review);if(!a)return;
- dialog('Analisar cadastro: '+a.display_name, '<p class="subtle-warning">Aprovação exige análise real dos arquivos, contrato e verificação do recebedor. Nunca marque sem confirmação.</p><form id="application-review-form" class="modal-form"><label>Decisão<select name="decision" id="review-decision"><option value="approve">Validar cadastro</option><option value="reject">Rejeitar</option><option value="suspend">Suspender</option></select></label>'+ (a.account_type==='PJ'?'<label>CNPJ original confirmado<input name="cnpj" inputmode="numeric" placeholder="00.000.000/0000-00"></label><label>E-mail do recebedor habilitado<input name="recipient_email" type="email"></label>':'<p class="muted">Para PF, a identidade poderá ser verificada, mas pagamentos exigem homologação individual do recebedor.</p>') +[['kyc_verified','Documentos e identidade conferidos'],['provider_approved','Prestador aprovou o recebedor'],['contract_signed','Contrato assinado'],['split_direction_confirmed','Regras de recebimento verificadas']].map(([k,label])=>'<label class="checkline"><input name="'+k+'" type="checkbox"><span>'+label+'</span></label>').join('') + '<label>Motivo (rejeição ou suspensão)<input name="reason" placeholder="Justificativa"></label><div class="modal-actions"><button type="submit" class="btn primary">Registrar decisão</button></div></form>','ANÁLISE DOCUMENTAL');
- document.getElementById('application-review-form').onsubmit=async ev=>{
-  ev.preventDefault();const form=ev.target,data=formValues(form),decision=data.decision;
-  if(decision==='approve'){
-   for(const k of ['kyc_verified','provider_approved','contract_signed','split_direction_confirmed'])if(data[k]!=='on'){toast('Confirme todas as verificações antes de liberar',true);return}
-   for(const k of ['kyc_verified','provider_approved','contract_signed','split_direction_confirmed'])data[k]=true;
-  }
-  if(!confirm('Registrar esta decisão para '+a.display_name+'?'))return;
-  try{const result=await post('/api/admin/portal/applications/'+encodeURIComponent(a.id)+'/decision',data);closeDialog();await loadApplications();toast(result.message||'Decisão registrada: '+result.status)}
-  catch(err){toast(err.message,true)}
- };
+ const b=e.target.closest('button[data-kyc-open]');if(!b)return;
+ if(typeof window.argusOpenKycApplication==='function')window.argusOpenKycApplication(b.dataset.kycOpen);
+ else toast('A Central KYC ainda não carregou. Atualize a página.',true);
 };
 
 /* ARGUS visual QR receipts; local QR renderer, no external API leaks payment payload. */
