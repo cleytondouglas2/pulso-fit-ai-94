@@ -73,8 +73,8 @@ financialSafetyReplace($quick,$before,$after,'indefinite Traditional Pix settlem
 // Remove their one-day creation cutoff, but keep provider identity/amount checks.
 $worker='/usr/local/share/argus/notify_worker.php';
 financialSafetyReplace($worker,
-    "$db->installAndSeed();\nAdmin::install($db);\nNotifications::install($db);\n",
-    "$db->installAndSeed();\nAdmin::install($db);\nNotifications::install($db);\n".
+    "\$db->installAndSeed();\nAdmin::install(\$db);\nNotifications::install(\$db);\n",
+    "\$db->installAndSeed();\nAdmin::install(\$db);\nNotifications::install(\$db);\n".
     "// Only one reconciliation cycle across all web/cron instances on this DB.\n".
     "if(!\\ArgusPayments\\FinancialControl::acquireWorkerLock(\$db)){\n".
     " error_log('ARGUS_FINANCIAL_WORKER status=already_running');exit(0);\n}\n".
@@ -84,7 +84,7 @@ financialSafetyReplace($worker,
     "});\n",
     'persistent database reconciliation mutex');
 financialSafetyReplace($worker,
-    "$cutoff=gmdate('Y-m-d\\TH:i:s\\Z',time()-86400);\n",
+    "\$cutoff=gmdate('Y-m-d\\TH:i:s\\Z',time()-86400);\n",
     "// Unresolved Pix never leaves the queue just because a day elapsed.\n",
     'remove 24-hour notifications settlement cutoff');
 financialSafetyReplace($worker,
@@ -113,8 +113,8 @@ if(file_put_contents($worker,$end)===false)
     throw new RuntimeException('Cannot append financial heartbeat');
 $ops=$root.'/src/FinanceOperations.php';
 financialSafetyReplace($ops,
-    "'background_reconciliation_configured'=>$worker,",
-    "'background_reconciliation_configured'=>$worker,\n".
+    "'background_reconciliation_configured'=>\$worker,",
+    "'background_reconciliation_configured'=>\$worker,\n".
     "                'reconciliation_worker'=>FinancialControl::heartbeatStatus(\$db),",
     'Admin financial monitoring uptime');
 echo "PASS: indefinite Pix polling, distributed worker mutex, atomic payout guards, ledger verification and reconciliation heartbeat.\n";
