@@ -43,4 +43,23 @@ foreach([
     if(file_put_contents($file,$html)===false)
         throw new RuntimeException('Landing navigation update failed '.$page);
 }
-echo "PASS: public ARGUS homepage and aliases connected; original customer/admin/API routes preserved.\n";
+// Enrollment CTAs must open the CREATE ACCOUNT tab rather than default
+// login view. Keep explicit #cadastro support from previous user links.
+$portalJsPath=$static.'/portal.js';
+$portalJs=file_get_contents($portalJsPath);
+$old="const hash=location.hash.slice(1);if(hash==='cadastro')tab('register');";
+$new="const hash=location.hash.slice(1);if(hash==='cadastro'||location.pathname==='/cadastro')tab('register');";
+if(!is_string($portalJs)||substr_count($portalJs,$old)!==1)
+    throw new RuntimeException('Landing signup UX: portal registration entry missing');
+$portalJs=str_replace($old,$new,$portalJs);
+if(file_put_contents($portalJsPath,$portalJs)===false)
+    throw new RuntimeException('Landing signup UX: cannot fix registration landing');
+$clientPath=$static.'/client.html';
+$clientHtml=file_get_contents($clientPath);
+$replaced=0;
+$clientHtml=preg_replace('~(/static/portal\.js\?v=)[a-zA-Z0-9_-]+~',
+    '/static/portal.js?v=landing-1',$clientHtml,1,$replaced);
+if(!is_string($clientHtml)||$replaced!==1||
+   file_put_contents($clientPath,$clientHtml)===false)
+    throw new RuntimeException('Landing signup UX: cannot refresh cached registration JavaScript');
+echo "PASS: public ARGUS homepage and aliases connected; registration CTAs open signup directly; existing customer/admin/API routes preserved.\n";
