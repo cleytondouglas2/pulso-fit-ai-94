@@ -161,4 +161,78 @@ $new=<<<'PHP'
             FeeExecution::payoutReconciled($db,(string)$row['id'],$status);
 PHP;
 feeTxnReplace($admin,$old,$new,'reconcile fee only from PSP response');
+// Server-issued quote is mandatory in the payout confirmation, not just a
+// decorative cost label. Existing OTP and idempotency remain fully intact.
+$js=$root.'/public/static/admin.js';
+$old=<<<'JS'
+ if(!confirm('Confirma a transferência de '+fmt(amount)+' para chave informada? Essa ação movimenta dinheiro real.'))return;
+JS;
+$new=<<<'JS'
+ let feeQuote;
+ try{
+  const quoted=await api('/api/admin/payouts/fee-quote?amount_cents='+encodeURIComponent(amount));
+  feeQuote=quoted?.fee;
+  if(!feeQuote||feeQuote.gross_cents!==amount||!Number.isInteger(feeQuote.policy_version))
+    throw new Error('Cotação das taxas indisponível. Nenhuma transferência foi enviada.');
+ }catch(err){toast('Saque bloqueado até confirmar as taxas: '+err.message,true);return}
+ const feeText='Valor solicitado: '+fmt(amount)+
+   '\nTaxa ARGUS: '+fmt(feeQuote.argus_fee_cents)+
+   '\nPIX que será enviado ao destinatário: '+fmt(feeQuote.recipient_cents)+
+   '\nCusto MisticPay de referência: '+fmt(feeQuote.mistic_cost_estimate_cents)+
+   ' (cobrado pelo provedor; não descontado novamente pela ARGUS).';
+ if(!confirm(feeText+'\n\nConfirma esta transferência REAL para a chave informada?'))return;
+JS;
+feeTxnReplace($js,$old,$new,'explicit payout quote before transfer confirmation');
+$old=<<<'JS'
+const response=await post('/api/admin/payouts',{amount_cents:amount,pix_key_type:raw.pix_key_type,pix_key:raw.pix_key,description:raw.description,otp:raw.otp,confirm:true,idempotency_key});
+JS;
+$new=<<<'JS'
+const response=await post('/api/admin/payouts',{amount_cents:amount,pix_key_type:raw.pix_key_type,pix_key:raw.pix_key,description:raw.description,otp:raw.otp,confirm:true,idempotency_key,fee_acknowledged:true,fee_version:feeQuote.policy_version});
+JS;
+feeTxnReplace($js,$old,$new,'transaction receipt binds original fee version');
+$old=<<<'JS'
+'<td>'+fmt(r.amount_cents)+'</td>'
+JS;
+$new=<<<'JS'
+'<td>'+fmt(r.amount_cents)+(r.fees?'<small>Taxa ARGUS '+fmt(r.fees.argus_fee_cents)+' · Enviado '+fmt(r.fees.provider_amount_cents)+'</small>':'')+'</td>'
+JS;
+feeTxnReplace($js,$old,$new,'payout history shows net recipient and charge');
+
+// Account for payments only after verified completion. Additional accounting
+// records do not make the provider debit the MisticPay fee a second time.
+$html=$root.'/public/static/admin.html';
+feeTxnReplace($html,
+    '<link rel="stylesheet" href="/static/fee-studio.css?v=1"></head>',
+    '<link rel="stylesheet" href="/static/fee-studio.css?v=1"><link rel="stylesheet" href="/static/fee-operations.css?v=1"></head>',
+    'new accounting UI styles');
+feeTxnReplace($html,
+    '<script src="/static/fee-studio.js?v=1" defer></script></body>',
+    '<script src="/static/fee-studio.js?v=1" defer></script><script src="/static/fee-operations.js?v=1" defer></script></body>',
+    'net quote and fee ledger frontend');
+$ledger=<<<'HTML'
+  <section class="argus-fee-operations-panel">
+    <div class="argus-fee-history-head"><div><h2>Taxas por transação</h2>
+      <p>Taxas efetivamente vinculadas aos depósitos verificados e saques solicitados</p></div>
+      <button type="button" class="btn secondary" id="argus-fees-operations-refresh">Atualizar operações</button>
+    </div>
+    <div class="argus-fee-operations-list" id="argus-fee-operations-list" aria-live="polite">
+      <p>Aguardando a consulta ao histórico.</p>
+    </div>
+  </section>
+HTML;
+$find=<<<'HTML'
+   <div id="argus-fee-history" class="argus-fee-history" aria-live="polite"><p>Carregando...</p></div>
+  </section>
+ </div>
+</section>
+HTML;
+$replacement=<<<'HTML'
+   <div id="argus-fee-history" class="argus-fee-history" aria-live="polite"><p>Carregando...</p></div>
+  </section>
+HTML;
+feeTxnReplace($html,$find,$replacement.$ledger." </div>\n</section>",'fee ledger inserted in superadmin page');
+feeTxnReplace($html,
+    '<strong>Modo configuração e simulação:</strong> os valores não alteram transações, QR Codes, saques ou saldos existentes.',
+    '<strong>Integração operacional:</strong> novas cobranças Pix e novos saques recebem uma tabela de taxas fixa por operação. Depósitos só geram apuração após confirmação bancária; saques descontam a taxa ARGUS do valor enviado ao destinatário após sua confirmação. Operações antigas não são recalculadas.',
+    'explain live fee behavior correctly');
 echo "ARGUS fee execution: paid-only deposit ledger and explicit net payouts installed, provider cost never debited twice.\n";
