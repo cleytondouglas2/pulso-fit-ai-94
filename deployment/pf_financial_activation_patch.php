@@ -120,7 +120,7 @@ JS;
 if(!is_string($js)||substr_count($js,$old)!==1)
     throw new RuntimeException('CPF authorization UI anchor changed');
 $js=str_replace($old,$new,$js);
-$old="    E('kyc-finance-form')?.addEventListener('submit',release);";
+$old="   E('kyc-finance-form')?.addEventListener('submit',release);";
 $new=$old."\n    E('kyc-finance-pf-form')?.addEventListener('submit',releasePf);";
 if(substr_count($js,$old)!==1)
     throw new RuntimeException('CPF review form binding anchor changed');
