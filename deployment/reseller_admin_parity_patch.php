@@ -98,6 +98,28 @@ resellerParityReplace($merchant,
 if(file_put_contents($merchantPath,$merchant)===false)
     throw new RuntimeException('Cannot update seller wallet statuses');
 
+/* The client KYC screen must respect the reviewed event even when an older
+ * account status is awaiting the separate finance-release process. */
+$kycUiPath=$static.'/kyc-portal.js';
+$kycUi=file_get_contents($kycUiPath);
+if(!is_string($kycUi))throw new RuntimeException('KYC customer UI missing');
+resellerParityReplace($kycUi,
+    "    const title=texts[account.status]||['Cadastro em avaliação','Aguarde a conferência da equipe ARGUS.'];",
+    "    const title=kyc.identity_approved&&account.status!=='rejected'&&account.status!=='suspended'?\n".
+    "      (account.status==='approved'?texts.approved:texts.identity_verified):\n".
+    "      (texts[account.status]||['Cadastro em avaliação','Aguarde a conferência da equipe ARGUS.']);",
+    'KYC user interface reflects signed reviewer approval');
+resellerParityReplace($kycUi,
+    "    const editable=['documents_required','documents_under_review'].includes(account.status);",
+    "    const editable=!kyc.identity_approved&&['documents_required','documents_under_review'].includes(account.status);",
+    'approved KYC files are not presented as awaiting replacement');
+resellerParityReplace($kycUi,
+    "(['identity_verified','approved'].includes(account.status)?'ready':'')",
+    "(['identity_verified','approved'].includes(account.status)||kyc.identity_approved?'ready':'')",
+    'KYC progress bar marks approval');
+if(file_put_contents($kycUiPath,$kycUi)===false)
+    throw new RuntimeException('Cannot update reviewed-identity customer display');
+
 /* The KYC read-only summary exposes approval of identity as a distinct,
  * independently recorded state. It does NOT update the account status, link
  * a beneficiary, issue credentials or authorize any money movement. */
@@ -141,6 +163,10 @@ resellerParityReplace($client,
     '</body>',
     '<script defer src="/static/reseller-experience.js?v=20261119-5"></script></body>',
     'final admin-like transitions');
+resellerParityReplace($client,
+    '/static/kyc-portal.js?v=1',
+    '/static/kyc-portal.js?v=status-20261119-5',
+    'refresh approved KYC client assets on Safari');
 resellerParityReplace($client,
     '/static/portal.js?v=session-nov19-3',
     '/static/portal.js?v=status-20261119-5',
