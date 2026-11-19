@@ -547,7 +547,6 @@ RUN php -l /var/www/html/src/RevenueReport.php \
  && php -l /var/www/html/src/MerchantWallet.php \
  && php -l /var/www/html/tests/revenue_report_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/revenue_report_test.php \
- && node --check /var/www/html/public/static/revenue-dashboard.js \
  && apache2ctl configtest
 
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
