@@ -14,13 +14,16 @@ $new='<section id="kyc-dossier" class="kyc-dossier-panel" aria-live="polite" hid
 if(substr_count($html,$old)!==1)
     throw new RuntimeException('KYC dossier: original UI container changed');
 $html=str_replace($old,$new,$html);
-foreach([
-  'kyc-studio.js?v=1'=>'kyc-studio.js?v=click-20261119-2',
-  'kyc-studio.css?v=1'=>'kyc-studio.css?v=click-20261119-2'
-] as $from=>$to){
-    if(substr_count($html,$from)!==1)
-        throw new RuntimeException('KYC dossier: versioned asset not found: '.$from);
-    $html=str_replace($from,$to,$html);
+// Prior KYC patches can bump asset versions before this final stage. Match
+// the actual asset URL rather than assuming the original ?v=1 value.
+foreach(['js','css'] as $extension){
+    $pattern='~(/static/kyc-studio\\.'.$extension.'\\?v=)[a-zA-Z0-9._-]+~';
+    $replacement='/static/kyc-studio.'.$extension.'?v=click-20261119-2';
+    $count=0;
+    $updated=preg_replace($pattern,$replacement,$html,1,$count);
+    if(!is_string($updated)||$count!==1)
+        throw new RuntimeException('KYC dossier: expected one versioned '.$extension.' asset');
+    $html=$updated;
 }
 if(file_put_contents($adminPath,$html)===false)
     throw new RuntimeException('KYC dossier: cannot publish corrected admin page');
