@@ -62,10 +62,10 @@ file_put_contents($worker,$code);
 
 $client=$root.'/public/static/client.html';
 merchantReplace($client,'</head>',
-    '<link rel="stylesheet" href="/static/merchant-portal.css?v=1"></head>',
+    '<link rel="stylesheet" href="/static/merchant-portal.css?v=3"></head>',
     'seller wallet CSS');
 merchantReplace($client,'</body>',
-    '<script src="/static/merchant-portal.js?v=1" defer></script></body>',
+    '<script src="/static/merchant-portal.js?v=3" defer></script></body>',
     'seller wallet dashboard');
 $docs=$root.'/public/static/docs.html';
 merchantReplace($docs,'</head>',
