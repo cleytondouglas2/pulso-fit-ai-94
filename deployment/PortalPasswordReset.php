@@ -67,22 +67,24 @@ final class PortalPasswordReset {
      */
     private static function permit(Database $db,string $key,int $limit,int $seconds):bool {
         $now=time();
+        $allowed=false;
         try {
-            return $db->transaction(static function(Database $db)use($key,$limit,$seconds,$now):bool {
+            $db->transaction(static function(Database $db)use($key,$limit,$seconds,$now,&$allowed):void {
                 $lock=$db->driver()==='sqlite'?'':' FOR UPDATE';
                 $row=$db->one('SELECT window_start,attempts FROM argus_portal_reset_limits WHERE key_digest=?'.$lock,[$key]);
                 if(!$row){
                     $db->run('INSERT INTO argus_portal_reset_limits(key_digest,window_start,attempts) VALUES(?,?,1)',[$key,$now]);
-                    return true;
+                    $allowed=true;return;
                 }
                 $count=$now-(int)$row['window_start']>=$seconds?0:(int)$row['attempts'];
-                if($count>=$limit)return false;
+                if($count>=$limit)return;
                 $start=$count===0?$now:(int)$row['window_start'];
                 $db->run('UPDATE argus_portal_reset_limits SET window_start=?,attempts=? WHERE key_digest=?',
                     [$start,$count+1,$key]);
-                return true;
+                $allowed=true;
             });
         }catch(\PDOException){return false;}
+        return $allowed;
     }
     private static function sendMail(string $key,string $from,string $to,string $link):bool{
         if(!function_exists('curl_init'))return false;
