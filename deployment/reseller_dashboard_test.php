@@ -60,9 +60,14 @@ foreach([
  "hashchange"
 ] as $needle)if(!str_contains($js,$needle))
     throw new RuntimeException('Reseller workspace missing navigation or original-function integration: '.$needle);
-foreach(['fetch(','XMLHttpRequest','document.cookie','localStorage','sessionStorage','innerHTML=','eval('] as $needle)
+foreach(['fetch(','XMLHttpRequest','document.cookie','localStorage','sessionStorage','eval('] as $needle)
     if(str_contains($js,$needle))
         throw new RuntimeException('Dashboard presentation must not fetch/rewrite user financial state '.$needle);
+if(substr_count($js,'wrapper.innerHTML=')!==1||
+   str_contains($js,"E('seller-sales').innerHTML")||
+   str_contains($js,"E('seller-balances').innerHTML")||
+   str_contains($js,"E('seller-withdrawals').innerHTML"))
+    throw new RuntimeException('Only static dashboard HTML may be constructed');
 foreach([
  "request('/api/portal/session')",
  "if(error?.httpStatus===401)",
