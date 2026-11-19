@@ -28,7 +28,7 @@ foreach([
 foreach([
     'tableHeaders(table)','thead.rows','MutationObserver',
     'table.classList.add(\'argus-layout-cards\')',
-    'tdReady','data.argusLabel'
+    'tdReady','dataset.argusLabel'
 ] as $pattern)
     if(!str_contains($script,$pattern))
         throw new RuntimeException('Missing responsive table label migration '.$pattern);
