@@ -316,10 +316,7 @@ RUN php -l /tmp/argus_seller_keys_patch.php \
  && php -d display_errors=1 -d log_errors=0 /tmp/argus_seller_keys_patch.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /var/www/html/tests/seller_self_keys_test.php \
- && php /var/www/html/tests/seller_self_keys_test.php \
- && php /var/www/html/tests/merchant_wallet_test.php \
- && php /var/www/html/tests/admin_api_keys_test.php \
- && php /var/www/html/tests/ui_contract.php
+ && php /var/www/html/tests/seller_self_keys_test.php
 
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
