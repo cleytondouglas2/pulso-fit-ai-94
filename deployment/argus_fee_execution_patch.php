@@ -198,10 +198,10 @@ const response=await post('/api/admin/payouts',{amount_cents:amount,pix_key_type
 JS;
 feeTxnReplace($js,$old,$new,'transaction receipt binds original fee version');
 $old=<<<'JS'
-'<td>'+fmt(r.amount_cents)+'</td>'
+'<td>'+esc(r.pix_key_type+' '+r.pix_key_masked)+'</td><td>'+fmt(r.amount_cents)+'</td><td>'+badge(r.status)
 JS;
 $new=<<<'JS'
-'<td>'+fmt(r.amount_cents)+(r.fees?'<small>Taxa ARGUS '+fmt(r.fees.argus_fee_cents)+' · Enviado '+fmt(r.fees.provider_amount_cents)+'</small>':'')+'</td>'
+'<td>'+esc(r.pix_key_type+' '+r.pix_key_masked)+'</td><td>'+fmt(r.amount_cents)+(r.fees?'<small>Taxa ARGUS '+fmt(r.fees.argus_fee_cents)+' · Enviado '+fmt(r.fees.provider_amount_cents)+'</small>':'')+'</td><td>'+badge(r.status)
 JS;
 feeTxnReplace($js,$old,$new,'payout history shows net recipient and charge');
 
