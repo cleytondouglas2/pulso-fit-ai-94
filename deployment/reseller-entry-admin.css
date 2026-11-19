@@ -1,0 +1,137 @@
+/* ARGUS / Reseller entry – shares the Admin dark-ink + champagne-gold design.
+   Visual-only presentation: original authentication, signup KYC and CSRF stay.
+   Loaded after all original mobile, KYC and dashboard styles. */
+#auth{--entry-bg:#0b111a;--entry-panel:#181e29;--entry-text:#f4ecdf;--entry-muted:#b1b8c5;--entry-gold:#e3bd84;color:var(--entry-text)}
+body.argus-entry-active{
+ background:radial-gradient(ellipse 66% 55% at 8% 38%,rgba(162,120,64,.13),transparent 65%),
+ radial-gradient(ellipse 36% 45% at 95% 8%,rgba(122,88,55,.10),transparent 68%),#0b111a!important;
+ min-height:100dvh;color:#f4ecdf;overflow-x:hidden;
+}
+body.argus-entry-active::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+ background-image:linear-gradient(rgba(231,190,125,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(231,190,125,.02) 1px,transparent 1px);
+ background-size:52px 52px;mask-image:linear-gradient(90deg,#000,transparent 85%)}
+body.argus-entry-active .top.argus-client-top{position:relative!important;z-index:4;min-height:77px;display:flex!important;align-items:center;justify-content:space-between;gap:14px;
+ padding:14px clamp(17px,4.8vw,72px)!important;background:rgba(12,17,26,.93)!important;border-bottom:1px solid rgba(214,174,118,.18)!important;box-shadow:none!important}
+body.argus-entry-active .top.argus-client-top .brand{display:flex;align-items:center;min-width:0}
+body.argus-entry-active .top.argus-client-top .brand img{width:clamp(150px,15vw,188px)!important;max-height:53px!important;object-fit:contain;object-position:left}
+body.argus-entry-active .top.argus-client-top .argus-desktop-nav{display:flex;align-items:center;gap:18px}
+body.argus-entry-active .top.argus-client-top .argus-desktop-nav a{font-size:12px;color:#c4c4c8;transition:color .2s}
+body.argus-entry-active .top.argus-client-top .argus-desktop-nav a:hover{color:#f1d6a8}
+body.argus-entry-active .wrap{max-width:none!important;width:100%;padding:0 clamp(18px,4.2vw,64px) 30px!important}
+#auth:not([hidden]){max-width:1300px;margin:0 auto;animation:argus-entry-in .34s cubic-bezier(.17,.79,.25,1) both}
+#auth .auth{min-height:max(650px,calc(100dvh - 145px));display:grid;grid-template-columns:minmax(0,1.05fr) minmax(390px,490px);
+ gap:clamp(30px,6vw,105px);align-items:center;margin:0 auto;padding:clamp(30px,5.5vw,82px) 0}
+#auth .intro{position:relative;min-width:0;padding:12px 0}
+#auth .intro .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;
+ background:rgba(196,157,104,.09);border:1px solid rgba(215,171,113,.23);border-radius:30px;
+ color:#dbb682;letter-spacing:.18em;font-size:10px;font-weight:850}
+#auth .intro h1{font-size:clamp(40px,4.85vw,72px)!important;line-height:1.08;letter-spacing:-.055em;font-weight:760;max-width:680px;margin:22px 0 17px;color:#f3ebdf}
+#auth .intro h1 em{color:#e4bd82!important;font-style:normal}
+#auth .intro p{font-size:clamp(14px,1.3vw,16px);line-height:1.85;color:#acb4c0;max-width:570px}
+#auth .intro ul{padding:19px 0 0;margin:18px 0 0;list-style:none;display:grid;gap:12px;border-top:1px solid rgba(207,176,134,.16);max-width:540px}
+#auth .intro li{padding:0 0 0 28px;position:relative;color:#d2d1d2;font-size:13px}
+#auth .intro li::before{content:"✓";display:grid;place-items:center;position:absolute;top:1px;left:0;width:19px;height:19px;background:#293c35;border:1px solid #4c866c;border-radius:50%;color:#b5e8c8;font-size:11px}
+#auth .argus-entry-brand{display:flex;flex-direction:column;align-items:flex-start;gap:5px;margin:0 0 35px}
+#auth .argus-entry-brand img{width:min(235px,70vw);height:auto;max-height:85px;object-fit:contain;object-position:left}
+#auth .argus-entry-brand-label{display:inline-flex;padding-left:4px;color:#d4af78;letter-spacing:.21em;font-size:10px;font-weight:850}
+#auth .argus-entry-highlights{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+#auth .argus-entry-highlights span{display:inline-flex;align-items:center;gap:8px;border:1px solid #3d3b35;border-radius:10px;
+ padding:8px 11px;font-size:11px;font-weight:650;color:#c4b8ab;background:rgba(29,32,39,.85)}
+#auth .argus-entry-highlights b{color:#e9c48d;font-size:15px}
+#auth .sheet{min-width:0;width:100%;max-width:490px;padding:clamp(24px,3vw,36px)!important;
+ border:1px solid rgba(205,171,124,.31)!important;border-radius:21px!important;
+ background:linear-gradient(152deg,rgba(33,38,48,.98),rgba(19,24,34,.99))!important;
+ box-shadow:0 28px 85px rgba(0,0,0,.36),inset 0 1px rgba(255,242,213,.05)!important;
+ position:relative;overflow:hidden}
+#auth .sheet::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+ background:linear-gradient(90deg,transparent,#cb9657 24%,#f6d8aa 50%,#cb9657 76%,transparent);opacity:.9}
+#auth .argus-entry-sheet-heading{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin:0 0 25px}
+#auth .argus-entry-sheet-logo{display:none}
+#auth .argus-entry-sheet-heading>span{font-size:10px;font-weight:850;letter-spacing:.18em;color:#d2aa72}
+#auth .argus-entry-sheet-heading>strong{font-size:clamp(22px,2.4vw,28px);font-weight:790;letter-spacing:-.02em;line-height:1.25;color:#f7ead7}
+#auth .argus-entry-sheet-heading>p{color:#b5bec9;font-size:12px;line-height:1.55;margin:0}
+#auth .tabs{display:grid!important;grid-template-columns:1fr 1fr;gap:5px;margin:0 0 24px;
+ padding:5px!important;border:1px solid #424754!important;background:#111821!important;border-radius:12px}
+#auth .tabs button{min-height:44px;padding:10px 6px;border-radius:9px;color:#bbc3cd!important;
+ font-size:13px;font-weight:760;transition:background .2s ease,color .2s ease,box-shadow .2s}
+#auth .tabs button.on,#auth .tabs button[aria-selected="true"]{color:#201b16!important;
+ background:linear-gradient(125deg,#f1d6ac,#c69c61)!important;box-shadow:0 4px 11px #0004}
+#auth .form:not([hidden]){display:grid;gap:17px;animation:argus-entry-form .28s ease both}
+#auth .form>h2{display:none}
+#auth .form label:not(.check){display:grid;gap:8px;min-width:0;font-size:12px;font-weight:730;color:#dedbd6}
+#auth .form :is(input:not([type=checkbox]),select){appearance:auto;min-width:0;width:100%;min-height:52px;
+ padding:13px 15px;background:#0f1520!important;color:#f6f2e9!important;
+ border:1px solid #4d5562!important;border-radius:11px!important;outline:none!important;
+ font-size:16px!important;font-weight:500;transition:border-color .18s,box-shadow .18s,background .18s}
+#auth .form :is(input:not([type=checkbox]),select)::placeholder{color:#858f9b}
+#auth .form :is(input:not([type=checkbox]),select):focus-visible{border-color:#ddaf71!important;
+ box-shadow:0 0 0 3px rgba(209,159,96,.2)!important}
+#auth .form select{color-scheme:dark}
+#auth .form .primary{width:100%;min-height:53px;padding:13px 18px;border:1px solid #eccd9f;border-radius:11px;
+ background:linear-gradient(125deg,#f4d5a4 0%,#d8ac6c 53%,#bb884f 100%);
+ box-shadow:0 8px 28px rgba(195,142,75,.11);color:#201911;font-size:14px;font-weight:850;
+ transition:transform .2s,filter .2s,box-shadow .2s}
+#auth .form .primary:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 9px 25px #a4774345;transform:translateY(-1px)}
+#auth .form .primary:active:not(:disabled){transform:translateY(0)}
+#auth .form .check{display:flex!important;align-items:flex-start;gap:11px!important;font-size:11px;font-weight:450;color:#c5c5c7;line-height:1.65}
+#auth .form .check input[type="checkbox"]{appearance:auto!important;-webkit-appearance:checkbox!important;display:block!important;
+ flex:0 0 20px!important;width:20px!important;min-width:20px!important;max-width:20px!important;
+ height:20px!important;min-height:20px!important;margin:1px 0 0!important;padding:0!important;accent-color:#ddb47e!important}
+#auth .form .muted{font-size:12px;line-height:1.65;color:#b7b9c0;margin:0}
+#auth .form .link{font-weight:800;color:#eac694;text-decoration:underline;text-underline-offset:3px}
+#auth .argus-signup-login{font-size:12px;color:#c0b7b0}
+#auth .argus-entry-password{position:relative;display:flex;min-width:0}
+#auth .argus-entry-password input{padding-right:93px!important}
+#auth .argus-entry-password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);
+ border:1px solid rgba(212,168,107,.33);border-radius:8px;background:#252735;color:#e5c18e;
+ min-width:69px;height:35px;font-size:11px;font-weight:760;padding:5px 9px}
+#auth .argus-entry-password-toggle:hover{background:#393428}
+#auth .argus-entry-bottom{margin:24px 0 0;padding:17px 0 0;border-top:1px solid rgba(223,192,143,.16);
+ text-align:center;color:#9ba5b2;font-size:11px;line-height:1.8}
+#auth .argus-entry-bottom a{color:#e6c496;font-weight:700}
+body.argus-entry-active footer{background:transparent!important;border:0!important;font-size:11px;color:#8894a1}
+@keyframes argus-entry-in{from{opacity:.45;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes argus-entry-form{from{opacity:.25;transform:translateY(7px)}to{opacity:1;transform:none}}
+@media(max-width:1020px){
+ #auth .auth{grid-template-columns:minmax(0,1fr) minmax(350px,470px);gap:28px}
+ #auth .intro h1{font-size:clamp(33px,4vw,50px)!important}
+ #auth .argus-entry-highlights{display:none}
+}
+@media(max-width:850px){
+ body.argus-entry-active .top.argus-client-top{padding:12px 18px!important;min-height:69px}
+ body.argus-entry-active .top.argus-client-top .argus-desktop-nav{display:none!important}
+ body.argus-entry-active .wrap{padding:0 18px 20px!important}
+ #auth .auth{max-width:520px;min-height:auto;grid-template-columns:minmax(0,1fr);gap:17px;padding:23px 0 40px}
+ #auth .intro{padding:0;text-align:center}
+ #auth .argus-entry-brand{align-items:center;margin:0 0 8px;gap:0}
+ #auth .argus-entry-brand img{max-height:70px}
+ #auth .intro .eyebrow{font-size:9px}
+ #auth .intro h1{font-size:clamp(26px,7vw,37px)!important;margin:12px 0 9px}
+ #auth .intro p{max-width:370px;margin:0 auto;font-size:12px;line-height:1.65}
+ #auth .intro ul{display:none}
+ #auth .sheet{max-width:520px;padding:24px 21px!important}
+ #auth .argus-entry-sheet-heading{margin-bottom:20px}
+ #auth .argus-entry-sheet-heading>strong{font-size:23px}
+}
+@media(max-width:560px){
+ body.argus-entry-active .top.argus-client-top{display:none!important}
+ body.argus-entry-active .wrap{padding:0 12px 15px!important}
+ #auth .auth{padding:20px 0 22px}
+ #auth .intro p{display:none}
+ #auth .intro h1{font-size:29px!important;line-height:1.15;margin:8px 0 0}
+ #auth .intro .eyebrow{border:0;background:transparent;padding:0}
+ #auth .argus-entry-brand{margin:0}
+ #auth .argus-entry-brand img{width:min(202px,68vw);height:auto;max-height:61px}
+ #auth .argus-entry-brand-label{font-size:9px}
+ #auth .sheet{padding:21px 17px!important;border-radius:17px!important}
+ #auth .tabs button{min-height:43px}
+ #auth .form:not([hidden]){gap:15px}
+ #auth .form :is(input:not([type=checkbox]),select){min-height:49px}
+ #auth .argus-entry-sheet-heading>span{font-size:9px}
+ #auth .argus-entry-sheet-heading>strong{font-size:21px}
+ body.argus-entry-active footer{padding:11px 14px 22px}
+}
+@media(prefers-reduced-motion:reduce){
+ #auth:not([hidden]),#auth .form:not([hidden]){animation:none!important}
+ #auth :is(button,input,select){transition:none!important}
+}
