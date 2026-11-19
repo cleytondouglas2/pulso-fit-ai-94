@@ -577,6 +577,21 @@ RUN php -l /var/www/html/src/PortalPasswordReset.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/password_recovery_test.php \
  && apache2ctl configtest
 
+# Read-only financial operations: scoped book exports + cross-check wallet balances
+# against immutable ledger and highlight stale/uncertain Pix and payouts.
+COPY deployment/FinanceOperations.php /var/www/html/src/FinanceOperations.php
+COPY deployment/finance-operations.js deployment/finance-operations.css /var/www/html/public/static/
+COPY deployment/finance_operations_patch.php /tmp/finance_operations_patch.php
+COPY deployment/finance_operations_test.php /var/www/html/tests/finance_operations_test.php
+RUN php -l /var/www/html/src/FinanceOperations.php \
+ && php -l /tmp/finance_operations_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/finance_operations_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/finance_operations_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/finance_operations_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
