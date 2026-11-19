@@ -406,6 +406,17 @@ RUN php -l /var/www/html/src/SecurityShield.php \
  && php -l /var/www/html/tests/security_regression_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/security_regression_test.php
 
+
+# ARGUS responsive visual consistency across admin, wallet, KYC, Pix, API
+# docs and PWA installation; no changes to financial or identity endpoints.
+COPY deployment/layout-quality.css deployment/layout-quality.js /var/www/html/public/static/
+COPY deployment/layout_install_patch.php /tmp/layout_install_patch.php
+COPY deployment/layout_quality_test.php /var/www/html/tests/layout_quality_test.php
+RUN php -l /tmp/layout_install_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/layout_install_patch.php \
+ && php -l /var/www/html/tests/layout_quality_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/layout_quality_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
