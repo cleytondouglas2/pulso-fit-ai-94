@@ -1,0 +1,30 @@
+/* ARGUS Pix fee breakdown and transaction ledger; scoped and mobile-first */
+.argus-operation-fee-preview{padding:15px;border:1px solid rgba(224,176,108,.42);border-radius:12px;
+ background:linear-gradient(125deg,#28282b,#1b2029);margin:15px 0;color:#e7e4dc;
+ width:100%;box-sizing:border-box;min-width:0;line-height:1.5}
+.argus-operation-fee-preview>strong{display:block;color:#f3d4a0;margin-bottom:9px;font-size:14px}
+.argus-operation-fee-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:7px 0;
+ border-bottom:1px solid #3b4049;color:#aeb5be;font-size:12px}
+.argus-operation-fee-row b{color:#f4ead9;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.argus-operation-fee-preview p{margin:10px 0 0;color:#b7b1a8;font-size:11px;line-height:1.55}
+.argus-fee-operations-panel{background:#1c1f27;border:1px solid #4b4650;border-radius:16px;
+ padding:20px;margin:18px 0}
+.argus-fee-operations-list{display:grid;gap:10px;margin-top:14px}
+.argus-fee-operation-item{background:#252731;border:1px solid #45444c;border-radius:13px;
+ padding:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.argus-fee-operation-main{display:grid;gap:4px;min-width:120px}
+.argus-fee-operation-main strong{font-size:14px;color:#f2d6ab}
+.argus-fee-operation-main small{font-size:11px;color:#aeb2bd}
+.argus-fee-operation-amounts{display:flex;justify-content:space-around;flex:1;flex-wrap:wrap;gap:10px}
+.argus-fee-operation-amounts span{font-size:11px;color:#a9afb9;display:grid;gap:4px}
+.argus-fee-operation-amounts b{font-size:15px;color:#efebe3}
+.argus-fee-operation-state{border-radius:20px;padding:4px 8px;background:#5d472d;
+ color:#f2cb8d;font-size:10px;font-weight:700;width:max-content}
+.argus-fee-operation-state.settled{background:#254935;color:#a5eab9}
+.argus-fee-operation-state.not_collected{background:#553436;color:#ffc7c7}
+.argus-fee-operation-version{font-size:11px;color:#949aab}
+.argus-fee-operation-empty{color:#aab0bc;font-size:13px;padding:15px 0;line-height:1.5}
+#payout-rows small{display:block;font-size:11px;color:#b2aa9c;line-height:1.5;margin-top:4px}
+@media(max-width:600px){.argus-fee-operations-panel{padding:13px}
+ .argus-fee-operation-item{align-items:flex-start}.argus-fee-operation-amounts{justify-content:flex-start}
+ .argus-fee-operation-amounts span{min-width:calc(50% - 10px)}}
