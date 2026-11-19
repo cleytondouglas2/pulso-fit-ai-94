@@ -1,0 +1,28 @@
+/* Seller webhooks panel, same ARGUS visual grammar as Admin. */
+.argus-webhook-panel{margin:20px 0 27px;padding:clamp(15px,3vw,23px);background:linear-gradient(135deg,#222934,#181e29);border:1px solid rgba(214,178,130,.32);border-radius:15px;color:#f2e8da;min-width:0}
+.argus-webhook-panel *{box-sizing:border-box}
+.argus-webhook-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.argus-webhook-head small{font-size:10px;font-weight:850;letter-spacing:.13em;color:#e1b777}
+.argus-webhook-head h3{font-size:clamp(18px,3vw,22px);line-height:1.3;margin:6px 0;color:#f0dab7}
+.argus-webhook-head p{font-size:12px;color:#b8c1ce;line-height:1.7;max-width:650px;margin:7px 0 0}
+.argus-webhook-panel h4{font-size:14px;color:#e7cc9d;margin:24px 0 12px}
+.argus-webhook-panel button{min-height:42px;border-radius:10px;padding:8px 14px;cursor:pointer;border:1px solid #ab8659;background:#352f2b;color:#f3d6a9;font-size:12px;font-weight:750}
+.argus-webhook-panel button:hover:not(:disabled){filter:brightness(1.09)}
+.argus-webhook-panel button:disabled{opacity:.5;cursor:not-allowed}
+.argus-webhook-state{padding:12px 14px;margin:13px 0;color:#e8d4b6;border-radius:9px;border:1px solid #786144;background:#2e2926;font-size:12px;line-height:1.6}
+.argus-webhook-state.is-error{background:#482b2f;border-color:#a86c70;color:#ffddd6}
+#argus-webhook-create{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:11px;margin-top:14px}
+#argus-webhook-create label{display:grid;gap:8px;font-size:12px;color:#e5dbc9;font-weight:750;min-width:0}
+#argus-webhook-create input,.argus-webhook-secret input{min-width:0;max-width:100%;width:100%;min-height:48px;color:#fff3df;background:#0e1622;border:1px solid #5a606a;border-radius:10px;padding:10px 13px;font-size:14px}
+#argus-webhook-create button{background:linear-gradient(135deg,#ead0a1,#c3945a);color:#211911;border-color:#e7c699}
+.argus-webhook-secret{border:1px solid #a78052;border-radius:11px;background:#352f25;display:flex;flex-wrap:wrap;gap:9px;padding:15px;margin:17px 0}
+.argus-webhook-secret[hidden]{display:none!important}
+.argus-webhook-secret strong{width:100%;font-size:12px;color:#f3d9aa}
+.argus-webhook-secret input{flex:1 1 220px;font-family:ui-monospace,monospace;font-size:12px}
+.argus-webhook-line{display:flex;justify-content:space-between;align-items:center;gap:14px;border-bottom:1px solid #424957;padding:13px 0;font-size:12px;min-width:0}
+.argus-webhook-line div{display:grid;gap:6px;min-width:0}
+.argus-webhook-line strong{color:#f0e5d1;overflow-wrap:anywhere}
+.argus-webhook-line small{color:#b7c1cd;font-size:11px;overflow-wrap:anywhere}
+.argus-webhook-empty,.argus-webhook-help{font-size:12px;color:#bac3cc;line-height:1.7}
+.argus-webhook-panel>a{color:#edca93;text-decoration:underline;font-weight:700;font-size:12px}
+@media(max-width:600px){#argus-webhook-create{grid-template-columns:minmax(0,1fr)}#argus-webhook-create button{width:100%}.argus-webhook-line{align-items:flex-start;flex-direction:column}.argus-webhook-line button{width:100%}}
