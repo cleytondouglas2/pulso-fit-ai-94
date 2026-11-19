@@ -91,14 +91,36 @@
        '<label>Justificativa da decisão<textarea name="reason" minlength="10" maxlength="650" rows="3" required placeholder="Descreva a consistência verificada ou o motivo da correção..."></textarea></label>'+
        '<button class="kyc-submit-review" type="submit">Registrar decisão com auditoria</button></form></div>';
    }
-   if(superuser() && a.account_type==='PJ' && a.status==='identity_verified'){
-     html+='<div class="kyc-finance-release"><h3>Liberação financeira · Super Admin</h3>'+
-       '<p>Etapa independente do KYC. Não autorize recebimentos sem homologação do provedor e contrato aplicável.</p>'+
-       '<form id="kyc-finance-form"><label>CNPJ cadastrado conferido<input type="text" name="cnpj" inputmode="numeric" required></label>'+
-       '<label>E-mail do recebedor habilitado no provedor<input type="email" name="recipient_email" required></label>'+
-       [['kyc_verified','Documentos aprovados'],['provider_approved','Provedor autorizou este recebedor'],['contract_signed','Contrato assinado'],['split_direction_confirmed','Regras de recebimento confirmadas']].map(x=>
-       '<label class="kyc-confirm"><input type="checkbox" name="'+x[0]+'" required> '+x[1]+'</label>').join('')+
-       '<button type="submit">Ativar somente se autorizado pelo provedor</button></form></div>';
+   // The finance section is ALWAYS visible to reviewers, so PF sellers and
+   // operators without Super Admin rights know exactly why no button appears.
+   // It does not grant approval or alter the provider's beneficiary rules.
+   if(staff()){
+     const verified=a.kyc?.identity_approved===true||['identity_verified','approved'].includes(a.status);
+     const enabled=a.status==='approved'&&a.merchant_linked;
+     html+='<div class="kyc-finance-release" id="kyc-finance-status">'+
+       '<h3>Autorização financeira</h3>'+
+       '<p class="kyc-finance-stage">Tipo: <strong>'+esc(a.account_type==='PJ'?'Pessoa jurídica (CNPJ)':'Pessoa física (CPF)')+
+       '</strong> · Identidade: <strong>'+esc(verified?'Aprovada':'Pendente')+
+       '</strong> · Operações: <strong>'+esc(enabled?'Autorizadas':'Não habilitadas')+'</strong></p>';
+     if(!superuser()){
+       html+='<p class="kyc-finance-info">A liberação financeira é exclusiva do perfil Super Admin. Sua conta tem acesso à análise documental, mas não pode ativar recebimentos.</p>';
+     }else if(enabled){
+       html+='<p class="kyc-finance-success">O cadastro possui recebedor financeiro vinculado e autorização registrada. Consulte o status do provedor e as operações no painel.</p>';
+     }else if(!verified){
+       html+='<p class="kyc-finance-info">Primeiro conclua a conferência e registre a aprovação do KYC. A aprovação documental não habilita Pix, API ou saques automaticamente.</p>';
+     }else if(a.account_type==='PF'){
+       html+='<p class="kyc-finance-warning"><strong>KYC aprovado, autorização financeira pendente.</strong> Este cadastro é de pessoa física. A versão atual não possui ativação financeira de recebedores PF. É necessária homologação individual do CPF no provedor e implementação do vínculo financeiro antes de permitir Pix, API ou saques. Não use o CNPJ do administrador para aprovar este CPF.</p>';
+     }else if(a.account_type==='PJ'&&a.status==='identity_verified'){
+       html+='<p>Esta é uma etapa independente do KYC. A ativação só pode acontecer após homologação do provedor e conferência do contrato.</p>'+
+         '<form id="kyc-finance-form"><label>CNPJ cadastrado conferido<input type="text" name="cnpj" inputmode="numeric" required></label>'+
+         '<label>E-mail do recebedor habilitado no provedor<input type="email" name="recipient_email" required></label>'+
+         [['kyc_verified','Documentos aprovados'],['provider_approved','Provedor autorizou este recebedor'],['contract_signed','Contrato assinado'],['split_direction_confirmed','Regras de recebimento confirmadas']].map(x=>
+         '<label class="kyc-confirm"><input type="checkbox" name="'+x[0]+'" required> '+x[1]+'</label>').join('')+
+         '<button type="submit">Ativar somente se autorizado pelo provedor</button></form>';
+     }else{
+       html+='<p class="kyc-finance-warning">Há uma divergência no estado cadastral. Atualize a fila ou revise a aprovação do KYC antes de tentar habilitar esta conta.</p>';
+     }
+     html+='</div>';
    }
    html+='<p class="kyc-privacy">Apenas membros autorizados podem visualizar anexos. Downloads são auditados. Nenhuma validação pública de CPF comprova identidade ou propriedade da conta.</p>';
    target.innerHTML=html;

@@ -163,3 +163,22 @@
   #page-kyc-studio .kyc-dossier-actions{width:100%;justify-content:space-between}
   #page-kyc-studio .kyc-queue-row{min-height:78px;align-items:center}
 }
+
+
+/* Always-visible eligibility assessment for PF/PJ; protected admin control
+   remains available for an independently verified PJ recipient only. */
+#page-kyc-studio #kyc-finance-status{margin-top:22px;border:1px solid #9a7847;border-radius:14px;padding:21px;background:linear-gradient(135deg,#252a33,#1c242e);max-width:100%;min-width:0}
+#page-kyc-studio #kyc-finance-status h3{color:#f4d6a5;margin:0 0 10px;font-size:21px}
+#page-kyc-studio #kyc-finance-status .kyc-finance-stage{padding:11px 13px;margin:0 0 15px;border:1px solid #66583f;border-radius:9px;color:#d5dee3;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+#page-kyc-studio #kyc-finance-status .kyc-finance-info,
+#page-kyc-studio #kyc-finance-status .kyc-finance-warning,
+#page-kyc-studio #kyc-finance-status .kyc-finance-success{border-radius:10px;padding:14px 16px;line-height:1.7;font-size:13px;margin:10px 0 0;overflow-wrap:anywhere}
+#page-kyc-studio #kyc-finance-status .kyc-finance-info{color:#e7dac7;background:#272c36;border:1px solid #657185}
+#page-kyc-studio #kyc-finance-status .kyc-finance-warning{color:#f2debc;background:#352d25;border:1px solid #a08255}
+#page-kyc-studio #kyc-finance-status .kyc-finance-success{color:#b8eed2;background:#243c31;border:1px solid #58886e}
+#page-kyc-studio #kyc-finance-status form{margin-top:13px}
+@media(max-width:600px){
+ #page-kyc-studio #kyc-finance-status{padding:15px 13px}
+ #page-kyc-studio #kyc-finance-status h3{font-size:19px}
+ #page-kyc-studio #kyc-finance-status .kyc-finance-stage{font-size:12px}
+}
