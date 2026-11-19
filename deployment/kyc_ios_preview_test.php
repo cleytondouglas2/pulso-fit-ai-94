@@ -28,7 +28,7 @@ $xref=strlen($pdf);
 $pdf.="xref\n0 6\n0000000000 65535 f \n";
 for($i=1;$i<=5;$i++)$pdf.=sprintf('%010d 00000 n ',$offsets[$i])."\n";
 $pdf.="trailer\n<< /Root 1 0 R /Size 6 >>\nstartxref\n".$xref."\n%%EOF\n";
-if(strlen($pdf)<1000)$pdf.=str_repeat("\n",1000-strlen($pdf));
+if(strlen($pdf)<1200)$pdf.=str_repeat("\n",1200-strlen($pdf));
 
 $meta=Preview::info($pdf);
 if($meta['pages']!==1||$meta['preview_pages']!==1||$meta['truncated'])
