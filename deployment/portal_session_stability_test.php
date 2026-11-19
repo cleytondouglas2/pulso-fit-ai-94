@@ -20,7 +20,7 @@ if(strpos($html,'id="argus-session-loading"')>
     throw new RuntimeException('Session loader must be before auth form');
 if(!str_contains($html,'[hidden]{display:none!important}'))
     throw new RuntimeException('The hidden state must override legacy layout CSS');
-foreach(['portal.js?v=session-nov19-3','merchant-portal.js?v=session-nov19-3'] as $ver)
+foreach(['/static/portal.js?v=session-nov19-3','/static/merchant-portal.js?v=session-nov19-3'] as $ver)
     if(substr_count($html,$ver)!==1)
         throw new RuntimeException('Safari client asset cache not invalidated: '.$ver);
 if(!str_contains($html,'<details class="argus-mobile-details"')||
