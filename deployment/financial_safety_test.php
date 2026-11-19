@@ -32,7 +32,7 @@ foreach(['alfa','beta'] as $name){
    (id,account_id,reviewer_id,reviewer_role,event_type,note,document_types,created_at)
    VALUES(?,?,?,?,?,?,?,?)',[
    bin2hex(random_bytes(16)),$id,'synthetic','superadmin','identity_approved','Test offline','',DB::stamp()]);
- $account=['id'=>$id,'merchant_id'=>$merchant,'status'=>'approved'];$accounts[$name]=$account;
+ $account=['id'=>$id,'merchant_id'=>$merchant,'status'=>'approved','account_type'=>'PJ'];$accounts[$name]=$account;
  $db->run('INSERT INTO argus_seller_wallets
    (account_id,merchant_id,available_cents,held_cents,debt_cents,updated_at)
    VALUES(?,?,?,?,?,?)',[$id,$merchant,5000,0,0,DB::stamp()]);
