@@ -65,4 +65,14 @@ $new=<<<'PHP'
 PHP;
 sellerKeysReplace($source,$old,$new,'POST authenticated self issuance');
 if(file_put_contents($path,$source)===false)throw new RuntimeException('Seller API key patch write failed');
+// Cache-bust only AFTER the original IdentityProfile installation has changed
+// portal.js?v=1 to its own version. Changing the original file earlier breaks
+// the original identity-profile install's exact-version guard.
+$client='/var/www/html/public/static/client.html';
+$html=file_get_contents($client);
+if(!is_string($html)||substr_count($html,'/static/portal.js?v=5')!==1)
+    throw new RuntimeException('Seller API key patch: expected completed identity profile cache stage');
+$html=str_replace('/static/portal.js?v=5','/static/portal.js?v=7',$html);
+if(file_put_contents($client,$html)===false)
+    throw new RuntimeException('Seller API key patch: client asset version write failed');
 echo "PASS: individual revendedor API keys self-issued after initial KYC and merchant approval; no admin OTP per key.\n";
