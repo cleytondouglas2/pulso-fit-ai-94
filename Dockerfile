@@ -534,6 +534,22 @@ RUN php -l /var/www/html/src/PfFinancialApproval.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/pf_financial_activation_test.php \
  && apache2ctl configtest
 
+# ARGUS read-only paid Pix revenue: all sellers for the Super Admin, own paid
+# Pix ledger only for each reseller, with refund dates and fair period deltas.
+# Mounted LAST so no finance or CPF approval flows are altered.
+COPY deployment/RevenueReport.php /var/www/html/src/RevenueReport.php
+COPY deployment/revenue-dashboard.js deployment/revenue-dashboard.css /var/www/html/public/static/
+COPY deployment/revenue_report_patch.php /tmp/revenue_report_patch.php
+COPY deployment/revenue_report_test.php /var/www/html/tests/revenue_report_test.php
+RUN php -l /var/www/html/src/RevenueReport.php \
+ && php -l /tmp/revenue_report_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/revenue_report_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/revenue_report_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/revenue_report_test.php \
+ && node --check /var/www/html/public/static/revenue-dashboard.js \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
