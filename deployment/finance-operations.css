@@ -1,0 +1,48 @@
+/* Read-only ARGUS financial operations, matching dark/gold Admin design. */
+#page-operations,.argus-operations{min-width:0;color:#eee9de}
+.argus-operations{width:100%;max-width:1300px;padding:18px 0 42px}
+.argus-operations *,.argus-seller-csv *{box-sizing:border-box}
+.argus-operations-head{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.argus-operations-head h1{font-size:clamp(23px,3.3vw,32px);line-height:1.23;color:#f4e2c6;margin:8px 0}
+.argus-operations-head p{color:#b8bdc8;font-size:13px;max-width:700px;line-height:1.65}
+.argus-operations-head button{min-height:44px;border-color:#ae885d;color:#f4d3a0}
+#argus-operations-status{border:1px solid #486954;border-radius:12px;background:#203328;color:#c5e9d0;padding:15px 17px;font-size:13px;line-height:1.7;margin-bottom:20px}
+#argus-operations-status.is-warning{background:#392e27;color:#f0d3ac;border-color:#a17c55}
+.argus-op-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:0 0 18px}
+.argus-op-metric{display:flex;min-width:0;flex-direction:column;gap:8px;padding:19px;border-radius:14px;background:linear-gradient(140deg,#202734,#1a212c);border:1px solid #414a56}
+.argus-op-metric small{font-size:12px;color:#bac2cc;font-weight:700}
+.argus-op-metric strong{font-size:clamp(23px,3vw,32px);font-weight:800;color:#dfc49c;line-height:1.2}
+.argus-op-metric.is-alert{border-color:#ab775c;background:linear-gradient(140deg,#372d2c,#22252e)}
+.argus-op-metric.is-alert strong{color:#ffba9a}
+.argus-op-panel{padding:21px;border:1px solid #3c4552;border-radius:16px;background:linear-gradient(146deg,#202631,#191f2a);margin:18px 0}
+.argus-op-panel h2{color:#ead2ad;font-size:18px;margin:0 0 16px}
+.argus-op-panel>p{color:#bfc6d0;font-size:12px;line-height:1.7}
+.argus-op-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.argus-op-settings>div{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px;border:1px solid #444a53;border-radius:10px;background:#1a202b;font-size:12px;min-width:0}
+.argus-op-settings span{color:#c4cbd3}
+.argus-op-settings strong{font-size:11px;text-align:right}
+.argus-op-settings .good{color:#a8e3be}
+.argus-op-settings .warning{color:#efc38c}
+.argus-op-disclaimer{margin:16px 0 0;color:#9fa9b5!important;font-size:11px!important}
+.argus-op-details{background:#171d27;border:1px solid #444b54;border-radius:11px;margin:9px 0;overflow:hidden}
+.argus-op-details summary{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 17px;color:#ebdfcb;cursor:pointer;font-size:12px}
+.argus-op-details summary strong{font-weight:750}
+.argus-op-details summary span{color:#c7ad88;font-size:11px}
+.argus-op-details[open] summary{border-bottom:1px solid #424955}
+.argus-op-details>p{padding:9px 17px 17px;color:#aeb8c4;font-size:12px;margin:0}
+.argus-op-items{max-height:320px;overflow:auto;padding:12px}
+.argus-op-item{display:flex;flex-direction:column;gap:4px;padding:11px 12px;border-bottom:1px solid #363f4b;overflow-wrap:anywhere;font-size:12px}
+.argus-op-item strong{font-weight:750;color:#f2dec3}
+.argus-op-item small{font-size:11px;color:#b1b9c5;line-height:1.6}
+#argus-operations-export{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.6fr) auto;align-items:end;gap:11px}
+#argus-operations-export label,.argus-seller-csv label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#ddcfbb;font-weight:700;min-width:0}
+#argus-operations-export :is(input,select),.argus-seller-csv input{width:100%;max-width:100%;min-height:44px;background:#0f1824;color:#efe7db;border:1px solid #505b68;border-radius:9px;padding:9px 10px;font:inherit}
+#argus-operations-export button{min-height:44px;border:1px solid #d1ad7c;background:#d7af77;color:#20190f;border-radius:10px;font-weight:850;white-space:nowrap;padding:8px 13px}
+.argus-seller-csv{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:18px;margin:17px 0;padding:19px;background:linear-gradient(140deg,#252832,#1a222d);border:1px solid #79684f;border-radius:14px;color:#f0dfc5;min-width:0}
+.argus-seller-csv>div strong{font-size:16px}
+.argus-seller-csv p{font-size:12px;color:#c4c7cf;line-height:1.5;max-width:500px;margin:7px 0 0}
+.argus-seller-csv form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:9px}
+.argus-seller-csv form label{min-width:130px}
+.argus-seller-csv form button{background:linear-gradient(135deg,#ecd1a1,#be9158);border:1px solid #e0be8b;border-radius:10px;color:#211811;font-weight:850;min-height:44px;padding:9px 15px;cursor:pointer}
+@media(max-width:900px){.argus-op-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#argus-operations-export{grid-template-columns:repeat(2,minmax(0,1fr))}#argus-operations-export button{min-width:0}}
+@media(max-width:520px){.argus-op-grid,.argus-op-settings,#argus-operations-export{grid-template-columns:minmax(0,1fr)}.argus-op-panel{padding:15px}.argus-op-details summary{padding:12px}.argus-seller-csv{padding:15px}.argus-seller-csv form{width:100%}.argus-seller-csv form label,.argus-seller-csv form button{flex:1 1 100%}}
