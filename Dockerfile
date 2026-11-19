@@ -276,6 +276,24 @@ RUN php -l /var/www/html/src/FeeExecution.php \
  && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/fee_execution_test.php \
  && php /var/www/html/tests/ui_contract.php
 
+# Seller wallets, API credentials and integration docs. Financial provider custody
+# is NOT enabled automatically: both merchant custody and matched PSP account
+# must be explicitly homologated. Test two synthetic merchants, never real money.
+COPY deployment/MerchantWallet.php /var/www/html/src/MerchantWallet.php
+COPY deployment/merchant-portal.js deployment/merchant-portal.css deployment/merchant-docs.js deployment/merchant-docs.css deployment/merchant-admin.js deployment/merchant-admin.css /var/www/html/public/static/
+COPY deployment/merchant_wallet_patch.php /tmp/merchant_wallet_patch.php
+COPY deployment/merchant_wallet_test.php /var/www/html/tests/merchant_wallet_test.php
+RUN php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /tmp/merchant_wallet_patch.php \
+ && php -l /var/www/html/tests/merchant_wallet_test.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/merchant_wallet_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /usr/local/share/argus/notify_worker.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/merchant_wallet_test.php \
+ && php /var/www/html/tests/ui_contract.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
