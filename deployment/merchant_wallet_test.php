@@ -53,17 +53,18 @@ if((int)$journal['n']!==1)throw new RuntimeException('Duplicate credit ledger en
 try{Wallet::reconcile($db,$id,$bId);throw new RuntimeException('Merchant B saw merchant A sale');}
 catch(ApiError $e){if($e->status!==404)throw $e;}
 try{Wallet::requestWithdraw($db,$accounts[$bId],[
- 'amount_cents'=>100,'pix_key_type'=>'email','pix_key'=>'example@example.com',
+ 'amount_cents'=>200,'pix_key_type'=>'email','pix_key'=>'example@example.com',
  'description'=>'Teste saque B','idempotency_key'=>'idem-b-'.bin2hex(random_bytes(12)),'confirm'=>true
 ]);throw new RuntimeException('Merchant B withdrew funds owned by A');}
 catch(ApiError $e){if($e->status!==409)throw $e;}
 $req=[
- 'amount_cents'=>800,'pix_key_type'=>'email','pix_key'=>'example@example.com',
+ 'amount_cents'=>900,'pix_key_type'=>'email','pix_key'=>'example@example.com',
  'description'=>'Teste saque A','idempotency_key'=>'idem-a-'.bin2hex(random_bytes(12)),'confirm'=>true
 ];
 $first=Wallet::requestWithdraw($db,$accounts[$aId],$req);
 $again=Wallet::requestWithdraw($db,$accounts[$aId],$req);
-if($first['id']!==$again['id']||(int)$readWallet($aId)['available_cents']!==0||
+if($first['id']!==$again['id']||(int)$first['debit_cents']!==900||
+   (int)$first['recipient_cents']!==800||(int)$readWallet($aId)['available_cents']!==0||
    (int)$readWallet($aId)['held_cents']!==900)
  throw new RuntimeException('Withdrawal reservation not isolated / not idempotent');
 try{
@@ -115,4 +116,4 @@ foreach([
  ['/var/www/html/public/static/admin.html','id="page-merchant-wallet"']
 ] as [$file,$needle])if(!str_contains((string)file_get_contents($file),$needle))
  throw new RuntimeException('Merchant interface or docs missing '.$needle);
-echo "PASS: two independent seller balances, real-only credit model, R$1 fees, duplicate Pix ignored, overdraw denied, refund debt isolated, double-release blocked, MFA and private keys.\n";
+echo "PASS: gross-debit/net-recipient payout, independent seller balances, paid-only Pix credits, refund and idempotency protections.\n";

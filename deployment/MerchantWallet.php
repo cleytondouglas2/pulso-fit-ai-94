@@ -22,13 +22,13 @@ final class MerchantWallet {
     }
     private static function now():string{return Database::stamp();}
     private static function uid(string $prefix):string{return $prefix.'_'.bin2hex(random_bytes(16));}
-    private static function enabled(Database $db):void{
+    private static function enabled(Database $db,bool $forPayout=false):void{
         $isolatedUnitTest=PHP_SAPI==='cli'&&getenv('ARGUS_MERCHANT_UNIT_TEST')==='local-sqlite-only';
         if(!in_array($db->driver(),['pgsql','mysql'],true)&&!$isolatedUnitTest)self::fail('Banco financeiro persistente indisponível',503);
         if(getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')!=='yes'||
            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')!=='yes')
             self::fail('Carteira financeira de revendedores aguardando homologação da conta de custódia na MisticPay',503);
-        if(getenv('ARGUS_PAYOUTS_ENABLED')!=='yes')self::fail('Processamento de saques indisponível',503);
+        if($forPayout&&getenv('ARGUS_PAYOUTS_ENABLED')!=='yes')self::fail('Processamento de saques indisponível',503);
     }
     public static function install(Database $db):void{
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_seller_wallets (
@@ -179,13 +179,20 @@ final class MerchantWallet {
             'reserved_cents'=>(int)$w['held_cents'],
             'negative_adjustments_cents'=>(int)$w['debt_cents'],
             'service_fee_deposit_cents'=>self::FEE,'service_fee_withdraw_cents'=>self::FEE,
-            'withdrawals_enabled'=>getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
+            'deposits_enabled'=>getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
                 getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes',
+            'withdrawals_enabled'=>getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
+                getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes'&&
+                getenv('ARGUS_PAYOUTS_ENABLED')==='yes',
             'notice'=>'Saldo exclusivo de vendas Pix confirmadas da sua conta. Transferências pendentes ficam reservadas.'
         ];
     }
     public static function create(Database $db,array $account,array $data,string $idem):array{
         self::enabled($db);
+        if(($account['status']??'')!=='approved'||!KycStudio::identityApproved($db,(string)$account['id']))
+            self::fail('Cadastro documental não autorizado a receber',403);
+        $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",[(string)($account['merchant_id']??'')]);
+        if(!$merchant)self::fail('Conta financeira não autorizada a receber',403);
         $w=self::wallet($db,$account);
         $gross=$data['amount_cents']??null;
         if(!is_int($gross)||$gross<100||$gross>10000)self::fail('Valor Pix permitido: R$ 1 a R$ 100',422);
@@ -322,6 +329,7 @@ final class MerchantWallet {
                 error_log('ARGUS seller reconcile failed: '.get_class($e));
             }
         }
+        try{self::reconcilePayouts($db);}catch(\Throwable $e){$errors++;}
         return ['checked'=>$checked,'errors'=>$errors];
     }
     public static function api(Database $db,string $method,string $path):never{
@@ -376,7 +384,7 @@ final class MerchantWallet {
         return $text;
     }
     public static function requestWithdraw(Database $db,array $account,array $data):array{
-        self::enabled($db);
+        self::enabled($db,true);
         if($account['status']!=='approved'||!KycStudio::identityApproved($db,(string)$account['id']))
             self::fail('Cadastro KYC não autorizado para sacar',403);
         if(!$account['merchant_id'])self::fail('Conta financeira indisponível',403);
@@ -384,8 +392,8 @@ final class MerchantWallet {
             [$account['merchant_id']]);
         if(!$merchant)self::fail('Recebedor ainda não autorizado',403);
         $amount=$data['amount_cents']??null;
-        if(!is_int($amount)||$amount<100||$amount>10000)
-            self::fail('Saque permitido: R$ 1,00 a R$ 100,00',422);
+        if(!is_int($amount)||$amount<200||$amount>10000)
+            self::fail('Saque permitido: R$ 2,00 a R$ 100,00, com R$ 1,00 de serviço descontado do total',422);
         if(($data['confirm']??null)!==true)self::fail('Confirme o valor do saque e a taxa de serviço de R$ 1,00');
         $type=$data['pix_key_type']??null;$pix=$data['pix_key']??null;
         if(!is_string($type)||!is_string($pix))self::fail('Chave Pix e tipo são obrigatórios');
@@ -411,7 +419,7 @@ final class MerchantWallet {
                 self::fail('Idempotência usada com outra transferência',409);
             return self::payoutPublic($existing);
         }
-        $debit=$amount+self::FEE;$id=self::uid('mww');
+        $debit=$amount;$id=self::uid('mww');
         $masked=substr($key,0,3).'••••'.substr($key,-4);
         $sealed=self::seal($key);
         self::wallet($db,$account);
@@ -419,7 +427,7 @@ final class MerchantWallet {
                                                      $type,$masked,$sealed,$desc,$debit){
             $w=self::lock($db,$accountId);
             if((int)$w['debt_cents']>0||((int)$w['available_cents'])<$debit)
-                self::fail('Saldo disponível insuficiente para o saque e taxa de serviço de R$ 1,00',409);
+                self::fail('Saldo disponível insuficiente para o valor total solicitado',409);
             $changed=$db->run('UPDATE argus_seller_wallets
                 SET available_cents=available_cents-?,held_cents=held_cents+?,updated_at=?
                 WHERE account_id=? AND available_cents>=? AND debt_cents=0',[
@@ -441,7 +449,9 @@ final class MerchantWallet {
     private static function payoutPublic(array $row):array{
         return [
             'id'=>$row['id'],'amount_cents'=>(int)$row['amount_cents'],
-            'service_fee_cents'=>self::FEE,'debit_cents'=>(int)$row['debit_cents'],
+            'service_fee_cents'=>(int)$row['service_fee_cents'],
+            'recipient_cents'=>(int)$row['amount_cents']-(int)$row['service_fee_cents'],
+            'debit_cents'=>(int)$row['debit_cents'],
             'pix_key_type'=>$row['pix_key_type'],'pix_key_masked'=>$row['pix_key_masked'],
             'status'=>$row['status'],'created_at'=>$row['created_at'],'checked_at'=>$row['checked_at']
         ];
@@ -454,6 +464,7 @@ final class MerchantWallet {
     }
     public static function portal(Database $db,string $method,string $path,array $account):never{
         if($method==='GET'&&$path==='/api/portal/wallet'){
+            self::reconcilePayouts($db,(string)$account['id']);
             self::out(['wallet'=>self::balancePublic($db,$account),
                 'withdrawals'=>self::payouts($db,$account['id'])]);
         }
@@ -463,9 +474,22 @@ final class MerchantWallet {
                 ORDER BY created_at DESC LIMIT 100',[$account['id']]);
             self::out(['charges'=>array_map([self::class,'chargePublic'],$rows)]);
         }
+        if($method==='POST'&&$path==='/api/portal/wallet/charges'){
+            $data=self::body();
+            $raw=$data['idempotency_key']??null;
+            if(!is_string($raw)||!preg_match('/^[A-Za-z0-9._:-]{16,110}$/D',$raw))
+                self::fail('Identificador único obrigatório para gerar Pix',422);
+            self::out(['charge'=>self::create($db,$account,$data,hash('sha256',$raw))],201);
+        }
+        if($method==='GET'&&preg_match('~^/api/portal/wallet/charges/(mwc_[a-f0-9]{32})$~D',$path,$match)){
+            $charge=self::reconcile($db,$match[1],(string)$account['id']);
+            self::out(['charge'=>self::chargePublic($charge)]);
+        }
         if($method==='POST'&&$path==='/api/portal/wallet/withdrawals'){
-            self::out(['withdrawal'=>self::requestWithdraw($db,$account,self::body()),
-                'wallet'=>self::balancePublic($db,$account)],201);
+            $withdrawal=self::requestWithdraw($db,$account,self::body());
+            if($withdrawal['status']==='requested')
+                $withdrawal=self::sendWithdraw($db,(string)$withdrawal['id'],(string)$account['id']);
+            self::out(['withdrawal'=>$withdrawal,'wallet'=>self::balancePublic($db,$account)],201);
         }
         self::fail('Rota da carteira não encontrada',404);
     }
@@ -474,6 +498,87 @@ final class MerchantWallet {
             trim((string)getenv('ARGUS_MISTICPAY_PAYOUT_PK')),
             trim((string)getenv('ARGUS_MISTICPAY_PAYOUT_SK'))
         );
+    }
+    /**
+     * The seller confirms the payout, with no separate administrator approval.
+     * Debit exactly gross, transfer gross minus service fee, with PSP idempotency.
+     * An uncertain provider response is never retried automatically.
+     */
+    private static function sendWithdraw(Database $db,string $id,string $accountId):array{
+        self::enabled($db,true);
+        $row=$db->one('SELECT * FROM argus_seller_withdrawals WHERE id=? AND account_id=?',[$id,$accountId]);
+        if(!$row)self::fail('Saque não pertence a esta carteira',404);
+        if($row['status']!=='requested')return self::payoutPublic($row);
+        $account=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$accountId]);
+        if(!$account||$account['status']!=='approved'||!KycStudio::identityApproved($db,$accountId))
+            self::fail('Cadastro financeiro não autorizado a sacar',403);
+        $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",
+            [(string)($account['merchant_id']??'')]);
+        if(!$merchant)self::fail('Recebedor não autorizado',403);
+        $recipient=(int)$row['amount_cents']-(int)$row['service_fee_cents'];
+        if($recipient<100||(int)$row['debit_cents']!==(int)$row['amount_cents'])
+            self::fail('Valor líquido do saque inválido; transferência suspensa',409);
+        $client=self::payoutClient();
+        if($client->balance()<$recipient)
+            self::fail('Saldo de liquidação temporariamente insuficiente; seu valor continua reservado',503);
+        $db->transaction(static function(Database $db)use($id,$accountId,$row){
+            $w=self::lock($db,$accountId);
+            if((int)$w['held_cents']<(int)$row['debit_cents']||(int)$w['debt_cents']>0)
+                self::fail('Saldo reservado inconsistente ou contestado',409);
+            $changed=$db->run("UPDATE argus_seller_withdrawals
+                SET status='processing',checked_at=?
+                WHERE id=? AND account_id=? AND status='requested'",[self::now(),$id,$accountId]);
+            if($changed->rowCount()!==1)self::fail('Saque já está em processamento',409);
+        });
+        try{
+            $pix=self::unseal((string)$row['pix_key_encrypted']);
+            $result=$client->withdraw($recipient,(string)$row['pix_key_type'],$pix,
+                (string)$row['description'],self::providerIdempotency($id));
+            $db->run("UPDATE argus_seller_withdrawals
+                SET provider_tx_id=?,provider_job_id=?,status='queued',checked_at=?
+                WHERE id=? AND account_id=? AND status='processing'",[
+                $result['transaction_id'],$result['job_id'],self::now(),$id,$accountId
+            ]);
+        }catch(\Throwable $e){
+            $db->run("UPDATE argus_seller_withdrawals SET status='unknown',checked_at=?
+                WHERE id=? AND account_id=? AND status='processing'",[self::now(),$id,$accountId]);
+            error_log('ARGUS seller automatic payout uncertain: '.get_class($e));
+            self::fail('Transferência com resultado incerto: valor continua reservado e não será reenviado sem conciliação',503);
+        }
+        return self::payoutPublic($db->one('SELECT * FROM argus_seller_withdrawals WHERE id=?',[$id]));
+    }
+
+    // Status checks only. These never submit transfers.
+    private static function reconcilePayouts(Database $db,?string $accountId=null):void{
+        if(getenv('ARGUS_PAYOUTS_ENABLED')!=='yes')return;
+        self::install($db);
+        $cutoff=gmdate('Y-m-d H:i:s',time()-45);
+        $where="status IN ('queued','pending','unknown') AND provider_tx_id IS NOT NULL
+            AND (checked_at IS NULL OR checked_at<?)";
+        $args=[$cutoff];
+        if($accountId!==null){$where.=' AND account_id=?';$args[]=$accountId;}
+        $rows=$db->all('SELECT * FROM argus_seller_withdrawals WHERE '.$where.'
+            ORDER BY checked_at ASC LIMIT 12',$args);
+        foreach($rows as $row){
+            try{
+                $status=self::payoutClient()->status((string)$row['provider_tx_id']);
+                if(!hash_equals((string)$row['provider_tx_id'],(string)($status['transaction_id']??'')))
+                    throw new \RuntimeException('Transaction identity mismatch');
+                $mapped=match(strtoupper((string)($status['state']??''))){
+                    'COMPLETO'=>'paid','FALHA'=>'failed',
+                    'CANCELADO'=>'cancelled','DEVOLVIDO','DEVOLVIDO_PARCIAL'=>'refunded',
+                    default=>'pending'
+                };
+                self::finishWithdraw($db,$row,$mapped);
+                if($mapped==='pending')
+                    $db->run("UPDATE argus_seller_withdrawals SET status='pending',checked_at=?
+                        WHERE id=? AND status IN ('queued','pending','unknown')",[self::now(),$row['id']]);
+            }catch(\Throwable $e){
+                $db->run('UPDATE argus_seller_withdrawals SET checked_at=? WHERE id=?',
+                    [self::now(),$row['id']]);
+                error_log('ARGUS seller payout status reconciliation failed: '.get_class($e));
+            }
+        }
     }
     private static function finishWithdraw(Database $db,array $row,string $state):void{
         if(!in_array($state,['paid','failed','cancelled','refunded'],true))return;
@@ -531,40 +636,9 @@ final class MerchantWallet {
                 $fresh=$db->one('SELECT * FROM argus_seller_withdrawals WHERE id=?',[$m[1]]);
                 self::out(['withdrawal'=>self::payoutPublic($fresh)]);
             }
-            if($row['status']!=='requested')
-                self::fail('Transferência já enviada ou sob análise. Não tente enviar novamente',409);
-            $account=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$row['account_id']]);
-            if(!$account||$account['status']!=='approved'||!KycStudio::identityApproved($db,$account['id']))
-                self::fail('Cliente com autorização financeira suspensa',403);
-            $wallet=self::lock($db,$account['id']);
-            if((int)$wallet['held_cents']<(int)$row['debit_cents']||
-               (int)$wallet['debt_cents']>0)self::fail('Saldo reservado inconsistente ou contestado',409);
-            $client=self::payoutClient();
-            if($client->balance()<(int)$row['amount_cents'])
-                self::fail('Saldo financeiro disponível na MisticPay insuficiente',409);
-            $db->transaction(static function(Database $db)use($row){
-                $update=$db->run("UPDATE argus_seller_withdrawals SET status='processing',
-                    checked_at=? WHERE id=? AND status='requested'",[self::now(),$row['id']]);
-                if($update->rowCount()!==1)self::fail('Saque já em processamento',409);
-            });
-            try{
-                $pix=self::unseal((string)$row['pix_key_encrypted']);
-                $result=$client->withdraw((int)$row['amount_cents'],
-                    (string)$row['pix_key_type'],$pix,(string)$row['description'],
-                    self::providerIdempotency((string)$row['id']));
-                $db->run("UPDATE argus_seller_withdrawals
-                    SET provider_tx_id=?,provider_job_id=?,status='queued',checked_at=?
-                    WHERE id=? AND status='processing'",[
-                    $result['transaction_id'],$result['job_id'],self::now(),$row['id']
-                ]);
-            }catch(\Throwable $e){
-                $db->run("UPDATE argus_seller_withdrawals SET status='unknown',checked_at=?
-                    WHERE id=? AND status='processing'",[self::now(),$row['id']]);
-                error_log('ARGUS merchant payout uncertain: '.get_class($e));
-                self::fail('Transferência com resultado incerto. Saldo continua reservado. Consulte a MisticPay antes de qualquer nova tentativa',503);
-            }
-            $fresh=$db->one('SELECT * FROM argus_seller_withdrawals WHERE id=?',[$m[1]]);
-            self::out(['withdrawal'=>self::payoutPublic($fresh)]);
+            // Manual route is retained for legacy requests only. Sellers initiate
+            // their own withdrawals without invoking an administrator.
+            self::out(['withdrawal'=>self::sendWithdraw($db,(string)$row['id'],(string)$row['account_id'])]);
         }
         self::fail('Rota administrativa da carteira não encontrada',404);
     }
