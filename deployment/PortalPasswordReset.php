@@ -87,7 +87,6 @@ final class PortalPasswordReset {
         return $allowed;
     }
     private static function sendMail(string $key,string $from,string $to,string $link):bool{
-        if(!function_exists('curl_init'))return false;
         $body=[
             'from'=>'ARGUS Payments <'.$from.'>','to'=>[$to],
             'subject'=>'Redefinição de senha — ARGUS Payments',
@@ -96,19 +95,36 @@ final class PortalPasswordReset {
                 "O link expira em 20 minutos e pode ser usado apenas uma vez.\n".
                 "Se não foi você, ignore esta mensagem.\n\nEquipe ARGUS Payments"
         ];
-        $curl=curl_init('https://api.resend.com/emails');
-        if($curl===false)return false;
-        curl_setopt_array($curl,[
-            CURLOPT_POST=>true,
-            CURLOPT_POSTFIELDS=>json_encode($body,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR),
-            CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$key,'Content-Type: application/json'],
-            CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,
-            CURLOPT_TIMEOUT=>12,CURLOPT_CONNECTTIMEOUT=>5,
-            CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2
+        $payload=json_encode($body,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+        if(function_exists('curl_init')){
+            $curl=curl_init('https://api.resend.com/emails');
+            if($curl===false)return false;
+            curl_setopt_array($curl,[
+                CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>$payload,
+                CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$key,'Content-Type: application/json'],
+                CURLOPT_RETURNTRANSFER=>true,CURLOPT_FOLLOWLOCATION=>false,
+                CURLOPT_TIMEOUT=>12,CURLOPT_CONNECTTIMEOUT=>5,
+                CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2
+            ]);
+            $response=curl_exec($curl);$status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE);
+            curl_close($curl);
+            return is_string($response)&&$status>=200&&$status<300;
+        }
+        // Official PHP Apache builds may omit the optional cURL extension.
+        // Use PHP's native HTTPS stream with strict TLS and no redirects.
+        if(!in_array('https',stream_get_wrappers(),true))return false;
+        $context=stream_context_create([
+            'http'=>[
+                'method'=>'POST','header'=>"Authorization: Bearer ".$key."\r\nContent-Type: application/json\r\n",
+                'content'=>$payload,'timeout'=>12,'ignore_errors'=>true,
+                'follow_location'=>0,'max_redirects'=>0
+            ],
+            'ssl'=>['verify_peer'=>true,'verify_peer_name'=>true,'allow_self_signed'=>false]
         ]);
-        $response=curl_exec($curl);$status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE);
-        curl_close($curl);
-        return is_string($response)&&$status>=200&&$status<300;
+        $response=@file_get_contents('https://api.resend.com/emails',false,$context);
+        $headers=$http_response_header??[];
+        $line=is_array($headers)?(string)($headers[0]??''):'';
+        return is_string($response)&&preg_match('~^HTTP/\\S+ 2\\d\\d(?: |$)~',$line)===1;
     }
     public static function request(Database $db,array $data):array {
         self::install($db);
