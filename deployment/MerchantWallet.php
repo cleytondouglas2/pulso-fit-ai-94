@@ -117,6 +117,12 @@ final class MerchantWallet {
         if(!is_array($v)||array_is_list($v))self::fail('Objeto JSON obrigatório');
         return $v;
     }
+    private static function providerIdempotency(string $id):string{
+        // Deterministic UUID v4 shape derived from our persistent operation ID.
+        $hex=substr(hash('sha256',$id),0,32);
+        return substr($hex,0,8).'-'.substr($hex,8,4).'-4'.substr($hex,13,3).
+            '-8'.substr($hex,17,3).'-'.substr($hex,20,12);
+    }
     private static function idem():string{
         $raw=$_SERVER['HTTP_IDEMPOTENCY_KEY']??null;
         if(!is_string($raw)||!preg_match('/^[A-Za-z0-9._:-]{16,110}$/D',$raw))
@@ -207,9 +213,9 @@ final class MerchantWallet {
         ]);
         try{
             $payload=TraditionalQuickPix::createBody($gross,$name,$doc,
-                'qpx_'.bin2hex(random_bytes(16)),$desc);
+                'qpx_'.substr($id,4),$desc);
             // Externally stable idempotency; never repeat on an uncertain result.
-            $r=self::provider('/transactions/create',$payload,$id);
+            $r=self::provider('/transactions/create',$payload,self::providerIdempotency($id));
             $created=TraditionalQuickPix::readCreated($r);
             if(($created['status']??'')==='paid')$created['status']='pending';
             $db->run("UPDATE argus_seller_charges SET provider_id=?,copy_paste=?,status=?,checked_at=?
@@ -294,9 +300,9 @@ final class MerchantWallet {
            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')!=='yes')
             return ['checked'=>0,'errors'=>0];
         self::install($db);$cutoff=gmdate('Y-m-d H:i:s',time()-7*86400);
-        $stale=gmdate('Y-m-d H:i:s',time()-40);
+        $stale=gmdate('Y-m-d H:i:s',time()-300);
         $rows=$db->all("SELECT * FROM argus_seller_charges
-            WHERE status IN ('pending','unknown') AND provider_id IS NOT NULL
+            WHERE status IN ('pending','unknown','paid') AND provider_id IS NOT NULL
             AND created_at>? AND (checked_at IS NULL OR checked_at<?)
             ORDER BY checked_at ASC LIMIT 25",[$cutoff,$stale]);
         $checked=0;$errors=0;
@@ -363,6 +369,9 @@ final class MerchantWallet {
         if($account['status']!=='approved'||!KycStudio::identityApproved($db,(string)$account['id']))
             self::fail('Cadastro KYC não autorizado para sacar',403);
         if(!$account['merchant_id'])self::fail('Conta financeira indisponível',403);
+        $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",
+            [$account['merchant_id']]);
+        if(!$merchant)self::fail('Recebedor ainda não autorizado',403);
         $amount=$data['amount_cents']??null;
         if(!is_int($amount)||$amount<100||$amount>10000)
             self::fail('Saque permitido: R$ 1,00 a R$ 100,00',422);
@@ -522,7 +531,8 @@ final class MerchantWallet {
             try{
                 $pix=self::unseal((string)$row['pix_key_encrypted']);
                 $result=$client->withdraw((int)$row['amount_cents'],
-                    (string)$row['pix_key_type'],$pix,(string)$row['description'],(string)$row['id']);
+                    (string)$row['pix_key_type'],$pix,(string)$row['description'],
+                    self::providerIdempotency((string)$row['id']));
                 $db->run("UPDATE argus_seller_withdrawals
                     SET provider_tx_id=?,provider_job_id=?,status='queued',checked_at=?
                     WHERE id=? AND status='processing'",[
