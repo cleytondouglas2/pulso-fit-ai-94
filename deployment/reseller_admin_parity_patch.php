@@ -48,11 +48,11 @@ resellerParityReplace($portal,
     "'</span><b>'+(d.review_status==='approved'?'✓ Documento aprovado':d.review_status==='needs_changes'?'Correções solicitadas':d.review_status==='rejected'?'Documento recusado':'Recebido · aguardando análise')+'</b></div>'",
     'per-file approved status');
 resellerParityReplace($portal,
-    "  loadKeys();\n}",
+    " loadKeys();\n}",
     "  const publicStage={status:account.status,identity_approved:identityApproved,financial_authorized:financeAuthorized};\n".
     "  window.ArgusResellerStage=publicStage;\n".
     "  document.dispatchEvent(new CustomEvent('argus:reseller-stage',{detail:publicStage}));\n".
-    "  loadKeys();\n}",
+    " loadKeys();\n}",
     'read-only account stage event');
 if(file_put_contents($portalPath,$portal)===false)
     throw new RuntimeException('Cannot update customer status UI');
@@ -68,7 +68,7 @@ resellerParityReplace($merchant,
     'let working=false,active=false,at=0,lastAccount=null;',
     'seller account stage tracking');
 resellerParityReplace($merchant,
-    " if(!w){E('seller-balances').textContent='Aguardando validação documental e aprovação financeira. Nenhuma API, recebimento ou saque está habilitado.';return}",
+    " if(!w){E('seller-balances').textContent='Identidade em análise ou operações financeiras ainda não autorizadas. Você pode acompanhar o cadastro e o histórico sem gerar Pix ou saques.';return}",
     " if(!w){\n".
     "  const approved=lastAccount&&(lastAccount.status==='identity_verified'||lastAccount.status==='approved'||lastAccount.kyc_studio?.identity_approved===true);\n".
     "  E('seller-balances').textContent=lastAccount?.status==='approved'?'Cadastro autorizado. Não foi possível consultar a carteira agora; utilize Atualizar.':approved?'Documentos e identidade aprovados. O recebimento Pix e os saques aguardam habilitação financeira ou consulta ao provedor.':lastAccount?.status==='documents_under_review'?'Documentos recebidos. A análise de identidade está em andamento.':lastAccount?.status==='rejected'?'Cadastro não aprovado; consulte o parecer.':'Acompanhando o cadastro. As operações financeiras dependem de autorização.';\n".
@@ -105,10 +105,10 @@ $kycPath='/var/www/html/src/KycStudio.php';
 $kyc=file_get_contents($kycPath);
 if(!is_string($kyc))throw new RuntimeException('KYC server not found');
 resellerParityReplace($kyc,
-    "             'status'=>\$account['status'],\n             'financial_enabled'=>\$account['status']==='approved'&&!empty(\$account['merchant_id']),",
-    "             'status'=>\$account['status'],\n".
-    "             'identity_approved'=>self::identityApproved(\$db,(string)\$account['id']),\n".
-    "             'financial_enabled'=>\$account['status']==='approved'&&!empty(\$account['merchant_id']),",
+    "            'status'=>\$account['status'],\n            'financial_enabled'=>\$account['status']==='approved'&&!empty(\$account['merchant_id']),",
+    "            'status'=>\$account['status'],\n".
+    "            'identity_approved'=>self::identityApproved(\$db,(string)\$account['id']),\n".
+    "            'financial_enabled'=>\$account['status']==='approved'&&!empty(\$account['merchant_id']),",
     'KYC identity approval as read-only truth');
 if(file_put_contents($kycPath,$kyc)===false)
     throw new RuntimeException('Cannot update KYC status projection');
