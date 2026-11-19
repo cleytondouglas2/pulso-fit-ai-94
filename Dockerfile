@@ -592,6 +592,23 @@ RUN php -l /var/www/html/src/FinanceOperations.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/finance_operations_test.php \
  && apache2ctl configtest
 
+# Secure merchant outbound HMAC notifications: one-time sealed keys, strict HTTPS
+# public DNS verification with pinned TLS, bounded retry & tenant-only history.
+# Actual delivery is disabled until explicitly enabled in the private worker.
+COPY deployment/MerchantWebhooks.php /var/www/html/src/MerchantWebhooks.php
+COPY deployment/merchant-webhooks.js deployment/merchant-webhooks.css deployment/merchant-webhooks-docs.js /var/www/html/public/static/
+COPY deployment/merchant_webhooks_patch.php /tmp/merchant_webhooks_patch.php
+COPY deployment/merchant_webhooks_test.php /var/www/html/tests/merchant_webhooks_test.php
+RUN php -l /var/www/html/src/MerchantWebhooks.php \
+ && php -l /tmp/merchant_webhooks_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/merchant_webhooks_patch.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /usr/local/share/argus/notify_worker.php \
+ && php -l /var/www/html/tests/merchant_webhooks_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/merchant_webhooks_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
