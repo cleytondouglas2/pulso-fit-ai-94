@@ -126,7 +126,7 @@ function loop(session){
       setMessage(steps[step]);
       if(Math.abs(info.yaw)<.11&&info.blink<.28){
        if(!session.hold)session.hold=now;
-       if(now-session.hold>850)completed=true;
+       if(now-session.hold>850&&now-session.started>3200)completed=true;
       }else session.hold=0;
      }
      if(completed){
