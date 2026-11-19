@@ -468,6 +468,17 @@ RUN php -l /tmp/portal_session_stability_patch.php \
  && php -l /var/www/html/tests/portal_session_stability_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/portal_session_stability_test.php
 
+
+# Admin-style reseller workspace. Reuse existing DOM components with handlers,
+# permissions and finance guards intact; visitor login is unaffected.
+COPY deployment/reseller-dashboard.js deployment/reseller-dashboard.css /var/www/html/public/static/
+COPY deployment/reseller_dashboard_patch.php /tmp/reseller_dashboard_patch.php
+COPY deployment/reseller_dashboard_test.php /var/www/html/tests/reseller_dashboard_test.php
+RUN php -l /tmp/reseller_dashboard_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_dashboard_patch.php \
+ && php -l /var/www/html/tests/reseller_dashboard_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_dashboard_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
