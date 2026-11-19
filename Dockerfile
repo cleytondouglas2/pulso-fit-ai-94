@@ -369,6 +369,22 @@ RUN php -l /var/www/html/src/KycDocumentPreview.php \
  && php -l /var/www/html/tests/kyc_ios_preview_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_ios_preview_test.php
 
+
+# Customer identity: guided camera face capture with blink/turn challenges.
+# Browser landmark signals are untrusted advisory evidence, never an automatic
+# identity decision or substitute for approved bank-grade liveness/PAD.
+COPY deployment/FaceCapture.php /var/www/html/src/FaceCapture.php
+COPY deployment/face-capture.js deployment/face-capture.css /var/www/html/public/static/
+COPY deployment/argus_face_capture_patch.php /tmp/argus_face_capture_patch.php
+COPY deployment/face_capture_test.php /var/www/html/tests/face_capture_test.php
+RUN php -l /var/www/html/src/FaceCapture.php \
+ && php -l /var/www/html/src/KycStudio.php \
+ && php -l /tmp/argus_face_capture_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_face_capture_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/face_capture_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/face_capture_test.php
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
