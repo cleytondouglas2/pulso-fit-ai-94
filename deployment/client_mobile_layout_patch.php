@@ -46,15 +46,15 @@ $merchantPath=$root.'/merchant-portal.js';
 $merchant=file_get_contents($merchantPath);
 if(!is_string($merchant))
     throw new RuntimeException('Mobile registration repair: merchant JS missing');
-$old="  top.after(root);";
+$old=" top.after(root);";
 $new="  const accountGrid=E('dashboard')?.querySelector('.grid');\n".
      "  (accountGrid||top).after(root);";
 if(substr_count($merchant,$old)!==1)
     throw new RuntimeException('Mobile registration repair: financial account section anchor changed');
 $merchant=str_replace($old,$new,$merchant);
 $old=<<<'JS'
- function walletRender(w){
-  if(!w){E('seller-balances').textContent='Aguardando validação documental e aprovação financeira. Nenhuma API, recebimento ou saque está habilitado.';return}
+function walletRender(w){
+ if(!w){E('seller-balances').textContent='Aguardando validação documental e aprovação financeira. Nenhuma API, recebimento ou saque está habilitado.';return}
 JS;
 $new=<<<'JS'
  function financeForms(w){
