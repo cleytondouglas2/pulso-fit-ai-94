@@ -104,14 +104,14 @@ $kycUiPath=$static.'/kyc-portal.js';
 $kycUi=file_get_contents($kycUiPath);
 if(!is_string($kycUi))throw new RuntimeException('KYC customer UI missing');
 resellerParityReplace($kycUi,
-    "    const title=texts[account.status]||['Cadastro em avaliação','Aguarde a conferência da equipe ARGUS.'];",
-    "    const title=kyc.identity_approved&&account.status!=='rejected'&&account.status!=='suspended'?\n".
+    "   const title=texts[account.status]||['Cadastro em avaliação','Aguarde a conferência da equipe ARGUS.'];",
+    "   const title=kyc.identity_approved&&account.status!=='rejected'&&account.status!=='suspended'?\n".
     "      (account.status==='approved'?texts.approved:texts.identity_verified):\n".
     "      (texts[account.status]||['Cadastro em avaliação','Aguarde a conferência da equipe ARGUS.']);",
     'KYC user interface reflects signed reviewer approval');
 resellerParityReplace($kycUi,
-    "    const editable=['documents_required','documents_under_review'].includes(account.status);",
-    "    const editable=!kyc.identity_approved&&['documents_required','documents_under_review'].includes(account.status);",
+    "   const editable=['documents_required','documents_under_review'].includes(account.status);",
+    "   const editable=!kyc.identity_approved&&['documents_required','documents_under_review'].includes(account.status);",
     'approved KYC files are not presented as awaiting replacement');
 resellerParityReplace($kycUi,
     "(['identity_verified','approved'].includes(account.status)?'ready':'')",
