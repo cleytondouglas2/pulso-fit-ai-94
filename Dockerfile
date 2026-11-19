@@ -515,6 +515,25 @@ RUN php -l /tmp/kyc_finance_visibility_patch.php \
  && php -l /var/www/html/tests/kyc_finance_visibility_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/kyc_finance_visibility_test.php
 
+
+# CPF financial activation with audited, 2FA-protected Super Admin approval.
+# Each PF has an independent merchant_id: NEVER reuse a CNPJ / b2b merchant.
+# External money operations continue gated by PSP custody + ledger safeguards.
+# All prior KYC and funds tests run before this final, isolated extension.
+COPY deployment/PfFinancialApproval.php /var/www/html/src/PfFinancialApproval.php
+COPY deployment/pf_financial_activation_patch.php /tmp/pf_financial_activation_patch.php
+COPY deployment/pf_financial_activation_test.php /var/www/html/tests/pf_financial_activation_test.php
+RUN php -l /var/www/html/src/PfFinancialApproval.php \
+ && php -l /tmp/pf_financial_activation_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/pf_financial_activation_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/pf_financial_activation_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/pf_financial_activation_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
