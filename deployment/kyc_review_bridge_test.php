@@ -59,12 +59,14 @@ if(K::identityApproved($db,$id))
     throw new RuntimeException('Uploading KYC files implicitly approved identity');
 // Metadata alone (legacy file without encrypted database bytes) MUST NOT
 // satisfy current KYC controls.
+$db->run("DELETE FROM argus_kyc_encrypted_documents WHERE account_id=? AND document_type='selfie'",[$id]);
+$db->run("DELETE FROM argus_portal_documents WHERE account_id=? AND document_type='selfie'",[$id]);
 $legacyId=bin2hex(random_bytes(16));
 $db->run('INSERT INTO argus_portal_documents
   (id,account_id,document_type,mime,sealed_file,file_digest,created_at,review_status)
   VALUES(?,?,?,?,?,?,?,?)',[
   $legacyId,$id,'selfie','image/jpeg','kyc_'.bin2hex(random_bytes(16)).'.enc',
-  hash('sha256','legacy-not-present'),gmdate('Y-m-d H:i:s',time()+60),'awaiting_review'
+  hash('sha256','legacy-not-present'),DB::stamp(),'awaiting_review'
 ]);
 if(K::summary($db,$account)['complete'])
     throw new RuntimeException('Unrecoverable legacy metadata passed KYC');
