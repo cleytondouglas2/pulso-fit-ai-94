@@ -609,6 +609,23 @@ RUN php -l /var/www/html/src/MerchantWebhooks.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/merchant_webhooks_test.php \
  && apache2ctl configtest
 
+# Independent financial controls: never abandon unresolved Pix by age, keep
+# ledger-checked payouts exactly-once, and lock background cycles per database.
+# Actual independent scheduling requires a separate Render Cron with persistent DB.
+COPY deployment/FinancialControl.php /var/www/html/src/FinancialControl.php
+COPY deployment/financial_safety_patch.php /tmp/financial_safety_patch.php
+COPY deployment/financial_safety_test.php /var/www/html/tests/financial_safety_test.php
+RUN php -l /var/www/html/src/FinancialControl.php \
+ && php -l /tmp/financial_safety_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/financial_safety_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/TraditionalQuickPix.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /usr/local/share/argus/notify_worker.php \
+ && php -l /var/www/html/tests/financial_safety_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/financial_safety_test.php \
+ && apache2ctl configtest
+
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
