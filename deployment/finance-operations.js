@@ -22,8 +22,12 @@ function item(r){return '<div class="argus-op-item"><strong>'+esc(r.name||r.id||
 function show(data){
  const setting=data.settings||{},alerts=E('argus-operations-alerts'),stateEl=E('argus-operations-status');
  if(!alerts||!stateEl)return;
+ const cycle=setting.reconciliation_worker||{};
  const settings=[['Banco persistente',setting.database_persistent],['Custódia configurada',setting.custody_configuration_confirmed],
- ['Saques habilitados',setting.payouts_enabled],['Conciliação automática',setting.background_reconciliation_configured],
+ ['Saques habilitados',setting.payouts_enabled],
+ ['Processador configurado',setting.background_reconciliation_configured],
+ ['Conferência recente (5 min)',cycle.fresh===true],
+ ['Agendador independente verificado',cycle.schedule_external_verified===true],
  ['E-mail de recuperação',setting.email_delivery_configured]];
  alerts.innerHTML='<div class="argus-op-grid">'+
   row('Carteiras conferidas',data.wallets_checked)+row('Divergências de saldo',data.ledger_mismatches?.length,!!data.ledger_mismatches?.length)+
@@ -53,9 +57,11 @@ function show(data){
   (data.uncertain_withdrawals||[]).length;
  stateEl.textContent=!setting.background_reconciliation_configured?
  'Conciliação em segundo plano não configurada. Status podem ficar desatualizados.':
+ cycle.fresh!==true?
+ 'Conciliação sem execução recente confirmada. Último ciclo: '+(cycle.last_cycle_utc||'não registrado')+'.':
  exceptions?'Atenção: existem operações que precisam de conferência, sem reenvio automático.':
- 'Conferência local concluída. Revise as condições operacionais abaixo.';
- stateEl.classList.toggle('is-warning',exceptions>0||!setting.background_reconciliation_configured);
+ 'Último ciclo financeiro: '+(cycle.last_cycle_utc||'não registrado')+' UTC. Confira outras pendências.';
+ stateEl.classList.toggle('is-warning',exceptions>0||!setting.background_reconciliation_configured||cycle.fresh!==true);
 }
 async function load(force=false){
  if(!admin()||loading||(!force&&Date.now()-updated<15000))return;
