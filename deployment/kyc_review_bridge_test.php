@@ -87,7 +87,7 @@ foreach(['argus-review-list','Examinar no KYC','/api/admin/kyc/queue',
         throw new RuntimeException('Legacy review bridge missing: '.$needle);
 if(str_contains($admin,'<form id="application-review-form"'))
     throw new RuntimeException('Unsafe pre-KYC financial approve modal still present');
-foreach(['kyc-document-viewer','kyc-viewer-pdf','kyc-viewer-image',
+foreach(['kyc-document-viewer','kyc-pdf-counter','kyc-viewer-image',
          'credentials:\'same-origin\'','argusOpenKycApplication'] as $needle)
     if(!str_contains($kyc,$needle))
         throw new RuntimeException('Authenticated visual document review missing '.$needle);
