@@ -103,7 +103,10 @@ final class KycStudio {
         $missing=array_values(array_diff($required,$present));
         if($account['account_type']==='PJ'&&!$rep)$missing[]='responsavel_legal';
         $history=$db->all('SELECT event_type,note,document_types,created_at FROM argus_kyc_review_events WHERE account_id=? ORDER BY created_at DESC LIMIT 12',[$account['id']]);
-        return ['required'=>$required,'received'=>$present,'missing'=>$missing,
+        $face=class_exists(FaceCapture::class)?FaceCapture::status($db,(string)$account['id']):
+            ['guided_capture_completed'=>false,'bank_grade_liveness'=>false,
+                'identity_verified'=>false,'status'=>'not_captured'];
+        return ['face_capture'=>$face,'required'=>$required,'received'=>$present,'missing'=>$missing,
             'complete'=>count($missing)===0,
             'legal_representative'=>$rep?:null,
             'documents'=>array_values($docs),'history'=>$history,
@@ -140,6 +143,8 @@ final class KycStudio {
         $type=self::value($input,'document_type',4,32);
         if(!in_array($type,self::required((string)$account['account_type']),true))
             self::fail('Este documento não pertence ao tipo de cadastro escolhido',422);
+        if($type==='selfie'&&class_exists(FaceCapture::class))
+            self::fail('A selfie deve ser feita com a câmera e os movimentos orientados na tela',422);
         $encoded=self::value($input,'file_base64',100,4350000);
         $bytes=base64_decode($encoded,true);
         if(!is_string($bytes)||strlen($bytes)<1024||strlen($bytes)>self::MAX_BYTES)
@@ -170,6 +175,32 @@ final class KycStudio {
             'Documentos recebidos. Sua conta está em análise; avisaremos após a avaliação.' :
             'Documento recebido com segurança. Envie os demais arquivos indicados.'],201);
     }
+    /**
+     * Invoked exclusively from the authenticated, one-time guided camera
+     * challenge. Caller owns the enclosing DB transaction. Old uploaded
+     * selfies remain available for historical human reviews.
+     */
+    public static function storeGuidedSelfie(Database $db,array $account,string $bytes,string $mime):array{
+        self::uploadAllowed($account);
+        if(strlen($bytes)<1024||strlen($bytes)>self::MAX_BYTES||$mime!=='image/jpeg')
+            self::fail('Envie uma foto da câmera no formato JPG',422);
+        self::format($bytes,$mime,'selfie');
+        $count=$db->one('SELECT COUNT(*) AS c FROM argus_portal_documents WHERE account_id=?',[$account['id']]);
+        if((int)($count['c']??0)>=20)
+            self::fail('Limite de documentos atingido. Solicite análise assistida.',429);
+        $id=self::id();$checksum=hash('sha256',$bytes);$sealed=self::encrypt($bytes);
+        $stamp=Database::stamp();
+        $db->run('INSERT INTO argus_kyc_encrypted_documents
+            (id,account_id,document_type,mime,payload_encrypted,sha256,created_at)
+            VALUES(?,?,?,?,?,?,?)',
+            [$id,$account['id'],'selfie',$mime,$sealed,$checksum,$stamp]);
+        $db->run('INSERT INTO argus_portal_documents
+            (id,account_id,document_type,mime,sealed_file,file_digest,created_at,review_status)
+            VALUES(?,?,?,?,?,?,?,?)',
+            [$id,$account['id'],'selfie',$mime,'database:'.$id,$checksum,$stamp,'awaiting_review']);
+        return ['id'=>$id,'mime'=>$mime];
+    }
+
     public static function representative(Database $db,array $account):never {
         self::install($db);self::uploadAllowed($account);
         if($account['account_type']!=='PJ')self::fail('Representante legal exigido somente para empresa',422);
@@ -206,6 +237,10 @@ final class KycStudio {
             self::representative($db,$account);
         if($method==='POST'&&$path==='/api/portal/kyc/upload')
             self::upload($db,$account);
+        if($method==='POST'&&$path==='/api/portal/kyc/face/start')
+            FaceCapture::start($db,$account);
+        if($method==='POST'&&$path==='/api/portal/kyc/face/complete')
+            FaceCapture::complete($db,$account);
         self::fail('Rota documental indisponível',404);
     }
     private static function reviewer(array $actor):void{
