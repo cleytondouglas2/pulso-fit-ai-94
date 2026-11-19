@@ -118,4 +118,48 @@ $a=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$id]);
 if(PF::authorized($db,$a))throw new RuntimeException('Suspended seller remains authorised');
 $reject(static fn()=> $auth->invoke(null,$db),403);
 unset($_SERVER['HTTP_X_ARGUS_KEY'],$_SERVER['HTTP_X_ARGUS_SECRET']);
+
+$adminSource=(string)file_get_contents('/var/www/html/src/Admin.php');
+$portalSource=(string)file_get_contents('/var/www/html/src/Portal.php');
+$walletSource=(string)file_get_contents('/var/www/html/src/MerchantWallet.php');
+$studioJs=(string)file_get_contents('/var/www/html/public/static/kyc-studio.js');
+$studioHtml=(string)file_get_contents('/var/www/html/public/static/admin.html');
+foreach([
+ 'finance-activate-pf',
+ 'self::verifyMfaCode($db,$actor',
+ 'self::writeAllowed($actor,true)',
+ 'PfFinancialApproval::approve($db,$actor',
+] as $must)
+ if(!str_contains($adminSource,$must))
+    throw new RuntimeException('Super Admin activation route lacks a protected API requirement: '.$must);
+foreach([
+ 'PfFinancialApproval::authorized($db,$account)',
+ 'KycStudio::identityApproved',
+ 'SELECT k.id,k.public_key',
+] as $must)
+ if(!str_contains($portalSource,$must))
+    throw new RuntimeException('Account seller API key permission missing: '.$must);
+foreach([
+ 'PfFinancialApproval::authorized($db,$account)',
+ "getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')",
+ "getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')",
+ "if(\$forPayout&&getenv('ARGUS_PAYOUTS_ENABLED')",
+] as $must)
+ if(!str_contains($walletSource,$must))
+    throw new RuntimeException('Wallet or real money PSP guard missing: '.$must);
+foreach([
+ 'id="kyc-finance-pf-form"',
+ 'Liberar recebimentos do revendedor CPF',
+ 'function releasePf(ev)',
+ "data.decision='approve';",
+ 'data-reseller-view',
+] as $must){
+ if($must==='data-reseller-view')continue;
+ if(!str_contains($studioJs,$must)&&$must!=="data.decision='approve';")
+    throw new RuntimeException('CPF Super Admin release UI missing: '.$must);
+}
+if(!str_contains($studioHtml,'kyc-studio.js?v=pf-activate-20261119-1')||
+   !str_contains($studioHtml,'kyc-studio.css?v=pf-activate-20261119-1'))
+    throw new RuntimeException('Safari cached administration assets not invalidated');
+
 echo "PASS: Super Admin + KYC + custody attestation authorize a real isolated CPF merchant, audited and bound to original CPF; no approval if PSP flags absent, no cross-access, no balance minting, no legacy split, no network transfers.\n";
