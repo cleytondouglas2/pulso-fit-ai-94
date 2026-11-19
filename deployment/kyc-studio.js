@@ -31,21 +31,29 @@
      (x.display_name+' '+x.email+' '+x.id).toLowerCase().includes(term));
    E('kyc-queue-count').textContent=filtered.length+' contas';
    target.innerHTML=filtered.map(a=>
-     '<button class="kyc-queue-row '+(a.id===selected?'selected':'')+'" type="button" data-kyc-account="'+esc(a.id)+'">'+
+     '<button class="kyc-queue-row '+(a.id===selected?'selected':'')+'" type="button" data-kyc-account="'+esc(a.id)+'" aria-expanded="'+(a.id===selected?'true':'false')+'" aria-controls="kyc-dossier" aria-label="'+(a.id===selected?'Fechar dossiê de ':'Abrir dossiê de ')+esc(a.display_name)+'">'+
      '<span class="kyc-queue-avatar">'+esc((a.display_name||'?')[0]).toUpperCase()+'</span>'+
      '<span class="kyc-queue-info"><strong>'+esc(a.display_name)+'</strong><small>'+esc(a.email)+'</small>'+
      '<em class="kyc-status '+esc(a.status)+'">'+esc(statuses[a.status]||a.status)+'</em>'+meta(a)+'</span>'+
      '<span class="kyc-queue-next" aria-hidden="true">›</span></button>'
    ).join('')||'<div class="kyc-empty">Nenhum cadastro encontrado neste filtro.</div>';
  }
+ function closeDossier(){
+   const target=E('kyc-dossier');
+   if(target){target.hidden=true;target.replaceChildren();}
+   E('kyc-studio-root')?.querySelector('.kyc-workbench')?.classList.remove('kyc-has-selection');
+ }
  function detail(a){
    const target=E('kyc-dossier');if(!target)return;
+   target.hidden=false;
+   E('kyc-studio-root')?.querySelector('.kyc-workbench')?.classList.add('kyc-has-selection');
    const k=a.kyc||{},req=k.required||[],present=new Set(k.received||[]),docs=k.documents||[];
    const rep=k.legal_representative;
    const events=(k.history||[]).filter(x=>x.event_type!=='document_viewed');
    let html='<div class="kyc-dossier-header"><div><span class="kyc-strap">DOSSIE DE IDENTIDADE · ARGUS</span><h2>'+esc(a.display_name)+'</h2>'+
      '<p>'+esc(a.email)+' · '+esc(a.account_type==='PJ'?'Pessoa jurídica':'Pessoa física')+'</p></div>'+
-     '<span class="kyc-status '+esc(a.status)+'">'+esc(statuses[a.status]||a.status)+'</span></div>';
+     '<div class="kyc-dossier-actions"><span class="kyc-status '+esc(a.status)+'">'+esc(statuses[a.status]||a.status)+'</span>'+
+     '<button type="button" id="kyc-close-dossier" aria-label="Fechar dossiê">Fechar ×</button></div></div>';
    html+='<div class="kyc-dossier-data">'+[
      ['Nome / razão social',a.display_name],['Tipo de conta',a.account_type],
      ['CPF/CNPJ cadastrado','•••• '+a.document_last4],['E-mail cadastrado',a.email],
@@ -94,6 +102,7 @@
    }
    html+='<p class="kyc-privacy">Apenas membros autorizados podem visualizar anexos. Downloads são auditados. Nenhuma validação pública de CPF comprova identidade ou propriedade da conta.</p>';
    target.innerHTML=html;
+   E('kyc-close-dossier')?.addEventListener('click',()=>{selected='';closeDossier();drawQueue();E('kyc-search')?.focus();});
    E('kyc-reveal-identity')?.addEventListener('click',async()=>{
      const button=E('kyc-reveal-identity');button.disabled=true;
      try{
@@ -237,23 +246,30 @@
      queue=res.applications||[];
      drawStats();
      if(focus && queue.some(x=>x.id===focus))selected=focus;
-     else if(!queue.some(x=>x.id===selected))selected=queue[0]?.id||'';
+     else if(!queue.some(x=>x.id===selected))selected='';
      drawQueue();
      const a=queue.find(x=>x.id===selected);
      if(a)detail(a);
-     else if(E('kyc-dossier'))E('kyc-dossier').innerHTML='<div class="kyc-empty">Nenhum cadastro enviado ainda.</div>';
+     else closeDossier();
    }catch(e){if(target)target.textContent=e.message;toast(e.message,true)}
    finally{loading=false}
  }
  function init(){
    nav();
    E('kyc-refresh')?.addEventListener('click',()=>loadQueue(selected));
-   E('kyc-search')?.addEventListener('input',drawQueue);
-   E('kyc-filter')?.addEventListener('change',drawQueue);
+   const clearForFilter=()=>{selected='';closeDossier();drawQueue();};
+   E('kyc-search')?.addEventListener('input',clearForFilter);
+   E('kyc-filter')?.addEventListener('change',clearForFilter);
    E('kyc-queue')?.addEventListener('click',ev=>{
      const button=ev.target.closest('button[data-kyc-account]');if(!button)return;
-     selected=button.dataset.kycAccount;
-     drawQueue();const a=queue.find(x=>x.id===selected);if(a)detail(a);
+     const id=button.dataset.kycAccount;
+     if(selected===id){selected='';closeDossier();drawQueue();return;}
+     const a=queue.find(x=>x.id===id);if(!a)return;
+     selected=id;
+     drawQueue();detail(a);
+     if(window.matchMedia('(max-width:950px)').matches){
+       requestAnimationFrame(()=>E('kyc-dossier')?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'}));
+     }
    });
  }
  // Link all legacy review entry points to the same audited KYC dossier.

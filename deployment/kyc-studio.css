@@ -123,3 +123,43 @@
 .kyc-preview-error{border:1px solid #b9776b;border-radius:9px;padding:11px;background:#492b2c;color:#ffe1da;font-size:13px}
 .kyc-viewer-card #kyc-viewer-file{display:inline-flex;align-items:center;min-height:42px;padding:8px 12px;background:#2c2728;border:1px solid #c4a06d;border-radius:10px;color:#f2d5aa;text-decoration:none}
 @media(max-width:500px){.kyc-viewer-card{padding:12px;max-height:94dvh}.kyc-preview-stage img{max-height:60dvh}.kyc-pdf-controls{justify-content:space-between}.kyc-pdf-controls button{flex:1 1 120px}}
+
+
+/* Reviewers open an identity dossier only by choosing the seller's queue card.
+   The list remains the only focus when nothing is selected (desktop + iOS). */
+#page-kyc-studio .kyc-dossier-panel[hidden]{display:none!important}
+#page-kyc-studio .kyc-workbench:not(.kyc-has-selection){
+  grid-template-columns:minmax(0,1fr)!important;
+}
+#page-kyc-studio .kyc-workbench:not(.kyc-has-selection) .kyc-queue-panel{
+  width:100%;max-width:890px;
+}
+#page-kyc-studio .kyc-queue-row:focus-visible{
+  outline:2px solid #e8bc80;outline-offset:-3px;
+}
+#page-kyc-studio .kyc-queue-row[aria-expanded="true"] .kyc-queue-next{
+  color:#ffe2af;
+}
+#page-kyc-studio .kyc-dossier-panel{
+  scroll-margin-top:24px;
+}
+#page-kyc-studio .kyc-dossier-actions{
+  display:flex;align-items:center;gap:10px;justify-content:flex-end;flex-wrap:wrap;
+}
+#page-kyc-studio #kyc-close-dossier{
+  border:1px solid #947448;color:#f3d39b;background:#302c28;
+  border-radius:9px;padding:9px 12px;min-height:40px;cursor:pointer;
+  font-size:12px;font-weight:700;
+}
+#page-kyc-studio #kyc-close-dossier:focus-visible{
+  outline:2px solid #f0c990;outline-offset:2px;
+}
+@media(max-width:950px){
+  #page-kyc-studio .kyc-workbench{grid-template-columns:minmax(0,1fr)!important}
+  #page-kyc-studio .kyc-queue-panel{position:static;max-height:440px}
+  #page-kyc-studio .kyc-dossier-panel{scroll-margin-top:14px}
+}
+@media(max-width:500px){
+  #page-kyc-studio .kyc-dossier-actions{width:100%;justify-content:space-between}
+  #page-kyc-studio .kyc-queue-row{min-height:78px;align-items:center}
+}
