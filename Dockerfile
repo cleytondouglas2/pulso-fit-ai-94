@@ -632,3 +632,6 @@ CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${
 
 # Original ARGUS logo uploaded by owner; serve unchanged for password reset emails.
 COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/static/assets/argus-logo-email-original.png
+
+# Reseller admin-parity presentation refresh; preserve server-side financial permissions.
+RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v=layout-20261120-1#g; s#reseller-dashboard.js?v=admin-v1-20261119#reseller-dashboard.js?v=layout-20261120-1#g' /var/www/html/public/static/client.html
