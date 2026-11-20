@@ -27,24 +27,24 @@ function shell(){
  '<img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="170" height="56">',
  '<span>PAINEL DO REVENDEDOR</span></div>',
  '<nav class="argus-reseller-nav side-menu" aria-label="Áreas da conta">',
- '<button type="button" data-reseller-view="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Visão geral</button>',
- '<button type="button" data-reseller-view="registration"><span class="nav-glyph" aria-hidden="true">◈</span>Cadastro e documentos</button>',
- '<button type="button" data-reseller-view="charges"><span class="nav-glyph" aria-hidden="true">▣</span>Gerar Pix</button>',
- '<button type="button" data-reseller-view="wallet"><span class="nav-glyph" aria-hidden="true">◉</span>Saldo e saques</button>',
- '<button type="button" data-reseller-view="integrations"><span class="nav-glyph" aria-hidden="true">⌘</span>Chaves API</button>',
- '<button type="button" data-reseller-view="history"><span class="nav-glyph" aria-hidden="true">◷</span>Histórico</button>',
+ '<button type="button" class="menu-item" data-reseller-view="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Visão geral</button>',
+ '<button type="button" class="menu-item" data-reseller-view="registration"><span class="nav-glyph" aria-hidden="true">◈</span>Cadastro e documentos</button>',
+ '<button type="button" class="menu-item" data-reseller-view="charges"><span class="nav-glyph" aria-hidden="true">▣</span>Gerar Pix</button>',
+ '<button type="button" class="menu-item" data-reseller-view="wallet"><span class="nav-glyph" aria-hidden="true">◉</span>Saldo e saques</button>',
+ '<button type="button" class="menu-item" data-reseller-view="integrations"><span class="nav-glyph" aria-hidden="true">⌘</span>Chaves API</button>',
+ '<button type="button" class="menu-item" data-reseller-view="history"><span class="nav-glyph" aria-hidden="true">◷</span>Histórico</button>',
  '</nav>',
  '<div class="argus-reseller-side-bottom"><a href="/" rel="noopener">Conhecer o ARGUS Pay</a>',
  '<a href="/documentacao-api">Documentação API</a><a href="/instalar">Instalar no celular</a>',
  '<small>Conta do revendedor · acesso individual</small></div></aside>',
  '<div class="argus-reseller-drawer-backdrop" id="argus-reseller-backdrop" hidden></div>',
- '<div class="argus-reseller-main"><header class="argus-reseller-toolbar topbar">',
+ '<div class="argus-reseller-main main"><header class="argus-reseller-toolbar topbar">',
  '<button type="button" id="argus-reseller-menu-button" aria-controls="argus-reseller-sidebar" aria-expanded="false" aria-label="Abrir menu do revendedor">☰</button>',
  '<div class="argus-reseller-toolbar-title"><small>ARGUS PAYMENTS / REVENDEDOR</small>',
  '<strong id="argus-reseller-page-title">Visão geral</strong></div>',
  '<div class="argus-reseller-toolbar-actions" id="argus-reseller-toolbar-actions"></div>',
  '</header>',
- '<div class="argus-reseller-content admin-content">',
+ '<div class="argus-reseller-content admin-content content">',
  '<section class="argus-reseller-page page" id="argus-reseller-page-overview" data-reseller-page="overview">',
  '<div class="argus-reseller-page-intro section-top"><span>RESUMO DA CONTA</span><h2>Seu negócio, em um só lugar.</h2>',
  '<p>Acompanhe sua situação cadastral, o saldo e os próximos passos.</p></div>',
@@ -52,10 +52,10 @@ function shell(){
  '<div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances"></div>',
  '<div class="argus-reseller-shortcuts"><h3>Acesso rápido</h3>',
  '<div class="argus-reseller-shortcut-grid">',
- '<button type="button" data-reseller-view="registration"><strong>◈ Cadastro e documentos</strong><small>Identidade e análise KYC</small></button>',
- '<button type="button" data-reseller-view="charges"><strong>▣ Gerar Pix</strong><small>Cobranças e QR Codes</small></button>',
- '<button type="button" data-reseller-view="wallet"><strong>◉ Saldo e saques</strong><small>Sua carteira individual</small></button>',
- '<button type="button" data-reseller-view="integrations"><strong>⌘ Chaves API</strong><small>Integração com sites e sistemas</small></button>',
+ '<button type="button" class="menu-item" data-reseller-view="registration"><strong>◈ Cadastro e documentos</strong><small>Identidade e análise KYC</small></button>',
+ '<button type="button" class="menu-item" data-reseller-view="charges"><strong>▣ Gerar Pix</strong><small>Cobranças e QR Codes</small></button>',
+ '<button type="button" class="menu-item" data-reseller-view="wallet"><strong>◉ Saldo e saques</strong><small>Sua carteira individual</small></button>',
+ '<button type="button" class="menu-item" data-reseller-view="integrations"><strong>⌘ Chaves API</strong><small>Integração com sites e sistemas</small></button>',
  '</div></div></section>',
  '<section class="argus-reseller-page" id="argus-reseller-page-registration" data-reseller-page="registration" hidden>',
  '<div class="argus-reseller-page-intro"><span>IDENTIDADE</span><h2>Cadastro e documentos</h2>',
@@ -78,7 +78,8 @@ function shell(){
  dash.insertBefore(wrapper,dash.firstChild);
  const top=dash.querySelector('.dash-top');
  const original=dash.querySelector('.grid');
- move(top,E('argus-reseller-overview-top'));
+ // The legacy customer greeting is an account detail, not the overview shell.
+ move(top,E('argus-reseller-page-registration'));
  move(original,E('argus-reseller-page-registration'));
  move(E('api-panel'),E('argus-reseller-page-integrations'));
  // Keep the existing logout button and its original click handler.
