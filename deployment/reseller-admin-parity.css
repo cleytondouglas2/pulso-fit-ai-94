@@ -337,3 +337,8 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
  #argus-reseller-workspace .seller-panel h3{font-size:19px!important}
  #argus-reseller-workspace .seller-panel form{max-width:100%}
 }
+
+/* Prevent the old customer-card layout from enclosing the merchant wallet. */
+#argus-reseller-workspace .argus-reseller-merchant-parking{display:none!important}
+#argus-reseller-workspace .argus-reseller-overview-top>.seller-head{margin:0 0 16px!important}
+#argus-reseller-workspace .argus-reseller-overview-top>.dash-top{margin:0 0 16px!important}
