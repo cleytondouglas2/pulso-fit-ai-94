@@ -635,3 +635,6 @@ COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/st
 
 # Reseller admin-parity presentation refresh; preserve server-side financial permissions.
 RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v=layout-20261120-1#g; s#reseller-dashboard.js?v=admin-v1-20261119#reseller-dashboard.js?v=layout-20261120-1#g' /var/www/html/public/static/client.html
+
+# Refresh reseller UI after all build-time contract tests; both configured hostnames use this static asset.
+RUN sed -i 's#reseller-admin-parity.css?v=layout-20261120-1#reseller-admin-parity.css?v=recording-20261120-2#g; s#reseller-dashboard.js?v=layout-20261120-1#reseller-dashboard.js?v=recording-20261120-2#g' /var/www/html/public/static/client.html
