@@ -49,7 +49,12 @@ async function loadKeys(){
   $('#create-key').disabled=!available;
   $('#api-gate').hidden=false;
   $('#api-gate').textContent=result.reason||(available?'Você pode gerar suas chaves agora, sem pedir autorização ao administrador.':'Aguardando requisitos de segurança para emitir chaves.');
-  $('#credentials').innerHTML=(result.keys||[]).length?result.keys.map(k=>'<div class="key-row"><span><b>'+esc(k.public_key)+'</b><small> · '+esc(k.created_at)+'</small> '+(k.revoked_at?'(revogada)':(Number(k.allow_withdrawal)===1?' · Saques via API autorizados':' · Somente cobranças e consultas'))+'</span>'+(k.revoked_at?'':'<button type="button" class="outline" data-revoke="'+esc(k.id)+'">Revogar</button>')+'</div>').join(''):'<p class="muted">Nenhuma chave criada. Quando sua conta estiver aprovada, você poderá gerar as suas diretamente aqui.</p>';
+  $('#credentials').innerHTML=(result.keys||[]).length?result.keys.map(k=>{
+   const permission=k.revoked_at?'Revogada':Number(k.allow_withdrawal)===1?'Cobranças, consultas e saques':'Cobranças e consultas';
+   return '<div class="key-row"><div class="res-api-key"><code>'+esc(k.public_key)+'</code>'+
+    '<small>'+permission+' · '+esc(k.created_at)+'</small></div>'+
+    (k.revoked_at?'':'<button type="button" class="outline" data-revoke="'+esc(k.id)+'">Revogar</button>')+'</div>';
+  }).join(''):'<p class="muted">Nenhuma chave criada.</p>';
   document.getElementById('seller-key-create')?.toggleAttribute('disabled',!available);
  }catch(e){$('#create-key').disabled=true;$('#api-gate').hidden=false;$('#api-gate').textContent='Não foi possível verificar sua autorização: '+e.message;notice(e.message,true)}
 }

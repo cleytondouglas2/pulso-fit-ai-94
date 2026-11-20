@@ -7,14 +7,14 @@ const E=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let loading=false;
 function mount(){
- const dash=E('dashboard'),target=E('argus-reseller-page-integrations')||E('api-panel');
+ const dash=E('dashboard'),target=E('res-integration-grid')||E('api-panel');
  if(!dash||dash.hidden||!target||E('argus-webhook-panel'))return;
  const wrap=document.createElement('section');wrap.id='argus-webhook-panel';wrap.className='argus-webhook-panel';
- wrap.innerHTML='<div class="argus-webhook-head"><div><small>API · EVENTOS ASSINADOS</small>'+
- '<h3>Webhooks da minha conta</h3><p>Seu site recebe avisos de Pix confirmado, devolução e movimentações de saque. Somente eventos já registrados no livro-razão do ARGUS são notificados.</p></div>'+
- '<button type="button" id="argus-webhook-refresh">Atualizar</button></div>'+
+ wrap.innerHTML='<header class="argus-webhook-head"><div>'+
+ '<h3>Webhooks</h3><p>Envie avisos de Pix confirmado, devoluções e saques ao seu sistema.</p></div>'+
+ '<button type="button" id="argus-webhook-refresh">Atualizar</button></header>'+
  '<p class="argus-webhook-state" id="argus-webhook-status" role="status" aria-live="polite">Consultando suas integrações…</p>'+
- '<form id="argus-webhook-create" autocomplete="off"><label>URL pública HTTPS de recebimento'+
+ '<form id="argus-webhook-create" autocomplete="off"><label>URL HTTPS do webhook'+
  '<input type="url" name="url" required placeholder="https://seusite.com/api/argus-webhook" maxlength="500"></label>'+
  '<button type="submit">Adicionar webhook</button></form>'+
  '<section class="argus-webhook-secret" id="argus-webhook-secret" hidden>'+
@@ -22,7 +22,7 @@ function mount(){
  '<input id="argus-webhook-once" readonly autocomplete="off">'+
  '<button type="button" id="argus-webhook-copy">Copiar segredo</button></section>'+
  '<h4>Destinos configurados</h4><div id="argus-webhook-endpoints"></div>'+
- '<h4>Últimas entregas</h4><div id="argus-webhook-deliveries"></div>'+
+ '<details class="res-webhook-deliveries"><summary>Últimas entregas</summary><div id="argus-webhook-deliveries"></div></details>'+
  '<p class="argus-webhook-help">Verifique a assinatura HMAC no servidor que recebe o evento. Rejeite eventos duplicados pelo ID. Nunca libere uma venda apenas por receber um webhook: confirme também o status pela API.</p>'+
  '<a href="/documentacao-api#argus-webhooks-reference">Documentação dos webhooks</a>';
  target.append(wrap);

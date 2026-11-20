@@ -133,10 +133,10 @@ body.argus-reseller-ready .argus-reseller-sidebar{
  color:#f3dec0!important;letter-spacing:-.025em;
 }
 #argus-reseller-workspace .argus-reseller-page:not([hidden]){
- animation:argus-page-change .28s cubic-bezier(.2,.75,.2,1) both;
+ animation:argus-page-change .2s ease-out both;
 }
 @keyframes argus-page-change{
- from{opacity:.48;transform:translateY(9px)}
+ from{opacity:.84;transform:translateY(4px)}
  to{opacity:1;transform:translateY(0)}
 }
 #argus-reseller-workspace #argus-reseller-nav-progress{
@@ -292,7 +292,7 @@ body.argus-reseller-ready .argus-reseller-sidebar{
  }
 }
 /* Admin-equivalent reseller layout: single content grid, consistent cards and spacing. */
-body.argus-reseller-ready{overflow-x:hidden!important}
+body.argus-reseller-ready{overflow-x:clip!important}
 body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
 #argus-reseller-workspace .argus-reseller-content{max-width:1440px;margin-inline:auto}
 #argus-reseller-workspace .argus-reseller-page{width:100%;min-width:0}
@@ -300,7 +300,7 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
 #argus-reseller-workspace .argus-reseller-page-intro h2{margin:5px 0 7px}
 #argus-reseller-workspace .argus-reseller-page-intro p{max-width:72ch}
 #argus-reseller-workspace :where(.seller-panel,.panel,.kyc-customer-form){width:100%;max-width:none!important;margin:0 0 18px!important}
-#argus-reseller-workspace :where(.seller-panel,.panel) :where(input,textarea,select){width:100%;box-sizing:border-box}
+#argus-reseller-workspace :where(.seller-panel,.panel) :where(input:not([type=checkbox],[type=radio]),textarea,select){width:100%;box-sizing:border-box}
 #argus-reseller-workspace :where(.seller-panel,.panel) :where(button,input,select,textarea){font-family:inherit}
 #argus-reseller-workspace .seller-columns{display:contents!important}
 #argus-reseller-workspace #argus-reseller-page-wallet .seller-panel,
@@ -576,4 +576,132 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
  .res-overview-heading p{font-size:13px}
  #argus-reseller-workspace .res-primary{font-size:13px}
  #argus-reseller-workspace .argus-reseller-toolbar-actions{gap:5px}
+}
+
+/* Common dimensions for the authenticated reseller screens. */
+#argus-reseller-workspace{
+ --res-card-gap:clamp(12px,1.6vw,20px);
+ --res-card-inset:clamp(15px,2vw,23px);
+ --res-radius:14px;
+}
+body.argus-reseller-ready #argus-reseller-main{padding:0!important}
+#argus-reseller-workspace .argus-reseller-page{scroll-margin-top:76px}
+body.argus-reseller-ready #an-box{
+ width:min(415px,calc(100vw - 24px));max-height:calc(100dvh - 92px - env(safe-area-inset-bottom));
+}
+body.argus-reseller-ready #an-close{min-width:44px;min-height:44px}
+#seller-pix-dialog[open]{animation:argus-page-change .2s ease-out both}
+@media(prefers-reduced-motion:reduce){#seller-pix-dialog[open]{animation:none}}
+
+#argus-reseller-workspace .argus-reseller-page-intro h2{line-height:1.15}
+#argus-reseller-workspace .argus-reseller-page-intro p{max-width:58ch}
+#argus-reseller-workspace :is(.res-overview-grid,.res-detail-grid,.res-operations,.res-integration-grid){
+ gap:var(--res-card-gap);
+}
+#argus-reseller-workspace :is(.res-detail-grid,.res-integration-grid)>*{min-width:0}
+#argus-reseller-workspace :is(.res-card,.panel,.seller-panel,.argus-webhook-panel,.argus-seller-csv){
+ border-radius:var(--res-radius)!important;
+}
+#argus-reseller-workspace :is(.res-card,.panel,.seller-panel,.argus-webhook-panel,.argus-seller-csv) h3{
+ font-size:clamp(17px,2vw,21px);line-height:1.25;letter-spacing:-.02em;
+}
+#argus-reseller-workspace :is(.panel-header,.argus-webhook-head){
+ display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;
+}
+#argus-reseller-workspace :is(.panel-header,.argus-webhook-head)>div{min-width:0;flex:1 1 200px}
+#argus-reseller-workspace :is(.panel-header,.argus-webhook-head) h3{margin:0 0 6px;color:var(--res-text)}
+#argus-reseller-workspace :is(.panel-header,.argus-webhook-head) p{margin:0;font-size:14px;line-height:1.5}
+#argus-reseller-workspace :is(.panel,.seller-panel,.argus-webhook-panel,.argus-seller-csv) :is(button,.outline){
+ min-height:44px;max-width:100%;
+}
+#argus-reseller-workspace :is(.res-api-permission,.seller-checkbox) input[type=checkbox]{
+ appearance:auto;inline-size:22px!important;block-size:22px!important;
+ min-inline-size:22px!important;min-block-size:22px!important;
+ max-inline-size:22px!important;max-block-size:22px!important;
+ flex:none!important;margin:2px 0 0!important;padding:0!important;accent-color:#e7bb7e;
+}
+#argus-reseller-workspace :is(.panel,.seller-panel,.argus-webhook-panel,.argus-seller-csv)
+ :is(input:not([type=checkbox],[type=radio],[type=hidden]),textarea,select){
+ min-inline-size:0;max-inline-size:100%;font-size:16px;
+}
+#argus-reseller-workspace .res-detail-grid .seller-panel{margin-block:0!important}
+#argus-reseller-workspace .seller-quote{margin-block:8px 14px}
+#argus-reseller-workspace .res-charge-receipt p:last-child{margin-bottom:0}
+#argus-reseller-workspace .res-charge-actions{justify-content:flex-end}
+#argus-reseller-workspace .res-charge-meta code{display:block}
+#argus-reseller-workspace .argus-seller-csv{
+ display:grid;gap:14px;max-width:900px;margin:0;padding:var(--res-card-inset);
+ background:var(--res-surface);border-color:var(--res-line);
+}
+#argus-reseller-workspace .argus-seller-csv form{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:12px;
+}
+#argus-reseller-workspace .argus-seller-csv form label{min-width:0}
+#argus-reseller-workspace #res-profile-account .dash-top,
+#argus-reseller-workspace #res-profile-account .grid{margin:0 0 var(--res-card-gap)!important}
+#argus-reseller-workspace #argus-reseller-page-registration #argus-reseller-approval{
+ margin:0 0 var(--res-card-gap)!important;
+}
+#argus-reseller-workspace .kyc-customer-stages{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+#argus-reseller-workspace #argus-portal-ai > .panel-header:has(+ .ai-shell){margin-bottom:14px}
+
+.res-integration-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#argus-reseller-workspace #res-integration-grid :is(#api-panel,.argus-webhook-panel){
+ display:grid;gap:14px;margin:0!important;padding:var(--res-card-inset)!important;
+ border:1px solid var(--res-line)!important;background:var(--res-surface)!important;
+}
+#res-integration-grid :is(#api-gate,.argus-webhook-state){margin:0;font-size:13px;line-height:1.5}
+#res-integration-grid :is(.panel-header,.argus-webhook-head){margin:0}
+.res-api-actions{display:grid;justify-items:start;gap:12px;min-width:0}
+#argus-reseller-workspace .res-api-permission{
+ display:grid;grid-template-columns:22px minmax(0,1fr);align-items:start;gap:11px;
+ inline-size:100%;padding:12px;margin:0;background:#13171e;
+ border:1px solid var(--res-line);border-radius:10px;cursor:pointer;
+}
+.res-api-permission > span{display:grid;min-width:0;gap:4px;line-height:1.45;overflow-wrap:normal}
+.res-api-permission strong{font-size:14px;color:var(--res-text)}
+.res-api-permission small{font-size:13px;color:var(--res-muted)}
+#res-integration-grid #secret-once{margin:0;padding:14px}
+#res-integration-grid #secret-once label{display:grid;min-width:0;gap:6px}
+#res-integration-grid #secret-once input{width:100%;font-family:ui-monospace,monospace}
+#res-integration-grid h4{margin:0 0 9px;color:var(--res-text);font-size:15px}
+#res-integration-grid .res-api-list{padding-top:14px;border-top:1px solid var(--res-line)}
+#res-integration-grid :is(.key-row,.argus-webhook-line){
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+ gap:12px;border-color:var(--res-line);
+}
+#res-integration-grid .res-api-key{display:grid;gap:4px;min-width:0}
+#res-integration-grid .res-api-key code{color:var(--res-text);overflow-wrap:anywhere;font-size:13px}
+#res-integration-grid .res-api-key small{color:var(--res-muted);font-size:12px}
+#res-integration-grid :is(#credentials,.argus-webhook-panel) p{margin:0}
+#res-integration-grid #argus-webhook-create{
+ grid-template-columns:minmax(0,1fr);gap:9px;margin:0;
+}
+#res-integration-grid #argus-webhook-create button{width:auto;justify-self:start}
+#res-integration-grid .res-webhook-deliveries{border-top:1px solid var(--res-line)}
+#res-integration-grid .res-webhook-deliveries summary{
+ padding:12px 0;cursor:pointer;font-weight:700;font-size:14px;color:var(--res-text)
+}
+#res-integration-grid .argus-webhook-help{font-size:13px}
+#res-integration-grid #argus-webhook-secret{margin:0}
+#res-integration-grid #argus-webhook-secret input{flex:1 1 100%}
+@media(max-width:1140px){
+ #argus-reseller-workspace .res-integration-grid{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:620px){
+ body.argus-reseller-ready #notice{bottom:calc(68px + env(safe-area-inset-bottom));width:calc(100% - 28px);line-height:1.45}
+ #argus-reseller-workspace .argus-reseller-toolbar-title strong{white-space:nowrap;overflow:hidden}
+ #argus-reseller-workspace .res-charge-row{display:grid;grid-template-columns:minmax(0,1fr)}
+ #argus-reseller-workspace :is(.res-charge-actions,.res-charge-meta){justify-content:flex-start}
+ #argus-reseller-workspace .res-charge-meta code{flex-basis:100%}
+ #argus-reseller-workspace .argus-seller-csv form{grid-template-columns:repeat(2,minmax(0,1fr))}
+ #argus-reseller-workspace .argus-seller-csv form button{grid-column:1/-1}
+ #res-integration-grid .res-api-actions button{width:100%}
+ #res-integration-grid :is(.panel-header,.argus-webhook-head)>div{flex-basis:100%}
+}
+@media(max-width:375px){
+ #res-integration-grid :is(.key-row,.argus-webhook-line){grid-template-columns:minmax(0,1fr)}
+ #res-integration-grid :is(.key-row,.argus-webhook-line) button{justify-self:start;width:auto}
 }

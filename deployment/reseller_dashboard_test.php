@@ -14,6 +14,10 @@ if(substr_count($html,'/static/reseller-dashboard.css?v=admin-v1-20261119')!==1|
    substr_count($html,'<section id="dashboard" hidden>')!==1||
    substr_count($html,'<div class="dash-top"><div>')!==1)
     throw new RuntimeException('Customer dashboard assets/auth visibility not installed correctly');
+if(!str_contains($html,'class="res-api-permission"')||
+   !str_contains($html,'id="allow-api-withdraw" type="checkbox"')||
+   substr_count($html,'id="create-key"')!==1)
+    throw new RuntimeException('Reseller integrations must keep a single key form and wrap the payout permission');
 if(substr_count($css,'{')!==substr_count($css,'}'))
     throw new RuntimeException('Reseller dashboard CSS unmatched braces');
 foreach([
@@ -44,7 +48,8 @@ foreach([
  "move(E('kyc-client-root')",
  "move(E('api-panel')",
  "merchant.querySelectorAll('.seller-panel')",
- "section.querySelector('#seller-key-create')",
+ "res-integration-grid",
+ "res-profile-verification",
  "section.querySelector('#seller-withdraw-form')",
  "section.querySelector('#seller-deposit-form')",
  "section.querySelector('#seller-sales')",

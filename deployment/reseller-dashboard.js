@@ -74,8 +74,10 @@ function shell(){
  page('wallet','Confira o saldo, acompanhe valores reservados e consulte suas solicitações de saque.',
   '<div id="argus-reseller-wallet-balances"></div><div class="res-detail-grid"><div id="res-payout-form"></div><div id="res-payout-history"></div></div>'),
  page('statement','Escolha um intervalo para baixar as movimentações e taxas da sua conta.'),
- page('integrations','Gerencie as credenciais e os webhooks usados pelo seu site, aplicativo ou bot.'),
- page('registration','Acompanhe a análise, envie documentos e revise os dados da sua conta.'),
+ page('integrations','Configure o acesso à API e os avisos enviados ao seu sistema.',
+  '<div class="res-integration-grid" id="res-integration-grid"></div>'),
+ page('registration','Acompanhe a análise e atualize os dados da sua conta.',
+  '<div class="res-detail-grid"><div id="res-profile-account"></div><div id="res-profile-verification"></div></div>'),
  page('assistant','Consulte as análises e os alertas da sua operação.'),
  '</div><nav class="res-mobile-nav" aria-label="Atalhos principais">'+nav('overview')+nav('charges')+nav('history')+nav('wallet')+'</nav></div>'
  ].join('');
@@ -83,9 +85,9 @@ function shell(){
  const top=dash.querySelector('.dash-top');
  const original=dash.querySelector('.grid');
  // The legacy customer greeting is an account detail, not the overview shell.
- move(top,E('argus-reseller-page-registration'));
- move(original,E('argus-reseller-page-registration'));
- move(E('api-panel'),E('argus-reseller-page-integrations'));
+ move(top,E('res-profile-account'));
+ move(original,E('res-profile-account'));
+ move(E('api-panel'),E('res-integration-grid'));
  move(E('logout'),E('argus-reseller-toolbar-actions'));
  E('res-refresh').addEventListener('click',()=>E('seller-refresh')?.click());
  E('argus-reseller-notices').addEventListener('click',()=>E('an-bell')?.click());
@@ -218,18 +220,18 @@ function arrange(){
  // Existing session verification remains the sole controller of auth state.
  document.body.classList.toggle('argus-reseller-ready',!dashboard.hidden);
  if(dashboard.hidden)openDrawer(false);
- move(E('kyc-client-root'),E('argus-reseller-page-registration'));
- // Registration and compliance live together, never inside the financial overview.
- move(E('argus-reseller-approval'),E('argus-reseller-page-registration'));
- const registration=E('argus-reseller-page-registration');
- move(E('portal-identity-prompt'),registration);
+ const verification=E('res-profile-verification');
+ move(E('argus-reseller-approval'),verification);
+ move(E('kyc-client-root'),verification);
+ move(E('portal-identity-prompt'),E('res-profile-account'));
  move(E('ar-seller-revenue'),E('res-overview-report'));
  move(E('argus-seller-csv'),E('argus-reseller-page-statement'));
  move(E('argus-portal-ai'),E('argus-reseller-page-assistant'));
  updateHeader();
- const grid=E('argus-reseller-page-registration').querySelector('.grid')||dashboard.querySelector('.grid');
- move(grid,E('argus-reseller-page-registration'));
- move(E('api-panel'),E('argus-reseller-page-integrations'));
+ const account=E('res-profile-account');
+ const grid=account.querySelector('.grid')||dashboard.querySelector('.grid');
+ move(grid,account);
+ move(E('api-panel'),E('res-integration-grid'));
  const merchant=E('argus-seller-root');
  if(!merchant)return;
  // The original merchant widget is injected inside the legacy greeting card.
@@ -241,9 +243,7 @@ function arrange(){
  move(E('seller-balances'),current==='wallet'?E('argus-reseller-wallet-balances'):E('argus-reseller-overview-balances'));
  // All original element references and event listeners remain intact.
  for(const section of merchant.querySelectorAll('.seller-panel')){
-  if(section.querySelector('#seller-key-create'))
-   move(section,E('argus-reseller-page-integrations'));
-  else if(section.querySelector('#seller-withdraw-form'))
+  if(section.querySelector('#seller-withdraw-form'))
    move(section,E('res-payout-form'));
   else if(section.querySelector('#seller-deposit-form'))
    move(section,E('res-charge-form'));
