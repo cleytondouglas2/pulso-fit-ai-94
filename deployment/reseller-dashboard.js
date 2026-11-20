@@ -27,10 +27,12 @@ function shell(){
  '<img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="170" height="56">',
  '<span>PAINEL DO REVENDEDOR</span></div>',
  '<nav class="argus-reseller-nav side-menu" aria-label="Áreas da conta">',
+ '<span class="argus-reseller-nav-caption">GESTÃO</span>',
  '<button type="button" class="menu-item" data-reseller-view="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Visão geral</button>',
  '<button type="button" class="menu-item" data-reseller-view="registration"><span class="nav-glyph" aria-hidden="true">◈</span>Cadastro e documentos</button>',
  '<button type="button" class="menu-item" data-reseller-view="charges"><span class="nav-glyph" aria-hidden="true">▣</span>Gerar Pix</button>',
  '<button type="button" class="menu-item" data-reseller-view="wallet"><span class="nav-glyph" aria-hidden="true">◉</span>Saldo e saques</button>',
+ '<span class="argus-reseller-nav-caption">FERRAMENTAS</span>',
  '<button type="button" class="menu-item" data-reseller-view="integrations"><span class="nav-glyph" aria-hidden="true">⌘</span>Chaves API</button>',
  '<button type="button" class="menu-item" data-reseller-view="history"><span class="nav-glyph" aria-hidden="true">◷</span>Histórico</button>',
  '</nav>',
@@ -48,9 +50,10 @@ function shell(){
  '<section class="argus-reseller-page page" id="argus-reseller-page-overview" data-reseller-page="overview">',
  '<div class="argus-reseller-page-intro section-top"><span>ARGUS PAY · REVENDEDOR</span><h2>Visão geral</h2>',
  '<p>Indicadores e movimentações da sua conta.</p></div>',
+ '<div class="argus-reseller-hero"><div><small>SEU CENTRO DE COMANDO</small><h3>Seu negócio em movimento.</h3><p>Receba, acompanhe e gerencie cada etapa em um só lugar.</p></div><button type="button" data-reseller-view="charges" class="argus-reseller-hero-action">+ Nova cobrança Pix</button></div>',
  '<div class="argus-reseller-overview-top" id="argus-reseller-overview-top"></div>',
  '<div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances"></div>',
- '<div class="argus-reseller-shortcuts"><h3>Acesso rápido</h3>',
+ '<div class="argus-reseller-shortcuts"><div class="argus-reseller-shortcuts-head"><h3>Acesso rápido</h3><span>Gerencie sem sair do painel</span></div>',
  '<div class="argus-reseller-shortcut-grid">',
  '<button type="button" class="menu-item" data-reseller-view="registration"><strong>◈ Cadastro e documentos</strong><small>Identidade e análise KYC</small></button>',
  '<button type="button" class="menu-item" data-reseller-view="charges"><strong>▣ Gerar Pix</strong><small>Cobranças e QR Codes</small></button>',
@@ -149,6 +152,7 @@ function select(id,options={}){
  });
  const title=E('argus-reseller-page-title');
  if(title)title.textContent=titles[id];
+ document.title=titles[id]+' · ARGUS Pay';
  openDrawer(false);
  if(options.scroll){
   const host=E('argus-reseller-workspace');
