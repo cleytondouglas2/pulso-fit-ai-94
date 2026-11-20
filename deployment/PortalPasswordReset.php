@@ -100,6 +100,34 @@ final class PortalPasswordReset {
                 "O link expira em 20 minutos e pode ser usado apenas uma vez.\n".
                 "Se não foi você, ignore esta mensagem.\n\nEquipe ARGUS Payments"
         ];
+        // Email-client-friendly branded layout: table structure, inline styles and
+        // a text wordmark so the ARGUS identity remains visible with images blocked.
+        $safeLink=htmlspecialchars($link,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+        $html='<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'.
+          '<body style="margin:0;padding:0;background:#0b0f1b;font-family:Arial,Helvetica,sans-serif;color:#e8e5df">'.
+          '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#0b0f1b;padding:36px 12px"><tr><td align="center">'.
+          '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#1b2030;border:1px solid #69543a;border-radius:18px">'.
+          '<tr><td align="center" style="padding:38px 24px 18px">'.
+          '<div style="font-size:37px;letter-spacing:5px;font-family:Georgia,serif;font-weight:bold;color:#e6c38b">ARGUS</div>'.
+          '<div style="font-size:11px;letter-spacing:6px;color:#c6a775;padding-top:3px">PAYMENTS</div>'.
+          '<div style="margin-top:24px;border-top:1px solid #4c4350"></div></td></tr>'.
+          '<tr><td style="padding:14px 34px 38px">'.
+          '<p style="color:#d9b981;font-size:11px;font-weight:bold;letter-spacing:2px;text-align:center">SEGURANÇA DA SUA CONTA</p>'.
+          '<h1 style="font-size:27px;line-height:1.3;color:#fff;text-align:center;margin:14px 0 20px">Redefinir sua senha</h1>'.
+          '<p style="font-size:15px;line-height:1.8;color:#d3d4dd">Recebemos uma solicitação para alterar a senha de acesso à sua conta de revendedor ARGUS PAY.</p>'.
+          '<p style="font-size:15px;line-height:1.8;color:#d3d4dd">Para continuar com segurança, clique no botão abaixo:</p>'.
+          '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:18px 0 24px">'.
+          '<a href="'.$safeLink.'" style="display:inline-block;background:#dfb978;color:#171b27;font-size:15px;font-weight:bold;text-decoration:none;padding:17px 30px;border-radius:9px">Redefinir minha senha</a>'.
+          '</td></tr></table>'.
+          '<p style="font-size:13px;line-height:1.7;color:#b9bdc9;text-align:center">Este link expira em <strong style="color:#f1d09c">20 minutos</strong> e só pode ser utilizado uma vez.</p>'.
+          '<div style="border-top:1px solid #454655;margin:25px 0 20px"></div>'.
+          '<p style="font-size:13px;line-height:1.7;color:#b9bdc9">Se o botão não funcionar, copie este endereço e cole no navegador:</p>'.
+          '<p style="font-size:12px;line-height:1.7;overflow-wrap:anywhere;word-break:break-all"><a href="'.$safeLink.'" style="color:#e4c28b">'.$safeLink.'</a></p>'.
+          '<p style="font-size:13px;line-height:1.7;color:#b9bdc9">Não solicitou esta alteração? Ignore este e-mail. Sua senha atual permanecerá válida.</p>'.
+          '</td></tr></table>'.
+          '<p style="max-width:540px;color:#9298a8;font-size:11px;line-height:1.7;text-align:center;padding:16px 18px">ARGUS PAYMENTS · Mensagem automática de segurança.<br>Não responda a este e-mail. Nunca compartilhe sua senha ou seu link de recuperação.</p>'.
+          '</td></tr></table></body></html>';
+        $body['html']=$html;
         $payload=json_encode($body,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
         if(function_exists('curl_init')){
             $curl=curl_init('https://api.resend.com/emails');
