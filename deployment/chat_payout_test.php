@@ -24,7 +24,7 @@ foreach([
     'No',
 ] as $needle){
     if($needle==='No')continue;
-    $assert(str_contains($js,$needle),'missing '+$needle);
+    $assert(str_contains($js,$needle),'missing '.$needle);
 }
 $assert(str_contains($js,'never blind-retry'),'must not retry uncertain withdrawals');
 $assert(str_contains($js,'bypass Groq'),'merchant PII must never be forwarded to Groq');
