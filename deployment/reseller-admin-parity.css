@@ -342,3 +342,14 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
 #argus-reseller-workspace .argus-reseller-merchant-parking{display:none!important}
 #argus-reseller-workspace .argus-reseller-overview-top>.seller-head{margin:0 0 16px!important}
 #argus-reseller-workspace .argus-reseller-overview-top>.dash-top{margin:0 0 16px!important}
+
+/* Shared administrative visual grammar: seller permissions remain server-side. */
+#argus-reseller-workspace .argus-reseller-main{min-width:0}
+#argus-reseller-workspace .argus-reseller-nav .menu-item{width:100%;display:flex;align-items:center;justify-content:flex-start;text-align:left}
+#argus-reseller-workspace .argus-reseller-overview-top:empty{display:none!important}
+#argus-reseller-workspace .argus-reseller-page-registration .dash-top{max-width:100%}
+#argus-reseller-workspace .argus-reseller-page-intro{padding:0 0 18px;border-bottom:1px solid rgba(203,168,119,.19)}
+#argus-reseller-workspace .argus-reseller-page-intro h2{font-size:clamp(24px,2.8vw,32px)}
+#argus-reseller-workspace .argus-reseller-shortcut-grid{align-items:stretch}
+#argus-reseller-workspace .argus-reseller-shortcut-grid .menu-item{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left}
+@media(max-width:620px){#argus-reseller-workspace .argus-reseller-page-intro{padding-bottom:14px}}
