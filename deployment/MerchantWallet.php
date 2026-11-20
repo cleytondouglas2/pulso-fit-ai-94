@@ -275,7 +275,7 @@ final class MerchantWallet {
             $db->run("UPDATE argus_seller_charges SET status='unknown',checked_at=?
                 WHERE id=? AND status='creating'",[self::now(),$id]);
             // Only log a sanitized category; never log credentials, payer data or PSP body.
-            $category=$e instanceof ApiError?'provider_or_credentials':($e instanceof \\RuntimeException?'provider_response':'unexpected');
+            $category=$e instanceof ApiError?'provider_or_credentials':($e instanceof \RuntimeException?'provider_response':'unexpected');
             error_log('ARGUS merchant Pix create uncertain: '.$category.' '.get_class($e));
         }
         return self::chargePublic($db->one('SELECT * FROM argus_seller_charges WHERE id=?',[$id]));
