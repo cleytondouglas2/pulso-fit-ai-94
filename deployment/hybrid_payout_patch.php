@@ -92,19 +92,15 @@ hybridReplace($root.'/src/FinancialControl.php',
     "status IN ('requested','processing','queued','pending','unknown')",
     "status IN ('requested','review','processing','queued','pending','unknown')",
     'duplicate prevention includes review');
-$anchor=<<<'OLD'
-        if($method==='GET'&&$path==='/api/admin/fees/operations'){
-OLD;
-$insert=<<<'NEW'
-        // Rejection releases held funds; apply the same Super Admin 2FA as execution.
-        if($method==='POST'&&preg_match('~^/api/admin/merchant-wallet/withdrawals/mww_[a-f0-9]{32}/reject$~D',$path)){
-            self::writeAllowed($actor,true);
-            $body=self::input();
-            self::verifyMfaCode($db,$actor,self::str($body,'otp',6,6));
-            MerchantWallet::admin($db,$method,$path,$actor,$body);
-        }
-NEW;
-hybridReplace($root.'/src/Admin.php',$anchor,$insert."\n".$anchor,'admin MFA on rejection');
+// The existing merchant-wallet router intercepts /reject first, so extend
+// its ORIGINAL MFA match rather than registering a later, bypassable route.
+hybridReplace($root.'/src/Admin.php',<<<'OLD'
+preg_match('~^/api/admin/merchant-wallet/withdrawals/mww_[a-f0-9]{32}/execute$~D',$path)
+OLD
+,<<<'NEW'
+preg_match('~^/api/admin/merchant-wallet/withdrawals/mww_[a-f0-9]{32}/(execute|reject)$~D',$path)
+NEW
+,'MFA on approval and rejection in the original dispatcher');
 hybridReplace($root.'/public/static/admin.html','</head>',
     '<link rel="stylesheet" href="/static/hybrid-payout.css?v=20261120-1"></head>',
     'review CSS');
