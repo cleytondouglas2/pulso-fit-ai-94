@@ -223,6 +223,12 @@ final class MerchantWallet {
         $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",[(string)($account['merchant_id']??'')]);
         if(!$merchant)self::fail('Conta financeira não autorizada a receber',403);
         $w=self::wallet($db,$account);
+        // Preflight before recording a charge: missing credentials cannot have reached PSP.
+        $pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
+        $sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
+        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$pk)||!preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$sk))
+            self::fail('Credenciais Pix da MisticPay não configuradas. Contate o administrador.',503);
+        if(!function_exists('curl_init'))self::fail('Conexão Pix indisponível',503);
         $data=self::payerDetails($db,$account,$data);
         $gross=$data['amount_cents']??null;
         if(!is_int($gross)||$gross<100||$gross>10000)self::fail('Valor Pix permitido: R$ 1 a R$ 100',422);
@@ -265,7 +271,9 @@ final class MerchantWallet {
         }catch(\Throwable $e){
             $db->run("UPDATE argus_seller_charges SET status='unknown',checked_at=?
                 WHERE id=? AND status='creating'",[self::now(),$id]);
-            error_log('ARGUS merchant Pix create uncertain: '.get_class($e));
+            // Only log a sanitized category; never log credentials, payer data or PSP body.
+            $category=$e instanceof ApiError?'provider_or_credentials':($e instanceof \\RuntimeException?'provider_response':'unexpected');
+            error_log('ARGUS merchant Pix create uncertain: '.$category.' '.get_class($e));
         }
         return self::chargePublic($db->one('SELECT * FROM argus_seller_charges WHERE id=?',[$id]));
     }
