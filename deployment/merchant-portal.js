@@ -24,7 +24,7 @@ function ensure(){
   '<button type="submit">Solicitar saque</button></form><h4>Meus saques</h4><div id="seller-withdrawals"></div></section></div>',
   '<section class="seller-panel"><h3>Gerar Pix / depósito</h3><p>Receba diretamente na sua carteira. A taxa de serviço de R$ 1,00 é aplicada uma única vez após o pagamento.</p>',
   '<form id="seller-deposit-form" autocomplete="off"><label>Valor da cobrança (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
-  '<label class="seller-checkbox"><input id="seller-self-payer" name="self_payer" type="checkbox"><span>Eu mesmo pagarei este Pix: usar meu nome e CPF/CNPJ já verificados no Argus.</span></label>',
+  '<label class="seller-checkbox"><input id="seller-self-payer" name="self_payer" type="checkbox" checked><span>Usar meus dados cadastrais verificados como pagador deste Pix.</span></label>',
   '<label>Nome completo do pagador<input name="payer_name" maxlength="120" autocomplete="off" required></label>',
   '<label>CPF/CNPJ do pagador<input name="payer_document" inputmode="numeric" maxlength="18" autocomplete="off" required></label>',
   '<label>Descrição da venda<input name="description" maxlength="120" value="Pagamento de produto ou serviço" required></label>',
@@ -39,6 +39,7 @@ function ensure(){
  E('seller-withdraw-form').elements.amount.oninput=quote;
  E('seller-deposit-form').onsubmit=deposit;
  E('seller-self-payer').onchange=togglePayerMode;
+ togglePayerMode();
  E('seller-sales').onclick=openSellerPix;
 }
 function togglePayerMode(){
@@ -47,6 +48,7 @@ function togglePayerMode(){
  for(const key of ['payer_name','payer_document']){
   const input=form.elements.namedItem(key);if(!input)continue;
   input.disabled=enabled;input.required=!enabled;
+  input.closest('label').hidden=enabled;
   if(enabled)input.value='';
  }
 }
