@@ -34,7 +34,8 @@ foreach(['#api-panel','seller-key-create','Minhas chaves de integração',
     if(!str_contains($merchant,$key)&&!str_contains($client,$key))
         throw new RuntimeException('Seller interface element missing '.$key);
 }
-foreach(['v=3','Minhas chaves de API','Gerar minhas chaves'] as $key)
+foreach(['id="api-panel"','id="allow-api-withdraw" type="checkbox"',
+    'id="create-key" type="button"','id="secret-once"','id="credentials"'] as $key)
     if(!str_contains($client,$key))
         throw new RuntimeException('Customer screen missing '.$key);
 if(!str_contains($script,"result.reason")||!str_contains($script,"result.can_issue"))
