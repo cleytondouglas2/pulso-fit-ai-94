@@ -25,6 +25,8 @@ jobs:
           test "$ARGUS_PAYOUTS_ENABLED" = "no"
           test "$ARGUS_HYBRID_PAYOUT_LIVE" = "no"
           test "$ARGUS_NOTIFICATIONS_WORKER_ENABLED" = "no"
+      - name: Check chat payout JavaScript syntax
+        run: node --check deployment/chat-payout.js
       - name: Compile Docker image and execute synthetic PHP tests
         run: |
           docker build --progress=plain --tag argus-hybrid-safe:test .
