@@ -1,0 +1,30 @@
+name: ARGUS Hybrid Payout Safety
+
+on:
+  pull_request:
+    branches:
+      - argus-payments-deploy
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-financial-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ARGUS_PAYOUTS_ENABLED: "no"
+      ARGUS_HYBRID_PAYOUT_LIVE: "no"
+      ARGUS_NOTIFICATIONS_WORKER_ENABLED: "no"
+    steps:
+      - name: Checkout isolated branch (no production secrets)
+        uses: actions/checkout@v4
+      - name: Verify payout flags are disabled
+        run: |
+          test "$ARGUS_PAYOUTS_ENABLED" = "no"
+          test "$ARGUS_HYBRID_PAYOUT_LIVE" = "no"
+          test "$ARGUS_NOTIFICATIONS_WORKER_ENABLED" = "no"
+      - name: Compile Docker image and execute synthetic PHP tests
+        run: |
+          docker build --progress=plain --tag argus-hybrid-safe:test .

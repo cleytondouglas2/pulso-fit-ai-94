@@ -646,3 +646,25 @@ RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v
  s#revenue-dashboard.js?v=20261119-1#revenue-dashboard.js?v=workspace-20261120-4#' /var/www/html/public/static/admin.html \
  && test "$(grep -o 'v=reseller-layout-20261120-1' /var/www/html/public/static/client.html | wc -l)" -eq 4 \
  && grep -Fq "merchant-portal.js?v=seller-pix-modal-20261120-1" /var/www/html/public/static/client.html
+
+
+# ARGUS HYBRID PAYOUTS — staged by default, no real PSP transfer during build.
+# Gate 1: existing ARGUS_PAYOUTS_ENABLED=yes (homologated custodial money path).
+# Gate 2: new ARGUS_HYBRID_PAYOUT_LIVE=yes (explicit rollout; default OFF).
+# Low-risk requests remain REVIEW until both gates are enabled. High-risk
+# requests require OTP-protected Super Admin approval. All tests synthetic.
+COPY deployment/HybridPayout.php /var/www/html/src/HybridPayout.php
+COPY deployment/hybrid-payout.js deployment/hybrid-payout.css /var/www/html/public/static/
+COPY deployment/hybrid_payout_patch.php /tmp/hybrid_payout_patch.php
+COPY deployment/hybrid_payout_test.php /var/www/html/tests/hybrid_payout_test.php
+RUN php -l /var/www/html/src/HybridPayout.php \
+ && php -l /tmp/hybrid_payout_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/hybrid_payout_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/FinancialControl.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/hybrid_payout_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/hybrid_payout_test.php \
+ && php /var/www/html/tests/ui_contract.php \
+ && apache2ctl configtest
