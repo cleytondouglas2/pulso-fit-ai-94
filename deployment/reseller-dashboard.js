@@ -62,17 +62,17 @@ function shell(){
  '<p>Consulte os dados da conta, a análise documental e o histórico de verificação.</p></div></section>',
  '<section class="argus-reseller-page" id="argus-reseller-page-charges" data-reseller-page="charges" hidden>',
  '<div class="argus-reseller-page-intro"><span>RECEBIMENTOS</span><h2>Gerar cobrança Pix</h2>',
- '<p>Crie uma cobrança quando a sua conta estiver habilitada para recebimentos.</p></div></section>',
+ '<p>Gere cobranças Pix e acompanhe a confirmação do pagamento.</p></div></section>',
  '<section class="argus-reseller-page" id="argus-reseller-page-wallet" data-reseller-page="wallet" hidden>',
  '<div class="argus-reseller-page-intro"><span>FINANCEIRO</span><h2>Saldo e saques</h2>',
  '<p>Gerencie os saques disponíveis e acompanhe as solicitações da sua carteira.</p></div>',
- '<p class="argus-reseller-wallet-note">Consulte o saldo atualizado na <button type="button" data-reseller-view="overview">Visão geral</button>.</p></section>',
+ '<div id="argus-reseller-wallet-balances"></div></section>',
  '<section class="argus-reseller-page" id="argus-reseller-page-integrations" data-reseller-page="integrations" hidden>',
  '<div class="argus-reseller-page-intro"><span>DESENVOLVEDORES</span><h2>Chaves e integrações</h2>',
  '<p>Gere e gerencie credenciais individuais para conectar seu site, sistema ou bot.</p></div></section>',
  '<section class="argus-reseller-page" id="argus-reseller-page-history" data-reseller-page="history" hidden>',
  '<div class="argus-reseller-page-intro"><span>MOVIMENTAÇÕES</span><h2>Histórico de cobranças</h2>',
- '<p>Consulte os Pix gerados e o QR Code das cobranças pendentes.</p></div></section>',
+ '<p>Consulte os Pix gerados, pagamentos e cobranças pendentes.</p></div></section>',
  '</div></div>'
  ].join('');
  dash.insertBefore(wrapper,dash.firstChild);
@@ -132,6 +132,8 @@ function fromHash(){
 function select(id,options={}){
  if(!initialized||!pages.includes(id))return;
  current=id;
+ const balances=E('seller-balances');
+ if(balances)move(balances,E(id==='wallet'?'argus-reseller-wallet-balances':'argus-reseller-overview-balances'));
  for(const page of pages){
   const section=E('argus-reseller-page-'+page);
   if(section)section.hidden=(page!==id);
@@ -159,15 +161,15 @@ function arrange(){
  // Existing session verification remains the sole controller of auth state.
  document.body.classList.toggle('argus-reseller-ready',!dashboard.hidden);
  move(E('kyc-client-root'),E('argus-reseller-page-registration'));
- const grid=dashboard.querySelector('.grid');
+ const grid=E('argus-reseller-page-registration').querySelector('.grid')||dashboard.querySelector('.grid');
  move(grid,E('argus-reseller-page-registration'));
  move(E('api-panel'),E('argus-reseller-page-integrations'));
  const merchant=E('argus-seller-root');
  if(!merchant)return;
  move(merchant.querySelector('.seller-head'),E('argus-reseller-overview-top'));
- move(merchant.querySelector('#seller-balances'),E('argus-reseller-overview-balances'));
+ move(E('seller-balances'),current==='wallet'?E('argus-reseller-wallet-balances'):E('argus-reseller-overview-balances'));
  // All original element references and event listeners remain intact.
- for(const section of [...merchant.querySelectorAll('.seller-panel')]){
+ for(const section of [...document.querySelectorAll('#argus-reseller-workspace .seller-panel'),...merchant.querySelectorAll('.seller-panel')]){
   if(section.querySelector('#seller-key-create'))
    move(section,E('argus-reseller-page-integrations'));
   else if(section.querySelector('#seller-withdraw-form'))
