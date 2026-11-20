@@ -108,7 +108,7 @@ final class PortalPasswordReset {
           '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#0b0f1b;padding:36px 12px"><tr><td align="center">'.
           '<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width:560px;background:#1b2030;border:1px solid #69543a;border-radius:18px">'.
           '<tr><td align="center" style="padding:38px 24px 18px">'.
-          '<img src="https://app.arguspay.com.br/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="240" style="display:block;width:240px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;margin:0 auto" />'.
+          '<img src="https://app.arguspay.com.br/static/assets/argus-logo-email-original.png" alt="ARGUS Payments" width="240" style="display:block;width:240px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;margin:0 auto" />'.
           '<div style="margin-top:24px;border-top:1px solid #4c4350"></div></td></tr>'.
           '<tr><td style="padding:14px 34px 38px">'.
           '<p style="color:#d9b981;font-size:11px;font-weight:bold;letter-spacing:2px;text-align:center">SEGURANÇA DA SUA CONTA</p>'.
