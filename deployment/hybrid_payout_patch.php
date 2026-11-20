@@ -112,3 +112,52 @@ hybridReplace($root.'/public/static/admin.html','</body>',
     '<script src="/static/hybrid-payout.js?v=20261120-1" defer></script></body>',
     'review UI');
 echo "ARGUS hybrid payout: local risk review, 2FA, idempotent escrow and dual live gate installed.\n";
+
+$adminJs=$root.'/public/static/merchant-admin.js';
+hybridReplace($adminJs,<<<'OLD'
+    (r.status==='requested'?'<small>Aguardando processamento do próprio revendedor</small>':'')+
+OLD
+,<<<'NEW'
+    (r.status==='requested'?'<small>Aguardando processamento do próprio revendedor</small>':'')+
+    (r.status==='review'?'<button type="button" data-seller-execute="'+esc(r.id)+'">Aprovar e enviar Pix</button><button type="button" data-seller-reject="'+esc(r.id)+'">Rejeitar saque</button>':'')+
+NEW
+,'admin review action buttons');
+hybridReplace($adminJs,
+    "button[data-seller-execute],button[data-seller-reconcile]",
+    "button[data-seller-execute],button[data-seller-reconcile],button[data-seller-reject]",
+    'include rejection in event delegation');
+hybridReplace($adminJs,<<<'OLD'
+ const execute=!!button.dataset.sellerExecute;
+ const id=button.dataset.sellerExecute||button.dataset.sellerReconcile;
+OLD
+,<<<'NEW'
+ const execute=!!button.dataset.sellerExecute;
+ const reject=!!button.dataset.sellerReject;
+ const id=button.dataset.sellerExecute||button.dataset.sellerReconcile||button.dataset.sellerReject;
+NEW
+,'select action and withdrawal id');
+hybridReplace($adminJs,<<<'OLD'
+ if(execute){
+  if(!confirm('Transferência real para a chave Pix registrada pelo vendedor. O saldo já está reservado. Confirma o processamento?'))return;
+OLD
+,<<<'NEW'
+ if(execute||reject){
+  if(!confirm(reject?'Rejeitar e devolver exclusivamente ao saldo reservado do revendedor?':'Transferência Pix real para a chave registrada: confirma a aprovação?'))return;
+NEW
+,'safe confirmation before admin action');
+
+hybridReplace($adminJs,<<<'OLD'
+  await post('/api/admin/merchant-wallet/withdrawals/'+encodeURIComponent(id)+'/'+(execute?'execute':'reconcile'),body);
+OLD
+,<<<'NEW'
+  await post('/api/admin/merchant-wallet/withdrawals/'+encodeURIComponent(id)+'/'+(execute?'execute':(reject?'reject':'reconcile')),body);
+NEW
+,'post the signed decision');
+hybridReplace($adminJs,<<<'OLD'
+  toast(execute?'Transferência enviada. Consulte o status financeiro antes de repetir.':'Conciliação concluída.');
+OLD
+,<<<'NEW'
+  toast(execute?'Processamento solicitado; confira a liquidação antes de repetir.':(reject?'Saque rejeitado e valor reservado liberado.':'Conciliação concluída.'));
+NEW
+,'action feedback');
+echo "ARGUS hybrid payout: local risk review, 2FA, idempotent escrow and dual live gate installed.\n";
