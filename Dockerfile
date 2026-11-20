@@ -638,3 +638,6 @@ RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v
 
 # Refresh reseller UI after all build-time contract tests; both configured hostnames use this static asset.
 RUN sed -i 's#reseller-admin-parity.css?v=layout-20261120-1#reseller-admin-parity.css?v=recording-20261120-2#g; s#reseller-dashboard.js?v=layout-20261120-1#reseller-dashboard.js?v=recording-20261120-2#g' /var/www/html/public/static/client.html
+
+# Release reseller command center after static contract checks, force fresh browser assets.
+RUN sed -i 's#reseller-admin-parity.css?v=recording-20261120-2#reseller-admin-parity.css?v=command-20261120-3#g; s#reseller-dashboard.js?v=recording-20261120-2#reseller-dashboard.js?v=command-20261120-3#g' /var/www/html/public/static/client.html
