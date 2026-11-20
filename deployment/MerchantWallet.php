@@ -163,8 +163,11 @@ final class MerchantWallet {
         ]);
         $text=curl_exec($ch);$http=(int)curl_getinfo($ch,CURLINFO_HTTP_CODE);
         curl_close($ch);
-        if(!is_string($text)||$http<200||$http>=300||strlen($text)>400000)
+        if(!is_string($text)||$http<200||$http>=300||strlen($text)>400000){
+            // HTTP code only; never log provider body, Pix payload or secrets.
+            error_log('ARGUS PSP Pix request failed: route='.$route.' http='.$http.' response='.(is_string($text)?'received':'transport_failure'));
             self::fail('Operação não confirmada pelo provedor. Consulte o protocolo antes de tentar novamente.',503);
+        }
         $data=json_decode($text,true);
         if(!is_array($data))self::fail('Resposta financeira inválida',503);
         return $data;
