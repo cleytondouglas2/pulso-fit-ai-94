@@ -353,3 +353,32 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
 #argus-reseller-workspace .argus-reseller-shortcut-grid{align-items:stretch}
 #argus-reseller-workspace .argus-reseller-shortcut-grid .menu-item{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;text-align:left}
 @media(max-width:620px){#argus-reseller-workspace .argus-reseller-page-intro{padding-bottom:14px}}
+
+/* Admin recording parity, November 20: compact finance dashboard, consistent cards. */
+#argus-reseller-workspace{--argus-card:#171b22;--argus-line:#303640;--argus-accent:#d7ae73}
+#argus-reseller-workspace .argus-reseller-main{background:#0e1116!important}
+#argus-reseller-workspace .argus-reseller-content{max-width:1400px;padding:clamp(15px,2.2vw,28px)!important}
+#argus-reseller-workspace .argus-reseller-page-intro{margin-bottom:20px!important;border:0!important;padding:0!important}
+#argus-reseller-workspace .argus-reseller-page-intro>span{color:#d7ae73;font-size:10px;letter-spacing:.14em}
+#argus-reseller-workspace .argus-reseller-page-intro h2{font-size:clamp(22px,2.5vw,29px)!important;margin:5px 0!important}
+#argus-reseller-workspace .argus-reseller-page-intro p{font-size:13px!important;color:#99a1ad!important}
+#argus-reseller-workspace :where(.seller-panel,.panel,.seller-balance,.ar-revenue-panel,.ar-revenue-stat){border:1px solid var(--argus-line)!important;border-radius:15px!important;background:#171b22!important;box-shadow:none!important}
+#argus-reseller-workspace .argus-reseller-shortcuts{margin-top:22px}
+#argus-reseller-workspace .argus-reseller-shortcut-grid{gap:12px}
+#argus-reseller-workspace .argus-reseller-shortcut-grid button{background:#171b22!important;border:1px solid #343943!important;border-radius:14px!important;min-height:76px!important}
+#argus-reseller-workspace .argus-reseller-shortcut-grid button:hover{border-color:#bd9462!important}
+#argus-reseller-workspace #ar-seller-revenue{margin:0 0 24px!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading{padding:0 0 14px!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading h2{font-size:22px!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-grid{gap:12px!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-panel{margin-top:14px!important}
+#argus-reseller-workspace #argus-reseller-page-registration #argus-reseller-approval{margin:0 0 18px!important}
+#argus-reseller-workspace #argus-reseller-page-registration .dash-top{background:#171b22!important;border:1px solid #303640!important;border-radius:15px!important;padding:20px!important}
+#argus-reseller-workspace .argus-reseller-merchant-parking{display:none!important}
+@media(max-width:620px){
+ #argus-reseller-workspace .argus-reseller-content{padding:15px 14px 34px!important}
+ #argus-reseller-workspace .argus-reseller-toolbar{min-height:60px!important}
+ #argus-reseller-workspace .argus-reseller-page-intro{margin-bottom:14px!important}
+ #argus-reseller-workspace #ar-seller-revenue .ar-revenue-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat{padding:13px!important}
+}
