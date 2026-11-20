@@ -166,6 +166,11 @@ function arrange(){
  move(E('api-panel'),E('argus-reseller-page-integrations'));
  const merchant=E('argus-seller-root');
  if(!merchant)return;
+ // The original merchant widget is injected inside the legacy greeting card.
+ // Detach its container before moving its child panels, preventing nested cards.
+ const parking=E('argus-reseller-merchant-parking')||document.createElement('div');
+ if(!parking.id){parking.id='argus-reseller-merchant-parking';parking.className='argus-reseller-merchant-parking';E('argus-reseller-workspace').appendChild(parking);}
+ move(merchant,parking);
  move(merchant.querySelector('.seller-head'),E('argus-reseller-overview-top'));
  move(E('seller-balances'),current==='wallet'?E('argus-reseller-wallet-balances'):E('argus-reseller-overview-balances'));
  // All original element references and event listeners remain intact.
