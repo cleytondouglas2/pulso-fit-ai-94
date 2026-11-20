@@ -7,7 +7,7 @@ let ownCharges=new Map();
 let modalCharge=null,modalTimer=null,checkingId=null;
 const FEE=100;
 const chargeLabels={paid:'Pago',pending:'Aguardando pagamento',expired:'Expirado',refunded:'Devolvido',unknown:'Em verificação',failed:'Não aprovado',creating:'Criando'};
-const payoutLabels={requested:'Solicitado',processing:'Em processamento',queued:'Em fila',pending:'Aguardando confirmação',unknown:'Em verificação',paid:'Pago',completed:'Concluído',failed:'Falhou',rejected:'Recusado',refunded:'Estornado',cancelled:'Cancelado'};
+const payoutLabels={review:'Em análise do Super Admin',requested:'Solicitado',processing:'Em processamento',queued:'Em fila',pending:'Aguardando confirmação',unknown:'Em verificação',paid:'Pago',completed:'Concluído',failed:'Falhou',rejected:'Recusado',refunded:'Estornado',cancelled:'Cancelado'};
 const chargeDate=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'});
 function formatChargeDate(value){
  const timestamp=String(value||'').replace(' ','T');
