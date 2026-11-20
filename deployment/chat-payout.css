@@ -1,0 +1,26 @@
+/* ARGUS secure payout dialogue — scoped to reseller AI section */
+#argus-portal-ai .ai-payout-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:14px 0 3px;max-width:620px}
+#argus-portal-ai .ai-payout-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#efdbc3;font-weight:600;min-width:0}
+#argus-portal-ai .ai-payout-form input:not([type=checkbox]),#argus-portal-ai .ai-payout-form select{
+ width:100%;min-width:0;min-height:42px;border:1px solid rgba(210,180,110,.44);border-radius:11px;
+ padding:10px 12px;background:#222832;color:#f5f1e8;font:inherit;font-size:14px;box-sizing:border-box
+}
+#argus-portal-ai .ai-payout-balance,#argus-portal-ai .ai-payout-quote,#argus-portal-ai .ai-payout-note{grid-column:1/-1;margin:1px 0;font-size:12px;line-height:1.45}
+#argus-portal-ai .ai-payout-quote{color:#f9daa1}
+#argus-portal-ai .ai-payout-note{color:#c0cad7;overflow-wrap:anywhere}
+#argus-portal-ai .ai-payout-form .ai-payout-consent{grid-column:1/-1;display:flex;flex-direction:row;align-items:flex-start;gap:9px;font-weight:400}
+#argus-portal-ai .ai-payout-consent input{accent-color:#dcb978;width:17px;height:17px;flex:none;margin:0}
+#argus-portal-ai .ai-payout-actions{grid-column:1/-1;display:flex;gap:9px;flex-wrap:wrap}
+#argus-portal-ai .ai-payout-actions button,#argus-portal-ai .ai-payout-shortcut{
+ min-height:40px;padding:10px 13px;border:1px solid rgba(209,170,98,.65);border-radius:11px;
+ font:inherit;font-size:13px;background:#403222;color:#fff1d7;cursor:pointer
+}
+#argus-portal-ai .ai-payout-actions button:disabled{opacity:.5;cursor:not-allowed}
+#argus-portal-ai .ai-payout-actions button:last-child{background:#262c37;border-color:#657080}
+#argus-portal-ai .ai-message:has(.ai-payout-form){max-width:100%;width:100%;box-sizing:border-box}
+#argus-portal-ai .ai-payout-form input:focus-visible,#argus-portal-ai .ai-payout-form select:focus-visible,
+#argus-portal-ai .ai-payout-actions button:focus-visible{outline:2px solid #eed29f;outline-offset:2px}
+@media(max-width:560px){#argus-portal-ai .ai-payout-form{grid-template-columns:1fr}
+ #argus-portal-ai .ai-payout-actions{display:grid;grid-template-columns:1fr}
+ #argus-portal-ai .ai-payout-actions button{width:100%}
+}

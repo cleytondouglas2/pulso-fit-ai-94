@@ -668,3 +668,16 @@ RUN php -l /var/www/html/src/HybridPayout.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/hybrid_payout_test.php \
  && php /var/www/html/tests/ui_contract.php \
  && apache2ctl configtest
+
+
+# ARGUS Chat payout: authenticated merchant wizard, explicitly confirmed, no model
+# payment authority. Existing MisticPay / wallet / hybrid-review code stays intact.
+COPY deployment/chat-payout.js deployment/chat-payout.css /var/www/html/public/static/
+COPY deployment/chat_payout_patch.php /tmp/chat_payout_patch.php
+COPY deployment/chat_payout_test.php /var/www/html/tests/chat_payout_test.php
+RUN php -l /tmp/chat_payout_patch.php \
+ && php -l /var/www/html/tests/chat_payout_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/chat_payout_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/chat_payout_test.php \
+ && php /var/www/html/tests/ui_contract.php \
+ && apache2ctl configtest
