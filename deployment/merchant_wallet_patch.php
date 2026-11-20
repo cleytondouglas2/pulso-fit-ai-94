@@ -65,7 +65,7 @@ merchantReplace($client,'</head>',
     '<link rel="stylesheet" href="/static/merchant-portal.css?v=3"></head>',
     'seller wallet CSS');
 merchantReplace($client,'</body>',
-    '<script src="/static/qrcode.min.js?v=1" defer></script><script src="/static/merchant-portal.js?v=4" defer></script></body>',
+    '<script src="/static/qrcode.min.js?v=1" defer></script><script src="/static/merchant-portal.js?v=5" defer></script></body>',
     'seller wallet dashboard');
 $docs=$root.'/public/static/docs.html';
 merchantReplace($docs,'</head>',
