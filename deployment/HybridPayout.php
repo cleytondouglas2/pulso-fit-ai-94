@@ -116,6 +116,8 @@ final class HybridPayout {
     }
     public static function approve(Database $db,array $request,array $actor):void {
         if(($actor['role']??'')!=='superadmin')self::error('Sem permissão',403);
+        if(getenv('ARGUS_HYBRID_PAYOUT_LIVE')!=='yes'||getenv('ARGUS_PAYOUTS_ENABLED')!=='yes')
+            self::error('Saques reais ainda não foram habilitados; revisão permanece pendente',503);
         self::install($db);
         $db->transaction(static function(Database $db)use($request,$actor){
             $sql='SELECT * FROM argus_seller_withdrawals WHERE id=? AND account_id=?';
