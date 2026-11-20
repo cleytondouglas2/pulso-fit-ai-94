@@ -629,3 +629,6 @@ RUN php -l /var/www/html/src/FinancialControl.php \
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
 CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
+
+# Original ARGUS logo uploaded by owner; serve unchanged for password reset emails.
+COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/static/assets/argus-logo-email-original.png
