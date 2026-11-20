@@ -76,7 +76,8 @@ foreach([
  "request('/api/portal/wallet/charges',{method:'POST'",
  "request('/api/portal/keys')",
  "financeForms(w)",
- "drawSellerPix(charge,box)",
+ "dialog.showModal()",
+ "request('/api/portal/wallet/charges/'+charge.id)",
  "data-charge-status"
 ] as $needle)if(!str_contains($wallet,$needle))
     throw new RuntimeException('Original seller finance protection changed '.$needle);

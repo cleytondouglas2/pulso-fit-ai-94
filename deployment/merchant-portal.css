@@ -7,3 +7,19 @@
 #seller-active-pix textarea{width:100%;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;word-break:break-all;resize:vertical}
 #seller-active-pix button{max-width:100%}
 #seller-active-pix>small{font-size:11px;color:#b7becb;overflow-wrap:anywhere}.seller-key-status{padding:10px 12px;margin:12px 0;border:1px solid #67563f;border-radius:9px;color:#f1d6a9;background:#28251f;font-size:13px;line-height:1.5}.seller-panel a{color:#f8cb85}.seller-panel label{display:grid;gap:6px;font-size:13px;margin:12px 0}.seller-panel input:not([type=checkbox]),.seller-panel select,.seller-panel textarea{background:#111720;color:#faf6ed;border:1px solid #515461;border-radius:8px;padding:11px;box-sizing:border-box;width:100%;font-size:14px}.seller-checkbox{display:flex!important;flex-direction:row;align-items:flex-start;gap:9px}.seller-checkbox input{margin-top:4px}.seller-quote{border:1px solid #765b38;border-radius:9px;background:#3b3126;color:#f7dcad;padding:12px;font-size:13px;line-height:1.6}.seller-item{padding:12px 0;border-bottom:1px solid #41434e;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:13px}.seller-item strong,.seller-item b,.seller-item code{color:#f6d8aa}.seller-item code{overflow-wrap:anywhere}.seller-item small{color:#bbc0c8;font-size:11px}.seller-item button{font-size:12px;padding:6px 10px}#seller-key-once{padding:12px;margin:12px 0;border:1px solid #937446;background:#373027;border-radius:11px}#seller-key-once[hidden]{display:none}#seller-key-once strong{color:#f6dfb3}@media(max-width:860px){.seller-columns{grid-template-columns:1fr}}@media(max-width:540px){.seller-balances{grid-template-columns:1fr}.seller-panel{padding:14px}.seller-balance{padding:14px}}
+/* The reseller receipt uses the same panel skin as the admin Pix modal. */
+#seller-pix-dialog {
+ position:fixed;inset:0;margin:auto;max-width:calc(100% - 24px)!important;
+}
+#seller-pix-dialog::backdrop {
+ background:rgba(4,6,12,.84);backdrop-filter:blur(8px);
+}
+body:has(#seller-pix-dialog[open]){overflow:hidden}
+#seller-pix-dialog #seller-active-pix{align-items:center;margin:14px 0 6px;text-align:center}
+#seller-pix-dialog .seller-pix-amount{font-size:32px;color:#f1c77b;font-variant-numeric:tabular-nums}
+#seller-pix-dialog .seller-pix-status{margin:0;color:#f0cc91}
+#seller-pix-dialog .seller-pix-status.is-paid{color:#ace8c5}
+#seller-pix-dialog textarea{padding:9px;border:1px solid #50596a;border-radius:9px;background:#12161d;color:#f7f4ed;font-size:16px}
+#seller-pix-dialog #seller-pix-check{width:100%}
+#seller-pix-dialog #seller-pix-feedback:empty{display:none}
+#seller-pix-dialog #seller-pix-feedback{font-size:14px;text-align:center;color:#dce8e1}

@@ -67,7 +67,7 @@ function shell(){
  '<button type="button" data-reseller-view="integrations">'+icon('integrations')+'Gerenciar API e webhooks'+icon('chevron')+'</button>',
  '</section></aside></div></section>',
  page('charges','Crie um QR Code e compartilhe o código Pix Copia e Cola.',
-  '<div class="res-detail-grid"><div id="res-charge-form"></div><section class="res-card res-charge-receipt"><h3>QR Code e código Pix</h3><p id="res-charge-placeholder">O QR Code da cobrança aparece aqui após a emissão.</p><div id="res-charge-result"></div></section></div>'),
+  '<div class="res-detail-grid"><div id="res-charge-form"></div><section class="res-card res-charge-receipt"><h3>Última cobrança</h3><p id="res-charge-placeholder">Ao gerar o Pix, o QR Code abre em uma janela.</p><div id="res-charge-result"></div></section></div>'),
  page('history','Localize cobranças recentes pelo status, pelo ID ou pelo valor.',
   '<section class="res-card res-history-controls" id="res-history-controls" hidden><label>Buscar cobrança<input type="search" id="res-charge-search" placeholder="ID ou valor" autocomplete="off"></label>'+
   '<label>Status<select id="res-charge-filter"><option value="">Todos</option><option value="paid">Pago</option><option value="pending">Aguardando</option><option value="expired">Expirado</option><option value="refunded">Devolvido</option><option value="checking">Em verificação</option><option value="failed">Não aprovado</option></select></label><p id="res-charge-count" role="status"></p></section>'),

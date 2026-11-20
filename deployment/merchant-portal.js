@@ -4,6 +4,7 @@ const E=id=>document.getElementById(id),BRL=x=>new Intl.NumberFormat('pt-BR',{st
 const escapeText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let working=false,active=false,at=0;
 let ownCharges=new Map();
+let modalCharge=null,modalTimer=null,checkingId=null;
 const FEE=100;
 const chargeLabels={paid:'Pago',pending:'Aguardando pagamento',expired:'Expirado',refunded:'Devolvido',unknown:'Em verificação',failed:'Não aprovado',creating:'Criando'};
 const payoutLabels={requested:'Solicitado',processing:'Em processamento',queued:'Em fila',pending:'Aguardando confirmação',unknown:'Em verificação',paid:'Pago',completed:'Concluído',failed:'Falhou',rejected:'Recusado',refunded:'Estornado',cancelled:'Cancelado'};
@@ -38,7 +39,7 @@ function ensure(){
   '<label>Descrição da venda<input name="description" maxlength="120" value="Pagamento de produto ou serviço" required></label>',
   '<button type="submit">Gerar Pix</button></form><div id="seller-pix-result" aria-live="polite"></div></section>',
   '<section class="seller-panel"><h3>Cobranças recentes</h3>',
-  '<div id="seller-active-pix" aria-live="polite" hidden></div><div id="seller-sales">Consultando cobranças…</div></section>'
+  '<div id="seller-sales">Consultando cobranças…</div></section>'
  ].join('');
  top.after(root);
  E('seller-refresh').onclick=()=>load(true);
@@ -60,40 +61,136 @@ function togglePayerMode(){
   if(enabled)input.value='';
  }
 }
-function drawSellerPix(charge,host=E('seller-active-pix')){if(!host)return;
+const displayStatus=charge=>charge.display_status||charge.status;
+const canShowCode=charge=>displayStatus(charge)==='pending'&&!!charge.pix_copy_paste;
+const canCheck=charge=>['pending','unknown','expired'].includes(displayStatus(charge));
+function pixDialog(){
+ let dialog=E('seller-pix-dialog');
+ if(dialog)return dialog;
+ dialog=document.createElement('dialog');
+ dialog.id='seller-pix-dialog';
+ dialog.className='argus-pix-modal-card';
+ dialog.setAttribute('aria-labelledby','seller-pix-dialog-title');
+ dialog.innerHTML=[
+  '<header class="argus-pix-modal-header"><div><h2 id="seller-pix-dialog-title">QR Code Pix</h2>',
+  '<p>Compartilhe o QR Code ou o Pix Copia e Cola para receber o pagamento.</p></div>',
+  '<button type="button" class="argus-pix-modal-close" aria-label="Fechar janela do Pix" autofocus>×</button></header>',
+  '<div id="seller-active-pix"></div>',
+  '<p id="seller-pix-feedback" role="status" aria-live="polite"></p>',
+  '<button type="button" id="seller-pix-check" class="outline">Verificar pagamento</button>'
+ ].join('');
+ document.body.append(dialog);
+ dialog.querySelector('.argus-pix-modal-close').onclick=()=>dialog.close();
+ E('seller-pix-check').onclick=()=>checkPayment(true);
+ dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});
+ dialog.addEventListener('close',()=>{
+  if(dialog.open)return;
+  clearInterval(modalTimer);
+  modalCharge=null;
+  E('seller-active-pix').replaceChildren();
+  E('seller-pix-feedback').textContent='';
+ });
+ new MutationObserver(()=>{if(E('dashboard').hidden&&dialog.open)dialog.close();})
+  .observe(E('dashboard'),{attributes:true,attributeFilter:['hidden']});
+ return dialog;
+}
+function drawSellerPix(charge,host){
  host.replaceChildren();
- host.hidden=!charge?.pix_copy_paste;
- if(host.hidden)return;
- const header=document.createElement('div');header.className='seller-qr-head';
- const title=document.createElement('strong');title.textContent='QR Code Pix · '+BRL(charge.amount_cents);
- const status=document.createElement('small');status.textContent=chargeLabels[charge.display_status||charge.status]||'Cobrança registrada';
- header.append(title,status);
- const qr=document.createElement('div');qr.className='seller-qr-visual';qr.setAttribute('aria-label','QR Code da cobrança Pix '+charge.id);
- if(typeof QRCode==='function'){
-  try{
-   new QRCode(qr,{text:charge.pix_copy_paste,width:206,height:206,
-    colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
-  }catch(_){qr.textContent='Use o Pix Copia e Cola abaixo';}
- }else qr.textContent='Use o Pix Copia e Cola abaixo';
- const field=document.createElement('textarea');field.rows=4;field.readOnly=true;
- field.value=charge.pix_copy_paste;field.setAttribute('aria-label','Código Pix Copia e Cola');
- const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar Pix Copia e Cola';
- copy.onclick=async()=>{
-  try{await navigator.clipboard.writeText(field.value);notice('Código Pix copiado')}
-  catch(_){field.focus();field.select();notice('Selecione o texto para copiar manualmente')}
- };
+ const amount=document.createElement('strong');
+ amount.className='seller-pix-amount';amount.textContent=BRL(charge.amount_cents);
+ const status=document.createElement('p');
+ status.className='seller-pix-status';status.textContent=chargeLabels[displayStatus(charge)]||'Cobrança registrada';
+ if(displayStatus(charge)==='paid')status.classList.add('is-paid');
+ host.append(amount,status);
+ if(canShowCode(charge)){
+  const qr=document.createElement('div');
+  qr.className='seller-qr-visual';qr.setAttribute('role','img');qr.setAttribute('aria-label','QR Code Pix');
+  if(typeof QRCode==='function'){
+   try{
+    new QRCode(qr,{text:charge.pix_copy_paste,width:206,height:206,
+     colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+   }catch(_){qr.textContent='Use o Pix Copia e Cola abaixo.';}
+  }else qr.textContent='Use o Pix Copia e Cola abaixo.';
+  const field=document.createElement('textarea');field.rows=2;field.readOnly=true;
+  field.value=charge.pix_copy_paste;field.setAttribute('aria-label','Código Pix Copia e Cola');
+  const copy=document.createElement('button');copy.type='button';copy.className='primary';
+  copy.textContent='Copiar Pix Copia e Cola';
+  copy.onclick=async()=>{
+   try{await navigator.clipboard.writeText(field.value);E('seller-pix-feedback').textContent='Código Pix copiado.';}
+   catch(_){field.focus();field.select();E('seller-pix-feedback').textContent='Texto selecionado para copiar.';}
+  };
+  host.append(qr,field,copy);
+ }else if(displayStatus(charge)==='unknown'){
+  const message=document.createElement('p');
+  message.textContent='Aguardando o retorno do provedor. Acompanhe esta cobrança antes de gerar outra.';
+  host.append(message);
+ }
  const details=document.createElement('small');
- details.textContent='Crédito previsto após confirmação '+BRL(charge.net_cents)+' · '+charge.id;
- host.append(header,qr,field,copy,details);
+ details.textContent='ID da cobrança '+charge.id;
+ host.append(details);
+}
+function updatePixSummary(charge){
+ const box=E('seller-pix-result');
+ if(box.dataset.chargeId!==charge.id)return;
+ const status=displayStatus(charge);
+ if(box.dataset.chargeStatus===status&&box.firstChild)return;
+ box.dataset.chargeStatus=status;
+ const info=document.createElement('p');
+ info.textContent=(chargeLabels[status]||'Cobrança registrada')+' · '+BRL(charge.amount_cents);
+ box.replaceChildren(info);
+ if(canShowCode(charge)){
+  const open=document.createElement('button');
+  open.type='button';open.className='outline';open.textContent='Abrir QR Code';
+  open.onclick=()=>showPix(ownCharges.get(charge.id)||charge);
+  box.append(open);
+ }
+}
+function showPix(charge){
+ const dialog=pixDialog();
+ clearInterval(modalTimer);
+ modalCharge=charge;
+ E('seller-pix-feedback').textContent='';
+ drawSellerPix(charge,E('seller-active-pix'));
+ E('seller-pix-check').hidden=!canCheck(charge);
+ E('seller-pix-check').disabled=checkingId===charge.id;
+ if(!dialog.open)dialog.showModal();
+ if(canCheck(charge))modalTimer=setInterval(()=>checkPayment(false),12000);
+}
+async function checkPayment(manual){
+ const charge=modalCharge;
+ if(!charge||!canCheck(charge)||checkingId||document.hidden)return;
+ if(!/^mwc_[a-f0-9]{32}$/.test(charge.id))return;
+ const check=E('seller-pix-check'),feedback=E('seller-pix-feedback');
+ checkingId=charge.id;check.disabled=true;
+ if(manual)feedback.textContent='Consultando pagamento…';
+ try{
+  const response=await request('/api/portal/wallet/charges/'+charge.id);
+  const latest=response.charge;
+  if(modalCharge?.id!==charge.id||latest?.id!==charge.id)return;
+  modalCharge=latest;
+  ownCharges.set(latest.id,latest);
+  updatePixSummary(latest);
+  if(displayStatus(latest)!==displayStatus(charge)||latest.pix_copy_paste!==charge.pix_copy_paste)
+   drawSellerPix(latest,E('seller-active-pix'));
+  const pending=canCheck(latest);
+  check.hidden=!pending;
+  if(!pending){
+   clearInterval(modalTimer);
+   feedback.textContent=displayStatus(latest)==='paid'?'Pagamento confirmado. Consulte o saldo atualizado.':'Situação da cobrança atualizada.';
+   await activities();
+  }else if(manual)feedback.textContent='Pagamento ainda não confirmado.';
+ }catch(_){
+  if(modalCharge?.id===charge.id)feedback.textContent='Não foi possível consultar agora. Tente novamente.';
+ }finally{
+  checkingId=null;
+  check.disabled=false;
+ }
 }
 function openSellerPix(event){
  const button=event.target.closest('[data-seller-open-pix]');if(!button)return;
  const charge=ownCharges.get(button.dataset.sellerOpenPix);
- if(!charge||!charge.pix_copy_paste){notice('QR Code indisponível ou expirado',true);return}
- const receipt=E('seller-active-pix');
- receipt.dataset.chargeId=charge.id;
- drawSellerPix(charge,receipt);
- receipt.scrollIntoView({behavior:'auto',block:'nearest'});
+ if(!charge){notice('Cobrança indisponível. Atualize o histórico.',true);return}
+ showPix(charge);
 }
 function quote(){
  const n=cents(E('seller-withdraw-form')?.elements.amount.value),host=E('seller-quote');if(!host)return;
@@ -136,28 +233,13 @@ function activities(){
     '<div class="res-charge-meta"><strong>'+BRL(r.amount_cents)+'</strong><small>'+escapeText(formatChargeDate(r.created_at))+'</small>'+
     '<code>'+escapeText(r.id)+'</code></div><div class="res-charge-actions"><span class="res-charge-state">'+
     escapeText(chargeLabels[r.display_status]||r.display_status)+'</span>'+
-    (r.pix_copy_paste&&r.display_status==='pending'?'<button type="button" data-seller-open-pix="'+escapeText(r.id)+'">Ver QR Code</button>':'')+
+    '<button type="button" data-seller-open-pix="'+escapeText(r.id)+'">'+
+    (canShowCode(r)?'Ver QR Code':'Ver cobrança')+'</button>'+
     '</div></div>').join(''):'<p>Nenhuma cobrança Pix encontrada.</p>';
-   const receipt=E('seller-pix-result');
-   const latest=ownCharges.get(receipt.dataset.chargeId);
-   if(latest?.display_status==='pending'&&latest.pix_copy_paste&&!receipt.querySelector('textarea')){
-    receipt.dataset.chargeStatus=latest.display_status;
-    drawSellerPix(latest,receipt);
-   }else if(latest&&latest.display_status!=='pending'&&latest.display_status!==receipt.dataset.chargeStatus){
-    receipt.dataset.chargeStatus=latest.display_status;
-    const status=document.createElement('p');
-    status.textContent=(chargeLabels[latest.display_status]||'Cobrança registrada')+' · '+BRL(latest.amount_cents);
-    receipt.replaceChildren(status);
-   }
-   const open=E('seller-active-pix');
-   const selected=ownCharges.get(open.dataset.chargeId);
-   if(!selected?.pix_copy_paste||selected.display_status!=='pending'){
-    drawSellerPix(null);
-    delete open.dataset.chargeId;
-   }
+   const latest=ownCharges.get(E('seller-pix-result').dataset.chargeId);
+   if(latest)updatePixSummary(latest);
   }else{
    ownCharges.clear();
-   drawSellerPix(null);
    E('seller-sales').textContent='Não foi possível consultar as cobranças. Use Atualizar carteira para tentar novamente.';
   }
  });
@@ -210,15 +292,12 @@ async function deposit(event){
    payment.payer_document=String(v.get('payer_document')||'');
   }
   const response=await request('/api/portal/wallet/charges',{method:'POST',body:payment});
-  const charge=response.charge,box=E('seller-pix-result');box.replaceChildren();
+  const charge=response.charge,box=E('seller-pix-result');
+  box.replaceChildren();
   box.dataset.chargeId=charge.id;
-  box.dataset.chargeStatus=charge.display_status||charge.status;
-  if(charge.pix_copy_paste){
-   drawSellerPix(charge,box);
-  }else{
-   box.hidden=false;
-   const p=document.createElement('p');p.textContent='Cobrança pendente de resposta do provedor. Não crie outra cobrança para a mesma venda.';box.append(p);
-  }
+  ownCharges.set(charge.id,charge);
+  updatePixSummary(charge);
+  showPix(charge);
   delete form.dataset.idem;form.reset();togglePayerMode();notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');
   await activities();
  }catch(err){notice('Verifique o histórico antes de tentar novamente: '+err.message,true)}
