@@ -105,7 +105,9 @@ function walletRender(w){
  const blocks=[['Disponível',w.available_cents],['Reservado em saques',w.reserved_cents],['Taxa de serviço',FEE]];
  E('seller-balances').innerHTML=blocks.map(v=>'<div class="seller-balance"><small>'+v[0]+'</small><strong>'+BRL(v[1])+'</strong></div>').join('')+
   (w.negative_adjustments_cents>0?'<p class="seller-warning">Reversão/contestação em análise. Saques bloqueados até regularização.</p>':'')+
-  (!w.deposits_enabled?'<p class="seller-warning">Recebimentos Pix aguardando habilitação financeira.</p>':'')+
+  (!w.deposits_enabled?'<p class="seller-warning">'+
+   (w.deposit_blocked_reason==='configuration_pending'?'Emissão Pix aguardando configuração do administrador.':'Recebimentos Pix aguardando habilitação financeira.')+
+   '</p>':'')+
   (!w.withdrawals_enabled?'<p class="seller-warning">Saques aguardando habilitação financeira no provedor.</p>':'');
 }
 function keysRender(v){

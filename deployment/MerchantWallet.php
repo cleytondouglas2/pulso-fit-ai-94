@@ -141,15 +141,23 @@ final class MerchantWallet {
             self::fail('Cabeçalho Idempotency-Key obrigatório (16 a 110 caracteres)',422);
         return hash('sha256',$raw);
     }
+    private static function pixCredentials():?array{
+        $id=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID'));
+        $secret=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET'));
+        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$id)||
+           !preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$secret))return null;
+        return [$id,$secret];
+    }
+    private static function requirePixCredentials():array{
+        $pair=self::pixCredentials();
+        if($pair===null||!function_exists('curl_init'))
+            self::fail('Emissão Pix indisponível. O administrador precisa concluir a configuração de recebimentos.',503);
+        return $pair;
+    }
     private static function provider(string $route,array $payload,?string $idem=null):array{
         if(!in_array($route,['/transactions/create','/transactions/check'],true))
             self::fail('Operação do provedor inválida',403);
-        $pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
-        $sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
-        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$pk)||
-           !preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$sk))
-            self::fail('Credenciais de cobrança do provedor indisponíveis',503);
-        if(!function_exists('curl_init'))self::fail('Conexão financeira indisponível',503);
+        [$pk,$sk]=self::requirePixCredentials();
         $headers=['Accept: application/json','Content-Type: application/json'];
         if($idem!==null)$headers[]='X-Idempotency-Key: '.$idem;
         $ch=curl_init(self::API_ROOT.$route);
@@ -186,16 +194,17 @@ final class MerchantWallet {
     }
     private static function balancePublic(Database $db,array $a):array{
         $w=self::wallet($db,$a);
+        $custody=getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
+            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes';
+        $configured=self::pixCredentials()!==null&&function_exists('curl_init');
         return [
             'currency'=>'BRL','available_cents'=>(int)$w['available_cents'],
             'reserved_cents'=>(int)$w['held_cents'],
             'negative_adjustments_cents'=>(int)$w['debt_cents'],
             'service_fee_deposit_cents'=>self::FEE,'service_fee_withdraw_cents'=>self::FEE,
-            'deposits_enabled'=>getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
-                getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes',
-            'withdrawals_enabled'=>getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')==='yes'&&
-                getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')==='yes'&&
-                getenv('ARGUS_PAYOUTS_ENABLED')==='yes',
+            'deposits_enabled'=>$custody&&$configured,
+            'deposit_blocked_reason'=>!$custody?'authorization_pending':(!$configured?'configuration_pending':null),
+            'withdrawals_enabled'=>$custody&&getenv('ARGUS_PAYOUTS_ENABLED')==='yes',
             'notice'=>'Saldo exclusivo de vendas Pix confirmadas da sua conta. Transferências pendentes ficam reservadas.'
         ];
     }
@@ -226,12 +235,8 @@ final class MerchantWallet {
         $merchant=$db->one("SELECT id FROM b2b_merchants WHERE id=? AND status='approved_live'",[(string)($account['merchant_id']??'')]);
         if(!$merchant)self::fail('Conta financeira não autorizada a receber',403);
         $w=self::wallet($db,$account);
-        // Preflight before recording a charge: missing credentials cannot have reached PSP.
-        $pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:''));
-        $sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:''));
-        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$pk)||!preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$sk))
-            self::fail('Credenciais Pix da MisticPay não configuradas. Contate o administrador.',503);
-        if(!function_exists('curl_init'))self::fail('Conexão Pix indisponível',503);
+        // Fail before creating a charge when the provider cannot be reached.
+        self::requirePixCredentials();
         $data=self::payerDetails($db,$account,$data);
         $gross=$data['amount_cents']??null;
         if(!is_int($gross)||$gross<100||$gross>10000)self::fail('Valor Pix permitido: R$ 1 a R$ 100',422);

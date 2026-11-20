@@ -46,14 +46,6 @@ $walletPath=$root.'/src/MerchantWallet.php';
 $wallet=file_get_contents($walletPath);
 if(!is_string($wallet))throw new RuntimeException('Security shield: wallet unavailable');
 argusShieldReplace($wallet,
-    "\$pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));",
-    "\$pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:''));",
-    'central Pix provider key must match the traditional Pix endpoint');
-argusShieldReplace($wallet,
-    "\$sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));",
-    "\$sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:''));",
-    'never fall back to unrelated financial provider secret');
-argusShieldReplace($wallet,
     "if(\$method==='POST'&&\$path==='/api/v2/wallet/withdrawals'){\n            \$input=self::prepareApiWithdraw",
     "if(\$method==='POST'&&\$path==='/api/v2/wallet/withdrawals'){\n            SecurityShield::merchant(\$db,(string)\$account['id'],'withdraw');\n            \$input=self::prepareApiWithdraw",
     'withdrawal API request velocity');

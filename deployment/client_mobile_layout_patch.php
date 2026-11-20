@@ -62,7 +62,9 @@ $new=<<<'JS'
    ['seller-withdraw-form','seller-withdraw-gate',!!w?.withdrawals_enabled,
     'Saques estarão disponíveis após a homologação financeira e autorização do provedor.'],
    ['seller-deposit-form','seller-deposit-gate',!!w?.deposits_enabled,
-    'A emissão de Pix estará disponível após a análise cadastral e a habilitação do provedor.']
+    w?.deposit_blocked_reason==='configuration_pending'
+     ?'A emissão de Pix está temporariamente indisponível. A configuração de recebimentos depende do administrador.'
+     :'A emissão de Pix estará disponível após a análise cadastral e a habilitação de recebimentos.']
   ];
   for(const [formId,noteId,enabled,message] of flags){
    const form=E(formId);if(!form)continue;

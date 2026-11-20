@@ -77,6 +77,30 @@ $_SERVER['HTTP_X_ARGUS_KEY']=$sellers[0]['key'];
 $_SERVER['HTTP_X_ARGUS_SECRET']=$sellers[0]['secret'];
 $owner=$auth->invoke(null,$db);
 if($owner['id']!==$sellers[0]['id'])throw new RuntimeException('Wrong merchant signed in');
+$balance=new ReflectionMethod(Wallet::class,'balancePublic');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET');
+putenv('ARGUS_FINANCE_QR_CLIENT_ID=pk_offline_fixture');
+putenv('ARGUS_FINANCE_QR_CLIENT_SECRET=sk_offline_fixture');
+$blocked=$balance->invoke(null,$db,$owner);
+if($blocked['deposits_enabled']||$blocked['deposit_blocked_reason']!=='configuration_pending')
+    throw new RuntimeException('Wallet showed Pix as available without its dedicated credentials');
+$reject(static fn()=>Wallet::create($db,$owner,[],hash('sha256','missing-pix-configuration')),503);
+if($db->one('SELECT id FROM argus_seller_charges WHERE account_id=?',[$owner['id']]))
+    throw new RuntimeException('Unavailable Pix created a charge record');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID=pk_offline_fixture');
+$partial=$balance->invoke(null,$db,$owner);
+if($partial['deposits_enabled'])
+    throw new RuntimeException('Wallet mixed credentials across providers');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET=sk_offline_fixture');
+$ready=$balance->invoke(null,$db,$owner);
+if(!$ready['deposits_enabled']||$ready['deposit_blocked_reason']!==null)
+    throw new RuntimeException('Complete Pix configuration stayed blocked');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET');
+putenv('ARGUS_FINANCE_QR_CLIENT_ID');
+putenv('ARGUS_FINANCE_QR_CLIENT_SECRET');
+
 // Seller-funded deposit: legal fields are loaded from the verified owner,
 // never from arbitrary values in the external caller request.
 $self=$resolve->invoke(null,$db,$owner,[

@@ -636,9 +636,10 @@ COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/st
 # Refresh the reseller assets after the build-time tests for both hostnames.
 RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v=workspace-20261120-4#; \
  s#reseller-dashboard.js?v=admin-v1-20261119#reseller-dashboard.js?v=workspace-20261120-4#; \
- s#merchant-portal.js?v=status-20261119-5#merchant-portal.js?v=workspace-20261120-4#; \
+ s#merchant-portal.js?v=status-20261119-5#merchant-portal.js?v=pix-readiness-20261120-1#; \
  s#revenue-dashboard.css?v=20261119-1#revenue-dashboard.css?v=workspace-20261120-4#; \
  s#revenue-dashboard.js?v=20261119-1#revenue-dashboard.js?v=workspace-20261120-4#' /var/www/html/public/static/client.html \
  && sed -i 's#revenue-dashboard.css?v=20261119-1#revenue-dashboard.css?v=workspace-20261120-4#; \
  s#revenue-dashboard.js?v=20261119-1#revenue-dashboard.js?v=workspace-20261120-4#' /var/www/html/public/static/admin.html \
- && test "$(grep -o 'v=workspace-20261120-4' /var/www/html/public/static/client.html | wc -l)" -eq 5
+ && test "$(grep -o 'v=workspace-20261120-4' /var/www/html/public/static/client.html | wc -l)" -eq 4 \
+ && grep -Fq "merchant-portal.js?v=pix-readiness-20261120-1" /var/www/html/public/static/client.html
