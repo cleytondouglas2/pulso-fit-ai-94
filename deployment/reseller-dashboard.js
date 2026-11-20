@@ -46,8 +46,8 @@ function shell(){
  '</header>',
  '<div class="argus-reseller-content admin-content content">',
  '<section class="argus-reseller-page page" id="argus-reseller-page-overview" data-reseller-page="overview">',
- '<div class="argus-reseller-page-intro section-top"><span>RESUMO DA CONTA</span><h2>Seu negócio, em um só lugar.</h2>',
- '<p>Acompanhe sua situação cadastral, o saldo e os próximos passos.</p></div>',
+ '<div class="argus-reseller-page-intro section-top"><span>ARGUS PAY · REVENDEDOR</span><h2>Visão geral</h2>',
+ '<p>Indicadores e movimentações da sua conta.</p></div>',
  '<div class="argus-reseller-overview-top" id="argus-reseller-overview-top"></div>',
  '<div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances"></div>',
  '<div class="argus-reseller-shortcuts"><h3>Acesso rápido</h3>',
@@ -162,6 +162,13 @@ function arrange(){
  // Existing session verification remains the sole controller of auth state.
  document.body.classList.toggle('argus-reseller-ready',!dashboard.hidden);
  move(E('kyc-client-root'),E('argus-reseller-page-registration'));
+ // Registration and compliance live together, never inside the financial overview.
+ move(E('argus-reseller-approval'),E('argus-reseller-page-registration'));
+ const rev=E('ar-seller-revenue');
+ if(rev&&rev.parentElement===E('argus-reseller-page-overview')){
+  const balanceHost=E('argus-reseller-overview-balances');
+  if(balanceHost)balanceHost.after(rev);
+ }
  const grid=E('argus-reseller-page-registration').querySelector('.grid')||dashboard.querySelector('.grid');
  move(grid,E('argus-reseller-page-registration'));
  move(E('api-panel'),E('argus-reseller-page-integrations'));
