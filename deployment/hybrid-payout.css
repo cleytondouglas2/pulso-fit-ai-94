@@ -1,0 +1,18 @@
+.argus-hybrid-panel{border:1px solid #524831;background:linear-gradient(145deg,#22242a,#171c25);border-radius:17px;padding:20px;margin:17px 0;color:#f5f0e8}
+.argus-hybrid-top{display:flex;align-items:start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.argus-hybrid-top h2{font-size:20px;color:#f6d99d;margin:5px 0}
+.argus-hybrid-top p{font-size:13px;color:#aeb8c4;margin:4px 0}
+.argus-hybrid-top button,.argus-hybrid-actions button{background:#292a34;color:#f5dfb5;border:1px solid #957445;border-radius:10px;padding:10px 13px;cursor:pointer}
+.argus-hybrid-top button:hover,.argus-hybrid-actions button:hover:not(:disabled){background:#3c3440}
+.argus-hybrid-actions button:disabled{opacity:.42;cursor:not-allowed}
+#argus-hybrid-status{font-size:12px;color:#b7c0c8;margin:13px 0}
+.argus-hybrid-item{display:grid;grid-template-columns:minmax(105px,150px) minmax(220px,1fr) minmax(165px,220px);gap:16px;padding:16px 0;border-top:1px solid #343943;align-items:center}
+.argus-hybrid-amount,.argus-hybrid-meta,.argus-hybrid-actions{display:flex;flex-direction:column;gap:7px}
+.argus-hybrid-amount strong{font-size:22px;color:#f7dab0}
+.argus-hybrid-meta strong{font-size:14px}
+.argus-hybrid-item small{font-size:11px;color:#bdc6ce;overflow-wrap:anywhere}
+.argus-hybrid-reasons{display:flex;gap:6px;flex-wrap:wrap}
+.argus-hybrid-reason{font-size:10px;background:#39313b;border:1px solid #6f5361;color:#f5d4db;border-radius:999px;padding:5px 9px}
+.argus-hybrid-reject{border-color:#98615a!important;color:#ffd1cb!important}
+.argus-hybrid-empty{color:#aeb8c4;font-size:13px}
+@media(max-width:800px){.argus-hybrid-item{grid-template-columns:1fr;gap:12px}.argus-hybrid-actions{width:100%}.argus-hybrid-panel{padding:14px}}
