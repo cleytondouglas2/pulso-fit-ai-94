@@ -85,7 +85,7 @@ $merchant=str_replace($old,$new,$merchant);
 if(file_put_contents($merchantPath,$merchant)===false)
     throw new RuntimeException('Failed to repair wallet UI gating/order');
 $html=file_get_contents($client);
-$fromMerchant='/static/merchant-portal.js?v=4';
+$fromMerchant='/static/merchant-portal.js?v=5';
 if(!is_string($html)||substr_count($html,$fromMerchant)!==1)
     throw new RuntimeException('Mobile registration repair: merchant JS cache not found');
 $html=str_replace($fromMerchant,'/static/merchant-portal.js?v=mobile-nov19-2',$html);
