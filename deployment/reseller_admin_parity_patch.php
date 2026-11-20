@@ -157,7 +157,7 @@ resellerParityReplace($client,
     'obvious customer sign-in from signup page');
 resellerParityReplace($client,
     '</head>',
-    '<link rel="stylesheet" href="/static/reseller-admin-parity.css?v=20261119-5"></head>',
+    '<link rel="stylesheet" href="/static/polish.css?v=4"><link rel="stylesheet" href="/static/reseller-admin-parity.css?v=admin-shell-20261120-1"></head>',
     'final admin-matching stylesheet');
 resellerParityReplace($client,
     '</body>',
