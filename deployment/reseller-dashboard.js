@@ -20,13 +20,13 @@ function shell(){
  if(!dash||E('argus-reseller-workspace'))return;
  const wrapper=document.createElement('div');
  wrapper.id='argus-reseller-workspace';
- wrapper.className='argus-reseller-workspace';
+ wrapper.className='argus-reseller-workspace admin-shell';
  wrapper.innerHTML=[
- '<aside class="argus-reseller-sidebar" id="argus-reseller-sidebar" aria-label="Menu do revendedor">',
+ '<aside class="argus-reseller-sidebar sidebar" id="argus-reseller-sidebar" aria-label="Menu do revendedor">',
  '<div class="argus-reseller-side-brand">',
  '<img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="170" height="56">',
  '<span>PAINEL DO REVENDEDOR</span></div>',
- '<nav class="argus-reseller-nav" aria-label="Áreas da conta">',
+ '<nav class="argus-reseller-nav side-menu" aria-label="Áreas da conta">',
  '<button type="button" data-reseller-view="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Visão geral</button>',
  '<button type="button" data-reseller-view="registration"><span class="nav-glyph" aria-hidden="true">◈</span>Cadastro e documentos</button>',
  '<button type="button" data-reseller-view="charges"><span class="nav-glyph" aria-hidden="true">▣</span>Gerar Pix</button>',
@@ -38,15 +38,15 @@ function shell(){
  '<a href="/documentacao-api">Documentação API</a><a href="/instalar">Instalar no celular</a>',
  '<small>Conta do revendedor · acesso individual</small></div></aside>',
  '<div class="argus-reseller-drawer-backdrop" id="argus-reseller-backdrop" hidden></div>',
- '<div class="argus-reseller-main"><header class="argus-reseller-toolbar">',
+ '<div class="argus-reseller-main"><header class="argus-reseller-toolbar topbar">',
  '<button type="button" id="argus-reseller-menu-button" aria-controls="argus-reseller-sidebar" aria-expanded="false" aria-label="Abrir menu do revendedor">☰</button>',
  '<div class="argus-reseller-toolbar-title"><small>ARGUS PAYMENTS / REVENDEDOR</small>',
  '<strong id="argus-reseller-page-title">Visão geral</strong></div>',
  '<div class="argus-reseller-toolbar-actions" id="argus-reseller-toolbar-actions"></div>',
  '</header>',
- '<div class="argus-reseller-content">',
- '<section class="argus-reseller-page" id="argus-reseller-page-overview" data-reseller-page="overview">',
- '<div class="argus-reseller-page-intro"><span>RESUMO DA CONTA</span><h2>Seu negócio, em um só lugar.</h2>',
+ '<div class="argus-reseller-content admin-content">',
+ '<section class="argus-reseller-page page" id="argus-reseller-page-overview" data-reseller-page="overview">',
+ '<div class="argus-reseller-page-intro section-top"><span>RESUMO DA CONTA</span><h2>Seu negócio, em um só lugar.</h2>',
  '<p>Acompanhe sua situação cadastral, o saldo e os próximos passos.</p></div>',
  '<div class="argus-reseller-overview-top" id="argus-reseller-overview-top"></div>',
  '<div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances"></div>',
