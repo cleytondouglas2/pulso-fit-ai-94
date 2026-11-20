@@ -54,10 +54,15 @@ final class PortalPasswordReset {
     }
     /** An anonymous request must originate from the same site, not a third-party form. */
     private static function origin(string $base):void {
-        $origin=trim((string)($_SERVER['HTTP_ORIGIN']??''));
-        if($origin!==''&&$origin!==$base)self::fail('Origem de acesso não autorizada',403);
+        // Only first-party ARGUS web entry points may initiate password recovery.
+        // The canonical reset link itself still uses $base (app.arguspay.com.br).
+        $allowed=array_unique([$base,'https://arguspay.com.br','https://www.arguspay.com.br','https://app.arguspay.com.br']);
+        $origin=rtrim(trim((string)($_SERVER['HTTP_ORIGIN']??'')),'/');
+        if($origin!==''&&!in_array($origin,$allowed,true))
+            self::fail('Origem de acesso não autorizada',403);
         $site=strtolower((string)($_SERVER['HTTP_SEC_FETCH_SITE']??''));
-        if($site!==''&&!in_array($site,['same-origin','none'],true))
+        if($site==='cross-site'||($site==='same-site'&&$origin==='')||
+           ($site!==''&&!in_array($site,['same-origin','same-site','none'],true)))
             self::fail('Origem de acesso não autorizada',403);
     }
     /**
