@@ -291,3 +291,49 @@ body.argus-reseller-ready .argus-reseller-sidebar{
   transition:none!important;
  }
 }
+/* Admin-equivalent reseller layout: single content grid, consistent cards and spacing. */
+body.argus-reseller-ready{overflow-x:hidden!important}
+body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
+#argus-reseller-workspace .argus-reseller-content{max-width:1440px;margin-inline:auto}
+#argus-reseller-workspace .argus-reseller-page{width:100%;min-width:0}
+#argus-reseller-workspace .argus-reseller-page-intro{max-width:100%;margin-top:0}
+#argus-reseller-workspace .argus-reseller-page-intro h2{margin:5px 0 7px}
+#argus-reseller-workspace .argus-reseller-page-intro p{max-width:72ch}
+#argus-reseller-workspace :where(.seller-panel,.panel,.kyc-customer-form){width:100%;max-width:none!important;margin:0 0 18px!important}
+#argus-reseller-workspace :where(.seller-panel,.panel) :where(input,textarea,select){width:100%;box-sizing:border-box}
+#argus-reseller-workspace :where(.seller-panel,.panel) :where(button,input,select,textarea){font-family:inherit}
+#argus-reseller-workspace .seller-columns{display:contents!important}
+#argus-reseller-workspace #argus-reseller-page-wallet .seller-panel,
+#argus-reseller-workspace #argus-reseller-page-charges .seller-panel,
+#argus-reseller-workspace #argus-reseller-page-history .seller-panel{max-width:100%!important}
+#argus-reseller-workspace #argus-reseller-wallet-balances{margin-bottom:18px}
+#argus-reseller-workspace .argus-reseller-overview-balances{margin-bottom:20px}
+#argus-reseller-workspace .seller-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+#argus-reseller-workspace .seller-head h2{margin:0 0 6px}
+#argus-reseller-workspace .seller-head p{margin:0}
+#argus-reseller-workspace .seller-panel>h3:first-child{margin-top:0}
+#argus-reseller-workspace .seller-panel form{max-width:780px}
+#argus-reseller-workspace .seller-panel form label{min-width:0}
+#argus-reseller-workspace .seller-checkbox[hidden]{display:none!important}
+#argus-reseller-workspace .seller-panel label[hidden]{display:none!important}
+#argus-reseller-workspace #seller-pix-result{overflow-wrap:anywhere;max-width:100%}
+#argus-reseller-workspace #seller-pix-result textarea{width:100%;min-height:95px}
+#argus-reseller-workspace :where(#seller-sales,#seller-withdrawals,#seller-key-list){min-width:0;overflow-wrap:anywhere}
+#argus-reseller-workspace .seller-item{padding:14px 0;border-bottom:1px solid rgba(205,176,132,.16)}
+#argus-reseller-workspace .seller-item:last-child{border-bottom:0}
+#argus-reseller-workspace .argus-reseller-toolbar{width:100%;box-sizing:border-box}
+#argus-reseller-workspace .argus-reseller-toolbar-title{overflow:hidden}
+#argus-reseller-workspace .argus-reseller-toolbar-title strong{text-overflow:ellipsis}
+@media(max-width:999px){#argus-reseller-workspace .argus-reseller-content{width:100%;box-sizing:border-box}}
+@media(max-width:620px){
+ #argus-reseller-workspace .argus-reseller-content{padding:18px 14px 45px!important}
+ #argus-reseller-workspace .argus-reseller-page-intro{padding-bottom:14px;margin-bottom:17px}
+ #argus-reseller-workspace .argus-reseller-page-intro h2{font-size:25px!important}
+ #argus-reseller-workspace .argus-reseller-page-intro p{font-size:13px;line-height:1.5}
+ #argus-reseller-workspace .argus-reseller-toolbar-title small{font-size:8px;letter-spacing:.06em}
+ #argus-reseller-workspace .argus-reseller-toolbar-title strong{font-size:15px!important}
+ #argus-reseller-workspace :where(.seller-panel,.panel){padding:18px 15px!important}
+ #argus-reseller-workspace .seller-head{align-items:flex-start}
+ #argus-reseller-workspace .seller-panel h3{font-size:19px!important}
+ #argus-reseller-workspace .seller-panel form{max-width:100%}
+}
