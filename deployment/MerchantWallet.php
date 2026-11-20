@@ -227,8 +227,8 @@ final class MerchantWallet {
         if(!$merchant)self::fail('Conta financeira não autorizada a receber',403);
         $w=self::wallet($db,$account);
         // Preflight before recording a charge: missing credentials cannot have reached PSP.
-        $pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
-        $sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
+        $pk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:''));
+        $sk=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:''));
         if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$pk)||!preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$sk))
             self::fail('Credenciais Pix da MisticPay não configuradas. Contate o administrador.',503);
         if(!function_exists('curl_init'))self::fail('Conexão Pix indisponível',503);
