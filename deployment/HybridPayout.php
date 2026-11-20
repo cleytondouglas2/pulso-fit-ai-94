@@ -87,7 +87,7 @@ final class HybridPayout {
     }
     /** Called inside the same transaction that holds the merchant's own balance. */
     public static function record(Database $db,string $id,string $accountId,array $assessment):void {
-        self::install($db);
+        // Tables were installed BEFORE escrow begins. No DDL inside a money transaction.
         if(!in_array($assessment['decision']??null,['auto','review'],true))self::error('Classificação inválida');
         $db->run('INSERT INTO argus_payout_risk_decisions
             (withdrawal_id,account_id,score,reasons_json,decision,created_at)
