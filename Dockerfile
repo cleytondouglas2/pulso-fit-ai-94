@@ -633,11 +633,12 @@ CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${
 # Original ARGUS logo uploaded by owner; serve unchanged for password reset emails.
 COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/static/assets/argus-logo-email-original.png
 
-# Reseller admin-parity presentation refresh; preserve server-side financial permissions.
-RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v=layout-20261120-1#g; s#reseller-dashboard.js?v=admin-v1-20261119#reseller-dashboard.js?v=layout-20261120-1#g' /var/www/html/public/static/client.html
-
-# Refresh reseller UI after all build-time contract tests; both configured hostnames use this static asset.
-RUN sed -i 's#reseller-admin-parity.css?v=layout-20261120-1#reseller-admin-parity.css?v=recording-20261120-2#g; s#reseller-dashboard.js?v=layout-20261120-1#reseller-dashboard.js?v=recording-20261120-2#g' /var/www/html/public/static/client.html
-
-# Release reseller command center after static contract checks, force fresh browser assets.
-RUN sed -i 's#reseller-admin-parity.css?v=recording-20261120-2#reseller-admin-parity.css?v=command-20261120-3#g; s#reseller-dashboard.js?v=recording-20261120-2#reseller-dashboard.js?v=command-20261120-3#g' /var/www/html/public/static/client.html
+# Refresh the reseller assets after the build-time tests for both hostnames.
+RUN sed -i 's#reseller-admin-parity.css?v=20261119-5#reseller-admin-parity.css?v=workspace-20261120-4#; \
+ s#reseller-dashboard.js?v=admin-v1-20261119#reseller-dashboard.js?v=workspace-20261120-4#; \
+ s#merchant-portal.js?v=status-20261119-5#merchant-portal.js?v=workspace-20261120-4#; \
+ s#revenue-dashboard.css?v=20261119-1#revenue-dashboard.css?v=workspace-20261120-4#; \
+ s#revenue-dashboard.js?v=20261119-1#revenue-dashboard.js?v=workspace-20261120-4#' /var/www/html/public/static/client.html \
+ && sed -i 's#revenue-dashboard.css?v=20261119-1#revenue-dashboard.css?v=workspace-20261120-4#; \
+ s#revenue-dashboard.js?v=20261119-1#revenue-dashboard.js?v=workspace-20261120-4#' /var/www/html/public/static/admin.html \
+ && test "$(grep -o 'v=workspace-20261120-4' /var/www/html/public/static/client.html | wc -l)" -eq 5

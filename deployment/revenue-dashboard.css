@@ -27,8 +27,8 @@
 .ar-revenue-chart{display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:6px;min-height:178px;margin-top:10px}
 .ar-revenue-bar-column{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-width:0;gap:7px}
 .ar-revenue-bar-space{height:134px;display:flex;align-items:flex-end;justify-content:center;width:100%;border-bottom:1px solid #5c5e64}
-.ar-revenue-bar{display:block;width:min(100%,35px);min-height:0;background:linear-gradient(#efcb91,#b5854b);border-radius:6px 6px 0 0}
-.ar-revenue-bar.is-refund{background:linear-gradient(#ffb9a8,#ab5d61)}
+.ar-revenue-bar{display:block;width:min(100%,35px);height:100%;fill:#e4ba7e}
+.ar-revenue-bar.is-refund{fill:#eea7a0}
 .ar-revenue-bar-column small{font-size:9px;color:#b5b9c2;white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);height:37px}
 .ar-revenue-disclaimer{font-size:11px;color:#abb2bd;line-height:1.65;margin:14px 0 0}
 .ar-revenue-table-wrap{width:100%;overflow-x:auto}

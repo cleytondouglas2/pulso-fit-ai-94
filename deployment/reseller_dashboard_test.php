@@ -11,7 +11,8 @@ $kyc=(string)file_get_contents($root.'kyc-portal.js');
 if(substr_count($html,'/static/reseller-dashboard.css?v=admin-v1-20261119')!==1||
    substr_count($html,'/static/reseller-dashboard.js?v=admin-v1-20261119')!==1||
    substr_count($html,'<section id="auth" hidden>')!==1||
-   substr_count($html,'<section id="dashboard" hidden>')!==1)
+   substr_count($html,'<section id="dashboard" hidden>')!==1||
+   substr_count($html,'<div class="dash-top"><div>')!==1)
     throw new RuntimeException('Customer dashboard assets/auth visibility not installed correctly');
 if(substr_count($css,'{')!==substr_count($css,'}'))
     throw new RuntimeException('Reseller dashboard CSS unmatched braces');
@@ -36,17 +37,10 @@ foreach([
  'argus-reseller-menu-button',
  'argus-reseller-toolbar-actions',
  'argus-reseller-page-overview',
- 'argus-reseller-page-registration',
- 'argus-reseller-page-charges',
- 'argus-reseller-page-wallet',
- 'argus-reseller-page-integrations',
- 'argus-reseller-page-history',
- 'data-reseller-view="overview"',
- 'data-reseller-view="registration"',
- 'data-reseller-view="charges"',
- 'data-reseller-view="wallet"',
- 'data-reseller-view="integrations"',
- 'data-reseller-view="history"',
+ "page('registration'", "page('charges'", "page('wallet'", "page('integrations'",
+ "page('history'", "page('statement'", "page('assistant'",
+ 'data-reseller-view=', 'history.pushState', 'res-mobile-nav', 'filterCharges',
+ "move(E('argus-seller-csv')", "move(E('argus-portal-ai')",
  "move(E('kyc-client-root')",
  "move(E('api-panel')",
  "merchant.querySelectorAll('.seller-panel')",
@@ -81,10 +75,12 @@ foreach([
  "request('/api/portal/wallet/withdrawals'",
  "request('/api/portal/wallet/charges',{method:'POST'",
  "request('/api/portal/keys')",
- "financeForms(w)"
+ "financeForms(w)",
+ "drawSellerPix(charge,box)",
+ "data-charge-status"
 ] as $needle)if(!str_contains($wallet,$needle))
     throw new RuntimeException('Original seller finance protection changed '.$needle);
 foreach(["function renderKyc(account)","id='kyc-client-root'","const prior=render;"] as $needle)
     if(!str_contains($kyc,$needle))
         throw new RuntimeException('Original KYC customer widget missing '.$needle);
-echo "PASS: six admin-style reseller pages on desktop/iPhone, original DOM handlers and authorized account/session, KYC/Pix/withdraw/API routes preserved.\n";
+echo "PASS: eight reseller areas and account routing, original DOM handlers and authorized account/session, KYC/Pix/withdraw/API routes preserved.\n";

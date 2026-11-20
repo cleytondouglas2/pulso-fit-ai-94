@@ -96,7 +96,7 @@ $profileHtml=<<<'HTML'
 HTML;
 $old='<section id="dashboard" hidden><div class="dash-top">';
 if(substr_count($ch,$old)!==1)throw new RuntimeException('Portal dashboard anchor missing');
-$ch=str_replace($old,'<section id="dashboard" hidden>'.$profileHtml.'<div class="dash-top"',$ch);
+$ch=str_replace($old,'<section id="dashboard" hidden>'.$profileHtml.'<div class="dash-top">',$ch);
 if(substr_count($ch,'/static/portal.js?v=1')!==1)throw new RuntimeException('Portal JS cache anchor missing');
 $ch=str_replace('/static/portal.js?v=1','/static/portal.js?v=5',$ch);
 file_put_contents($client,$ch);

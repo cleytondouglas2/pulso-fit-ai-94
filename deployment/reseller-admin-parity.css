@@ -383,23 +383,197 @@ body.argus-reseller-ready #dashboard{padding:0!important;margin:0!important}
  #argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat{padding:13px!important}
 }
 
-/* ARGUS Reseller Command Center — responsive, no invented financial values. */
-#argus-reseller-workspace .argus-reseller-hero{position:relative;isolation:isolate;display:flex;justify-content:space-between;align-items:center;gap:22px;padding:clamp(22px,3vw,36px);margin:0 0 22px;border:1px solid rgba(217,172,107,.38);border-radius:20px;background:radial-gradient(ellipse at 85% 20%,rgba(211,159,84,.2),transparent 55%),linear-gradient(125deg,#252630,#151b24 70%);overflow:hidden}
-#argus-reseller-workspace .argus-reseller-hero:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,#d4a767,transparent);opacity:.8}
-#argus-reseller-workspace .argus-reseller-hero small{font-size:10px;letter-spacing:.18em;color:#d7b684;font-weight:800}
-#argus-reseller-workspace .argus-reseller-hero h3{font-size:clamp(23px,3.1vw,36px);letter-spacing:-.04em;color:#fff3dd;margin:10px 0 7px;line-height:1.13}
-#argus-reseller-workspace .argus-reseller-hero p{color:#aeb9c8;font-size:13px;line-height:1.55;margin:0;max-width:48ch}
-#argus-reseller-workspace .argus-reseller-hero-action{border:1px solid #f0c78e;background:linear-gradient(130deg,#e9bd80,#b8884e);color:#171b22;font-size:13px;font-weight:850;padding:15px 20px;border-radius:12px;cursor:pointer;white-space:nowrap;box-shadow:0 9px 28px rgba(0,0,0,.2);transition:transform .2s,box-shadow .2s}
-#argus-reseller-workspace .argus-reseller-hero-action:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.3)}
-#argus-reseller-workspace .argus-reseller-nav-caption{display:block;color:#8f99a8;letter-spacing:.16em;font-size:9px;font-weight:850;padding:18px 12px 6px}
-#argus-reseller-workspace .argus-reseller-nav-caption:first-child{padding-top:4px}
-#argus-reseller-workspace .argus-reseller-shortcuts-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
-#argus-reseller-workspace .argus-reseller-shortcuts-head h3{margin:0;color:#f4e6d2;font-size:18px}
-#argus-reseller-workspace .argus-reseller-shortcuts-head span{color:#8995a4;font-size:12px}
-#argus-reseller-workspace .argus-reseller-shortcut-grid button{transition:transform .2s,border-color .2s,background .2s!important}
-#argus-reseller-workspace .argus-reseller-shortcut-grid button:hover{transform:translateY(-2px)}
-#argus-reseller-workspace .argus-reseller-page:not([hidden]){animation:argus-command-enter .24s ease both}
-@keyframes argus-command-enter{from{opacity:.4;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
-@media(max-width:760px){#argus-reseller-workspace .argus-reseller-hero{flex-direction:column;align-items:stretch}#argus-reseller-workspace .argus-reseller-hero-action{width:100%;white-space:normal}}
-@media(max-width:430px){#argus-reseller-workspace .argus-reseller-hero{padding:22px 18px}#argus-reseller-workspace .argus-reseller-shortcuts-head{display:block}#argus-reseller-workspace .argus-reseller-shortcuts-head span{display:block;margin-top:5px}}
-@media(prefers-reduced-motion:reduce){#argus-reseller-workspace .argus-reseller-hero-action,#argus-reseller-workspace .argus-reseller-shortcut-grid button{transition:none!important}#argus-reseller-workspace .argus-reseller-page:not([hidden]){animation:none!important}}
+/* Reseller workspace */
+#argus-reseller-workspace{
+ --res-bg:#101318;--res-surface:#191d24;--res-line:#343943;
+ --res-text:#f5eee3;--res-muted:#afb7c3;--res-gold:#f0cb91;
+ color:var(--res-text);background:var(--res-bg)
+}
+#argus-reseller-workspace [hidden]{display:none!important}
+#argus-reseller-workspace :focus-visible{outline:2px solid var(--res-gold);outline-offset:3px}
+#argus-reseller-workspace :is(.argus-reseller-nav,.res-mobile-nav,.res-icon-button,.res-primary,.res-account,.res-shortcuts) svg{
+ width:20px;height:20px;flex:none
+}
+#argus-reseller-workspace .argus-reseller-sidebar{
+ gap:16px;padding:20px 14px;background:#14171d!important;border-color:var(--res-line)!important
+}
+#argus-reseller-workspace .argus-reseller-side-brand{min-height:90px!important;padding-bottom:17px!important}
+#argus-reseller-workspace .argus-reseller-side-brand span{font-size:11px!important;letter-spacing:.07em!important}
+#argus-reseller-workspace .argus-reseller-nav-caption{
+ display:block;color:var(--res-muted);font-size:12px;font-weight:700;margin:15px 0 4px;padding:0 12px
+}
+#argus-reseller-workspace .argus-reseller-nav-caption:first-child{margin-top:0}
+#argus-reseller-workspace .argus-reseller-nav button{
+ min-height:44px!important;gap:11px!important;font-size:14px!important;padding:9px 11px
+}
+#argus-reseller-workspace .argus-reseller-nav button.selected{
+ background:#362c22!important;border-color:#665238!important;box-shadow:inset 3px 0 #e7b972
+}
+#argus-reseller-workspace .argus-reseller-side-bottom a{font-size:13px}
+#argus-reseller-workspace .argus-reseller-toolbar{
+ min-height:68px!important;background:#151a21!important;box-shadow:none;
+ border-color:var(--res-line)!important
+}
+#argus-reseller-workspace .argus-reseller-toolbar-status{display:none!important}
+#argus-reseller-workspace .argus-reseller-toolbar-title strong{color:var(--res-text);font-size:16px}
+#argus-reseller-workspace .argus-reseller-toolbar-actions{flex-wrap:nowrap;gap:8px}
+#argus-reseller-workspace .res-icon-button{
+ width:44px;height:44px;min-width:44px;display:grid;place-items:center;padding:0;
+ background:#20242d;color:var(--res-gold);border:1px solid var(--res-line);
+ border-radius:10px;position:relative;cursor:pointer
+}
+#argus-reseller-workspace .res-icon-button:hover{border-color:#ad8a5d}
+#argus-reseller-workspace #argus-reseller-menu-button{display:none}
+#argus-reseller-notices i{
+ position:absolute;top:7px;right:7px;width:8px;height:8px;border-radius:50%;background:#f0cb91
+}
+.argus-reseller-ready #argus-notification-widget{
+ top:70px;right:clamp(12px,3vw,38px);bottom:auto;z-index:42
+}
+.argus-reseller-ready #an-bell{display:none}
+.argus-reseller-ready #an-box{top:0;bottom:auto}
+#argus-reseller-workspace .argus-reseller-content{padding:clamp(18px,2.8vw,38px)!important}
+#argus-reseller-workspace .argus-reseller-page-intro{margin-bottom:24px!important}
+#argus-reseller-workspace .argus-reseller-page-intro h2{font-size:clamp(26px,3vw,36px)!important}
+#argus-reseller-workspace .argus-reseller-page-intro p{font-size:15px!important;color:var(--res-muted)!important}
+.res-overview-heading{
+ display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:0 0 24px
+}
+.res-overview-heading p{font-size:14px;color:var(--res-muted);margin:0 0 5px}
+.res-overview-heading h2{
+ color:var(--res-text);font-size:clamp(30px,3.8vw,48px);line-height:1.06;
+ font-weight:780;letter-spacing:-.045em;margin:0
+}
+#argus-reseller-workspace .res-primary{
+ display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:11px 17px;
+ color:#211810;background:linear-gradient(118deg,#f6d59e,#dba964);
+ border:1px solid #f8d6a2;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer
+}
+#argus-reseller-workspace .res-primary:hover{background:#ffe1ad}
+#argus-reseller-workspace .seller-balance{min-height:104px;align-content:center}
+#argus-reseller-workspace .seller-balance:first-child{
+ background:linear-gradient(120deg,#30271e,#1c2028 85%)!important;border-color:#68543a!important
+}
+#argus-reseller-workspace .seller-balance small{font-size:14px}
+#argus-reseller-workspace .seller-warning{margin:0;font-size:14px}
+.res-loading{margin:0;color:var(--res-muted);font-size:14px;padding:12px 0}
+.res-overview-grid,.res-detail-grid{display:grid;gap:18px;align-items:start;grid-template-columns:minmax(0,1fr) minmax(235px,29%)}
+.res-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.res-overview-grid>*,.res-detail-grid>*{min-width:0}
+#res-overview-report{container-type:inline-size}
+.res-operations{display:grid;gap:16px}
+.res-card{
+ min-width:0;background:var(--res-surface);border:1px solid var(--res-line);
+ border-radius:15px;padding:clamp(15px,2vw,22px);color:var(--res-text)
+}
+.res-card h3{font-size:17px;font-weight:750;margin:0 0 12px;color:var(--res-text)}
+.res-card p{color:var(--res-muted);font-size:14px;line-height:1.55;margin:0 0 12px}
+.res-card button{
+ color:var(--res-gold);background:none;border:0;min-height:44px;
+ cursor:pointer;font:inherit;font-size:14px;font-weight:680;text-align:left
+}
+.res-card button:hover{color:#fff0d6}
+.res-account button,.res-shortcuts button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 0}
+.res-account p{color:#f5cd93;background:#30271f;border:1px solid #614c33;border-radius:9px;padding:9px 11px}
+.res-account p.res-status-ok{color:#b7e9ce;background:#20382e;border-color:#3f6956}
+.res-shortcuts button+button{border-top:1px solid var(--res-line)}
+.res-account button svg:last-child,.res-shortcuts button svg:last-child{margin-left:auto;width:15px!important}
+#argus-reseller-workspace #ar-seller-revenue{
+ margin:0!important;padding:clamp(15px,2vw,22px);
+ background:var(--res-surface);border:1px solid var(--res-line);border-radius:15px
+}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading{margin:0 0 13px;padding:0!important;align-items:center}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading h2{margin:0 0 4px;color:var(--res-text)}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading p{margin:0}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading small{display:none}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-heading>div{flex:1 1 290px}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;margin:0}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat{background:#12161d!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-panel{margin-bottom:0;background:#12161d!important}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat>small{font-size:14px}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat>strong{font-size:clamp(19px,2.1vw,27px)}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-foot{min-height:0}
+@container (min-width:680px){
+ #argus-reseller-workspace #ar-seller-revenue .ar-revenue-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+ #argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat{padding:15px 12px}
+ #argus-reseller-workspace #ar-seller-revenue .ar-revenue-stat>strong{font-size:22px}
+}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-refresh{
+ color:var(--res-gold);background:#282522;border:1px solid #675138;width:auto
+}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-refresh:hover{background:#433427}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-panel-head{margin-bottom:4px}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-bar-space{height:108px}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-chart{min-height:153px}
+#argus-reseller-workspace .res-charge-receipt h3{margin-bottom:8px}
+#argus-reseller-workspace .seller-panel :where(h3,h4){color:var(--res-text)}
+#argus-reseller-workspace .seller-panel p{font-size:14px}
+#argus-reseller-workspace .seller-panel form label{font-size:14px}
+#argus-reseller-workspace .seller-panel form button[type=submit]{
+ min-height:46px;border:1px solid #f2cb8f;border-radius:9px;color:#211810;
+ background:#eec58b;font-weight:800;padding:9px 17px;cursor:pointer
+}
+#argus-reseller-workspace .seller-panel button:disabled{opacity:.52;cursor:not-allowed}
+#argus-reseller-workspace .seller-form-gate{color:#f5ce9b;padding:12px;border:1px solid #614c33;border-radius:9px}
+#seller-pix-result{display:grid;gap:12px;justify-items:start}
+#seller-pix-result .seller-qr-visual{
+ padding:12px;background:white;border-radius:12px;max-width:100%;color:#222
+}
+#seller-pix-result .seller-qr-visual :where(img,canvas){max-width:100%;height:auto}
+.seller-qr-head{display:grid;gap:4px}
+.seller-qr-head small,#seller-pix-result>small{color:var(--res-muted);font-size:13px}
+.res-history-controls{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;margin-bottom:14px}
+.res-history-controls label{display:grid;gap:7px;font-size:14px;color:var(--res-text)}
+.res-history-controls :is(input,select){
+ color:var(--res-text);background:#12161d;border:1px solid #50596a;border-radius:8px;
+ min-height:44px;width:100%;min-width:0;padding:9px 11px;font-size:16px
+}
+.res-history-controls p{grid-column:1/-1;margin:0}
+#argus-reseller-workspace .res-charge-row{min-height:68px;gap:12px}
+.res-charge-meta,.res-charge-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;min-width:0}
+.res-charge-meta code,.res-charge-meta small{color:var(--res-muted);font-size:12px;overflow-wrap:anywhere}
+.res-charge-meta strong{font-size:16px}
+.res-charge-state{font-size:13px;font-weight:650;padding:5px 8px;border-radius:7px;background:#303640;color:#e5eaf2}
+[data-charge-status="paid"] .res-charge-state{background:#224234;color:#ace8c5}
+[data-charge-status="pending"] .res-charge-state{background:#3d3022;color:#f5d19c}
+[data-charge-status="failed"] .res-charge-state{background:#472e32;color:#ffc9c1}
+.res-mobile-nav{display:none}
+@media(max-width:999px){
+ #argus-reseller-workspace #argus-reseller-menu-button{display:grid!important}
+ #argus-reseller-workspace .argus-reseller-sidebar{z-index:62}
+ body.res-drawer-open{overflow:hidden}
+}
+@media(max-width:740px){
+ .res-overview-grid,.res-detail-grid{grid-template-columns:minmax(0,1fr)}
+ .res-operations{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ body.argus-reseller-ready footer{padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+ #argus-reseller-workspace .argus-reseller-content{padding:19px 14px calc(82px + env(safe-area-inset-bottom))!important}
+ #argus-reseller-workspace .argus-reseller-toolbar{min-height:62px!important}
+ .res-overview-heading{margin-bottom:18px}
+ #argus-reseller-workspace .res-primary{max-width:51%;padding-inline:10px}
+ #argus-reseller-workspace .seller-balances{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ #argus-reseller-workspace .seller-balance:first-child{grid-column:1/-1}
+ #argus-reseller-workspace .seller-balance{min-height:82px;padding:12px!important}
+ #argus-reseller-workspace .seller-balance small{font-size:13px}
+ .res-mobile-nav{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;position:fixed;
+  inset:auto 0 0;z-index:25;padding:5px 7px calc(5px + env(safe-area-inset-bottom));
+  background:#151920;border-top:1px solid var(--res-line)
+ }
+ .res-mobile-nav button{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  min-width:0;min-height:49px;border:0;border-radius:8px;padding:4px 2px;
+  background:transparent;color:var(--res-muted);font:inherit;font-size:11px;text-align:center
+ }
+ .res-mobile-nav button.selected{color:var(--res-gold);background:#342b22}
+ .res-mobile-nav svg{width:18px!important;height:18px!important}
+}
+@media(max-width:440px){
+ .res-operations,.res-history-controls{grid-template-columns:minmax(0,1fr)}
+ .res-overview-heading h2{font-size:29px}
+ .res-overview-heading p{font-size:13px}
+ #argus-reseller-workspace .res-primary{font-size:13px}
+ #argus-reseller-workspace .argus-reseller-toolbar-actions{gap:5px}
+}

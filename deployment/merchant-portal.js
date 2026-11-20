@@ -5,6 +5,14 @@ const escapeText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 let working=false,active=false,at=0;
 let ownCharges=new Map();
 const FEE=100;
+const chargeLabels={paid:'Pago',pending:'Aguardando pagamento',expired:'Expirado',refunded:'Devolvido',unknown:'Em verificação',failed:'Não aprovado',creating:'Criando'};
+const payoutLabels={requested:'Solicitado',processing:'Em processamento',queued:'Em fila',pending:'Aguardando confirmação',unknown:'Em verificação',paid:'Pago',completed:'Concluído',failed:'Falhou',rejected:'Recusado',refunded:'Estornado',cancelled:'Cancelado'};
+const chargeDate=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Sao_Paulo'});
+function formatChargeDate(value){
+ const timestamp=String(value||'').replace(' ','T');
+ const date=new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(timestamp)?timestamp+'Z':timestamp);
+ return Number.isNaN(date.getTime())?'':chargeDate.format(date);
+}
 function cents(raw){const str=String(raw??'').trim();if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(str))return null;const n=Number(str.replace(',','.'));return Number.isFinite(n)?Math.round(n*100):null}
 function ensure(){
  if(E('argus-seller-root'))return;
@@ -16,21 +24,21 @@ function ensure(){
   '<div class="seller-columns"><section class="seller-panel"><h3>Minhas chaves de integração</h3><p>Você mesmo gera suas chaves API e secreta, sem pedir autorização ao administrador a cada geração. As credenciais são exclusivas da sua conta.</p>',
   '<button id="seller-key-create" type="button">Gerar minhas chaves de API</button><div id="seller-key-status" class="seller-key-status" aria-live="polite">Conferindo autorização...</div><div id="seller-key-list"></div>',
   '<p><a href="/documentacao-api" target="_blank" rel="noopener">Abrir documentação API para sites e Telegram</a></p></section>',
-  '<section class="seller-panel"><h3>Sacar meu saldo</h3><p>Saque diretamente para sua chave Pix, sem autorização do administrador. R$ 1,00 de taxa já descontado do total.</p>',
+  '<section class="seller-panel"><h3>Sacar meu saldo</h3><p>Informe a chave Pix de destino e confira o valor líquido antes de confirmar.</p>',
   '<form id="seller-withdraw-form" autocomplete="off"><label>Valor total a sacar (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
   '<label>Tipo da chave Pix<select name="pix_key_type"><option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="email">E-mail</option><option value="phone">Celular</option><option value="evp">Chave aleatória</option></select></label>',
   '<label>Chave Pix<input name="pix_key" autocomplete="off" maxlength="190" required></label><div class="seller-quote" id="seller-quote">Informe o valor para calcular a reserva.</div>',
   '<label class="seller-checkbox"><input name="confirm" type="checkbox" required><span>Confirmo o destino, o valor e a taxa de serviço de R$ 1,00.</span></label>',
-  '<button type="submit">Solicitar saque</button></form><h4>Meus saques</h4><div id="seller-withdrawals"></div></section></div>',
-  '<section class="seller-panel"><h3>Gerar Pix / depósito</h3><p>Receba diretamente na sua carteira. A taxa de serviço de R$ 1,00 é aplicada uma única vez após o pagamento.</p>',
+  '<button type="submit">Solicitar saque</button></form></section><section class="seller-panel" id="seller-payout-history"><h3>Meus saques</h3><div id="seller-withdrawals">Consultando solicitações…</div></section></div>',
+  '<section class="seller-panel"><h3>Dados da cobrança</h3><p>Confira o valor e os dados do pagador antes de gerar o Pix.</p>',
   '<form id="seller-deposit-form" autocomplete="off"><label>Valor da cobrança (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
   '<label class="seller-checkbox"><input id="seller-self-payer" name="self_payer" type="checkbox" checked><span>Usar meus dados cadastrais verificados como pagador deste Pix.</span></label>',
   '<label>Nome completo do pagador<input name="payer_name" maxlength="120" autocomplete="off" required></label>',
   '<label>CPF/CNPJ do pagador<input name="payer_document" inputmode="numeric" maxlength="18" autocomplete="off" required></label>',
   '<label>Descrição da venda<input name="description" maxlength="120" value="Pagamento de produto ou serviço" required></label>',
   '<button type="submit">Gerar Pix</button></form><div id="seller-pix-result" aria-live="polite"></div></section>',
-  '<section class="seller-panel"><h3>Minhas cobranças e QR Codes</h3><p>Os Pix gerados pelo seu site, aplicativo ou Telegram aparecem aqui automaticamente. Somente pagamentos confirmados pela MisticPay entram no seu saldo.</p>',
-  '<div id="seller-active-pix" aria-live="polite"></div><div id="seller-sales"></div></section>'
+  '<section class="seller-panel"><h3>Cobranças recentes</h3>',
+  '<div id="seller-active-pix" aria-live="polite" hidden></div><div id="seller-sales">Consultando cobranças…</div></section>'
  ].join('');
  top.after(root);
  E('seller-refresh').onclick=()=>load(true);
@@ -52,13 +60,13 @@ function togglePayerMode(){
   if(enabled)input.value='';
  }
 }
-function drawSellerPix(charge){
- const host=E('seller-active-pix');if(!host)return;
+function drawSellerPix(charge,host=E('seller-active-pix')){if(!host)return;
  host.replaceChildren();
- if(!charge?.pix_copy_paste){host.textContent='Nenhum QR Code Pix ativo no momento.';return}
+ host.hidden=!charge?.pix_copy_paste;
+ if(host.hidden)return;
  const header=document.createElement('div');header.className='seller-qr-head';
  const title=document.createElement('strong');title.textContent='QR Code Pix · '+BRL(charge.amount_cents);
- const status=document.createElement('small');status.textContent='Aguardando pagamento · '+charge.id;
+ const status=document.createElement('small');status.textContent=chargeLabels[charge.display_status||charge.status]||'Cobrança registrada';
  header.append(title,status);
  const qr=document.createElement('div');qr.className='seller-qr-visual';qr.setAttribute('aria-label','QR Code da cobrança Pix '+charge.id);
  if(typeof QRCode==='function'){
@@ -74,16 +82,18 @@ function drawSellerPix(charge){
   try{await navigator.clipboard.writeText(field.value);notice('Código Pix copiado')}
   catch(_){field.focus();field.select();notice('Selecione o texto para copiar manualmente')}
  };
- const details=document.createElement('small');details.textContent='Cobrança '+charge.id+' · '+charge.status+
-  ' · crédito previsto após confirmação '+BRL(charge.net_cents);
+ const details=document.createElement('small');
+ details.textContent='Crédito previsto após confirmação '+BRL(charge.net_cents)+' · '+charge.id;
  host.append(header,qr,field,copy,details);
 }
 function openSellerPix(event){
  const button=event.target.closest('[data-seller-open-pix]');if(!button)return;
  const charge=ownCharges.get(button.dataset.sellerOpenPix);
  if(!charge||!charge.pix_copy_paste){notice('QR Code indisponível ou expirado',true);return}
- drawSellerPix(charge);
- E('seller-active-pix')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+ const receipt=E('seller-active-pix');
+ receipt.dataset.chargeId=charge.id;
+ drawSellerPix(charge,receipt);
+ receipt.scrollIntoView({behavior:'auto',block:'nearest'});
 }
 function quote(){
  const n=cents(E('seller-withdraw-form')?.elements.amount.value),host=E('seller-quote');if(!host)return;
@@ -95,7 +105,7 @@ function walletRender(w){
  const blocks=[['Disponível',w.available_cents],['Reservado em saques',w.reserved_cents],['Taxa de serviço',FEE]];
  E('seller-balances').innerHTML=blocks.map(v=>'<div class="seller-balance"><small>'+v[0]+'</small><strong>'+BRL(v[1])+'</strong></div>').join('')+
   (w.negative_adjustments_cents>0?'<p class="seller-warning">Reversão/contestação em análise. Saques bloqueados até regularização.</p>':'')+
-  (!w.deposits_enabled?'<p class="seller-warning">Depósitos aguardando homologação financeira do recebimento.</p>':'')+
+  (!w.deposits_enabled?'<p class="seller-warning">Recebimentos Pix aguardando habilitação financeira.</p>':'')+
   (!w.withdrawals_enabled?'<p class="seller-warning">Saques aguardando habilitação financeira no provedor.</p>':'');
 }
 function keysRender(v){
@@ -110,21 +120,44 @@ function activities(){
   if(arr[0].status==='fulfilled'){
    walletRender(arr[0].value.wallet);
    const data=arr[0].value.withdrawals||[];
-   E('seller-withdrawals').innerHTML=data.length?data.slice(0,12).map(r=>'<div class="seller-item"><b>Solicitado '+BRL(r.amount_cents)+'</b> · Pix líquido '+BRL(r.recipient_cents)+'<small>'+escapeText(r.status)+' · '+escapeText(r.pix_key_masked)+'</small></div>').join(''):
+   E('seller-withdrawals').innerHTML=data.length?data.slice(0,12).map(r=>'<div class="seller-item"><b>Solicitado '+BRL(r.amount_cents)+'</b> · Pix líquido '+BRL(r.recipient_cents)+'<small>'+escapeText(payoutLabels[r.status]||r.status)+' · '+escapeText(r.pix_key_masked)+'</small></div>').join(''):
     '<p>Sem saques solicitados.</p>';
-  }else walletRender(null);
+  }else{
+   walletRender(null);
+   E('seller-withdrawals').textContent='Não foi possível consultar os saques. Use Atualizar carteira para tentar novamente.';
+  }
   if(arr[1].status==='fulfilled'){
    const rows=arr[1].value.charges||[];
    ownCharges=new Map(rows.map(r=>[r.id,r]));
-   const labels={paid:'Aprovado',pending:'Aguardando',expired:'Expirado',refunded:'Devolvido',unknown:'Conferindo',failed:'Não aprovado',creating:'Criando'};
-   E('seller-sales').innerHTML=rows.length?rows.slice(0,15).map(r=>
-    '<div class="seller-item"><strong>'+BRL(r.amount_cents)+'</strong> · Taxa de serviço '+BRL(r.service_fee_cents)+
-    ' <small>'+escapeText(labels[r.display_status]||r.display_status)+' · '+escapeText(r.id)+'</small>'+
-    (r.pix_copy_paste&&r.display_status==='pending'?'<button type="button" data-seller-open-pix="'+escapeText(r.id)+'">Ver QR Code Pix</button>':'')+
-    '</div>').join(''):'<p>Nenhuma cobrança Pix deste revendedor.</p>';
-   const available=rows.find(r=>r.pix_copy_paste&&r.display_status==='pending');
-   drawSellerPix(available);
-  }else E('seller-sales').textContent='Histórico de vendas indisponível.';
+   E('seller-sales').innerHTML=rows.length?rows.map(r=>
+    '<div class="seller-item res-charge-row" data-charge-status="'+escapeText(r.display_status)+'">'+
+    '<div class="res-charge-meta"><strong>'+BRL(r.amount_cents)+'</strong><small>'+escapeText(formatChargeDate(r.created_at))+'</small>'+
+    '<code>'+escapeText(r.id)+'</code></div><div class="res-charge-actions"><span class="res-charge-state">'+
+    escapeText(chargeLabels[r.display_status]||r.display_status)+'</span>'+
+    (r.pix_copy_paste&&r.display_status==='pending'?'<button type="button" data-seller-open-pix="'+escapeText(r.id)+'">Ver QR Code</button>':'')+
+    '</div></div>').join(''):'<p>Nenhuma cobrança Pix encontrada.</p>';
+   const receipt=E('seller-pix-result');
+   const latest=ownCharges.get(receipt.dataset.chargeId);
+   if(latest?.display_status==='pending'&&latest.pix_copy_paste&&!receipt.querySelector('textarea')){
+    receipt.dataset.chargeStatus=latest.display_status;
+    drawSellerPix(latest,receipt);
+   }else if(latest&&latest.display_status!=='pending'&&latest.display_status!==receipt.dataset.chargeStatus){
+    receipt.dataset.chargeStatus=latest.display_status;
+    const status=document.createElement('p');
+    status.textContent=(chargeLabels[latest.display_status]||'Cobrança registrada')+' · '+BRL(latest.amount_cents);
+    receipt.replaceChildren(status);
+   }
+   const open=E('seller-active-pix');
+   const selected=ownCharges.get(open.dataset.chargeId);
+   if(!selected?.pix_copy_paste||selected.display_status!=='pending'){
+    drawSellerPix(null);
+    delete open.dataset.chargeId;
+   }
+  }else{
+   ownCharges.clear();
+   drawSellerPix(null);
+   E('seller-sales').textContent='Não foi possível consultar as cobranças. Use Atualizar carteira para tentar novamente.';
+  }
  });
 }
 async function load(force=false){
@@ -176,15 +209,12 @@ async function deposit(event){
   }
   const response=await request('/api/portal/wallet/charges',{method:'POST',body:payment});
   const charge=response.charge,box=E('seller-pix-result');box.replaceChildren();
-  const label=document.createElement('p');
-  label.textContent='Cobrança '+BRL(charge.amount_cents)+' · crédito após pagamento '+BRL(charge.net_cents)+' · status '+charge.status;
-  box.append(label);
+  box.dataset.chargeId=charge.id;
+  box.dataset.chargeStatus=charge.display_status||charge.status;
   if(charge.pix_copy_paste){
-   const field=document.createElement('textarea');field.rows=4;field.readOnly=true;field.value=charge.pix_copy_paste;
-   const copy=document.createElement('button');copy.type='button';copy.textContent='Copiar Pix';
-   copy.onclick=()=>navigator.clipboard?.writeText(field.value).catch(()=>field.select());
-   box.append(field,copy);
+   drawSellerPix(charge,box);
   }else{
+   box.hidden=false;
    const p=document.createElement('p');p.textContent='Cobrança pendente de resposta do provedor. Não crie outra cobrança para a mesma venda.';box.append(p);
   }
   delete form.dataset.idem;form.reset();togglePayerMode();notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');

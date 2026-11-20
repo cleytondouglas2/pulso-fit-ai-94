@@ -28,9 +28,9 @@ function chart(points){
  const vals=points||[],top=Math.max(1,...vals.map(x=>Math.abs(Number(x.gross_cents)||0)));
  return '<div class="ar-revenue-chart" role="img" aria-label="Faturamento por dia nos últimos 14 dias">'+
   vals.map(p=>{
-   const v=Number(p.gross_cents)||0,h=Math.max(v===0?0:4,Math.round(100*Math.abs(v)/top));
+   const v=Number(p.gross_cents)||0,h=Math.round(100*Math.abs(v)/top);
    return '<div class="ar-revenue-bar-column" title="'+esc(shortDate(p.date)+' · '+money(v))+'">'+
-     '<div class="ar-revenue-bar-space"><span class="ar-revenue-bar'+(v<0?' is-refund':'')+'" style="height:'+h+'%"></span></div>'+
+     '<div class="ar-revenue-bar-space"><svg class="ar-revenue-bar'+(v<0?' is-refund':'')+'" viewBox="0 0 30 100" preserveAspectRatio="none" aria-hidden="true"><rect x="1" width="28" y="'+(100-h)+'" height="'+h+'" rx="3"/></svg></div>'+
      '<small>'+esc(shortDate(p.date))+'</small></div>';
   }).join('')+'</div>';
 }
@@ -105,7 +105,11 @@ async function refreshSeller(force=false){
   host.innerHTML=summary(data,'Meu faturamento');
   host.querySelector('[data-revenue-refresh]')?.addEventListener('click',()=>refreshSeller(true));
   sellerLast=Date.now();
- }catch(e){host.innerHTML='<p class="ar-revenue-error" role="alert">Não foi possível consultar seu faturamento agora. '+esc(e.message)+'</p>'}
+ }catch(e){
+  host.innerHTML='<p class="ar-revenue-error" role="alert">Não foi possível consultar seu faturamento agora. '+esc(e.message)+'</p>'+
+   '<button type="button" class="ar-revenue-refresh" data-revenue-refresh>Tentar novamente</button>';
+  host.querySelector('[data-revenue-refresh]').addEventListener('click',()=>refreshSeller(true));
+ }
  finally{sellerLoading=false;}
 }
 function start(){

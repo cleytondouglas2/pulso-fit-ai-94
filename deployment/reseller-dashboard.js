@@ -7,14 +7,32 @@
 if(window.__argusResellerWorkspace)return;
 window.__argusResellerWorkspace=true;
 const E=id=>document.getElementById(id);
-const pages=['overview','registration','charges','wallet','integrations','history'];
 const titles={
- overview:'Visão geral',registration:'Cadastro e documentos',
- charges:'Gerar cobrança Pix',wallet:'Saldo e saques',
- integrations:'Chaves e integrações',history:'Histórico de cobranças'
+ overview:'Visão geral',charges:'Cobrar com Pix',history:'Cobranças',
+ wallet:'Saldo e saques',statement:'Extrato',integrations:'Integrações',
+ registration:'Perfil e documentos',assistant:'Assistente Argus'
 };
+const pages=Object.keys(titles);
+const icons={
+ overview:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+ charges:'<path d="M12 3v18M3 12h18"/>',
+ history:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+ wallet:'<path d="M20 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-2M3 8h17"/><path d="M16 10h5v6h-5a3 3 0 1 1 0-6Z"/>',
+ statement:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6m-6 4h6"/>',
+ integrations:'<path d="m8 6-6 6 6 6m8-12 6 6-6 6m-3-16-2 20"/>',
+ registration:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a5 5 0 0 1 5-5h6a5 5 0 0 1 5 5v2"/>',
+ assistant:'<path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z"/>',
+ refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5 8a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3"/>',
+ menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ bell:'<path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
+ chevron:'<path d="m9 5 7 7-7 7"/>'
+};
+const icon=name=>'<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">'+icons[name]+'</svg>';
+const nav=name=>'<button type="button" class="menu-item" data-reseller-view="'+name+'">'+icon(name)+'<span>'+titles[name]+'</span></button>';
+const page=(name,description,body='')=>'<section class="argus-reseller-page" id="argus-reseller-page-'+name+'" data-reseller-page="'+name+'" hidden>'+
+ '<header class="argus-reseller-page-intro"><h2 tabindex="-1">'+titles[name]+'</h2><p>'+description+'</p></header>'+body+'</section>';
 let initialized=false,current='overview',scheduled=false,drawer=false;
-let observer=null;
+let drawerOrigin=null;
 function shell(){
  const dash=E('dashboard');
  if(!dash||E('argus-reseller-workspace'))return;
@@ -23,60 +41,43 @@ function shell(){
  wrapper.className='argus-reseller-workspace admin-shell';
  wrapper.innerHTML=[
  '<aside class="argus-reseller-sidebar sidebar" id="argus-reseller-sidebar" aria-label="Menu do revendedor">',
- '<div class="argus-reseller-side-brand">',
- '<img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="170" height="56">',
- '<span>PAINEL DO REVENDEDOR</span></div>',
+ '<div class="argus-reseller-side-brand"><img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="170" height="56"><span>Painel do revendedor</span></div>',
  '<nav class="argus-reseller-nav side-menu" aria-label="Áreas da conta">',
- '<span class="argus-reseller-nav-caption">GESTÃO</span>',
- '<button type="button" class="menu-item" data-reseller-view="overview"><span class="nav-glyph" aria-hidden="true">▦</span>Visão geral</button>',
- '<button type="button" class="menu-item" data-reseller-view="registration"><span class="nav-glyph" aria-hidden="true">◈</span>Cadastro e documentos</button>',
- '<button type="button" class="menu-item" data-reseller-view="charges"><span class="nav-glyph" aria-hidden="true">▣</span>Gerar Pix</button>',
- '<button type="button" class="menu-item" data-reseller-view="wallet"><span class="nav-glyph" aria-hidden="true">◉</span>Saldo e saques</button>',
- '<span class="argus-reseller-nav-caption">FERRAMENTAS</span>',
- '<button type="button" class="menu-item" data-reseller-view="integrations"><span class="nav-glyph" aria-hidden="true">⌘</span>Chaves API</button>',
- '<button type="button" class="menu-item" data-reseller-view="history"><span class="nav-glyph" aria-hidden="true">◷</span>Histórico</button>',
- '</nav>',
- '<div class="argus-reseller-side-bottom"><a href="/" rel="noopener">Conhecer o ARGUS Pay</a>',
- '<a href="/documentacao-api">Documentação API</a><a href="/instalar">Instalar no celular</a>',
- '<small>Conta do revendedor · acesso individual</small></div></aside>',
+ '<span class="argus-reseller-nav-caption">Operação</span>',nav('overview'),nav('charges'),nav('history'),
+ '<span class="argus-reseller-nav-caption">Financeiro</span>',nav('wallet'),nav('statement'),
+ '<span class="argus-reseller-nav-caption">Gestão</span>',nav('integrations'),nav('registration'),nav('assistant'),
+ '</nav><div class="argus-reseller-side-bottom"><a href="/documentacao-api">Documentação API</a><a href="/instalar">Instalar no celular</a></div></aside>',
  '<div class="argus-reseller-drawer-backdrop" id="argus-reseller-backdrop" hidden></div>',
- '<div class="argus-reseller-main main"><header class="argus-reseller-toolbar topbar">',
- '<button type="button" id="argus-reseller-menu-button" aria-controls="argus-reseller-sidebar" aria-expanded="false" aria-label="Abrir menu do revendedor">☰</button>',
- '<div class="argus-reseller-toolbar-title"><small>ARGUS PAYMENTS / REVENDEDOR</small>',
- '<strong id="argus-reseller-page-title">Visão geral</strong></div>',
- '<div class="argus-reseller-toolbar-actions" id="argus-reseller-toolbar-actions"></div>',
- '</header>',
- '<div class="argus-reseller-content admin-content content">',
+ '<div class="argus-reseller-main main" id="argus-reseller-main"><header class="argus-reseller-toolbar topbar">',
+ '<button type="button" class="res-icon-button" id="argus-reseller-menu-button" aria-controls="argus-reseller-sidebar" aria-expanded="false" aria-label="Abrir menu do revendedor">'+icon('menu')+'</button>',
+ '<div class="argus-reseller-toolbar-title"><strong id="argus-reseller-page-title">Visão geral</strong></div>',
+ '<div class="argus-reseller-toolbar-actions" id="argus-reseller-toolbar-actions">',
+ '<button type="button" class="res-icon-button" id="argus-reseller-notices" aria-label="Notificações" hidden>'+icon('bell')+'<i hidden></i></button>',
+ '<button type="button" class="res-icon-button" id="res-refresh" aria-label="Atualizar carteira" title="Atualizar carteira" hidden>'+icon('refresh')+'</button>',
+ '</div></header><div class="argus-reseller-content admin-content content">',
  '<section class="argus-reseller-page page" id="argus-reseller-page-overview" data-reseller-page="overview">',
- '<div class="argus-reseller-page-intro section-top"><span>ARGUS PAY · REVENDEDOR</span><h2>Visão geral</h2>',
- '<p>Indicadores e movimentações da sua conta.</p></div>',
- '<div class="argus-reseller-hero"><div><small>SEU CENTRO DE COMANDO</small><h3>Seu negócio em movimento.</h3><p>Receba, acompanhe e gerencie cada etapa em um só lugar.</p></div><button type="button" data-reseller-view="charges" class="argus-reseller-hero-action">+ Nova cobrança Pix</button></div>',
- '<div class="argus-reseller-overview-top" id="argus-reseller-overview-top"></div>',
- '<div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances"></div>',
- '<div class="argus-reseller-shortcuts"><div class="argus-reseller-shortcuts-head"><h3>Acesso rápido</h3><span>Gerencie sem sair do painel</span></div>',
- '<div class="argus-reseller-shortcut-grid">',
- '<button type="button" class="menu-item" data-reseller-view="registration"><strong>◈ Cadastro e documentos</strong><small>Identidade e análise KYC</small></button>',
- '<button type="button" class="menu-item" data-reseller-view="charges"><strong>▣ Gerar Pix</strong><small>Cobranças e QR Codes</small></button>',
- '<button type="button" class="menu-item" data-reseller-view="wallet"><strong>◉ Saldo e saques</strong><small>Sua carteira individual</small></button>',
- '<button type="button" class="menu-item" data-reseller-view="integrations"><strong>⌘ Chaves API</strong><small>Integração com sites e sistemas</small></button>',
- '</div></div></section>',
- '<section class="argus-reseller-page" id="argus-reseller-page-registration" data-reseller-page="registration" hidden>',
- '<div class="argus-reseller-page-intro"><span>IDENTIDADE</span><h2>Cadastro e documentos</h2>',
- '<p>Consulte os dados da conta, a análise documental e o histórico de verificação.</p></div></section>',
- '<section class="argus-reseller-page" id="argus-reseller-page-charges" data-reseller-page="charges" hidden>',
- '<div class="argus-reseller-page-intro"><span>RECEBIMENTOS</span><h2>Gerar cobrança Pix</h2>',
- '<p>Gere cobranças Pix e acompanhe a confirmação do pagamento.</p></div></section>',
- '<section class="argus-reseller-page" id="argus-reseller-page-wallet" data-reseller-page="wallet" hidden>',
- '<div class="argus-reseller-page-intro"><span>FINANCEIRO</span><h2>Saldo e saques</h2>',
- '<p>Gerencie os saques disponíveis e acompanhe as solicitações da sua carteira.</p></div>',
- '<div id="argus-reseller-wallet-balances"></div></section>',
- '<section class="argus-reseller-page" id="argus-reseller-page-integrations" data-reseller-page="integrations" hidden>',
- '<div class="argus-reseller-page-intro"><span>DESENVOLVEDORES</span><h2>Chaves e integrações</h2>',
- '<p>Gere e gerencie credenciais individuais para conectar seu site, sistema ou bot.</p></div></section>',
- '<section class="argus-reseller-page" id="argus-reseller-page-history" data-reseller-page="history" hidden>',
- '<div class="argus-reseller-page-intro"><span>MOVIMENTAÇÕES</span><h2>Histórico de cobranças</h2>',
- '<p>Consulte os Pix gerados, pagamentos e cobranças pendentes.</p></div></section>',
- '</div></div>'
+ '<header class="res-overview-heading"><div><p id="res-welcome">Minha operação</p><h2 tabindex="-1">Visão geral</h2></div><button type="button" class="res-primary" data-reseller-view="charges">'+icon('charges')+'Nova cobrança Pix</button></header>',
+ '<div id="argus-reseller-overview-top" hidden></div><div class="argus-reseller-overview-balances" id="argus-reseller-overview-balances" aria-label="Sua carteira"><p class="res-loading">Consultando sua carteira…</p></div>',
+ '<div class="res-overview-grid"><div id="res-overview-report"></div><aside class="res-operations" aria-label="Ações da conta">',
+ '<section class="res-card res-account"><h3>Situação da conta</h3><p id="res-account-state" role="status">Consultando cadastro…</p><button type="button" data-reseller-view="registration">Acompanhar cadastro '+icon('chevron')+'</button></section>',
+ '<section class="res-card res-shortcuts"><h3>Ações rápidas</h3>',
+ '<button type="button" data-reseller-view="history">'+icon('history')+'Consultar cobranças'+icon('chevron')+'</button>',
+ '<button type="button" data-reseller-view="wallet">'+icon('wallet')+'Solicitar saque'+icon('chevron')+'</button>',
+ '<button type="button" data-reseller-view="statement">'+icon('statement')+'Baixar extrato'+icon('chevron')+'</button>',
+ '<button type="button" data-reseller-view="integrations">'+icon('integrations')+'Gerenciar API e webhooks'+icon('chevron')+'</button>',
+ '</section></aside></div></section>',
+ page('charges','Crie um QR Code e compartilhe o código Pix Copia e Cola.',
+  '<div class="res-detail-grid"><div id="res-charge-form"></div><section class="res-card res-charge-receipt"><h3>QR Code e código Pix</h3><p id="res-charge-placeholder">O QR Code da cobrança aparece aqui após a emissão.</p><div id="res-charge-result"></div></section></div>'),
+ page('history','Localize cobranças recentes pelo status, pelo ID ou pelo valor.',
+  '<section class="res-card res-history-controls" id="res-history-controls" hidden><label>Buscar cobrança<input type="search" id="res-charge-search" placeholder="ID ou valor" autocomplete="off"></label>'+
+  '<label>Status<select id="res-charge-filter"><option value="">Todos</option><option value="paid">Pago</option><option value="pending">Aguardando</option><option value="expired">Expirado</option><option value="refunded">Devolvido</option><option value="checking">Em verificação</option><option value="failed">Não aprovado</option></select></label><p id="res-charge-count" role="status"></p></section>'),
+ page('wallet','Confira o saldo, acompanhe valores reservados e consulte suas solicitações de saque.',
+  '<div id="argus-reseller-wallet-balances"></div><div class="res-detail-grid"><div id="res-payout-form"></div><div id="res-payout-history"></div></div>'),
+ page('statement','Escolha um intervalo para baixar as movimentações e taxas da sua conta.'),
+ page('integrations','Gerencie as credenciais e os webhooks usados pelo seu site, aplicativo ou bot.'),
+ page('registration','Acompanhe a análise, envie documentos e revise os dados da sua conta.'),
+ page('assistant','Consulte as análises e os alertas da sua operação.'),
+ '</div><nav class="res-mobile-nav" aria-label="Atalhos principais">'+nav('overview')+nav('charges')+nav('history')+nav('wallet')+'</nav></div>'
  ].join('');
  dash.insertBefore(wrapper,dash.firstChild);
  const top=dash.querySelector('.dash-top');
@@ -85,25 +86,24 @@ function shell(){
  move(top,E('argus-reseller-page-registration'));
  move(original,E('argus-reseller-page-registration'));
  move(E('api-panel'),E('argus-reseller-page-integrations'));
- // Keep the existing logout button and its original click handler.
- const logout=E('logout');
- move(logout,E('argus-reseller-toolbar-actions'));
+ move(E('logout'),E('argus-reseller-toolbar-actions'));
+ E('res-refresh').addEventListener('click',()=>E('seller-refresh')?.click());
+ E('argus-reseller-notices').addEventListener('click',()=>E('an-bell')?.click());
  wrapper.addEventListener('click',event=>{
   const nav=event.target.closest('[data-reseller-view]');
-  if(nav){select(nav.dataset.resellerView,{scroll:true});return}
+  if(nav)select(nav.dataset.resellerView,{focus:true,updateHistory:true});
  });
- E('argus-reseller-menu-button')?.addEventListener('click',()=>openDrawer(!drawer));
- E('argus-reseller-backdrop')?.addEventListener('click',()=>openDrawer(false));
+ E('res-charge-search').addEventListener('input',filterCharges);
+ E('res-charge-filter').addEventListener('change',filterCharges);
+ E('argus-reseller-menu-button').addEventListener('click',()=>openDrawer(!drawer));
+ E('argus-reseller-backdrop').addEventListener('click',()=>openDrawer(false,true));
  window.addEventListener('keydown',event=>{
-  if(event.key==='Escape'&&drawer)openDrawer(false);
+  if(event.key==='Escape'&&drawer){event.preventDefault();openDrawer(false,true);}
  });
  window.addEventListener('resize',()=>{
   if(window.innerWidth>=1000&&drawer)openDrawer(false);
  },{passive:true});
- window.addEventListener('hashchange',()=>{
-  const selected=fromHash();
-  if(selected)select(selected,{scroll:true});
- });
+ window.addEventListener('hashchange',()=>select(fromHash()||'overview',{focus:true}));
  initialized=true;
  schedule();
  select(fromHash()||current);
@@ -111,53 +111,105 @@ function shell(){
 function move(node,dest){
  if(node&&dest&&node.parentElement!==dest)dest.appendChild(node);
 }
-function openDrawer(value){
- drawer=!!value;
+function openDrawer(value,restoreFocus=false){
+ if(drawer===value)return;
+ drawer=value;
  const sidebar=E('argus-reseller-sidebar');
- const backdrop=E('argus-reseller-backdrop');
  const btn=E('argus-reseller-menu-button');
- if(sidebar)sidebar.classList.toggle('is-open',drawer);
- if(backdrop)backdrop.hidden=!drawer;
- if(btn){
-  btn.setAttribute('aria-expanded',String(drawer));
-  btn.setAttribute('aria-label',drawer?'Fechar menu do revendedor':'Abrir menu do revendedor');
+ sidebar.classList.toggle('is-open',drawer);
+ E('argus-reseller-backdrop').hidden=!drawer;
+ btn.setAttribute('aria-expanded',String(drawer));
+ document.body.classList.toggle('res-drawer-open',drawer);
+ if(drawer){
+  drawerOrigin=document.activeElement;
+  const active=sidebar.querySelector('[aria-current="page"]')||sidebar.querySelector('button');
+  active?.focus();
+  E('argus-reseller-main').inert=true;
+ }else{
+  E('argus-reseller-main').inert=false;
+  if(restoreFocus)drawerOrigin?.focus();
  }
 }
 function fromHash(){
  const hash=window.location.hash;
- if(/^(?:#api-panel|#seller-key|#argus-reseller-page-integrations)/.test(hash))return 'integrations';
- if(/^(?:#seller-deposit|#argus-reseller-page-charges)/.test(hash))return 'charges';
- if(/^(?:#seller-withdraw|#argus-reseller-page-wallet)/.test(hash))return 'wallet';
- if(/^(?:#seller-sales|#argus-reseller-page-history)/.test(hash))return 'history';
- if(/^(?:#kyc-|#documents|#argus-reseller-page-registration)/.test(hash))return 'registration';
- if(hash==='#argus-reseller-page-overview')return 'overview';
+ const pageName=hash.slice('#argus-reseller-page-'.length);
+ if(hash.startsWith('#argus-reseller-page-')&&pages.includes(pageName))return pageName;
+ if(/^(?:#api-panel|#seller-key|#argus-webhook)/.test(hash))return 'integrations';
+ if(/^(?:#seller-deposit|#seller-pix)/.test(hash))return 'charges';
+ if(/^#seller-withdraw/.test(hash))return 'wallet';
+ if(/^#seller-sales/.test(hash))return 'history';
+ if(/^#argus-seller-csv/.test(hash))return 'statement';
+ if(/^(?:#kyc-|#documents)/.test(hash))return 'registration';
  return null;
 }
-function select(id,options={}){
+function select(id,{focus=false,updateHistory=false}={}){
  if(!initialized||!pages.includes(id))return;
  current=id;
- const balances=E('seller-balances');
- if(balances)move(balances,E(id==='wallet'?'argus-reseller-wallet-balances':'argus-reseller-overview-balances'));
- for(const page of pages){
-  const section=E('argus-reseller-page-'+page);
-  if(section)section.hidden=(page!==id);
- }
- document.querySelectorAll('#argus-reseller-workspace [data-reseller-view]').forEach(b=>{
-  const active=b.dataset.resellerView===id;
-  b.classList.toggle('selected',active);
-  if(b.closest('.argus-reseller-nav')){
-   if(active)b.setAttribute('aria-current','page');
-   else b.removeAttribute('aria-current');
-  }
+ move(E('seller-balances'),E(id==='wallet'?'argus-reseller-wallet-balances':'argus-reseller-overview-balances'));
+ for(const page of pages)E('argus-reseller-page-'+page).hidden=(page!==id);
+ document.querySelectorAll('#argus-reseller-workspace nav [data-reseller-view]').forEach(button=>{
+  const active=button.dataset.resellerView===id;
+  button.classList.toggle('selected',active);
+  if(active)button.setAttribute('aria-current','page');
+  else button.removeAttribute('aria-current');
  });
- const title=E('argus-reseller-page-title');
- if(title)title.textContent=titles[id];
- document.title=titles[id]+' · ARGUS Pay';
- openDrawer(false);
- if(options.scroll){
-  const host=E('argus-reseller-workspace');
-  if(host)host.scrollIntoView({behavior:'auto',block:'start'});
+ E('argus-reseller-page-title').textContent=titles[id];
+ if(!E('dashboard').hidden)document.title=titles[id]+' · ARGUS Pay';
+ if(updateHistory){
+  const hash='#argus-reseller-page-'+id;
+  if(window.location.hash!==hash)history.pushState(null,'',hash);
  }
+ openDrawer(false);
+ if(focus){
+  E('argus-reseller-page-'+id).querySelector('h2')?.focus({preventScroll:true});
+  window.scrollTo(0,0);
+ }
+}
+function setHidden(element,hidden){
+ if(element.hidden!==hidden)element.hidden=hidden;
+}
+function filterCharges(){
+ const list=E('seller-sales');
+ const controls=E('res-history-controls');
+ if(!list||!controls)return;
+ const rows=[...list.querySelectorAll('[data-charge-status]')];
+ setHidden(controls,!rows.length);
+ const normalize=value=>value.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[̀-ͯ]/g,'');
+ const query=normalize(E('res-charge-search').value.trim());
+ const status=E('res-charge-filter').value;
+ let visible=0;
+ for(const row of rows){
+  const matchStatus=!status||row.dataset.chargeStatus===status||
+   (status==='checking'&&['unknown','creating'].includes(row.dataset.chargeStatus));
+  setHidden(row,!matchStatus||!normalize(row.textContent).includes(query));
+  if(!row.hidden)visible++;
+ }
+ const count=rows.length?(visible===1?'1 cobrança encontrada':visible+' cobranças encontradas'):'';
+ const counter=E('res-charge-count');
+ if(counter.textContent!==count)counter.textContent=count;
+}
+function updateHeader(){
+ const dashboard=E('dashboard');
+ const greeting=E('hello')?.textContent.trim();
+ const welcome=E('res-welcome');
+ if(greeting&&welcome.textContent!==greeting)welcome.textContent=greeting;
+ const state=window.ArgusResellerStage;
+ const labels={
+  documents_required:'Envie seus documentos',documents_under_review:'Documentos em análise',
+  rejected:'Revise a análise dos documentos',suspended:'Conta suspensa'
+ };
+ const status=labels[state?.status]||(state?.financial_authorized?'Cadastro financeiro autorizado':
+  state?.identity_approved?'Identidade aprovada · liberação financeira pendente':'Cadastro em avaliação');
+ const account=E('res-account-state');
+ const message=state?status:'Consultando cadastro…';
+ if(account.textContent!==message)account.textContent=message;
+ account.classList.toggle('res-status-ok',state?.financial_authorized===true&&state.status==='approved');
+ const bell=E('an-bell');
+ const notices=E('argus-reseller-notices');
+ setHidden(notices,!bell);
+ if(bell)setHidden(notices.querySelector('i'),E('an-badge')?.hidden!==false);
+ setHidden(E('res-refresh'),!E('seller-refresh'));
+ if(!dashboard.hidden)document.title=titles[current]+' · ARGUS Pay';
 }
 function arrange(){
  if(!initialized)return;
@@ -165,14 +217,16 @@ function arrange(){
  if(!dashboard)return;
  // Existing session verification remains the sole controller of auth state.
  document.body.classList.toggle('argus-reseller-ready',!dashboard.hidden);
+ if(dashboard.hidden)openDrawer(false);
  move(E('kyc-client-root'),E('argus-reseller-page-registration'));
  // Registration and compliance live together, never inside the financial overview.
  move(E('argus-reseller-approval'),E('argus-reseller-page-registration'));
- const rev=E('ar-seller-revenue');
- if(rev&&rev.parentElement===E('argus-reseller-page-overview')){
-  const balanceHost=E('argus-reseller-overview-balances');
-  if(balanceHost)balanceHost.after(rev);
- }
+ const registration=E('argus-reseller-page-registration');
+ move(E('portal-identity-prompt'),registration);
+ move(E('ar-seller-revenue'),E('res-overview-report'));
+ move(E('argus-seller-csv'),E('argus-reseller-page-statement'));
+ move(E('argus-portal-ai'),E('argus-reseller-page-assistant'));
+ updateHeader();
  const grid=E('argus-reseller-page-registration').querySelector('.grid')||dashboard.querySelector('.grid');
  move(grid,E('argus-reseller-page-registration'));
  move(E('api-panel'),E('argus-reseller-page-integrations'));
@@ -183,20 +237,26 @@ function arrange(){
  const parking=E('argus-reseller-merchant-parking')||document.createElement('div');
  if(!parking.id){parking.id='argus-reseller-merchant-parking';parking.className='argus-reseller-merchant-parking';E('argus-reseller-workspace').appendChild(parking);}
  move(merchant,parking);
- move(merchant.querySelector('.seller-head'),E('argus-reseller-overview-top'));
+ E('argus-reseller-overview-balances').querySelector('.res-loading')?.remove();
  move(E('seller-balances'),current==='wallet'?E('argus-reseller-wallet-balances'):E('argus-reseller-overview-balances'));
  // All original element references and event listeners remain intact.
- for(const section of [...document.querySelectorAll('#argus-reseller-workspace .seller-panel'),...merchant.querySelectorAll('.seller-panel')]){
+ for(const section of merchant.querySelectorAll('.seller-panel')){
   if(section.querySelector('#seller-key-create'))
    move(section,E('argus-reseller-page-integrations'));
   else if(section.querySelector('#seller-withdraw-form'))
-   move(section,E('argus-reseller-page-wallet'));
+   move(section,E('res-payout-form'));
   else if(section.querySelector('#seller-deposit-form'))
-   move(section,E('argus-reseller-page-charges'));
+   move(section,E('res-charge-form'));
   else if(section.querySelector('#seller-sales'))
    move(section,E('argus-reseller-page-history'));
  }
+ const pixResult=E('seller-pix-result');
+ move(pixResult,E('res-charge-result'));
+ const placeholder=E('res-charge-placeholder');
+ setHidden(placeholder,!!pixResult?.hasChildNodes());
+ move(E('seller-payout-history'),E('res-payout-history'));
  merchant.classList.add('argus-reseller-empty-hub');
+ filterCharges();
 }
 function schedule(){
  if(scheduled)return;
@@ -211,16 +271,22 @@ function start(){
  const dashboard=E('dashboard');
  if(!dashboard)return;
  shell();
- const observer=new MutationObserver(mutations=>{
-  // Asynchronous KYC/seller data requests can add the original cards later.
-  if(mutations.some(m=>m.type==='childList'||(m.type==='attributes'&&m.attributeName==='hidden')))
-   schedule();
- });
+ const observer=new MutationObserver(schedule);
  observer.observe(dashboard,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+ const watchNotifications=()=>{
+  const widget=E('argus-notification-widget');
+  if(widget)observer.observe(widget,{subtree:true,attributes:true,attributeFilter:['hidden']});
+  schedule();
+ };
+ new MutationObserver(watchNotifications).observe(document.body,{childList:true});
+ watchNotifications();
+ document.addEventListener('argus:reseller-stage',schedule);
  document.addEventListener('click',event=>{
   const link=event.target.closest('a[href="#api-panel"]');
-  if(link&&E('argus-reseller-workspace'))select('integrations',{scroll:true});
- },true);
+  if(!link||dashboard.hidden)return;
+  event.preventDefault();
+  select('integrations',{focus:true,updateHistory:true});
+ });
  window.addEventListener('pageshow',schedule);
  schedule();
 }
