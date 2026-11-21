@@ -1,12 +1,14 @@
 <?php
 declare(strict_types=1);
 /** Offline password recovery; no outgoing email, no financial operations. */
-require_once '/var/www/html/src/Gateway.php';
+$root=$argv[1]??'/var/www/html';
+require_once $root.'/src/Gateway.php';
 use ArgusPayments\Database as DB;
 use ArgusPayments\Portal;
 use ArgusPayments\PortalPasswordReset as Recovery;
 use ArgusPayments\ApiError;
-$db=new DB(require '/var/www/html/config.php');
+use ArgusPayments\Admin;
+$db=new DB(require $root.'/config.php');
 $db->installAndSeed();Portal::install($db);Recovery::install($db);
 $a=bin2hex(random_bytes(16));$b=bin2hex(random_bytes(16));
 $old='OldPassword12345';$new='NewPassword8675309';
@@ -50,11 +52,67 @@ $expired=bin2hex(random_bytes(32));
 $db->run('INSERT INTO argus_portal_password_resets(id,account_id,token_hash,created_at,expires_at,used_at)
     VALUES(?,?,?,?,?,NULL)',[bin2hex(random_bytes(16)),$a,hash('sha256',$expired),time()-900,time()-1]);
 $invalid(static fn()=>Recovery::redeem($db,$expired,$old.'Different'),422);
-$gateway=(string)file_get_contents('/var/www/html/src/Gateway.php');
-$portal=(string)file_get_contents('/var/www/html/src/Portal.php');
-$html=(string)file_get_contents('/var/www/html/public/static/client.html');
-$script=(string)file_get_contents('/var/www/html/public/static/reseller-password-recovery.js');
-$style=(string)file_get_contents('/var/www/html/public/static/reseller-password-recovery.css');
+Admin::install($db);
+$admin=DB::uid('adm');
+$adminOld='OldAdminPassword2026';
+$oldHash=password_hash($adminOld,PASSWORD_DEFAULT);
+$credentialDigest=hash('sha256',$oldHash);
+$db->run('INSERT INTO admin_users(id,email,display_name,password_hash,role,status,must_change_password,
+  failed_logins,locked_until,created_at,mfa_secret_cipher,mfa_last_step,mfa_failed_count,mfa_locked_until)
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[
+    $admin,$admin.'@example.invalid','Admin teste',$oldHash,'superadmin','active',1,5,time()+1200,
+    DB::stamp(),'test-mfa-cipher',12,2,time()+900
+]);
+$sessionHash=hash('sha256',$admin);
+$db->run('INSERT INTO admin_sessions(token_hash,user_id,csrf_hash,expires_at,created_at,mfa_verified_at)
+  VALUES(?,?,?,?,?,?)',[$sessionHash,$admin,$sessionHash,time()+1200,DB::stamp(),time()]);
+
+$invalid(static fn()=>Recovery::redeemAdmin($db,$expired,$new),422);
+$seedAdminReset=static function(string $credential,int $expiry)use($db,$admin):string{
+    $token=bin2hex(random_bytes(32));
+    $db->run('INSERT INTO argus_admin_password_resets(token_hash,user_id,credential_digest,expires_at)
+      VALUES(?,?,?,?)',[hash('sha256',$token),$admin,$credential,$expiry]);
+    return $token;
+};
+$adminToken=$seedAdminReset($credentialDigest,time()+1200);
+$invalid(static fn()=>Recovery::redeem($db,$adminToken,$new),422);
+$invalid(static fn()=>Recovery::redeemAdmin($db,$adminToken,'Short12345678'),422);
+$invalid(static fn()=>Recovery::redeemAdmin($db,$adminToken,$adminOld),422);
+$expiredAdmin=$seedAdminReset($credentialDigest,time()-1);
+$invalid(static fn()=>Recovery::redeemAdmin($db,$expiredAdmin,$new),422);
+$staleAdmin=$seedAdminReset(hash('sha256','former credential'),time()+1200);
+$invalid(static fn()=>Recovery::redeemAdmin($db,$staleAdmin,$new),422);
+$db->run("UPDATE admin_users SET status='suspended' WHERE id=?",[$admin]);
+$invalid(static fn()=>Recovery::redeemAdmin($db,$adminToken,$new),422);
+$db->run("UPDATE admin_users SET status='active' WHERE id=?",[$admin]);
+if(!$db->one('SELECT token_hash FROM admin_sessions WHERE user_id=?',[$admin]))
+    throw new RuntimeException('An invalid reset revoked the admin session');
+
+Recovery::redeemAdmin($db,$adminToken,$new);
+$user=$db->one('SELECT * FROM admin_users WHERE id=?',[$admin]);
+if(!password_verify($new,$user['password_hash'])||password_verify($adminOld,$user['password_hash'])||
+   (int)$user['must_change_password']||(int)$user['failed_logins']||(int)$user['locked_until'])
+    throw new RuntimeException('Admin password and login state were not updated');
+if($user['role']!=='superadmin'||$user['status']!=='active'||$user['mfa_secret_cipher']!=='test-mfa-cipher'||
+   (int)$user['mfa_last_step']!==12||(int)$user['mfa_failed_count']!==2||(int)$user['mfa_locked_until']<=time())
+    throw new RuntimeException('Admin role, status or MFA was modified by password recovery');
+if($db->one('SELECT token_hash FROM admin_sessions WHERE user_id=?',[$admin])||
+   $db->one('SELECT token_hash FROM argus_admin_password_resets WHERE user_id=?',[$admin])||
+   !$db->one("SELECT id FROM admin_audit WHERE actor_id=? AND action='auth.password_recovered'",[$admin]))
+    throw new RuntimeException('Admin session revocation, token consumption or audit failed');
+$invalid(static fn()=>Recovery::redeemAdmin($db,$adminToken,$adminOld),422);
+$adminSource=(string)file_get_contents($root.'/src/Admin.php');
+$adminPage=(string)file_get_contents($root.'/public/static/admin.html');
+if(!str_contains($adminSource,'PortalPasswordReset::handle($db,$method,$path,true)')||
+   !str_contains($adminPage,'reseller-password-recovery.js?v=reset-20261121-1')||
+   !str_contains($adminPage,'reseller-password-recovery.css?v=reset-20261121-1'))
+    throw new RuntimeException('Admin recovery routes or UI missing');
+
+$gateway=(string)file_get_contents($root.'/src/Gateway.php');
+$portal=(string)file_get_contents($root.'/src/Portal.php');
+$html=(string)file_get_contents($root.'/public/static/client.html');
+$script=(string)file_get_contents($root.'/public/static/reseller-password-recovery.js');
+$style=(string)file_get_contents($root.'/public/static/reseller-password-recovery.css');
 foreach([
  "require_once __DIR__ . '/PortalPasswordReset.php';",
 ] as $needle)if(!str_contains($gateway,$needle))throw new RuntimeException('Reset class not loaded by gateway');
@@ -65,15 +123,15 @@ foreach([
 ] as $needle)if(!str_contains($portal,$needle))throw new RuntimeException('Recovery route missing: '.$needle);
 foreach([
  'id="auth" hidden','id="register-form"','id="login-form"','id="dashboard" hidden',
- 'reseller-password-recovery.js?v=reset-20261119-1',
- 'reseller-password-recovery.css?v=reset-20261119-1'
+ 'reseller-password-recovery.js?v=reset-20261121-1',
+ 'reseller-password-recovery.css?v=reset-20261121-1'
 ] as $needle)if(!str_contains($html,$needle))throw new RuntimeException('Seller login or recovery asset missing: '.$needle);
 foreach([
  'Esqueci minha senha','argus-recovery-request','argus-recovery-confirm',
- 'password-reset/request','password-reset/confirm','history.replaceState','redefinir='
+ '/api/portal/password-reset','/api/admin/password-reset',"send('/request'","send('/confirm'",'history.replaceState','redefinir='
 ] as $needle)if(!str_contains($script,$needle))throw new RuntimeException('Seller recovery flow missing: '.$needle);
 if(!str_contains($style,'#argus-password-recovery')||!str_contains($style,'@media(max-width:480px)'))
  throw new RuntimeException('Mobile password reset modal is not installed');
-if(!str_contains((string)file_get_contents('/var/www/html/src/PortalPasswordReset.php'),'ARGUS_RESET_RESEND_KEY'))
+if(!str_contains((string)file_get_contents($root.'/src/PortalPasswordReset.php'),'ARGUS_RESET_RESEND_KEY'))
  throw new RuntimeException('Verified email service dependency absent');
-echo "PASS: one-time hashed reset, strong password policy, expired/replayed token rejection, session revocation, seller isolation and account-form integration.\n";
+echo "PASS: one-time hashed reset, strong password policy, expired/replayed token rejection, session revocation, account isolation, unchanged admin MFA and both login forms.\n";

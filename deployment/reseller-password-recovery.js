@@ -1,16 +1,22 @@
 /* ARGUS Pay: forgot-password entry, email request and one-time token form. */
 (()=>{
 'use strict';
-if(window.__argusSellerPasswordRecovery)return;
-window.__argusSellerPasswordRecovery=true;
+if(window.__argusPasswordRecovery)return;
+window.__argusPasswordRecovery=true;
 const E=id=>document.getElementById(id);
-const login=E('login-form'),auth=E('auth');
+const login=E('login-form'),admin=Boolean(E('login-screen'));
+const auth=E(admin?'login-screen':'auth');
+const endpoint=admin?'/api/admin/password-reset':'/api/portal/password-reset';
+const minLength=admin?16:14;
+const maxLength=admin?72:200;
+const send=(path,body)=>admin?post(endpoint+path,body):request(endpoint+path,{method:'POST',body});
 if(!login||!auth)return;
 const entry=document.createElement('div');entry.className='argus-forgot-row';
 entry.innerHTML='<button type="button" id="argus-forgot-password">Esqueci minha senha</button>';
 const submit=login.querySelector('button[type="submit"]');
 if(!submit)return;
-submit.before(entry);
+if(admin)submit.after(entry);
+else submit.before(entry);
 const root=document.createElement('div');
 root.id='argus-password-recovery';root.hidden=true;
 root.innerHTML=[
@@ -18,23 +24,23 @@ root.innerHTML=[
 '<section class="argus-recovery-dialog" role="dialog" aria-modal="true" aria-labelledby="argus-recovery-heading">',
 '<button class="argus-recovery-close" type="button" data-reset-close aria-label="Fechar recuperação">×</button>',
 '<img class="argus-recovery-logo" src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Payments" width="175" height="68">',
-'<small class="argus-recovery-eyebrow">ACESSO SEGURO · REVENDEDOR</small>',
+`<small class="argus-recovery-eyebrow">ACESSO SEGURO · ${admin?'ADMINISTRAÇÃO':'REVENDEDOR'}</small>`,
 '<h2 id="argus-recovery-heading">Redefinir senha</h2>',
 '<p id="argus-recovery-subtitle">Informe o e-mail de cadastro para receber um link de redefinição.</p>',
 '<form id="argus-recovery-request" autocomplete="on">',
 '<label>E-mail cadastrado<input type="email" name="email" autocomplete="email" maxlength="190" required placeholder="seuemail@exemplo.com"></label>',
 '<button type="submit" class="argus-recovery-primary">Enviar link de redefinição</button></form>',
 '<form id="argus-recovery-confirm" autocomplete="off" hidden>',
-'<label>Nova senha<input type="password" name="password" minlength="14" maxlength="200" autocomplete="new-password" required></label>',
-'<label>Confirmar nova senha<input type="password" name="repeat_password" minlength="14" maxlength="200" autocomplete="new-password" required></label>',
-'<p class="argus-recovery-advice">Pelo menos 14 caracteres, com letras maiúsculas, minúsculas e números.</p>',
+`<label>Nova senha<input type="password" name="password" minlength="${minLength}" maxlength="${maxLength}" autocomplete="new-password" required></label>`,
+`<label>Confirmar nova senha<input type="password" name="repeat_password" minlength="${minLength}" maxlength="${maxLength}" autocomplete="new-password" required></label>`,
+`<p class="argus-recovery-advice">Pelo menos ${minLength} caracteres, com letras maiúsculas, minúsculas e números.</p>`,
 '<button type="submit" class="argus-recovery-primary">Salvar nova senha</button></form>',
 '<p id="argus-recovery-response" class="argus-recovery-response" role="status" aria-live="polite" hidden></p>',
 '<button class="argus-recovery-back" type="button" data-reset-close>Voltar para entrar</button>',
 '</section>'
 ].join('');
 document.body.append(root);
-let token='',busy=false,previousFocus=null;
+let token='',busy=false,previousFocus=null,adminResetComplete=false;
 const message=(value,bad=false)=>{
  const box=E('argus-recovery-response');
  box.hidden=false;box.textContent=value;box.classList.toggle('is-error',bad);
@@ -61,6 +67,7 @@ function show(reset=false){
 }
 function close(){
  if(busy)return;
+ if(adminResetComplete){location.replace('/admin');return;}
  root.hidden=true;document.body.classList.remove('argus-recovery-open');token='';
  E('argus-recovery-confirm').reset();
  if(previousFocus?.isConnected)previousFocus.focus();
@@ -85,7 +92,7 @@ E('argus-recovery-request').addEventListener('submit',async event=>{
  if(!email)return;
  busy=true;button.disabled=true;message('Verificando solicitação…');
  try{
-  const result=await request('/api/portal/password-reset/request',{method:'POST',body:{email}});
+  const result=await send('/request',{email});
   message(result.message||'Se a conta existir, o e-mail de recuperação será enviado.');
  }catch(error){message(error.message||'Não foi possível solicitar a recuperação.',true)}
  finally{button.disabled=false;busy=false;}
@@ -93,29 +100,40 @@ E('argus-recovery-request').addEventListener('submit',async event=>{
 E('argus-recovery-confirm').addEventListener('submit',async event=>{
  event.preventDefault();if(busy||!token)return;
  const form=event.currentTarget;
- const password=form.elements.password.value,repeat=form.elements.repeat_password.value;
- if(password!==repeat){message('As duas senhas não correspondem.',true);return;}
- if(password.length<14||!/[A-Z]/.test(password)||!/[a-z]/.test(password)||!/[0-9]/.test(password)){
-  message('Use ao menos 14 caracteres, letras maiúsculas, minúsculas e números.',true);return;
+ const rawPassword=form.elements.password.value,repeat=form.elements.repeat_password.value;
+ const password=admin?rawPassword.trim():rawPassword;
+ if(rawPassword!==repeat){message('As duas senhas não correspondem.',true);return;}
+ const length=admin?[...password].length:password.length;
+ if(length<minLength||!/[A-Z]/.test(password)||!/[a-z]/.test(password)||!/[0-9]/.test(password)){
+  message(`Use ao menos ${minLength} caracteres, letras maiúsculas, minúsculas e números.`,true);return;
+ }
+ if(admin&&new TextEncoder().encode(password).length>maxLength){
+  message('A senha pode ter até 72 bytes. Encurte a senha ou use menos caracteres especiais.',true);return;
  }
  busy=true;const button=form.querySelector('[type=submit]');button.disabled=true;
  try{
-  const result=await request('/api/portal/password-reset/confirm',
-     {method:'POST',body:{token,password}});
+  const result=await send('/confirm',{token,password});
   token='';form.reset();
   E('argus-recovery-confirm').hidden=true;
   E('argus-recovery-subtitle').textContent='A senha foi alterada. Entre novamente.';
   message(result.message||'Senha redefinida. Entre com a nova senha.');
   // Recovery invalidates every former session on the server. Never leave a
   // stale authenticated view visible in this browser.
-  const dash=E('dashboard');if(dash)dash.hidden=true;
-  auth.hidden=false;
-  if(typeof tab==='function')tab('login');
+  if(admin){
+   adminResetComplete=true;
+   view('login');
+  }else{
+   const dash=E('dashboard');if(dash)dash.hidden=true;
+   auth.hidden=false;
+   if(typeof tab==='function')tab('login');
+  }
+  root.querySelector('.argus-recovery-back').focus();
  }catch(error){message(error.message||'Link inválido ou expirado.',true);}
  finally{button.disabled=false;busy=false;}
 });
-const raw=decodeURIComponent(location.hash.slice(1));
-const found=/^redefinir=([a-f0-9]{64})$/i.exec(raw);
+let fragment=location.hash.slice(1);
+try{fragment=decodeURIComponent(fragment)}catch{}
+const found=/^redefinir=([a-f0-9]{64})$/i.exec(fragment);
 if(found){
  token=found[1].toLowerCase();
  history.replaceState(null,'',location.pathname+location.search);

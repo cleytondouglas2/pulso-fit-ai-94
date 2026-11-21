@@ -36,6 +36,15 @@ final class PortalPasswordReset {
             window_start BIGINT NOT NULL, attempts INTEGER NOT NULL
         )');
     }
+    private static function installAdmin(Database $db):void {
+        self::install($db);
+        $db->pdo()->exec('CREATE TABLE IF NOT EXISTS argus_admin_password_resets (
+            token_hash VARCHAR(64) PRIMARY KEY, user_id VARCHAR(120) NOT NULL,
+            credential_digest VARCHAR(64) NOT NULL, expires_at BIGINT NOT NULL
+        )');
+        $db->pdo()->exec('CREATE INDEX IF NOT EXISTS argus_admin_password_resets_user
+            ON argus_admin_password_resets(user_id,expires_at)');
+    }
     private static function options():array {
         $key=trim((string)getenv('ARGUS_RESET_RESEND_KEY'));
         $from=trim((string)getenv('ARGUS_RESET_FROM_EMAIL'));
@@ -91,11 +100,12 @@ final class PortalPasswordReset {
         }catch(\PDOException){return false;}
         return $allowed;
     }
-    private static function sendMail(string $key,string $from,string $to,string $link):bool{
+    private static function sendMail(string $key,string $from,string $to,string $link,bool $admin):bool{
+        $accountType=$admin?'administrativa':'de revendedor';
         $body=[
             'from'=>'ARGUS Payments <'.$from.'>','to'=>[$to],
             'subject'=>'Redefinição de senha — ARGUS Payments',
-            'text'=>"Recebemos uma solicitação para redefinir sua senha de revendedor.\n\n".
+            'text'=>"Recebemos uma solicitação para redefinir a senha da sua conta $accountType.\n\n".
                 "Abra o link: ".$link."\n\n".
                 "O link expira em 20 minutos e pode ser usado apenas uma vez.\n".
                 "Se não foi você, ignore esta mensagem.\n\nEquipe ARGUS Payments"
@@ -113,7 +123,7 @@ final class PortalPasswordReset {
           '<tr><td style="padding:14px 34px 38px">'.
           '<p style="color:#d9b981;font-size:11px;font-weight:bold;letter-spacing:2px;text-align:center">SEGURANÇA DA SUA CONTA</p>'.
           '<h1 style="font-size:27px;line-height:1.3;color:#fff;text-align:center;margin:14px 0 20px">Redefinir sua senha</h1>'.
-          '<p style="font-size:15px;line-height:1.8;color:#d3d4dd">Recebemos uma solicitação para alterar a senha de acesso à sua conta de revendedor ARGUS PAY.</p>'.
+          '<p style="font-size:15px;line-height:1.8;color:#d3d4dd">Recebemos uma solicitação para alterar a senha de acesso à sua conta '.$accountType.' ARGUS PAY.</p>'.
           '<p style="font-size:15px;line-height:1.8;color:#d3d4dd">Para continuar com segurança, clique no botão abaixo:</p>'.
           '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:18px 0 24px">'.
           '<a href="'.$safeLink.'" style="display:inline-block;background:#dfb978;color:#171b27;font-size:15px;font-weight:bold;text-decoration:none;padding:17px 30px;border-radius:9px">Redefinir minha senha</a>'.
@@ -158,19 +168,24 @@ final class PortalPasswordReset {
         $line=is_array($headers)?(string)($headers[0]??''):'';
         return is_string($response)&&preg_match('~^HTTP/\\S+ 2\\d\\d(?: |$)~',$line)===1;
     }
-    public static function request(Database $db,array $data):array {
-        self::install($db);
+    public static function request(Database $db,array $data,bool $admin=false):array {
         [$key,$from,$base,$hmac]=self::options();
         self::origin($base);
         $email=$data['email']??null;
         if(!is_string($email)||strlen($email)>190||
            !filter_var($email=strtolower(trim($email)),FILTER_VALIDATE_EMAIL))
            self::fail('Informe um e-mail válido',422);
+        if($admin)self::installAdmin($db);
+        else self::install($db);
         $originIP=(string)($_SERVER['REMOTE_ADDR']??'unknown');
-        $ipKey=hash_hmac('sha256','ip:'.$originIP,$hmac);
-        $emailKey=hash_hmac('sha256','email:'.$email,$hmac);
+        $ipKey=hash_hmac('sha256',($admin?'admin-ip:':'ip:').$originIP,$hmac);
+        $emailKey=hash_hmac('sha256',($admin?'admin-email:':'email:').$email,$hmac);
         if(!self::permit($db,$ipKey,20,3600)||!self::permit($db,$emailKey,1,90))
             return ['ok'=>true,'message'=>self::GENERIC];
+        if($admin){
+            self::requestAdmin($db,$email,$key,$from,$base);
+            return ['ok'=>true,'message'=>self::GENERIC];
+        }
         $account=$db->one('SELECT id,email FROM argus_portal_accounts WHERE email=?',[$email]);
         if(!$account)return ['ok'=>true,'message'=>self::GENERIC];
         $plain=bin2hex(random_bytes(32));
@@ -178,7 +193,7 @@ final class PortalPasswordReset {
         $db->run('INSERT INTO argus_portal_password_resets(id,account_id,token_hash,created_at,expires_at,used_at)
             VALUES(?,?,?,?,?,NULL)',[$id,$account['id'],hash('sha256',$plain),$now,$now+self::EXPIRE_SECONDS]);
         $link=$base.'/conta#redefinir='.$plain;
-        try{$sent=self::sendMail($key,$from,(string)$account['email'],$link);}
+        try{$sent=self::sendMail($key,$from,(string)$account['email'],$link,false);}
         catch(\Throwable){$sent=false;}
         if($sent){
             $db->run('UPDATE argus_portal_password_resets SET used_at=? WHERE account_id=? AND id<>? AND used_at IS NULL',
@@ -188,6 +203,60 @@ final class PortalPasswordReset {
             error_log('ARGUS password reset email delivery failed (credentials or email provider); no account details logged');
         }
         return ['ok'=>true,'message'=>self::GENERIC];
+    }
+    private static function requestAdmin(Database $db,string $email,string $key,string $from,string $base):void {
+        $account=$db->one("SELECT id,email,password_hash FROM admin_users WHERE email=? AND status='active'",[$email]);
+        if(!$account)return;
+
+        $token=bin2hex(random_bytes(32));
+        $digest=hash('sha256',$token);
+        $expires=time()+self::EXPIRE_SECONDS;
+        $db->run('INSERT INTO argus_admin_password_resets(token_hash,user_id,credential_digest,expires_at)
+            VALUES(?,?,?,?)',[$digest,$account['id'],hash('sha256',$account['password_hash']),$expires]);
+
+        try{$sent=self::sendMail($key,$from,$account['email'],$base.'/admin#redefinir='.$token,true);}
+        catch(\Throwable){$sent=false;}
+        if($sent){
+            $db->run('DELETE FROM argus_admin_password_resets WHERE user_id=? AND expires_at<?',
+                [$account['id'],$expires]);
+        }else{
+            $db->run('DELETE FROM argus_admin_password_resets WHERE token_hash=?',[$digest]);
+            error_log('ARGUS administrative password reset email delivery failed');
+        }
+    }
+    public static function redeemAdmin(Database $db,string $token,string $password):void {
+        if(!preg_match('/^[a-f0-9]{64}$/D',$token))
+            self::fail('Link inválido ou expirado. Solicite outro.',422);
+        // Match the admin login's trimming behavior and bcrypt's byte limit.
+        $password=trim($password);
+        $length=function_exists('mb_strlen')?mb_strlen($password,'UTF-8'):strlen($password);
+        if($length<16||strlen($password)>72||str_contains($password,"\0")||
+           !preg_match('/[A-Z]/',$password)||!preg_match('/[a-z]/',$password)||!preg_match('/[0-9]/',$password))
+            self::fail('Use ao menos 16 caracteres, com maiúsculas, minúsculas e números, e até 72 bytes.',422);
+
+        self::installAdmin($db);
+        $digest=hash('sha256',$token);
+        $candidate=$db->one('SELECT user_id FROM argus_admin_password_resets WHERE token_hash=?',[$digest]);
+        if(!$candidate)self::fail('Link inválido ou expirado. Solicite outro.',422);
+
+        $db->transaction(static function(Database $db)use($candidate,$digest,$password):void{
+            $lock=$db->driver()==='sqlite'?'':' FOR UPDATE';
+            $user=$db->one('SELECT id,password_hash,status FROM admin_users WHERE id=?'.$lock,[$candidate['user_id']]);
+            $reset=$db->one('SELECT credential_digest,expires_at FROM argus_admin_password_resets
+                WHERE token_hash=? AND user_id=?'.$lock,[$digest,$candidate['user_id']]);
+            if(!$user||$user['status']!=='active'||!$reset||(int)$reset['expires_at']<=time()||
+               !hash_equals($reset['credential_digest'],hash('sha256',$user['password_hash'])))
+                self::fail('Link inválido ou expirado. Solicite outro.',422);
+            if(password_verify($password,$user['password_hash']))
+                self::fail('Escolha uma senha diferente da anterior.',422);
+            $db->run('UPDATE admin_users SET password_hash=?,failed_logins=0,locked_until=0,must_change_password=0
+                WHERE id=?',[password_hash($password,PASSWORD_DEFAULT),$user['id']]);
+            $db->run('DELETE FROM admin_sessions WHERE user_id=?',[$user['id']]);
+            $db->run('DELETE FROM argus_admin_password_resets WHERE user_id=?',[$user['id']]);
+            $db->run('INSERT INTO admin_audit(id,actor_id,action,entity_type,entity_id,detail,created_at)
+                VALUES(?,?,?,?,?,?,?)',[Database::uid('audit'),$user['id'],'auth.password_recovered',
+                'admin_user',$user['id'],'',Database::stamp()]);
+        });
     }
     public static function redeem(Database $db,string $token,string $password):void {
         self::install($db);
@@ -218,17 +287,22 @@ final class PortalPasswordReset {
             // unchanged; the seller should review them after a recovery.
         });
     }
-    public static function handle(Database $db,string $method,string $path):never{
+    public static function handle(Database $db,string $method,string $path,bool $admin=false):never{
         if($method!=='POST')self::fail('Método não permitido',405);
-        if($path==='/api/portal/password-reset/request'){
-            self::out(self::request($db,self::json()));
+        $prefix=$admin?'/api/admin/password-reset/':'/api/portal/password-reset/';
+        if($path===$prefix.'request'){
+            self::out(self::request($db,self::json(),$admin));
         }
-        if($path==='/api/portal/password-reset/confirm'){
+        if($path===$prefix.'confirm'){
             $data=self::json();
             $token=$data['token']??null;$password=$data['password']??null;
             if(!is_string($token)||!is_string($password))
                 self::fail('Token e senha obrigatórios',422);
-            self::redeem($db,$token,$password);
+            if($admin){
+                self::redeemAdmin($db,$token,$password);
+            }else{
+                self::redeem($db,$token,$password);
+            }
             self::out(['ok'=>true,'message'=>'Senha redefinida com segurança. Entre novamente com a nova senha.']);
         }
         self::fail('Rota não encontrada',404);
