@@ -23,6 +23,19 @@ export async function applyOneTimeAdminGrant(pool,{logger=console}={}){
    const cols=all.rows.map(r=>r.column_name);
    const markers=["id","email","role","is_admin","admin","user_role","account_role","type","role_id","access_level","status"].map(name=>name+"="+cols.includes(name));
    logger.warn("[pulso-admin] User schema capability check: "+markers.join(" "));
+   logger.warn("[pulso-admin] User table columns: "+cols.sort().join(",").slice(0,700));
+   try{
+    const {readFileSync}=await import("node:fs");
+    const source=readFileSync(new URL("../server.mjs",import.meta.url),"utf8");
+    const found=[...source.matchAll(/isAdmin|adminOnly|adminEmail|ADMIN_EMAIL|role|\/api\/admin|\/api\/me/gi)];
+    const selected=found.slice(0,18).map(m=>{
+     const fragment=source.slice(Math.max(0,m.index-100),m.index+170);
+     return m.index+":"+fragment.replace(/"[^"\r\n]{0,300}"|'[^'\r\n]{0,300}'/g,"'[string]'")
+      .replace(/[a-z0-9._%+-]+@[a-z0-9.-]+/gi,"[email]")
+      .replace(/[A-Za-z0-9_-]{48,}/g,"[long]").replace(/\s+/g," ").slice(0,240);
+    });
+    logger.warn("[pulso-admin] Generated admin backend inspection: "+JSON.stringify(selected).slice(0,3600));
+   }catch{logger.warn("[pulso-admin] Generated backend inspection unavailable");}
    throw Error("User role schema missing");
   }
   // Existing-account-only: nothing is created or queued if the target is missing.
