@@ -59,7 +59,7 @@ export async function settleVerifiedMisticPayOrder(store,order,payment){
  }
  return payment.status;
 }
-export function createMisticPayBilling({authenticate,store,origin,gateway=createMisticPayAdapter()}={}){
+export function createMisticPayBilling({authenticate,store,origin,gateway=createMisticPayAdapter(),resolveGateway=()=>gateway}={}){
  if(typeof authenticate!=="function")throw Error("Autenticação do servidor é obrigatória");
  if(!origin||!/^https:\/\/[^/]+$/.test(origin))throw Error("Origin HTTPS explícita obrigatória");
  const ready=()=>missing(store).length===0&&typeof store?.firstTrialUse==="function"&&typeof store?.getEntitlement==="function"&&gateway.credentialsReady();
@@ -73,7 +73,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     const user=await authenticate(req);
     if(!user?.id){reply(res,401,{error:"Entre na sua conta"});return true;}
     if(!ready()){reply(res,200,{billingEnforced:false,checkoutEnabled:false,
-       reason:"MisticPay ainda não foi conectada ao servidor e ao banco"});return true;}
+       reason:"O gateway de pagamentos ainda não foi conectado ao servidor e ao banco"});return true;}
     const trialStart=await store.firstTrialUse(String(user.id));
     const entitlement=await store.getEntitlement(String(user.id));
     const endsAt=new Date(new Date(trialStart).getTime()+7*86400000);
@@ -84,27 +84,27 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     return true;
    }
    if(path==="/api/billing/config"&&req.method==="GET"){
-    reply(res,200,{provider:"misticpay",ready:ready(),supportedMethods:ready()?["pix"]:[],
+    reply(res,200,{provider:gateway.provider,ready:ready(),supportedMethods:ready()?["pix"]:[],
      plans:availableBillingPlans(PLANS),testOffer:testOfferState(),webhookPath:"/api/billing/webhook"});
     return true;
    }
    if(path==="/api/admin/billing/config"&&req.method==="GET"){
     const user=await authenticate(req);
     if(user?.role!=="admin"){reply(res,403,{error:"Acesso restrito"});return true;}
-    reply(res,200,{provider:"misticpay",configured:ready(),readyForSecureWrite:false,
+    reply(res,200,{provider:gateway.provider,configured:ready(),readyForSecureWrite:false,
      webhookVerificationReady:ready(),webhookUrl:origin+"/api/billing/webhook",
      message:"Guarde pk/sk nas variáveis do Render; não envie credenciais pelo navegador."});return true;
    }
    if(path==="/api/admin/billing/config"&&req.method==="PUT"){
     const user=await authenticate(req);
     reply(res,user?.role==="admin"?409:403,{error:user?.role==="admin"?
-      "Configure Client ID e Client Secret diretamente nas variáveis de ambiente do Render.":"Acesso restrito"});
+      "As chaves de pagamentos são gerenciadas na tela administrativa segura.":"Acesso restrito"});
     return true;
    }
    if(path==="/api/billing/checkout"&&req.method==="POST"){
     const user=await authenticate(req);
     if(!user?.id){reply(res,401,{error:"Entre na sua conta para contratar"});return true;}
-    if(!ready()){reply(res,503,{error:"PIX MisticPay aguardando configuração segura no Render"});return true;}
+    if(!ready()){reply(res,503,{error:"Pix aguardando configuração segura no servidor"});return true;}
     const input=await payload(req);
     const planCode=String(input.planCode||"");
     const plan=PLANS[planCode];
@@ -115,7 +115,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     if(input.paymentMethod!=="pix"){reply(res,422,{error:"A documentação desta API MisticPay suporta apenas PIX; cartão indisponível."});return true;}
     const reference=randomUUID();
     // O banco deve rejeitar pedidos repetidos segundo sua regra de idempotência.
-    await store.createPendingCheckout({reference,userId:String(user.id),planCode,amountCents:plan.amountCents,currency:"BRL"});
+    await store.createPendingCheckout({reference,userId:String(user.id),planCode,amountCents:plan.amountCents,currency:"BRL",provider:gateway.provider});
     const invoice=await gateway.createPixCharge({
      reference,amountCents:plan.amountCents,payerName:input.payerName,
      payerDocument:input.payerDocument,
@@ -130,7 +130,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
       try{
         const checked=await gateway.getTransaction(invoice.providerPaymentId);
         if(!paymentMatchesOrder(checked,{providerPaymentId:invoice.providerPaymentId,amountCents:plan.amountCents})){
-          throw Object.assign(Error("Transação MisticPay divergente"),{status:503});
+          throw Object.assign(Error("Cobrança divergente"),{status:503});
         }
         if(checked.status!=="PENDENTE"){
           throw Object.assign(Error("Transação Pix não está pendente"),{status:503});
@@ -139,10 +139,10 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
       }catch(e){lastError=e;if(attempt<2)await new Promise(r=>setTimeout(r,400*(attempt+1)));}
     }
     if(!verifiedPending){
-      console.error("[pulso-billing] Pix gerado não pôde ser conferido na MisticPay; não exibido ao pagador.");
-      throw Object.assign(Error("MisticPay não confirmou o Pix. Nenhuma cobrança foi exibida."),{status:503,cause:lastError});
+      console.error("[pulso-billing] Pix gerado não pôde ser conferido no gateway; não exibido ao pagador.");
+      throw Object.assign(Error("O gateway não confirmou o Pix. Nenhuma cobrança foi exibida."),{status:503,cause:lastError});
     }
-    reply(res,201,{provider:"misticpay",reference,providerPaymentId:invoice.providerPaymentId,
+    reply(res,201,{provider:gateway.provider,reference,providerPaymentId:invoice.providerPaymentId,
      status:"PENDENTE",amountCents:plan.amountCents,
      copyPaste:invoice.copyPaste,qrCodeBase64:invoice.qrCodeBase64});
     return true;
@@ -162,7 +162,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     }
     let state=order.status;
     try{
-     const payment=await gateway.getTransaction(order.providerPaymentId);
+     const payment=await resolveGateway(order).getTransaction(order.providerPaymentId);
      state=await settle(order,payment);
     }catch(e){
      console.warn("[pulso-billing] Reconciliation provider-unavailable code="+String(e.code||"unavailable").replace(/[^A-Z0-9_]/gi,"").slice(0,40));
@@ -190,7 +190,7 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
      reply(res,200,{reference:ref,status:"COMPLETO",paid:true,
       planActive:!!entitlement?.active,planExpiresAt:entitlement?.expiresAt||null});return true;
     }
-    const payment=await gateway.getTransaction(order.providerPaymentId);
+    const payment=await resolveGateway(order).getTransaction(order.providerPaymentId);
     const status=await settle(order,payment);
     const entitlement=status==="COMPLETO"?await store.getEntitlement(String(user.id)):null;
     reply(res,200,{reference:ref,status,paid:status==="COMPLETO",
@@ -201,11 +201,11 @@ export function createMisticPayBilling({authenticate,store,origin,gateway=create
     if(!ready()){reply(res,503,{error:"Verificação de pagamento indisponível"});return true;}
     // A documentação não fornece cabeçalho de assinatura. NÃO confiar no corpo.
     const event=await payload(req,32768);
-    const providerPaymentId=String(event.transactionId??"");
+    const providerPaymentId=String(event.transactionId??event.charge_id??event.charge?.id??event.id??"");
     if(!providerPaymentId||providerPaymentId.length>128){reply(res,400,{error:"Transação ausente"});return true;}
     const order=await store.getByProviderPaymentId(providerPaymentId);
     if(!order){reply(res,503,{error:"Pedido ainda não registrado"});return true;}
-    const payment=await gateway.getTransaction(providerPaymentId);
+    const payment=await resolveGateway(order).getTransaction(providerPaymentId);
     await settle(order,payment);
     reply(res,200,{received:true});return true;
    }
