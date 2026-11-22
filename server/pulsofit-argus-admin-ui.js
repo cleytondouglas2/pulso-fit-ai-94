@@ -29,6 +29,8 @@
  '.pf-argus-buttons button{padding:12px 17px;border-radius:12px;font-weight:750;cursor:pointer;border:1px solid #51997f;background:#163b3c;color:#e9fff6}',
  '.pf-argus-buttons button.pf-argus-save{background:#8cf2b1;color:#0c2927;border:0}',
  '.pf-argus-buttons button:disabled{opacity:.45;cursor:not-allowed}',
+ '.pf-argus-access-link{display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;font:750 13px/1.2 system-ui,sans-serif;color:#d5ffec;background:#164739;border:1px solid #66bd94;border-radius:12px;padding:12px 15px;box-shadow:0 5px 23px #0a0a1440}',
+ '.pf-argus-access-link.pf-argus-floating{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:2147482500;max-width:calc(100vw - 32px)}',
  '.pf-argus-feedback{font-size:13px;min-height:28px;padding-top:7px;color:#b0fbd2}',
  '.pf-argus-feedback[data-error="1"]{color:#ffd0c6}',
  '.pf-argus-help{font-size:12px;color:#b5c5cf;line-height:1.5;margin-top:12px}',
@@ -118,6 +120,18 @@
  function nav(){
   if(!isAdmin)return;
   var root=document.getElementById("app"),aside=root&&root.querySelector(".sidebar");
+  // Mobile does not always display .sidebar; keep an accessible direct link
+  // on the admin page even when the original navigation collapses.
+  if(!location.pathname.startsWith("/admin/pagamentos")&&route()==="admin"){
+   var topbar=root&&root.querySelector(".topbar"),holder=topbar||document.body;
+   if(holder&&!holder.querySelector(".pf-argus-access-link")){
+    var link=document.createElement("a");
+    link.href="/admin/pagamentos";link.textContent="🔐 API de pagamentos";
+    link.className="pf-argus-access-link"+(topbar?"":" pf-argus-floating");
+    link.setAttribute("aria-label","Abrir administração da API Argus Pay");
+    holder.appendChild(link);
+   }
+  }
   if(!aside||aside.querySelector(".pf-argus-nav"))return;
   var button=document.createElement("button");
   button.type="button";button.className="pf-argus-nav";
