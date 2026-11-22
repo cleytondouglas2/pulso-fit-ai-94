@@ -209,10 +209,26 @@ async function runJob(job){
     if(browser)await browser.close().catch(()=>{});
   }
 }
+let browserSelfTest='pending';
+async function testChromium(){
+ let browser;
+ try{
+  browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
+    args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+  const page=await browser.newPage();
+  await page.setContent('<table><thead><tr><th>Usuário</th><th>Vencimento</th></tr></thead><tbody><tr><td>teste</td><td>22/12/2026</td></tr></tbody></table>');
+  const result=await extract(page);
+  if(result.items[0]?.username==='teste'&&normalizeDate(result.items[0]?.due_date)==='2026-12-22'){
+   browserSelfTest='ok';console.log('CLYSTRIA_CHROMIUM_SELFTEST_OK');
+  }else{browserSelfTest='extract_failed';console.error('CLYSTRIA_CHROMIUM_SELFTEST_EXTRACT_FAILED');}
+ }catch(e){browserSelfTest='launch_failed';console.error('CLYSTRIA_CHROMIUM_SELFTEST_LAUNCH_FAILED: '+clean(e.message||'',140));}
+ finally{if(browser)await browser.close().catch(()=>{});}
+}
+testChromium().catch(()=>{});
 const server=http.createServer(async(req,res)=>{
   let acquired=false;
   try{
-    if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',configured:SECRET.length>=32&&ALLOW.length>0});
+    if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',browser_self_test:browserSelfTest,configured:SECRET.length>=32&&ALLOW.length>0});
     if(req.method!=='POST'||req.url!=='/sync')return json(res,404,{error:'Recurso não encontrado'});
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
