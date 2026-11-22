@@ -18,7 +18,7 @@ function api():never{
  $method=$_SERVER['REQUEST_METHOD']??'GET';$route=explode('?',$_SERVER['REQUEST_URI']??'',2)[0];$segments=explode('/',trim($route,'/'));
  if($route==='/api/health'&&$method==='GET')jsonout(['ok'=>true,'service'=>'clystria-php','date'=>today()]);
  if($route==='/api/ready'&&$method==='GET'){
-  if(envv('APP_ENV')!=='production'||envv('DATABASE_URL')===''||!preg_match('/^[a-f0-9]{64}$/i',envv('APP_KEY')))fail(503,'Armazenamento persistente e segredos de produção não configurados');
+  if(envv('APP_ENV')!=='production'||envv('DATABASE_URL')===''||!(preg_match('/^[a-f0-9]{64}$/i',envv('APP_KEY'))||(strlen(base64_decode(envv('APP_KEY'),true)?:'')===32)))fail(503,'Armazenamento persistente e segredos de produção não configurados');
   $db=getDb();$db->query('SELECT 1')->fetch();
   if(!one('SELECT 1 FROM staff LIMIT 1')&&strlen(envv('SETUP_TOKEN'))<20)fail(503,'Configure a chave inicial SETUP_TOKEN antes de criar o administrador');
   jsonout(['ok'=>true,'service'=>'clystria-php','storage'=>'postgres']);
@@ -30,7 +30,7 @@ function api():never{
   $x=body();if(production()){$expected=envv('SETUP_TOKEN');$received=(string)($x['setup_token']??'');if(strlen($expected)<20||!hash_equals($expected,$received))fail(403,'Informe a chave SETUP_TOKEN configurada no servidor');}
   $name=clean($x['name']??'',100);$email=strtolower(clean($x['email']??'',180));$pass=(string)($x['password']??'');
   if(!$name||!filter_var($email,FILTER_VALIDATE_EMAIL)||strlen($pass)<10)fail(400,'Informe nome, e-mail válido e senha de 10 caracteres ou mais');
-  $pdo=getDb();$pdo->beginTransaction();try{$id=id();run('INSERT INTO staff(id,name,email,passhash,role) VALUES(?,?,?,?,?)',[$id,$name,$email,password_hash($pass,PASSWORD_DEFAULT),'admin']);run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[id(),'Mensal',30,3000,'#776BFC']);run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[id(),'Trimestral',90,8000,'#31DAB3']);setConfig('business_name',$name);activity($email,'setup','Conta de administrador criada');$pdo->commit();}catch(Throwable $e){$pdo->rollBack();throw $e;}
+  $pdo=getDb();$pdo->beginTransaction();try{$id=id();run('INSERT INTO staff(id,name,email,passhash,role) VALUES(?,?,?,?,?)',[$id,$name,$email,password_hash($pass,PASSWORD_DEFAULT),'admin']);if(envv('APP_ENV')!=='production'){run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[id(),'Mensal',30,3000,'#776BFC']);run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[id(),'Trimestral',90,8000,'#31DAB3']);}setConfig('business_name',$name);activity($email,'setup','Conta de administrador criada');$pdo->commit();}catch(Throwable $e){$pdo->rollBack();throw $e;}
   $csrf=sessionNew(['id'=>$id]);jsonout(['ok'=>true,'csrf'=>$csrf],201);
  }
  if($route==='/api/login'&&$method==='POST'){

@@ -1,0 +1,24 @@
+# Clystria: separate free Oregon web service using an existing shared Render Postgres.
+# No database resources are created or modified by this Blueprint.
+services:
+  - type: web
+    name: clystria-php-free-oregon
+    runtime: docker
+    plan: free
+    region: oregon
+    repo: https://github.com/cleytondouglas2/pulso-fit-ai-94
+    branch: clystria-php-deploy
+    dockerContext: clystria
+    dockerfilePath: clystria/Dockerfile
+    autoDeployTrigger: commit
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_KEY
+        generateValue: true
+      - key: SETUP_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pulso-fit-cadastros-teste
+          property: connectionString
