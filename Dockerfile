@@ -886,8 +886,8 @@ RUN php -l /tmp/seller_withdraw_modal_patch.php \
 COPY deployment/seller_withdraw_money_mask_patch.php /tmp/seller_withdraw_money_mask_patch.php
 COPY deployment/seller_withdraw_money_mask_test.php /var/www/html/tests/seller_withdraw_money_mask_test.php
 RUN php -l /tmp/seller_withdraw_money_mask_patch.php \
- && php /tmp/seller_withdraw_money_mask_patch.php \
- && php /var/www/html/tests/seller_withdraw_money_mask_test.php \
  && php /var/www/html/tests/seller_withdraw_modal_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/seller_withdraw_money_mask_patch.php \
+ && php /var/www/html/tests/seller_withdraw_money_mask_test.php \
  && php /var/www/html/tests/seller_mfa_test.php \
  && php /var/www/html/tests/security_regression_test.php

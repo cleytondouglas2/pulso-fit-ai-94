@@ -16,8 +16,8 @@ function brlMaskOne(string &$src,string $old,string $new,string $tag):void {
 }
 brlMaskOne(
   $source,
-  '<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
-  '<input name="amount" type="text" inputmode="numeric" autocomplete="off" enterkeyhint="done" maxlength="12" placeholder="0,00" aria-describedby="seller-withdraw-money-hint" required><small id="seller-withdraw-money-hint" class="argus-withdraw-money-hint">A vírgula aparece automaticamente. Digite 1000 para R$ 10,00.</small></label>',
+  'Valor total a sacar (R$)<input name="amount" inputmode="decimal" placeholder="10,00" required></label>',
+  'Valor total a sacar (R$)<input name="amount" type="text" inputmode="numeric" autocomplete="off" enterkeyhint="done" maxlength="12" placeholder="0,00" aria-describedby="seller-withdraw-money-hint" required><small id="seller-withdraw-money-hint" class="argus-withdraw-money-hint">A vírgula aparece automaticamente. Digite 1000 para R$ 10,00.</small></label>',
   'withdraw amount input (not the separate Pix charge input)'
 );
 brlMaskOne($source,
