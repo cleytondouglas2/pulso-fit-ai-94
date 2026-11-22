@@ -216,11 +216,55 @@ async function extract(page){
  }
  return results;
 }
+// Parse only data the signed-in provider website already returns; no new API calls.
+function extractJsonClients(payload){
+ const keys={
+  username:['username','user_name','userName','login','usuario','user_login','loginName','iptv_username','iptvUser','access_user'],
+  due_date:['due_date','dueDate','expiration_date','expirationDate','expiry_date','expiryDate','expires_at','expire_at','expired_at','expires','exp_date','expDate','expireDate','expire_time','expireTime','expiration','valid_until','validUntil','vencimento','data_vencimento','date_end','end_date','dateEnd','validade','validity','expire','expiry','expire_timestamp','exp_timestamp'],
+  name:['name','nome','customer_name','customerName','client_name','clientName','full_name','fullName','display_name','displayName','title'],
+  phone:['phone','telefone','whatsapp','mobile','celular'],
+  status:['status','situacao','situation','state'],
+  plan_name:['plan_name','planName','package_name','packageName','plano','pacote'],
+  price:['price','valor','amount','value','monthly_price']
+ };
+ const result=[],queue=[{value:payload,depth:0}];let visited=0;
+ const pick=(obj,list)=>{for(const k of list)if(obj[k]!==undefined&&obj[k]!==null&&obj[k]!=='')return obj[k];return undefined;};
+ const scalar=x=>typeof x==='string'||typeof x==='number'?String(x):'';
+ while(queue.length&&visited++<7000&&result.length<10000){
+  const {value,depth}=queue.shift();
+  if(!value||typeof value!=='object'||depth>7)continue;
+  if(Array.isArray(value)){for(const item of value.slice(0,10000))if(item&&typeof item==='object')queue.push({value:item,depth:depth+1});continue;}
+  let username=scalar(pick(value,keys.username)),due=scalar(pick(value,keys.due_date));
+  if(!due&&value.subscription&&typeof value.subscription==='object')due=scalar(pick(value.subscription,keys.due_date));
+  if(!due&&value.plan&&typeof value.plan==='object')due=scalar(pick(value.plan,keys.due_date));
+  if(!username&&value.credentials&&typeof value.credentials==='object')username=scalar(pick(value.credentials,keys.username));
+  if(username&&due&&normalizeDate(due)){
+   const plan=pick(value,keys.plan_name);
+   result.push({username:clean(username,100),due_date:due,name:clean(scalar(pick(value,keys.name))||username,100),
+    phone:clean(scalar(pick(value,keys.phone)),40),status:clean(scalar(pick(value,keys.status)),50),
+    plan_name:clean(scalar(plan)||scalar(value.plan?.name)||scalar(value.package?.name),80),
+    price:clean(scalar(pick(value,keys.price)),30)});
+   continue;
+  }
+  for(const [key,child] of Object.entries(value)){
+   if(!child||typeof child!=='object')continue;
+   if(/^(session|cookies|headers|credentials|token|auth|settings|config|metadata|permissions)$/i.test(key))continue;
+   queue.push({value:child,depth:depth+1});
+  }
+ }
+ return result;
+}
+
 function normalizeDate(value){
   const s=clean(value,70);
   let m=s.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
   if(m){const d=new Date(m[0]+'T12:00:00Z');return !Number.isNaN(+d)&&d.toISOString().slice(0,10)===m[0]?m[0]:'';}
-  m=s.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+  if(/^\d{10,13}$/.test(s)){
+    const ms=s.length===13?Number(s):Number(s)*1000;
+    const parsed=new Date(ms);
+    return Number.isNaN(parsed.getTime())?'':parsed.toISOString().slice(0,10);
+  }
+  m=s.match(/\b(\d{2})[\/.-](\d{2})[\/.-](\d{4})\b/);
   if(!m)return '';
   const date=m[3]+'-'+m[2]+'-'+m[1];
   const d=new Date(date+'T12:00:00Z');
