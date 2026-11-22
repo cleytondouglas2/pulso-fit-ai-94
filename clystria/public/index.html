@@ -6,7 +6,7 @@
 <div id="auth" class="auth-screen hide"><div class="auth-orb a"></div><div class="auth-orb b"></div><section class="auth-card">
 <div class="brand large"><img src="/logo.svg" alt="Logo Clystria"><span>Clystria<small>CONTROL CENTER</small></span></div>
 <div class="auth-intro"><div class="pill">✦ SUA GESTÃO EM OUTRA ÓRBITA</div><h1 id="auth-title">Seu negócio. <em>No controle.</em></h1><p id="auth-sub">Acesse seu espaço de gestão e acompanhe tudo em tempo real.</p></div>
-<form id="auth-form"><div id="setup-extra" class="hide"><label>Seu nome<input name="name" autocomplete="name" placeholder="Como devemos chamar você?"></label><label>Chave de instalação (se estiver em produção)<input name="setup_token" type="password" autocomplete="off" placeholder="SETUP_TOKEN do servidor"></label></div><label>E-mail<input name="email" type="email" autocomplete="email" required placeholder="voce@empresa.com"></label><label>Senha<input name="password" type="password" required autocomplete="current-password" placeholder="••••••••••"></label><button type="submit" class="btn primary full" id="auth-submit">Entrar na plataforma <span>↗</span></button></form>
+<form id="auth-form"><div id="setup-extra" class="hide"><label>Seu nome<input name="name" autocomplete="name" placeholder="Como devemos chamar você?"></label><label>Chave de instalação (se estiver em produção)<input name="setup_token" type="password" autocomplete="off" placeholder="SETUP_TOKEN do servidor"></label></div><label>E-mail<input name="email" type="email" autocomplete="email" required placeholder="voce@empresa.com"></label><label>Senha<input name="password" type="password" required autocomplete="current-password" placeholder="••••••••••"></label><label>Código 2FA (se ativado)<input name="otp" type="text" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="000000"></label><button type="submit" class="btn primary full" id="auth-submit">Entrar na plataforma <span>↗</span></button></form>
 <p class="auth-foot">Proteção de dados • Sessão segura • Gestão profissional</p></section><div class="auth-feature"><span>✦</span><strong>Menos planilhas.<br>Mais crescimento.</strong><p>Clientes, receitas e vencimentos conectados em um único lugar.</p></div></div>
 <div id="app" class="app-shell hide"><div class="veil" id="veil"></div><aside class="sidebar" id="sidebar">
 <div class="side-top"><div class="brand"><img src="/logo.svg" alt="Logo"><span>Clystria<small>CONTROL CENTER</small></span></div><button class="sidebar-close" id="side-close" aria-label="Fechar menu">✕</button></div>
@@ -17,12 +17,18 @@
 <button data-view="reminders" class="nav"><span class="nav-ico">◷</span>Vencimentos <b id="nav-due-count"></b></button>
 <button data-view="payments" class="nav"><span class="nav-ico">◈</span>Financeiro</button>
 <button data-view="reports" class="nav"><span class="nav-ico">▥</span>Relatórios</button>
+<button data-view="invoices" class="nav"><span class="nav-ico">▣</span>Faturas & cobranças</button>
+<button data-view="leads" class="nav"><span class="nav-ico">◇</span>Funil comercial</button>
+<button data-view="interactions" class="nav"><span class="nav-ico">☏</span>Atendimentos</button>
+<button data-view="campaigns" class="nav"><span class="nav-ico">✉</span>Campanhas</button>
+<button data-view="referrals" class="nav"><span class="nav-ico">↗</span>Indicações</button>
 <div class="nav-group-label second">CENTRAL DE CONTROLE</div>
 <button data-view="panels" class="nav"><span class="nav-ico">⌘</span>Integrações</button>
 <button data-view="plans" class="nav"><span class="nav-ico">▤</span>Planos & preços</button>
 <button data-view="team" class="nav"><span class="nav-ico">◎</span>Equipe</button>
 <button data-view="activity" class="nav"><span class="nav-ico">◉</span>Histórico de ações</button>
 <button data-view="settings" class="nav"><span class="nav-ico">⚙</span>Configurações</button>
+<button data-view="security" class="nav"><span class="nav-ico">♢</span>Segurança 2FA</button>
 </nav><div class="sidebar-bottom"><div class="sidebar-help"><span class="spark">✧</span><h4>Seu negócio evoluindo</h4><p>Conecte painéis e nunca mais perca uma renovação.</p><button id="go-panels" class="help-link">Explorar integrações ↗</button></div><button id="logout" class="logout">⎋ <span>Sair da conta</span></button></div>
 </aside><div class="main-wrap"><header class="topbar"><div class="topbar-left"><button id="menu-toggle" class="menu-toggle" aria-label="Abrir menu">☰</button><div class="breadcrumbs">Workspace <span>›</span> <strong id="breadcrumb">Visão geral</strong></div></div><div class="topbar-actions"><span class="sync-label"><i></i> Sistema ativo</span><button id="top-alert" class="icon-btn" title="Ver vencimentos">♧ <b id="alert-dot" class="hide"></b></button><div class="avatar" id="avatar">C</div></div></header><main class="content" id="content" tabindex="-1"></main></div></div>
 <div id="modal" class="modal-backdrop hide" role="presentation"><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-head"><div><div class="eyebrow">CLYSTRIA • WORKSPACE</div><h2 id="modal-title">Novo registro</h2></div><button id="modal-close" class="icon-btn" aria-label="Fechar">✕</button></div><div id="modal-body"></div></div></div>
