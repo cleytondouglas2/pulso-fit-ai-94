@@ -175,8 +175,8 @@
    const message=document.getElementById("pf-stable-recovery-status");
    if(message&&json.found){
     message.textContent=json.retryable?
-      "Não foi possível consultar a MisticPay agora. Se você pagou, não pague novamente; tente verificar mais tarde.":
-      "Pix encontrado nesta conta. Situação: "+String(json.status||"PENDENTE")+". Aguardando confirmação da MisticPay.";
+      "Não foi possível consultar a Argus Pay agora. Se você pagou, não pague novamente; tente verificar mais tarde.":
+      "Pix encontrado nesta conta. Situação: "+String(json.status||"PENDENTE")+". Aguardando confirmação da Argus Pay.";
     if(!paymentPoll)paymentPoll=setInterval(function(){if(!document.hidden)void recoverPreviousPix(true)},16000);
    }else if(message&&!quiet){message.textContent="Não encontrei Pix recente nesta conta. Confirme se entrou com o mesmo usuário usado no pagamento."}
   }catch(e){
@@ -196,7 +196,7 @@
   opened=true;closedOnRoute=false;
   var body=outer.querySelector(".pf-stable-body");
   if(!body)return;
-  body.innerHTML='<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • PIX MISTICPAY</small>'+
+  body.innerHTML='<div class="pf-stable-top"><div><small style="color:#c4b5fd;font-weight:900">PULSOFIT AI • PIX ARGUS PAY</small>'+
    '<h2>Contratar Plano '+plan.name+'</h2></div><button type="button" class="pf-stable-close" aria-label="Fechar">×</button></div>'+
    '<section class="pf-stable-trial"><strong>'+plan.price+' • '+plan.days+' dias de acesso</strong>'+
    '<p>Pagamento único por Pix, sem renovação automática.</p></section>'+
@@ -269,7 +269,7 @@
    var name=form.elements.payerName.value.trim();
    var cpf=form.elements.payerDocument.value.replace(/\D/g,"");
    if(name.length<3||cpf.length!==11){status.textContent="Informe nome completo e CPF com 11 dígitos.";return}
-   btn.disabled=true;processing=true;status.textContent="Gerando Pix seguro na MisticPay...";
+   btn.disabled=true;processing=true;status.textContent="Gerando Pix seguro na Argus Pay...";
    fetch("/api/billing/checkout",{method:"POST",cache:"no-store",
     headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},
     body:JSON.stringify({planCode:plan.code,paymentMethod:"pix",payerName:name,payerDocument:cpf})})
@@ -307,7 +307,7 @@
   '<article class="pf-stable-card best"><small>MELHOR CUSTO-BENEFÍCIO</small><b>Plano Mensal</b><div class="pf-stable-price">R$ 24,90</div><small>30 dias de acesso</small><p>Todos os recursos, com mais economia.</p><button type="button" data-pf-stable-plan="mensal">Selecionar 30 dias</button></article>'+
   '</div><button type="button" id="pf-stable-recover-button" style="display:block;width:100%;margin:15px 0;background:#33426a;color:white;border:1px solid #a78fe8;border-radius:12px;padding:14px;font-weight:800">✅ Já paguei — recuperar e confirmar meu Pix</button>'+
   '<p id="pf-stable-recovery-status" role="status" style="color:#e1daff;font-size:13px"></p>'+
-  '<p class="pf-stable-foot">Pix via MisticPay. O cartão ainda não está disponível. O pagamento somente libera o plano após confirmação no servidor.</p></section>';
+  '<p class="pf-stable-foot">Pix via Argus Pay. O cartão ainda não está disponível. O pagamento somente libera o plano após confirmação no servidor.</p></section>';
   outer.querySelector(".pf-stable-close").addEventListener("click",function(){closedOnRoute=true;hide()});
   outer.addEventListener("click",function(e){
    if(e.target===outer){closedOnRoute=true;hide();return}
