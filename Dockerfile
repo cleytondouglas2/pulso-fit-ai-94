@@ -737,14 +737,10 @@ RUN sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-premium-wall
  && grep -Fq 'id="res-welcome"' /var/www/html/public/static/reseller-dashboard.js \
  && grep -Fq 'id="seller-balances"' /var/www/html/public/static/merchant-portal.js
 
-
-# Seller-page resilience fix after previous strict legacy tests and premium UI.
-COPY deployment/reseller_ui_stability_patch.php /tmp/reseller_ui_stability_patch.php
+# Seller-page resilience, independent of legacy finance handlers and KYC patches.
 COPY deployment/reseller-ui-stability.js deployment/reseller-ui-stability.css /var/www/html/public/static/
-RUN php -l /tmp/reseller_ui_stability_patch.php \
- && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_ui_stability_patch.php \
- && grep -Fq 'argus:reseller-view' /var/www/html/public/static/reseller-dashboard.js \
- && grep -Fq 'ar-revenue-pending' /var/www/html/public/static/revenue-dashboard.js \
- && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-ui-stability.css?v=20261122-2"><script defer src="/static/reseller-ui-stability.js?v=20261122-2"></script></head>#; s#reseller-dashboard.js?v=nav-speed-20261122-1#reseller-dashboard.js?v=resilience-20261122-2#; s#revenue-dashboard.js?v=nav-speed-20261122-1#revenue-dashboard.js?v=resilience-20261122-2#' /var/www/html/public/static/client.html \
- && grep -Fq '/static/reseller-ui-stability.js?v=20261122-2' /var/www/html/public/static/client.html \
- && grep -Fq 'reseller-dashboard.js?v=resilience-20261122-2' /var/www/html/public/static/client.html
+RUN test -s /var/www/html/public/static/reseller-ui-stability.js \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-ui-stability.css?v=20261122-3"><script defer src="/static/reseller-ui-stability.js?v=20261122-3"></script></head>#' /var/www/html/public/static/client.html \
+ && grep -Fq '/static/reseller-ui-stability.js?v=20261122-3' /var/www/html/public/static/client.html \
+ && grep -Fq 'id="res-charge-form"' /var/www/html/public/static/reseller-dashboard.js \
+ && grep -Fq 'id="seller-deposit-form"' /var/www/html/public/static/merchant-portal.js

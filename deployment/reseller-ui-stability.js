@@ -6,6 +6,7 @@
  window.__argusSellerStability=true;
  const E=id=>document.getElementById(id);
  let deadline=0, pending=0, firstReady=false, lastPage=null;
+ let lastOverview=false, revenueDeadline=0;
  function check(){
   const page=E('argus-reseller-page-charges');
   const dashboard=E('dashboard');
@@ -23,6 +24,8 @@
      getComputedStyle(form).display==='none'){
    form.style.setProperty('display','grid','important');
   }
+  const receipt=E('res-charge-result'),result=E('seller-pix-result');
+  if(receipt&&result&&result.parentElement!==receipt)receipt.appendChild(result);
   const old=E('res-charge-load-note');
   if(form&&host.contains(form)){
    old?.remove();
@@ -43,12 +46,33 @@
   if(pending)return;
   pending=requestAnimationFrame(()=>{pending=0;check();});
  }
+ function overviewState(){
+  const page=E('argus-reseller-page-overview');
+  const dashboard=E('dashboard');
+  const visible=!!page&&!page.hidden&&!!dashboard&&!dashboard.hidden;
+  if(visible&&!lastOverview){
+   revenueDeadline=Date.now()+5500;
+   // The existing revenue widget listens to the account-status event and
+   // then performs its own authenticated, read-only GET request.
+   document.dispatchEvent(new CustomEvent('argus:reseller-stage',{detail:window.ArgusResellerStage||null}));
+  }
+  if(visible&&revenueDeadline&&Date.now()>revenueDeadline){
+   const host=E('ar-seller-revenue');
+   const text=host?.querySelector('p');
+   if(text&&text.textContent?.includes('Carregando faturamento confirmado')){
+    text.textContent='O faturamento confirmado ainda está sendo consultado. A atualização não altera seu saldo ou suas cobranças.';
+   }
+  }
+  if(!visible)revenueDeadline=0;
+  lastOverview=visible;
+ }
  function onView(){
   const page=E('argus-reseller-page-charges');
   const visible=page&&!page.hidden;
   if(visible&&!lastPage){deadline=Date.now()+5000;}
   if(!visible){deadline=0;E('res-charge-load-note')?.remove();}
   lastPage=visible;
+  overviewState();
   schedule();
  }
  document.addEventListener('argus:reseller-view',onView);
@@ -59,6 +83,7 @@
  window.addEventListener('pageshow',onView);
  const timer=setInterval(()=>{
   if(document.hidden||E('dashboard')?.hidden)return;
+  overviewState();
   if(E('argus-reseller-page-charges')&&!E('argus-reseller-page-charges').hidden)check();
   if(firstReady&&E('seller-deposit-form')&&E('res-charge-form')?.contains(E('seller-deposit-form')))return;
  },1600);
