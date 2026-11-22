@@ -53,7 +53,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
  const temporaryDatabaseApproved=()=>process.env.PULSO_BILLING_TEMP_DB_ACK==="1";
  const requiredFlags=()=>(
    process.env.PULSO_BILLING_STABLE_DB==="1"||temporaryDatabaseApproved()
-  )&&premiumGuardInstalled&&process.env.PULSO_ARGUSPAY_ENABLE_CHARGES==="1";
+  )&&premiumGuardInstalled&&state.depositsEnabled===true&&process.env.PULSO_ARGUSPAY_ENABLE_CHARGES==="1";
  function respond(res,status,data){
   if(res.writableEnded)return;
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
@@ -128,7 +128,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   }
   // Read-only probe; no Pix is created by testing configuration.
   if(state.credentialsConfigured){
-   try{await gateway.testConnection();state.providerAuth="verified";}
+   try{const probe=await gateway.testConnection();state.providerAuth="verified";state.depositsEnabled=probe.depositsEnabled;}
    catch(error){state.providerAuth=error?.status===401?"denied":"unavailable";
     console.warn("[pulso-billing] ArgusPay balance probe unavailable; no charges created.");}
   }
@@ -209,7 +209,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    if(path==="/api/admin/billing/config"&&req.method==="GET"){
     return respond(res,200,{provider:"arguspay",configured:gateway.credentialsReady(),
      ready:configured,readyForSecureWrite:Boolean(credentialStore?.secureStorageReady&&state.storageReady),
-     webhookVerificationReady:Boolean(state.storageReady),providerAuth:state.providerAuth,
+     webhookVerificationReady:Boolean(state.storageReady),providerAuth:state.providerAuth,depositsEnabled:state.depositsEnabled===true,
      credentialSource:state.credentialSource||"none",updatedAt:state.credentialsUpdatedAt||null,
      keyMasked:gateway.credentialsReady()?"•••• "+argusCredentials.key.slice(-4):null,
      apiBaseUrl:gateway.baseUrl,webhookUrl:origin+"/api/billing/webhook"});
@@ -238,14 +238,17 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    const candidate={key:String(body.apiKey||""),secret:String(body.apiSecret||"")};
    if(!isArgusCredentialPair(candidate))
     return respond(res,422,{error:"Preencha uma API Key e uma API Secret válidas da Argus Pay."});
-   try{await gateway.testConnection(candidate);}
+   let successfulProbe;
+   try{successfulProbe=await gateway.testConnection(candidate);}
    catch(error){
     return respond(res,422,{error:error.status===401?
      "A Argus Pay rejeitou as chaves. Nenhuma configuração foi alterada.":
      "Não foi possível validar as novas chaves na Argus Pay. A configuração anterior foi mantida."});
    }
    if(path==="/api/admin/billing/test")
-    return respond(res,200,{valid:true,message:"Autenticação de leitura validada na Argus Pay. Nenhum Pix foi gerado."});
+    return respond(res,200,{valid:true,depositsEnabled:successfulProbe.depositsEnabled,
+     message:successfulProbe.depositsEnabled?"Autenticação validada e recebimentos autorizados. Nenhum Pix foi gerado.":
+      "Chaves válidas, mas recebimentos Pix estão aguardando liberação financeira na Argus Pay."});
    if(Date.now()-lastKeySaveAt<20000)return respond(res,429,{error:"Aguarde antes de alterar as credenciais novamente."});
    try{await credentialStore.save(candidate,user.id);}
    catch{return respond(res,503,{error:"Não foi possível salvar as credenciais com segurança."});}
@@ -255,6 +258,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    state.credentialsUpdatedAt=new Date().toISOString();
    state.credentialsConfigured=true;
    state.providerAuth="verified";
+   state.depositsEnabled=successfulProbe.depositsEnabled;
    configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&requiredFlags());
    state.ready=configured;
    state.supportedMethods=configured?["pix"]:[];
