@@ -22,7 +22,7 @@ function authNotice(t){$('#authStatus').textContent=t;$('#authStatus').classList
 function flash(t){$('#flash').textContent=t;$('#flash').classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'})}
 function ok(){$('#flash').classList.add('hidden')}
 function save(){S.setItem(SK,JSON.stringify({token,refreshToken}))}
-function reset(){++elnexNavigationToken;clearInterval(chatTimer);chatTimer=null;S.removeItem(SK);token='';refreshToken='';me=null;$('#shell').classList.add('hidden');$('#auth').classList.remove('hidden');const content=$('#content');if(content){content.style.visibility='visible';content.style.opacity='';content.classList.remove('elx-page-enter')}document.documentElement.classList.remove('elx-booting');document.getElementById('elnexRouteOverlay')?.classList.remove('show')}
+function reset(){++elnexNavigationToken;clearInterval(chatTimer);chatTimer=null;S.removeItem(SK);token='';refreshToken='';me=null;$('#shell').classList.add('hidden');$('#auth').classList.remove('hidden');const content=$('#content');if(content){content.style.visibility='visible';content.style.opacity='';content.style.pointerEvents='';content.setAttribute('aria-busy','false');content.classList.remove('elx-page-enter')}document.documentElement.classList.remove('elx-booting');document.getElementById('elnexRouteOverlay')?.classList.remove('show')}
 async function call(path,opts={},retry=true){let r=await fetch(API+path,{...opts,headers:{...head(),...opts.headers}});if(r.status===401&&refreshToken&&retry){try{const v=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:refreshToken})});if(v.ok){const d=await v.json();token=d.access_token;refreshToken=d.refresh_token;save();return call(path,opts,false)}}catch{}}return r}
 async function request(path,opts={}){const r=await call(path,opts);const text=await r.text();let d;try{d=JSON.parse(text)}catch{d=text}if(!r.ok)throw Error(typeof d==='object'?(d.msg||d.message||d.error_description||d.error||'Erro '+r.status):String(d));return d}
 async function rpc(name,params={}){return request('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify(params)})}
@@ -38,6 +38,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.
 async function load(){
  const route=++elnexNavigationToken;
  const veil=elxTransitionBegin('Conectando novas histórias...');
+ try{window.scrollTo(0,0)}catch{}
  const content=$('#content');
  ok();
  $('#title').textContent={home:'Para você',discover:'Descobrir',matches:'Conexões',sense:'ELNEX Sense',events:'Experiências',profile:'Meu perfil'}[tab];
