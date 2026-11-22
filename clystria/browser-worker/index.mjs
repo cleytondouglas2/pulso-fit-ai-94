@@ -411,9 +411,12 @@ async function runJob(job){
     for(let i=0;i<8;i++){
       const result=await extract(page);
       const sigmaCards=job.panel_kind==='sigma'?await extractSigmaCards(page):{items:[],cards:0};
+      // Use card identifier as an external key only when the provider did not expose
+      // actual client logins in its loaded JSON or table. Avoid duplicate identities.
+      const fallback=records.size===0&&result.items.length===0?sigmaCards.items:[];
       recognized=recognized||result.recognized>0||sigmaCards.cards>0;
-      rawRows+=result.items.length+sigmaCards.items.length;
-      for(const r of [...result.items,...sigmaCards.items]){
+      rawRows+=result.items.length+fallback.length;
+      for(const r of [...result.items,...fallback]){
         const c=asClient(r);
         if(c)records.set(c.username.toLowerCase(),c);
       }
