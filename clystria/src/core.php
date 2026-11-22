@@ -60,7 +60,7 @@ function setConfig(string $k,string $v):void {run('INSERT INTO settings(key,valu
 function activity(string $actor,string $action,string $detail=''):void{run('INSERT INTO activities(id,actor,action,detail) VALUES(?,?,?,?)',[id(),$actor,$action,clean($detail,250)]);}
 function appKey():string {
  static $key=null;if($key!==null)return $key;
- $v=envv('APP_KEY');if($v!==''){if(preg_match('/^[a-f0-9]{64}$/i',$v))return $key=hex2bin($v);$decoded=base64_decode($v,true);if($decoded===false||strlen($decoded)!==32)throw new RuntimeException('APP_KEY exige 32 bytes codificados em hexadecimal ou base64');return $key=$decoded;}
+ $v=envv('APP_KEY');if($v!==''){if(preg_match('/^[a-f0-9]{64}$/i',$v))return $key=hex2bin($v);$decoded=base64_decode($v,true);if($decoded!==false&&strlen($decoded)===32)return $key=$decoded;if(strlen($v)>=32)return $key=hash('sha256',$v,true);throw new RuntimeException('APP_KEY exige um segredo aleatório com pelo menos 32 caracteres');}
  if(production())throw new RuntimeException('APP_KEY obrigatório em produção');
  $f=dirname(__DIR__).'/data/encryption.key';if(!is_file($f)){if(!is_dir(dirname($f)))mkdir(dirname($f),0700,true);file_put_contents($f,random_bytes(32),LOCK_EX);chmod($f,0600);}return $key=file_get_contents($f);
 }

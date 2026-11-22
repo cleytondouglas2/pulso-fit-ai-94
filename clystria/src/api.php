@@ -18,7 +18,7 @@ function api():never{
  $method=$_SERVER['REQUEST_METHOD']??'GET';$route=explode('?',$_SERVER['REQUEST_URI']??'',2)[0];$segments=explode('/',trim($route,'/'));
  if($route==='/api/health'&&$method==='GET')jsonout(['ok'=>true,'service'=>'clystria-php','date'=>today()]);
  if($route==='/api/ready'&&$method==='GET'){
-  if(envv('APP_ENV')!=='production'||envv('DATABASE_URL')===''||!(preg_match('/^[a-f0-9]{64}$/i',envv('APP_KEY'))||(strlen(base64_decode(envv('APP_KEY'),true)?:'')===32)))fail(503,'Armazenamento persistente e segredos de produção não configurados');
+  if(envv('APP_ENV')!=='production'||envv('DATABASE_URL')===''||strlen(envv('APP_KEY'))<32)fail(503,'Armazenamento persistente e segredos de produção não configurados');
   $db=getDb();$db->query('SELECT 1')->fetch();
   if(!one('SELECT 1 FROM staff LIMIT 1')&&strlen(envv('SETUP_TOKEN'))<20)fail(503,'Configure a chave inicial SETUP_TOKEN antes de criar o administrador');
   jsonout(['ok'=>true,'service'=>'clystria-php','storage'=>'postgres']);
