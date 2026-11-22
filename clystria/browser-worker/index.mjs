@@ -9,6 +9,7 @@ const SECRET=process.env.BROWSER_WORKER_TOKEN||'';
 const ALLOW=(process.env.ALLOWED_PANEL_HOSTS||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
 const TRUSTED_REDIRECT_DOMAINS=(process.env.ALLOWED_PANEL_REDIRECT_SUFFIXES||'').toLowerCase().split(',').map(s=>s.trim()).filter(s=>/^[a-z0-9.-]+\.[a-z]{2,}$/.test(s)&&s.split('.').length>=2);
 const BROWSER_PATH=process.env.CHROMIUM_PATH||'/usr/bin/chromium';
+const CLOUDFLARE_WIDGET_HOST=process.env.CLOUDFLARE_WIDGET_HOST==='challenges.cloudflare.com'?'challenges.cloudflare.com':'';
 let busy=false;
 const json=(res,status,payload)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});res.end(JSON.stringify(payload));};
 const failure=(code,msg)=>{const e=new Error(msg);e.status=code;throw e;};
@@ -32,7 +33,7 @@ async function safeUrl(input,documentRequest=false,allowCloudflareSubframe=false
   if(net.isIP(host)||!host.includes('.')||host==='localhost'||host.endsWith('.local'))failure(400,'Host não autorizado');
   if(documentRequest){
     const sameProvider=TRUSTED_REDIRECT_DOMAINS.some(domain=>host===domain||host.endsWith('.'+domain));
-    const cloudflareWidget=allowCloudflareSubframe&&host==='challenges.cloudflare.com';
+    const cloudflareWidget=!!CLOUDFLARE_WIDGET_HOST&&allowCloudflareSubframe&&host===CLOUDFLARE_WIDGET_HOST;
     if(!ALLOW.includes(host)&&!sameProvider&&!cloudflareWidget)failure(403,'Host não está na lista de painéis permitidos');
   }
   const addresses=await dns.resolve4(host).catch(()=>[]);
@@ -462,7 +463,7 @@ async function runJob(job){
         if(req.isNavigationRequest()){
           try{
             const target=new URL(url);
-            isCloudflareFrame=target.hostname==='challenges.cloudflare.com'&&!!req.frame().parentFrame();
+            isCloudflareFrame=!!CLOUDFLARE_WIDGET_HOST&&target.hostname===CLOUDFLARE_WIDGET_HOST&&!!req.frame().parentFrame();
           }catch{}
         }
         await safeUrl(url,req.isNavigationRequest(),isCloudflareFrame);
