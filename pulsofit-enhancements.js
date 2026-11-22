@@ -318,7 +318,7 @@
       '<p class="pf-checkout-hint">Seus dados serão enviados por conexão segura à Argus Pay para gerar a cobrança. Não armazenamos números de cartão nesta página.</p>'+
       '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Verificando disponibilidade da Argus Pay...</p>'+
       '<button type="button" class="pf-checkout-submit" disabled>Gerar Pix</button>'+
-      '<div id="pf-checkout-pix" class="pf-checkout-pix" hidden><p><b>Escaneie o QR Code ou copie o código Pix</b></p><img class="pf-checkout-qr" alt="QR Code do Pix Argus Pay" hidden><textarea readonly rows="3" aria-label="Código Pix copia e cola"></textarea><button type="button" class="pf-checkout-copy">Copiar Pix</button><button type="button" class="pf-checkout-verify">Verificar pagamento</button><p class="pf-checkout-hint">A assinatura será ativada somente após a confirmação bancária no servidor.</p></div>'+
+      '<div id="pf-checkout-pix" class="pf-checkout-pix" hidden><p><b>Escaneie o QR Code ou copie o código Pix</b></p><div class="pf-checkout-qr" role="img" aria-label="QR Code Pix Argus Pay" hidden></div><textarea readonly rows="3" aria-label="Código Pix copia e cola"></textarea><button type="button" class="pf-checkout-copy">Copiar Pix</button><button type="button" class="pf-checkout-verify">Verificar pagamento</button><p class="pf-checkout-hint">A assinatura será ativada somente após a confirmação bancária no servidor.</p></div>'+
       '<button type="button" class="pf-checkout-login">Entrar ou criar conta</button>'+
       '</section>';
     document.body.appendChild(modal);
@@ -367,9 +367,10 @@
          if(!data.reference||!data.copyPaste)throw Error("Cobrança sem código Pix");
          reference=data.reference;
          pix.hidden=false;pix.querySelector("textarea").value=data.copyPaste;
-         var qr=pix.querySelector("img");
-         if(typeof data.qrCodeBase64==="string"&&/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(data.qrCodeBase64)){qr.src=data.qrCodeBase64;qr.hidden=false}
-         status.textContent="Pix gerado. Aguardando pagamento...";
+         var qr=pix.querySelector(".pf-checkout-qr");
+         var drawn=Boolean(window.PULSO_PIX_QR&&window.PULSO_PIX_QR.render(qr,data.copyPaste,data.qrCodeBase64));
+         status.textContent=drawn?"QR Code Pix gerado. Aguardando pagamento...":
+          "Pix gerado, mas o desenho do QR Code não está disponível. Use o copia e cola.";
          modal.querySelector(".pf-checkout-payer").hidden=true;submit.hidden=true;
          pollId=setInterval(verify,12000);
        }).catch(function(err){status.textContent="Não foi possível gerar Pix: "+err.message;submit.disabled=false});
