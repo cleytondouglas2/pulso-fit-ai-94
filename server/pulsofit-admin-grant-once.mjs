@@ -18,8 +18,13 @@ export async function applyOneTimeAdminGrant(pool,{logger=console}={}){
  try{
   await conn.query("BEGIN");tx=true;
   const schema=await conn.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='pf_users' AND column_name IN ('id','email','role')");
-  if(!["id","email","role"].every(col=>schema.rows.some(r=>r.column_name===col)))
+  if(!["id","email","role"].every(col=>schema.rows.some(r=>r.column_name===col))){
+   const all=await conn.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='pf_users'");
+   const cols=all.rows.map(r=>r.column_name);
+   const markers=["id","email","role","is_admin","admin","user_role","account_role","type","role_id","access_level","status"].map(name=>name+"="+cols.includes(name));
+   logger.warn("[pulso-admin] User schema capability check: "+markers.join(" "));
    throw Error("User role schema missing");
+  }
   // Existing-account-only: nothing is created or queued if the target is missing.
   const candidates=await conn.query(
    "SELECT id::text AS id, role::text AS role FROM pf_users WHERE lower(email)=lower($1) FOR UPDATE",
@@ -59,7 +64,9 @@ export async function applyOneTimeAdminGrant(pool,{logger=console}={}){
   return {status:account.role==="admin"?"already_admin":"applied"};
  }catch(e){
   if(tx)await conn.query("ROLLBACK").catch(()=>{});
-  logger.warn("[pulso-admin] One-time administrator grant failed code="+String(e.code||"schema_or_transaction_error").replace(/[^a-zA-Z0-9_]/g,"").slice(0,48));
+  const known=["User role schema missing","Unexpected current account role","Account role changed during update","Grant request replay does not match target"];
+  const category=known.includes(e.message)?e.message.replaceAll(" ","_"):String(e.code||"unclassified_db_failure");
+  logger.warn("[pulso-admin] One-time administrator grant failed category="+category.replace(/[^a-zA-Z0-9_]/g,"").slice(0,60));
   return {status:"failed"};
  }finally{conn.release();}
 }
