@@ -409,6 +409,7 @@ async function runJob(job){
   try{
     browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:18000,
       args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+    const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0};
     const sigma=job.panel_kind==='sigma';
     context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
       ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{}),
@@ -416,13 +417,16 @@ async function runJob(job){
     await context.route('**/*',async route=>{
       try{
         const req=route.request(),url=req.url();
-        if(!url.startsWith('https://')){if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();return route.abort();}
+        if(!url.startsWith('https://')){if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();diagnostics.blockedHttp++;return route.abort();}
         await safeUrl(url,req.isNavigationRequest());
         await route.continue();
-      }catch{await route.abort().catch(()=>{});}
+      }catch{diagnostics.blockedUnsafe++;await route.abort().catch(()=>{});}
     });
     const page=await context.newPage();
     page.setDefaultTimeout(9000);
+    page.on('pageerror',()=>{diagnostics.pageErrors++;});
+    page.on('requestfailed',()=>{diagnostics.failedRequests++;});
+    page.on('response',response=>{if(response.request().isNavigationRequest())diagnostics.documentResponses++;});
     const captured=new Map(),inflight=new Set();
     let scannedJsonResponses=0;
     const host=new URL(url).hostname.toLowerCase();
@@ -484,15 +488,23 @@ async function runJob(job){
     for(const [key,item] of captured)if(!records.has(key))records.set(key,item);
     if(!records.size){
       const reason=destination==='menu_ausente'?'menu de clientes não identificado':destination==='menu_clientes_sem_acesso'?'não foi possível abrir o menu de clientes':destination==='menu_clientes_acionado'?'menu acionado, mas sem registros reconhecidos':'dados de clientes não reconhecidos';
-      const signals=await page.evaluate(()=>({
-        login:!!document.querySelector('input[type="password"]'),
-        links:Array.from(document.querySelectorAll('nav a,aside a,[role="navigation"] a')).length,
-        visibleMenus:Array.from(document.querySelectorAll('a,button,[role="menuitem"]')).filter(el=>{const b=el.getBoundingClientRect();return b.width>0&&b.height>0}).length,
-        ready:document.readyState
-      })).catch(()=>({login:false,links:0,visibleMenus:0,ready:'unknown'}));
-      const evidence=signals.login?'A tela ainda contém campo de senha; autenticação não confirmada.':'A autenticação ainda não pôde ser confirmada.';
-      console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify({stage:destination,loginField:signals.login,navLinks:signals.links,controls:signals.visibleMenus,json:scannedJsonResponses,rows:rawRows,valid:records.size}));
-      failure(422,evidence+' Navegação: '+reason+'. Menu(s): '+signals.links+'; respostas de dados: '+scannedJsonResponses+'. Nenhum cliente foi alterado.');
+      const state=await browserState(page);
+      const fingerprint={
+        stage:destination,loginFlow:login,pageKind:state.contentType.toLowerCase().includes('json')?'json':state.contentType.toLowerCase().includes('html')?'html':'other',
+        route:state.path==='/'?'root':/\/(api|auth|login)(\/|$)/i.test(state.path)?'auth_or_api':'other',
+        controls:state.controls,bodyLength:state.bodyLength,hasClientsTab:state.hasClientsTab,
+        json:scannedJsonResponses,rows:rawRows,valid:records.size,
+        blockedHttp:diagnostics.blockedHttp,blockedUnsafe:diagnostics.blockedUnsafe,
+        failedRequests:diagnostics.failedRequests,pageErrors:diagnostics.pageErrors,
+        documentResponses:diagnostics.documentResponses
+      };
+      console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify(fingerprint));
+      const problem=state.contentType.toLowerCase().includes('json')?
+        'O navegador terminou em uma resposta JSON, não na tela de Clientes do Sigma.':
+        state.controls===0?'A página carregada na VPS está sem controles visíveis.':
+        state.passwordFields?'O formulário de acesso ainda aparece.':
+        'A página carregou, mas a aba Clientes não foi reconhecida.';
+      failure(422,problem+' Diagnóstico: '+reason+', '+diagnostics.failedRequests+' falha(s) de recurso, '+diagnostics.blockedHttp+' conexão(ões) HTTP bloqueada(s). Nenhum cliente foi alterado.');
     }
     return {ok:true,clients:[...records.values()],plans:[],warning:'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size,json_responses:scannedJsonResponses,source:captured.size?'pagina_e_requisicoes_da_sessao':'pagina'}};
