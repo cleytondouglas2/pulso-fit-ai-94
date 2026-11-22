@@ -1,0 +1,4 @@
+.argus-login-audit{padding:20px;margin:19px 0;border:1px solid #af844e;border-radius:17px;background:linear-gradient(130deg,#27231e,#1c232c)}
+.argus-login-audit h3{color:#f6d69e}.argus-login-audit p{color:#b7c0cd;font-size:13px;line-height:1.5}
+.argus-login-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 0;border-bottom:1px solid #544736;color:#d2d6dd;font-size:12px}
+.argus-login-row strong{color:#b8d5c4;font-size:12px}.argus-login-row.unusual strong{color:#facb92}

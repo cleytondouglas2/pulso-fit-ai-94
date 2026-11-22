@@ -851,3 +851,19 @@ RUN php -l /var/www/html/src/SellerMfa.php \
  && sed -i 's#</head>#<link rel="stylesheet" href="/static/seller_mfa.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/seller_mfa.js?v=20261122-1"></script></body>#' /var/www/html/public/static/client.html \
  && php /var/www/html/tests/seller_mfa_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Privacy-safe login anomaly detection, account history, and optional email
+# alerts (only if the configured Resend account works). Never blocks login.
+COPY deployment/SellerAccessAudit.php /var/www/html/src/SellerAccessAudit.php
+COPY deployment/seller_access_audit_patch.php /tmp/seller_access_audit_patch.php
+COPY deployment/seller_access_audit.js deployment/seller_access_audit.css /var/www/html/public/static/
+COPY deployment/seller_access_audit_test.php /var/www/html/tests/seller_access_audit_test.php
+RUN php -l /var/www/html/src/SellerAccessAudit.php \
+ && php -l /tmp/seller_access_audit_patch.php \
+ && php /tmp/seller_access_audit_patch.php \
+ && php -l /var/www/html/src/Portal.php \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/seller_access_audit.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/seller_access_audit.js?v=20261122-1"></script></body>#' /var/www/html/public/static/client.html \
+ && php /var/www/html/tests/seller_access_audit_test.php \
+ && php /var/www/html/tests/password_recovery_test.php \
+ && php /var/www/html/tests/security_regression_test.php
