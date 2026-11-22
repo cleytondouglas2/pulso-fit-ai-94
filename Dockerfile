@@ -744,3 +744,12 @@ RUN test -s /var/www/html/public/static/reseller-ui-stability.js \
  && grep -Fq '/static/reseller-ui-stability.js?v=20261122-3' /var/www/html/public/static/client.html \
  && grep -Fq 'id="res-charge-form"' /var/www/html/public/static/reseller-dashboard.js \
  && grep -Fq 'id="seller-deposit-form"' /var/www/html/public/static/merchant-portal.js
+
+
+# Single branded wallet card on seller overview, with live API values untouched.
+COPY deployment/reseller-unified-card.css /var/www/html/public/static/reseller-unified-card.css
+RUN test -s /var/www/html/public/static/reseller-unified-card.css \
+ && grep -Fq 'id="seller-balances"' /var/www/html/public/static/merchant-portal.js \
+ && grep -Fq 'id="argus-reseller-overview-balances"' /var/www/html/public/static/reseller-dashboard.js \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-unified-card.css?v=20261122-card-1"></head>#' /var/www/html/public/static/client.html \
+ && grep -Fq '/static/reseller-unified-card.css?v=20261122-card-1' /var/www/html/public/static/client.html
