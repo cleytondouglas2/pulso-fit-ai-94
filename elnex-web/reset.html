@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#140a25">
+<title>ELNEX • Redefinir senha</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100svh;padding:24px;display:grid;place-items:center;background:radial-gradient(circle at 20% 0%,#542477,#10091d 64%);color:#fff;font:16px/1.5 system-ui,-apple-system,sans-serif}
+main{width:min(100%,440px);padding:28px;border:1px solid #774992;border-radius:25px;background:linear-gradient(145deg,#2d1740,#1b1129);box-shadow:0 20px 70px #0006}
+.logo{font-size:28px;color:#f0c0ff;font-weight:900;letter-spacing:3px}.logo span{color:#f05ac8}
+h1{font-size:24px;line-height:1.25;margin:23px 0 12px}p{color:#d9c5e8}
+label{display:block;font-size:13px;color:#d1b5e6;margin:16px 0 6px}
+input{width:100%;padding:15px;border:1px solid #765294;border-radius:13px;background:#130e23;color:white;font-size:16px;outline:none}
+input:focus{border-color:#f18fdc}button{width:100%;margin-top:18px;background:linear-gradient(90deg,#a752e8,#f05ab5);border:0;border-radius:13px;padding:15px;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}#message{padding:13px 14px;margin-top:17px;background:#1b102b;border:1px solid #674784;border-radius:12px;color:#eed0fa;white-space:pre-wrap;overflow-wrap:anywhere}
+a{display:block;text-align:center;padding:13px;color:#d8a4ff;text-decoration:none;margin-top:10px}a:hover{text-decoration:underline}
+</style></head>
+<body>
+<main><div class="logo">ELNEX <span>♡</span></div><h1>Crie uma nova senha</h1><p>O acesso será confirmado pelo link enviado ao seu e-mail. Não compartilhe esse link com ninguém.</p>
+<form id="form" hidden>
+<label for="pass">Nova senha</label><input id="pass" type="password" autocomplete="new-password" minlength="8" required>
+<label for="confirm">Confirme a nova senha</label><input id="confirm" type="password" autocomplete="new-password" minlength="8" required>
+<button id="submit" type="submit">Salvar nova senha</button></form>
+<div id="message" role="status" aria-live="polite">Verificando link de recuperação...</div>
+<a href="/" id="go">Voltar ao ELNEX</a></main>
+<script>
+(()=>{
+'use strict';
+const base='https://kcfevcznssxoacuimeqs.supabase.co';
+const key='sb_publishable_q2SgD-_OSE-T_17-pedRvw_YTM5j-rk';
+const h=new URLSearchParams(location.hash.slice(1)),q=new URLSearchParams(location.search);
+const token=h.get('access_token')||'',tokenHash=q.get('token_hash')||'';
+const recoveryType=h.get('type')||q.get('type')||'';
+const authError=h.get('error_description')||q.get('error_description');
+const form=document.getElementById('form'),message=document.getElementById('message'),pass=document.getElementById('pass'),confirm=document.getElementById('confirm'),submit=document.getElementById('submit');
+history.replaceState(null,document.title,location.pathname);
+let verifiedToken='';
+const display=(text)=>{message.textContent=text};
+async function validate(){
+  if(authError)throw Error(authError.replaceAll('+',' '));
+  if(recoveryType!=='recovery')throw Error('Este endereço não contém um link de recuperação válido. Solicite um novo e-mail pelo ELNEX.');
+  let access=token;
+  if(!access&&tokenHash){
+    const x=await fetch(base+'/auth/v1/verify',{method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({type:'recovery',token_hash:tokenHash})});
+    const d=await x.json().catch(()=>({}));
+    if(!x.ok)throw Error(d.msg||d.message||'O link expirou ou já foi utilizado. Solicite uma nova recuperação.');
+    access=d.access_token||d.session?.access_token||'';
+  }
+  if(!access)throw Error('Token não encontrado. Solicite uma nova recuperação de senha.');
+  const response=await fetch(base+'/auth/v1/user',{headers:{apikey:key,Authorization:'Bearer '+access}});
+  if(!response.ok)throw Error('Link expirado ou inválido. Solicite um novo e-mail de recuperação.');
+  verifiedToken=access;form.hidden=false;display('Link validado. Digite a nova senha.');
+}
+form.addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(!verifiedToken)return;
+  if(pass.value!==confirm.value){display('As senhas não coincidem.');return}
+  if(pass.value.length<8){display('A senha precisa ter pelo menos 8 caracteres.');return}
+  submit.disabled=true;display('Atualizando senha com segurança...');
+  try{
+    const response=await fetch(base+'/auth/v1/user',{method:'PUT',headers:{apikey:key,Authorization:'Bearer '+verifiedToken,'Content-Type':'application/json'},body:JSON.stringify({password:pass.value})});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw Error(data.msg||data.message||data.error_description||'Não foi possível alterar a senha.');
+    pass.value='';confirm.value='';form.hidden=true;
+    display('Senha atualizada com sucesso! Toque em "Voltar ao ELNEX" e entre com sua nova senha.');
+    try{await fetch(base+'/auth/v1/logout',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+verifiedToken}})}catch{}
+    verifiedToken='';
+  }catch(err){display(err.message||'Falha ao salvar sua nova senha.');submit.disabled=false}
+});
+validate().catch(err=>{display(err.message||'Link de recuperação inválido.');form.hidden=true});
+})();
+</script></body></html>
