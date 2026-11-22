@@ -10,6 +10,7 @@
 import "./pulsofit-js-boot-repair.mjs";
 import "./pulsofit-static-cache.mjs";
 import "./pulsofit-plans-patch.mjs";
+import "./pulsofit-payments-standalone.mjs";
 import "./pulsofit-private-features.mjs";
 import "./pulsofit-fitness-assessment.mjs";
 import "./pulsofit-training-lab.mjs";
