@@ -5,30 +5,3 @@
 @media(max-width:760px){.sidebar{position:fixed;left:0;top:0;height:100dvh;width:270px;transform:translateX(-102%);transition:transform .25s}.sidebar.open{transform:translateX(0)}.veil{display:none;position:fixed;inset:0;background:#0009;z-index:20}.veil.open{display:block}.sidebar-close,.menu-toggle{display:grid;place-items:center;background:#252a42;border:1px solid #434a69;border-radius:9px;color:#fff;width:32px;height:32px}.sidebar-close{margin-left:auto}.side-top{display:flex;align-items:center;justify-content:space-between}.topbar{height:64px;padding:0 17px}.topbar-left,.topbar-actions{gap:10px}.sync-label{display:none}.breadcrumbs{font-size:11px}.breadcrumbs span{margin:0 6px}.avatar{height:34px;width:34px;border-radius:11px}.content{padding:23px 15px 90px}.page-heading h1{font-size:27px}.page-heading{margin-bottom:23px}.grid4{gap:10px}.kpi-card{padding:16px;min-height:143px}.kpi-card strong{font-size:25px}.kpi-top{font-size:10px}.panel-card{padding:19px 15px}.cards-grid,.grid-side{grid-template-columns:1fr}.banner{padding:19px}.banner h2{font-size:19px}.banner-glow{display:none}.auth-feature{display:none}.auth-card{padding:28px 23px}.auth-intro h1{font-size:30px}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:1}.modal-card{padding:21px 17px}.modal-backdrop{align-items:flex-end;padding:0}.modal-card{border-radius:22px 22px 0 0;max-height:92dvh;width:100%}.table-wrap{margin:0 -8px}.data-table td,.data-table th{padding:13px 10px}.filterbar{align-items:stretch}.filterchips{width:100%;overflow-x:auto;flex-wrap:nowrap}.chip{white-space:nowrap}.header-actions{width:100%}.header-actions .btn{flex:1}.reminder-actions{width:100%}.reminder-actions .btn{flex:1}}
 @media(max-width:390px){.kpi-card strong{font-size:22px}.kpi-card{padding:13px}.kpi-top{font-size:9px}.kpi-foot{font-size:9px}.page-heading h1{font-size:25px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important}}
-
-
-/* Console Chromium remoto - iPhone/Android/desktop */
-.modal-card:has(.remote-browser){width:min(1160px,100%);padding:clamp(12px,2vw,26px);max-height:96dvh}
-.remote-browser{display:flex;flex-direction:column;gap:12px}
-.remote-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:11px;color:#d1d9f0;overflow-wrap:anywhere}
-#remote-url{font-weight:700;max-width:100%;word-break:break-all}
-#remote-status{color:#adbcdd}
-.remote-screen{position:relative;overflow:auto;max-width:100%;background:#101322;border:1px solid #566083;border-radius:14px;min-height:210px;overscroll-behavior:contain;touch-action:pan-x pan-y}
-.remote-screen img{display:block;width:100%;height:auto;min-width:0;aspect-ratio:1100/720;object-fit:contain;cursor:crosshair;user-select:none;-webkit-user-drag:none}
-.remote-screen.zoomed img{width:1100px;min-width:1100px;max-width:none}
-.remote-wait{position:absolute;left:0;top:40%;width:100%;text-align:center;color:#b1bde0;pointer-events:none}
-.remote-screen img[src^="data:"]+.remote-wait{display:none}
-.remote-controls,.remote-actions,.remote-type{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.remote-type input{flex:1;min-width:150px;border:1px solid #4c5674;border-radius:11px;background:#11192b;color:#f2f3ff;padding:12px;min-height:43px}
-.remote-type button{flex:none}
-.remote-controls .btn{flex:1 1 auto;min-height:40px;white-space:normal}
-.remote-actions .btn{flex:1 1 230px;white-space:normal}
-@media(max-width:640px){
- .modal-backdrop{padding:5px;align-items:flex-start}
- .modal-card:has(.remote-browser){margin-top:1dvh;max-height:97dvh;border-radius:16px}
- .modal-card:has(.remote-browser) .modal-head{margin-bottom:14px}
- .modal-card:has(.remote-browser) .modal-head h2{font-size:17px}
- .remote-screen{min-height:170px}
- .remote-controls .btn{flex:1 1 29%;font-size:11px;padding:9px 8px}
- .remote-actions .btn{flex:1 1 100%}
-}
