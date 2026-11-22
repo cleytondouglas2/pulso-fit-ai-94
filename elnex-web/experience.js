@@ -182,6 +182,8 @@ getProfile=async function(){
  const progress=elxPercent();
  const hero='<section class="profile-overview motion-in"><div><div class="tag">✦ SEU PERFIL ELNEX</div><strong>'+esc(profile?.display_name||'Sua história começa aqui')+'</strong><p class="muted small" style="margin:8px 0">Perfil '+progress+'% completo — personalize com autenticidade.</p><div class="progress-bg"><div class="progress-fill" style="width:'+progress+'%"></div></div></div><div class="profile-big-avatar">♡</div></section>';
  $('#content').insertAdjacentHTML('afterbegin',hero);
+ $('#content').insertAdjacentHTML('beforeend','<section class="card" style="margin-top:20px"><h3>Minha conta</h3><p class="muted small">Seu perfil e suas preferências estão sob seu controle.</p><button class="btn alt" id="elnexLogoutMobile" type="button">↪ Sair da minha conta</button></section>');
+ const exitMobile=$('#elnexLogoutMobile');if(exitMobile)exitMobile.onclick=()=>$('#exit')?.click();
 };
 (function elxInit(){
  document.querySelectorAll('.sidebar .nav[data-tab="sense"]').forEach(el=>{el.title='ELNEX Sense • Inteligência Artificial'});
