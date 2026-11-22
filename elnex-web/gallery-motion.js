@@ -24,7 +24,7 @@ function elxTransitionBegin(message='Preparando seu ELNEX...'){
  veil.classList.add('show');
  veil.setAttribute('aria-hidden','false');
  const content=$('#content');
- if(content){content.style.visibility='hidden';content.classList.remove('elx-page-enter')}
+ if(content){content.style.visibility='hidden';content.style.opacity='0';content.style.pointerEvents='none';content.setAttribute('aria-busy','true');content.classList.remove('elx-page-enter')}
  return n;
 }
 function elxImageReady(img,deadline=1250){
@@ -48,11 +48,15 @@ async function elxTransitionEnd(seq){
  if(seq!==elxOverlaySeq)return;
  if(content){
   content.style.visibility='visible';
+  content.style.opacity='';
+  content.style.pointerEvents='';
+  content.setAttribute('aria-busy','false');
   content.classList.remove('elx-page-enter');
   void content.offsetWidth;
   content.classList.add('elx-page-enter');
  }
  const veil=elxOverlay();
+ document.documentElement.classList.remove('elx-booting');
  veil.classList.remove('show');
  veil.setAttribute('aria-hidden','true');
 }
