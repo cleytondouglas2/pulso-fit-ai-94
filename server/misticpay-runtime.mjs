@@ -8,6 +8,7 @@
  * proteção de acesso. API keys nunca chegam ao navegador.
  */
 import "./pulsofit-js-boot-repair.mjs";
+import "./pulsofit-admin-server-patch.mjs";
 import "./pulsofit-static-cache.mjs";
 import "./pulsofit-plans-patch.mjs";
 import "./pulsofit-payments-standalone.mjs";
