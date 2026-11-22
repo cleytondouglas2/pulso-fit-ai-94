@@ -174,7 +174,7 @@
      '<div class="pf-plans-free"><strong>🎁 Teste grátis de 7 dias</strong><p id="pf-plans-status"></p>'+
      '<small>O período começa no primeiro acesso registrado na sua conta. Não há renovação automática.</small></div>'+
      '<div class="pf-plans-options"></div>'+
-     '<p class="pf-plans-fineprint">Pix pela MisticPay. Cartão ainda indisponível. A liberação ocorre após a confirmação do pagamento pelo servidor.</p>'+
+     '<p class="pf-plans-fineprint">Pix pela Argus Pay. Cartão ainda indisponível. A liberação ocorre após a confirmação do pagamento pelo servidor.</p>'+
      '</section>';
     var grid=overlay.querySelector(".pf-plans-options");
     grid.appendChild(offerCard(prices[0]));grid.appendChild(offerCard(prices[1]));
@@ -266,7 +266,7 @@
     if(banner.innerHTML!==bannerMarkup)banner.innerHTML=bannerMarkup;
     var alert=root.querySelector(".pro-alert");
     if(alert){
-      var alertMarkup="<strong>Planos PulsoFit AI • Pix via MisticPay</strong><p>Selecione um plano para consultar a disponibilidade do pagamento. O Pix só é apresentado após a validação da cobrança pelo servidor. Cartão não está disponível neste gateway.</p>";
+      var alertMarkup="<strong>Planos PulsoFit AI • Pix via Argus Pay</strong><p>Selecione um plano para consultar a disponibilidade do pagamento. O Pix só é apresentado após a validação da cobrança pelo servidor. Cartão não está disponível neste gateway.</p>";
       if(alert.innerHTML!==alertMarkup)alert.innerHTML=alertMarkup;
     }
     var note=root.querySelector(".tiny-caption");
@@ -285,7 +285,7 @@
     var overlay=document.createElement("section");overlay.id="pf-trial-gate";overlay.setAttribute("role","dialog");overlay.setAttribute("aria-modal","true");overlay.setAttribute("aria-label","Período de teste encerrado");
     overlay.innerHTML="<div class='pf-gate-box'><div class='pf-gate-icon'>✦</div>"+
      "<span class='eyebrow'>PULSOFIT PREMIUM</span><h2>Seus 7 dias de teste terminaram.</h2>"+
-     "<p>Escolha um plano para continuar treinando. Sua assinatura será liberada após a confirmação do pagamento pela MisticPay, quando o checkout Pix estiver ativo.</p>"+
+     "<p>Escolha um plano para continuar treinando. Sua assinatura será liberada após a confirmação do pagamento pela Argus Pay, quando o checkout Pix estiver ativo.</p>"+
      "<div class='pf-gate-plans'><div><b>15 dias</b><strong>R$ 14,90</strong></div><div><b>30 dias</b><strong>R$ 24,90</strong></div></div>"+
      "<button type='button' class='btn wide' data-pf-open-plans='1'>Ver planos e ativar acesso</button>"+
      "<button type='button' class='btn-alt wide' data-pf-open-account='1'>Já tenho assinatura — entrar na conta</button>"+
@@ -309,16 +309,16 @@
     modal.innerHTML='<section class="pf-checkout-box" role="dialog" aria-modal="true" aria-labelledby="pf-checkout-heading">'+
       '<button type="button" class="pf-checkout-close" aria-label="Fechar checkout">×</button>'+
       '<img class="pf-checkout-logo" src="./pulsofit-brand.svg" alt="PulsoFit AI">'+
-      '<span class="pf-checkout-kicker">PULSOFIT AI · MISTICPAY</span>'+
+      '<span class="pf-checkout-kicker">PULSOFIT AI · ARGUS PAY</span>'+
       '<h2 id="pf-checkout-heading">Contratar '+plan.title+'</h2>'+
       '<div class="pf-checkout-summary"><span>'+plan.title+'</span><strong>'+plan.price+'</strong><small>'+plan.duration+' de acesso; sem renovação automática</small></div>'+
       '<p>Método de pagamento</p>'+
-      '<div class="pf-checkout-methods"><label><input type="radio" name="pf-pay-method" value="pix" checked> Pix</label><label title="Não documentado pela MisticPay"><input type="radio" name="pf-pay-method" value="card" disabled> Cartão (indisponível)</label></div>'+
+      '<div class="pf-checkout-methods"><label><input type="radio" name="pf-pay-method" value="pix" checked> Pix</label><label title="Não documentado pela Argus Pay"><input type="radio" name="pf-pay-method" value="card" disabled> Cartão (indisponível)</label></div>'+
       '<div class="pf-checkout-payer"><label>Nome completo do pagador<input id="pf-payer-name" type="text" autocomplete="name" maxlength="120" placeholder="Nome completo"></label><label>CPF do pagador<input id="pf-payer-document" type="text" inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00"></label></div>'+
-      '<p class="pf-checkout-hint">Seus dados serão enviados por conexão segura à MisticPay para gerar a cobrança. Não armazenamos números de cartão nesta página.</p>'+
-      '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Verificando disponibilidade da MisticPay...</p>'+
+      '<p class="pf-checkout-hint">Seus dados serão enviados por conexão segura à Argus Pay para gerar a cobrança. Não armazenamos números de cartão nesta página.</p>'+
+      '<p id="pf-checkout-status" class="pf-checkout-status" role="status" aria-live="polite">Verificando disponibilidade da Argus Pay...</p>'+
       '<button type="button" class="pf-checkout-submit" disabled>Gerar Pix</button>'+
-      '<div id="pf-checkout-pix" class="pf-checkout-pix" hidden><p><b>Escaneie o QR Code ou copie o código Pix</b></p><img class="pf-checkout-qr" alt="QR Code do Pix MisticPay" hidden><textarea readonly rows="3" aria-label="Código Pix copia e cola"></textarea><button type="button" class="pf-checkout-copy">Copiar Pix</button><button type="button" class="pf-checkout-verify">Verificar pagamento</button><p class="pf-checkout-hint">A assinatura será ativada somente após a confirmação bancária no servidor.</p></div>'+
+      '<div id="pf-checkout-pix" class="pf-checkout-pix" hidden><p><b>Escaneie o QR Code ou copie o código Pix</b></p><img class="pf-checkout-qr" alt="QR Code do Pix Argus Pay" hidden><textarea readonly rows="3" aria-label="Código Pix copia e cola"></textarea><button type="button" class="pf-checkout-copy">Copiar Pix</button><button type="button" class="pf-checkout-verify">Verificar pagamento</button><p class="pf-checkout-hint">A assinatura será ativada somente após a confirmação bancária no servidor.</p></div>'+
       '<button type="button" class="pf-checkout-login">Entrar ou criar conta</button>'+
       '</section>';
     document.body.appendChild(modal);
@@ -359,7 +359,7 @@
       var name=modal.querySelector("#pf-payer-name").value.trim();
       var cpf=modal.querySelector("#pf-payer-document").value.replace(/\D/g,"");
       if(name.length<3||cpf.length!==11){status.textContent="Informe nome completo e CPF com 11 dígitos.";return;}
-      submit.disabled=true;status.textContent="Gerando Pix seguro na MisticPay...";
+      submit.disabled=true;status.textContent="Gerando Pix seguro na Argus Pay...";
       fetch("/api/billing/checkout",{method:"POST",cache:"no-store",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},
         body:JSON.stringify({planCode:planCode,paymentMethod:"pix",payerName:name,payerDocument:cpf})})
        .then(function(r){return r.json().then(function(d){if(!r.ok)throw Error(d.error||"Falha ao gerar Pix");return d})})
@@ -440,16 +440,16 @@
     panel.className="pf-gateway-admin";
     panel.setAttribute("aria-label","Configurar gateway de pagamentos");
     panel.innerHTML='<h3>⚙️ Gateway de pagamentos</h3>'+
-      '<p>Configuração exclusiva de administrador. As credenciais devem ser salvas no servidor, nunca no navegador. Para MisticPay são necessários Client ID (pk_) e Client Secret (sk_) no Render; a API documentada oferece apenas Pix. O webhook deve ser confirmado por consulta autenticada.</p>'+
+      '<p>Configuração exclusiva de administrador. As credenciais devem ser salvas no servidor, nunca no navegador. Para Argus Pay são necessários Client ID (pk_) e Client Secret (sk_) no Render; a API documentada oferece apenas Pix. O webhook deve ser confirmado por consulta autenticada.</p>'+
       '<form class="pf-gateway-form" autocomplete="off">'+
-      '<label>Gateway<select name="provider" required><option value="">Selecione</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option><option value="pagarme">Pagar.me</option><option value="stripe">Stripe</option><option value="misticpay">MisticPay (Pix)</option><option value="other">Outro gateway</option></select></label>'+
+      '<label>Gateway<select name="provider" required><option value="">Selecione</option><option value="mercadopago">Mercado Pago</option><option value="asaas">Asaas</option><option value="pagarme">Pagar.me</option><option value="stripe">Stripe</option><option value="misticpay">Argus Pay (Pix)</option><option value="other">Outro gateway</option></select></label>'+
       '<label>Ambiente<select name="environment"><option value="sandbox">Homologação (teste)</option><option value="production">Produção</option></select></label>'+
       '<label class="pf-gateway-full">URL da API (https)<input type="url" name="apiBaseUrl" placeholder="https://api.seu-gateway.com" autocomplete="off"></label>'+
       '<label>API Key secreta<input type="password" name="apiKey" placeholder="Inserir somente quando o servidor estiver preparado" autocomplete="new-password" spellcheck="false" disabled></label>'+
       '<label>Webhook secret<input type="password" name="webhookSecret" placeholder="Segredo para verificar notificações" autocomplete="new-password" spellcheck="false" disabled></label>'+
       '<label class="pf-gateway-full">URL prevista para webhook<input type="text" name="webhookUrl" readonly></label>'+
       '<div class="pf-gateway-full"><button type="submit" class="pf-gateway-save" disabled>Salvar configuração protegida</button></div>'+
-      '</form><small class="pf-checkout-warning">A MisticPay não documenta pagamentos por cartão nem assinatura de webhook. Configure pk_/sk_ diretamente nas variáveis protegidas do Render; nunca insira segredos nesta página.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
+      '</form><small class="pf-checkout-warning">A Argus Pay não documenta pagamentos por cartão nem assinatura de webhook. Configure pk_/sk_ diretamente nas variáveis protegidas do Render; nunca insira segredos nesta página.</small><div class="pf-gateway-status" role="status" aria-live="polite"></div>';
     main.appendChild(panel);
     var f=panel.querySelector("form"),status=panel.querySelector(".pf-gateway-status");
     function setWebhook(){f.elements.webhookUrl.value=location.origin+"/api/billing/webhook";}
