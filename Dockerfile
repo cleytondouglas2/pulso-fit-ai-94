@@ -805,7 +805,7 @@ RUN php -l /var/www/html/tests/reseller_filter_layout_test.php \
 COPY deployment/reseller-statement-boundary.css /var/www/html/public/static/reseller-statement-boundary.css
 COPY deployment/reseller_statement_boundary_test.php /var/www/html/tests/reseller_statement_boundary_test.php
 RUN php -l /var/www/html/tests/reseller_statement_boundary_test.php \
- && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-statement-boundary.css?v=20261122-3"></head>#; s#finance-operations.js?v=20261119-1#finance-operations.js?v=20261122-boundary-1#' /var/www/html/public/static/client.html \
- && php /var/www/html/tests/reseller_statement_boundary_test.php \
  && php /var/www/html/tests/finance_operations_test.php \
- && php /var/www/html/tests/ui_contract.php
+ && php /var/www/html/tests/ui_contract.php \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-statement-boundary.css?v=20261122-3"></head>#; s#finance-operations.js?v=20261119-1#finance-operations.js?v=20261122-boundary-1#' /var/www/html/public/static/client.html \
+ && php /var/www/html/tests/reseller_statement_boundary_test.php
