@@ -87,6 +87,15 @@ function normalizeClient(array $x,array $plans):?array {
  $price=field($x,['price','value','valor','amount']);$price=$price!==null&&is_numeric($price)&&$price>=0?(float)$price:null;
  return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name','customerName'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
 }
+function chromiumManual(string $action,array $payload,int $timeout=45):array {
+ $endpoint=envv('BROWSER_WORKER_URL');$token=envv('BROWSER_WORKER_TOKEN');
+ if($endpoint===''||strlen($token)<32)throw new RuntimeException('Navegador Chromium não configurado');
+ if(!in_array($action,['open','frame','action','import','close'],true))throw new InvalidArgumentException('Operação inválida');
+ $result=requestPanel(rtrim($endpoint,'/').'/live/'.$action,'POST',$payload,['Authorization: Bearer '.$token],'navegação Chromium',$timeout)['data'];
+ if(($result['ok']??false)!==true)throw new RuntimeException('O Chromium não confirmou a operação');
+ return $result;
+}
+
 function remoteBrowserFetch(array $panel):array {
  $endpoint=envv('BROWSER_WORKER_URL');
  $token=envv('BROWSER_WORKER_TOKEN');
@@ -126,11 +135,11 @@ function fetchPanel(array $panel):array {
  $plans=[];$warning='';if($panel['plans_path']){try{$json=requestPanel(panelEndpoint($panel['url'],$panel['plans_path']),'GET',null,$headers,'consulta de planos')['data'];$plans=array_values(array_filter(array_map('normalizePlan',listFrom($json,['plans','packages','products','items']))));}catch(Throwable $e){$warning='Planos não disponíveis: '.$e->getMessage();}}
  return ['clients'=>$clients,'plans'=>$plans,'warning'=>$warning];
 }
-function syncPanel(string $id,string $actor='Clystria automático'):array {
+function syncPanel(string $id,string $actor='Clystria automático',?array $manualResult=null):array {
  $panel=one('SELECT * FROM panels WHERE id=?',[$id]);if(!$panel)throw new RuntimeException('Painel não encontrado');
  run('UPDATE panels SET last_attempt=CURRENT_TIMESTAMP WHERE id=?',[$id]);
  try{
-  $remote=fetchPanel($panel);$rows=$remote['clients'];$plans=$remote['plans'];if(count($rows)>10000)throw new RuntimeException('Máximo de 10.000 clientes por sincronização');
+  $remote=$manualResult??fetchPanel($panel);$rows=$remote['clients'];$plans=$remote['plans'];if(count($rows)>10000)throw new RuntimeException('Máximo de 10.000 clientes por sincronização');
   $pdo=getDb();$pdo->beginTransaction();$created=$updated=$ignored=$plansCreated=0;
   $map=[];
   foreach($plans as $r){$name=clean($r['name'].' • '.$panel['name'],80);$found=one('SELECT id FROM plans WHERE name=?',[$name]);if(!$found){$new=id();run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[$new,$name,$r['days'],money($r['price']),'#31DAB3']);$found=['id'=>$new];$plansCreated++;}$map[strtolower($r['name'])]=$found['id'];}
