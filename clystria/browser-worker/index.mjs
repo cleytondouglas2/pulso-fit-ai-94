@@ -316,12 +316,41 @@ async function runJob(job){
     });
     const page=await context.newPage();
     page.setDefaultTimeout(9000);
+    const captured=new Map(),inflight=new Set();
+    let scannedJsonResponses=0;
+    const host=new URL(url).hostname.toLowerCase();
+    const suffix='.'+host.split('.').slice(-2).join('.');
+    page.on('response',response=>{
+      const work=(async()=>{
+        try{
+          if(scannedJsonResponses>=90||response.status()!==200)return;
+          if(!['GET','POST'].includes(response.request().method()))return;
+          const target=new URL(response.url());
+          if(target.protocol!=='https:'||!(target.hostname===host||target.hostname.endsWith(suffix)))return;
+          const headers=response.headers();
+          if(!/application\/(?:[\w.+-]*\+)?json/i.test(headers['content-type']||''))return;
+          if(Number(headers['content-length']||0)>3000000)return;
+          scannedJsonResponses++;
+          const bytes=await response.body().catch(()=>null);
+          if(!bytes||bytes.length>3000000)return;
+          let data;try{data=JSON.parse(bytes.toString('utf8'));}catch{return;}
+          for(const entry of extractJsonClients(data)){
+            const item=asClient(entry);
+            if(item)captured.set(item.username.toLowerCase(),item);
+          }
+        }catch{}
+      })();
+      inflight.add(work);
+      work.finally(()=>inflight.delete(work));
+    });
     await page.goto(url,{waitUntil:'domcontentloaded',timeout:27000});
     await page.waitForTimeout(900);
     const login=await maybeLogin(page,user,password);
     const destination=await navigateClients(page);
+    await page.waitForTimeout(1300);
+    await Promise.allSettled([...inflight]);
     if(await isChallenge(page))failure(409,'Painel protegido por desafio Cloudflare; automação não autorizada para resolver o desafio');
-    const records=new Map();
+    const records=new Map(captured);
     let scanned=0,recognized=false,rawRows=0;
     for(let i=0;i<8;i++){
       const result=await extract(page);
@@ -331,10 +360,14 @@ async function runJob(job){
       scanned++;
       if(!result.recognized||!await nextPage(page))break;
     }
-    if(!recognized)failure(422,'Login efetuado, mas nenhuma lista de clientes foi reconhecida. Verifique se a seção de clientes do Sigma foi aberta e se os campos usuário e vencimento são exibidos.');
-    if(!records.size)failure(422,'Nenhum cliente com login e vencimento válido foi identificado na página do fornecedor. Nenhum dado foi importado.');
-    return {ok:true,clients:[...records.values()],plans:[],warning:records.size===0?'Lista de clientes vazia ou não reconhecida; revise antes de considerar sincronizado.':'',
-      diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
+    await Promise.allSettled([...inflight]);
+    for(const [key,item] of captured)if(!records.has(key))records.set(key,item);
+    if(!records.size){
+      const reason=destination==='menu_ausente'?'menu de clientes não identificado':destination==='menu_clientes_sem_acesso'?'não foi possível abrir o menu de clientes':destination==='menu_clientes_acionado'?'menu acionado, mas sem registros reconhecidos':'dados de clientes não reconhecidos';
+      failure(422,'O login foi enviado, porém '+reason+'. Não foram encontrados usuários com vencimentos válidos; nenhum cliente foi alterado.');
+    }
+    return {ok:true,clients:[...records.values()],plans:[],warning:'',
+      diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size,json_responses:scannedJsonResponses,source:captured.size?'pagina_e_requisicoes_da_sessao':'pagina'}};
   }catch(e){
     if(/ERR_HTTP_RESPONSE_CODE_FAILURE|net::ERR_/i.test(String(e.message)))failure(502,'Falha de navegação ou resposta do fornecedor; confirme a URL e o acesso HTTPS.');
     throw e;
