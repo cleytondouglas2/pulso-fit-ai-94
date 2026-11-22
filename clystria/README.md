@@ -70,3 +70,8 @@ Envio SMTP TLS/SSL com `SMTP_HOST`, `SMTP_PORT` (465 ou 587), `SMTP_USER`, `SMTP
 ## Pesquisa pública TopGestor (22/11/2026)
 
 A página https://topgestor.com/site informa que o usuário cadastra credenciais, enquanto o serviço emprega **APIs dos fornecedores nos bastidores**. Não há detalhes públicos suficientes para reproduzir os adaptadores proprietários ou transferir sessões do Chrome/Safari. Os comunicados oficiais do TopGestor mencionam conectores específicos e importação de planilhas para Sigma. Portanto, o Clystria não deve presumir que `/api/login` funcione em todos os painéis, nem mostrar status de sucesso quando a API falha. A sincronização com Sigma/PainelFoda permanece não homologada até obter endpoints e respostas autorizados para cada fornecedor.
+
+
+## Navegação real na VPS — Chromium/Playwright
+
+Foi incluído o serviço separado `clystria/browser-worker` (Node 22 + Chromium) para login autorizado em páginas de painéis e extração de tabelas visíveis, sem depender de APIs públicas. O PHP chama `BROWSER_WORKER_URL/sync` com Bearer `BROWSER_WORKER_TOKEN`, enviado apenas servidor a servidor. Use `ALLOWED_PANEL_HOSTS` no trabalhador para restringir domínios. Para Sigma e PainelFoda com credenciais já salvas, o modo Chromium é priorizado quando o trabalhador estiver configurado; não exclua os cadastros existentes. Uma sessão é descartada após cada consulta e não é compartilhada com o navegador do usuário. Bloqueios Cloudflare/CAPTCHA devem ser tratados oficialmente, nunca burlados. Recomendam-se pelo menos 1 GB de RAM para uso confiável; Render Free tem 512 MB e não é adequado para produção contínua. O reconhecimento de campos ainda depende da estrutura de cada painel.

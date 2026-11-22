@@ -9,10 +9,10 @@ function publicUrl(string $input):string {
 function panelInput(array $x,?array $old=null):array {
  $name=clean($x['name']??'',90);$kind=clean($x['kind']??'',40);$url=publicUrl(clean($x['url']??'',500));$mode=clean($x['auth_mode']??'credentials',30);
  if(!$name||!in_array($kind,['sigma','painelfoda','xtream','custom'],true))throw new InvalidArgumentException('Nome ou tipo de painel inválido');
- if(!in_array($mode,['credentials','token','browser'],true))throw new InvalidArgumentException('Tipo de autenticação inválido');
+ if(!in_array($mode,['credentials','token','browser','remote_browser'],true))throw new InvalidArgumentException('Tipo de autenticação inválido');
  $apiUrl=empty($x['api_url'])?'':publicUrl(clean($x['api_url'],500));$user=clean($x['login_user']??'',140);$pass=(string)($x['login_pass']??'');$token=clean($x['token']??'',400);
  if(strlen($pass)>500)throw new InvalidArgumentException('Senha do painel muito longa');
- if($mode==='credentials'&&(!$user||(!$pass&&empty($old['login_pass_enc']))))throw new InvalidArgumentException('Informe usuário e senha para conectar ao painel');
+ if(in_array($mode,['credentials','remote_browser'],true)&&(!$user||(!$pass&&empty($old['login_pass_enc']))))throw new InvalidArgumentException('Informe usuário e senha para conectar ao painel');
  if($mode==='token'&&(!$apiUrl||(!$token&&empty($old['token_enc']))))throw new InvalidArgumentException('Informe endpoint e token da API');
  foreach(['login_path'=>'/api/login','clients_path'=>'/api/clients','plans_path'=>'/api/plans'] as $f=>$fallback){$path=clean($x[$f]??$fallback,256);if($path!==''&&(!str_starts_with($path,'/')||str_starts_with($path,'//')||str_contains($path,'..')||!preg_match('~^/[a-zA-Z0-9_./?=&%-]*$~',$path)))throw new InvalidArgumentException('Rota da API inválida');$paths[$f]=$path;}
  $loginField=clean($x['login_field']??'username',40);$passwordField=clean($x['password_field']??'password',40);
@@ -37,18 +37,19 @@ function panelEndpoint(string $root,string $path):string {
  publicUrl($root);if(!str_starts_with($path,'/')||str_starts_with($path,'//')||str_contains($path,'..'))throw new InvalidArgumentException('Rota da API inválida');
  $parts=parse_url($root);return 'https://'.$parts['host'].(isset($parts['port'])?':'.$parts['port']:'').$path;
 }
-function requestPanel(string $url,string $method='GET',?array $data=null,array $headers=[],string $phase='consulta'):array {
+function requestPanel(string $url,string $method='GET',?array $data=null,array $headers=[],string $phase='consulta',int $timeout=16):array {
  publicUrl($url);if(!function_exists('curl_init'))throw new RuntimeException('Extensão PHP curl necessária');
  $p=parse_url($url);$host=$p['host'];$port=(int)($p['port']??443);$ip=pinnedIp($host);
  $resHeaders=[];$buf='';$ch=curl_init($url);if(!$ch)throw new RuntimeException('Falha ao inicializar conexão');
  $h=array_merge(['Accept: application/json','User-Agent: ClystriaPHP/1.0'],$headers);
  if($method==='POST'){curl_setopt($ch,CURLOPT_POST,true);$payload=json_encode($data,JSON_THROW_ON_ERROR);curl_setopt($ch,CURLOPT_POSTFIELDS,$payload);$h[]='Content-Type: application/json';}
- curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>false,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>6,CURLOPT_TIMEOUT=>16,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>$h,CURLOPT_RESOLVE=>["$host:$port:$ip"],CURLOPT_HEADERFUNCTION=>static function($ch,$line)use(&$resHeaders){$parts=explode(':',$line,2);if(count($parts)===2){$key=strtolower(trim($parts[0]));$resHeaders[$key][] =trim($parts[1]);}return strlen($line);},CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$buf){$buf.=$chunk;if(strlen($buf)>5242880)return 0;return strlen($chunk);}]);
+ curl_setopt_array($ch,[CURLOPT_RETURNTRANSFER=>false,CURLOPT_FOLLOWLOCATION=>false,CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>$timeout,CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,CURLOPT_HTTPHEADER=>$h,CURLOPT_RESOLVE=>["$host:$port:$ip"],CURLOPT_HEADERFUNCTION=>static function($ch,$line)use(&$resHeaders){$parts=explode(':',$line,2);if(count($parts)===2){$key=strtolower(trim($parts[0]));$resHeaders[$key][] =trim($parts[1]);}return strlen($line);},CURLOPT_WRITEFUNCTION=>static function($ch,$chunk)use(&$buf){$buf.=$chunk;if(strlen($buf)>5242880)return 0;return strlen($chunk);}]);
  try{
   $ok=curl_exec($ch);$code=curl_getinfo($ch,CURLINFO_RESPONSE_CODE);
   if($ok===false)throw new RuntimeException('Erro de rede/API: '.curl_error($ch));
   if(($resHeaders['cf-mitigated'][0]??'')==='challenge'||preg_match('/just a moment|checking your browser|attention required/i',substr($buf,0,500)))throw new RuntimeException('Cloudflare requer autenticação no navegador; solicite uma API autorizada ao fornecedor');
   if($code>=300&&$code<400)throw new RuntimeException('A API redirecionou a solicitação; confira as rotas');
+  if($phase==='navegação Chromium'&&$code>=400){$result=json_decode($buf,true);$error=is_array($result)?clean($result['error']??'',220):'';throw new RuntimeException($error!==''?'Navegador remoto: '.$error:'Navegador remoto respondeu HTTP '.$code);}
   if($code===404)throw new RuntimeException('Rota de '.$phase.' não encontrada (HTTP 404). O endereço do painel não oferece essa rota genérica de API; confirme com o fornecedor o endpoint oficial de integração e ajuste as configurações avançadas.');
   if($code===405)throw new RuntimeException('A rota de '.$phase.' não aceita este método HTTP (405). Confira o contrato da API do fornecedor.');
   if($code<200||$code>=300)throw new RuntimeException($code===401?'Credenciais recusadas pela API na etapa de '.$phase:($code===403?'A API não autorizou a etapa de '.$phase:"A etapa de $phase retornou HTTP $code"));
@@ -86,7 +87,28 @@ function normalizeClient(array $x,array $plans):?array {
  $price=field($x,['price','value','valor','amount']);$price=$price!==null&&is_numeric($price)&&$price>=0?(float)$price:null;
  return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name','customerName'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
 }
+function remoteBrowserFetch(array $panel):array {
+ $endpoint=envv('BROWSER_WORKER_URL');
+ $token=envv('BROWSER_WORKER_TOKEN');
+ if($endpoint===''||strlen($token)<32)throw new RuntimeException('O navegador remoto ainda não está configurado no Clystria');
+ if(!$panel['login_user']||!$panel['login_pass_enc'])throw new RuntimeException('Configure o usuário e a senha da conexão');
+ set_time_limit(110);
+ $payload=[
+  'url'=>$panel['url'],
+  'username'=>$panel['login_user'],
+  'password'=>unseal($panel['login_pass_enc']),
+  'panel_kind'=>$panel['kind'],
+ ];
+ $response=requestPanel(rtrim($endpoint,'/').'/sync','POST',$payload,['Authorization: Bearer '.$token],'navegação Chromium',95);
+ $json=$response['data'];
+ if(($json['ok']??false)!==true||!isset($json['clients'])||!is_array($json['clients']))throw new RuntimeException('O navegador não retornou uma lista válida de clientes');
+ if(count($json['clients'])>10000)throw new RuntimeException('O navegador retornou clientes demais');
+ $diag=is_array($json['diagnostics']??null)?$json['diagnostics']:[];
+ $details=isset($diag['valid_clients'])?'Navegador real: '.((int)$diag['valid_clients']).' clientes lidos da interface.':'';
+ return ['clients'=>$json['clients'],'plans'=>[],'warning'=>trim($details.' '.clean($json['warning']??'',150))];
+}
 function fetchPanel(array $panel):array {
+ if($panel['auth_mode']==='remote_browser'||($panel['auth_mode']==='credentials'&&in_array($panel['kind'],['sigma','painelfoda'],true)&&envv('BROWSER_WORKER_URL')!==''))return remoteBrowserFetch($panel);
  if($panel['auth_mode']==='browser')throw new RuntimeException('Login pelo Safari/Chrome não libera acesso do servidor à sessão externa. Abra o painel no navegador e importe o arquivo de clientes exportado, ou configure uma API autorizada.');
  if($panel['auth_mode']==='token'){
   if(!$panel['api_url']||!$panel['token_enc'])throw new RuntimeException('Configure endpoint e token autorizado');
