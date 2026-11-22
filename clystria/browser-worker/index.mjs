@@ -229,7 +229,7 @@ const server=http.createServer(async(req,res)=>{
   let acquired=false;
   try{
     if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',browser_self_test:browserSelfTest,configured:SECRET.length>=32&&ALLOW.length>0});
-    if(req.method!=='POST'||req.url!=='/sync')return json(res,404,{error:'Recurso não encontrado'});
+    if(req.method!=='POST'||!['/sync','/ping'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
     if(!equals(supplied,SECRET))return json(res,401,{error:'Não autorizado'});
