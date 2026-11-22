@@ -201,3 +201,11 @@ body{width:100%;max-width:100%;min-width:0;overflow-x:clip}
  .head{max-width:100%;min-width:0}
 }
 @supports(overflow:clip){html,body{overflow-x:clip}}
+
+/* Compact usable Sense quick-start actions */
+.sense-quick{display:flex;flex-wrap:wrap;gap:7px;align-items:center;margin:12px 0 6px;max-width:100%;min-width:0}
+.sense-quick-label{width:100%;color:#cfaddd;font-size:10px;letter-spacing:1.4px;font-weight:800;margin-bottom:2px}
+.sense-prompt{display:inline-flex;align-items:center;min-width:0;max-width:100%;border:1px solid #a46abd6b;background:#55376c4d;color:#ffe0fa;border-radius:999px;padding:9px 12px;font-size:12px;font-weight:700;transition:background .2s,transform .2s}
+.sense-prompt:hover{background:#8757af70;transform:translateY(-2px)}
+.sense-result{line-height:1.65;font-size:14px;letter-spacing:.05px;overflow-wrap:anywhere}
+@media(max-width:580px){.sense-quick{display:flex;gap:6px}.sense-prompt{font-size:11px;padding:9px 10px}.sense-quick-label{font-size:9px}}
