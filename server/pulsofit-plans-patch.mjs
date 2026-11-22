@@ -54,6 +54,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   const realPersonJS=readFileSync(new URL("./pulsofit-ar-real-person.js",import.meta.url),"utf8");
    const navigationGuardJS=readFileSync(new URL("./pulsofit-navigation-guard.js",import.meta.url),"utf8");
    const touchFeedbackJS=readFileSync(new URL("./pulsofit-touch-feedback.js",import.meta.url),"utf8");
+  const argusAdminJS=readFileSync(new URL("./pulsofit-argus-admin-ui.js",import.meta.url),"utf8");
   // Preflight: abort the new visual overlay if its JavaScript is invalid.
   new JavaScriptSyntax(html5AccessibilityJS,{filename:"pulsofit-html5-accessibility.js"});
   new JavaScriptSyntax(trainingLabJS,{filename:"pulsofit-training-lab-ui.js"});
@@ -84,6 +85,7 @@ if (basename(process.argv[1]||"")==="server.mjs") {
   new JavaScriptSyntax(realPersonJS,{filename:"pulsofit-ar-real-person.js"});
    new JavaScriptSyntax(navigationGuardJS,{filename:"pulsofit-navigation-guard.js"});
    new JavaScriptSyntax(touchFeedbackJS,{filename:"pulsofit-touch-feedback.js"});
+   new JavaScriptSyntax(argusAdminJS,{filename:"pulsofit-argus-admin-ui.js"});
   if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
   if(!trainingLabCSS.includes("#pf-tv-overlay")||!trainingLabCSS.includes("#app .pf-tv-launch"))throw Error("PULSO_TRAINING_LAB_STYLES_INCOMPLETE");
@@ -129,7 +131,8 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    '<script id="pf-ar-vision-ui-js">'+poseVisionJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
    '<script id="pf-ar-real-person-20261118">'+realPersonJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
     '<script id="pf-navigation-guard-20261118">'+navigationGuardJS.replace(/<\/script/gi,"<\\/script")+'</script>'+
-    '<script id="pf-touch-feedback-20261118">'+touchFeedbackJS.replace(/<\/script/gi,"<\\/script")+'</script>';
+    '<script id="pf-touch-feedback-20261118">'+touchFeedbackJS.replace(/<\/script/gi,"<\\/script")+'</script>'+ 
+    '<script id="pf-argus-admin-20261122">'+argusAdminJS.replace(/<\/script/gi,"<\\/script")+'</script>';
   const found=[];
   const roots=[".","dist","public","build","out","site","web","client"];
   const seen=new Set();
