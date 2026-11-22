@@ -159,3 +159,45 @@ input:focus,select:focus,textarea:focus{box-shadow:0 0 0 3px #ad5ee52b}
 @media(max-width:580px){.main{padding:15px 13px calc(100px + env(safe-area-inset-bottom))!important}.head{margin-bottom:17px!important}.head h1{font-size:25px!important}.head .avatar{width:42px!important;height:42px!important}.sidebar .nav{padding:5px 1px!important}.sidebar .nav .txt{font-size:9px!important}.sidebar .nav .ico{font-size:21px!important}.home-hero{display:block;min-height:460px;overflow:hidden;border-radius:27px}.hero-copy{padding:32px 24px;position:relative;z-index:3}.hero-copy h2{font-size:37px;margin:10px 0}.hero-copy p{font-size:13px;max-width:300px;margin-bottom:14px}.hero-actions .btn{padding:12px 15px;font-size:13px}.hero-art{position:absolute;right:-55px;bottom:-70px;width:240px;height:190px;min-height:0;opacity:.84}.art-core{height:117px;width:110px;border-radius:55px}.art-core .heart-art{font-size:65px}.orbit-one{height:180px;width:180px}.orbit-two{height:125px;width:125px}.orbit-three{height:230px;width:230px}.art-pill{display:none}.home-section{padding:18px}.start-cards{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.start-tile{padding:13px 9px;min-height:124px}.start-tile i{font-size:24px;margin-bottom:9px}.start-tile strong{font-size:11px}.start-tile small{font-size:10px}.feature-row{padding:12px}.discover-intro h2{font-size:22px}.person{height:57svh!important;min-height:370px!important;border-radius:25px!important}.person h2{font-size:31px!important}.person .personText{padding:21px!important}.deck-side{grid-template-columns:1fr}.round{width:60px!important;height:60px!important}.sense-hero{display:block;min-height:280px;padding:26px;border-radius:24px}.sense-hero .display-title{font-size:35px}.sense-orb{width:80px;height:80px;font-size:41px;position:absolute;right:25px;bottom:26px;opacity:.7}.sense-orb::after{width:64px;height:64px}.sense-grid{gap:9px}.sense-skill{padding:15px 12px;min-height:133px}.sense-skill .skill-symbol{font-size:25px;margin-bottom:9px}.sense-skill strong{font-size:12px}.sense-skill small{font-size:10px}.showcase-tiles{gap:7px}.showcase-tile{padding:11px}.showcase-tile strong{font-size:10px}.showcase-tile small{font-size:9px}.authCard{padding:26px 22px!important}.authCard h1{font-size:30px!important}}
 @media(max-width:360px){.sidebar .nav .txt{font-size:8px!important}.hero-copy h2{font-size:32px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* iPhone and narrow-screen overflow safeguards — ELNEX fix 2026-11-22 */
+html{width:100%;max-width:100%;overflow-x:clip;-webkit-text-size-adjust:100%}
+body{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+#shell{width:100%;max-width:100%!important;min-width:0}
+.main{width:100%;min-width:0;max-width:100%!important}
+#content,.home,.sense,.sense-workspace,.sense-grid,.sense-hero,.home-grid,.home-section,.deck-side,.discover-wrap,.discover-deck,.discover-intro,.home-hero,.profile-overview,.card,.event-card,.sense-result{min-width:0;max-width:100%;box-sizing:border-box}
+.sense-workspace>.card,.sense-grid>.sense-skill,.home-grid>.home-section,.home-hero>*,.sense-hero>*{min-width:0}
+.sense-workspace textarea,.sense-workspace input,.sense-result,form,input,textarea,select{box-sizing:border-box;max-width:100%;overflow-wrap:anywhere}
+.sense-workspace textarea{width:100%;min-width:0;resize:vertical;display:block}
+.sense-result{width:100%;overflow-wrap:anywhere;word-break:break-word}
+.sense-hero h2,.hero-copy h2,.sense-workspace h2,.sense-hero p{overflow-wrap:anywhere}
+.sense-hero{grid-template-columns:minmax(0,1fr) minmax(0,190px)}
+.sense-workspace{grid-template-columns:minmax(0,1fr) minmax(0,.8fr)}
+.home-grid{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}
+.start-cards,.showcase-tiles{width:100%;max-width:100%;min-width:0}
+.sidebar{max-width:100vw}
+@media(max-width:900px){
+ #shell{display:block!important;width:100vw!important;max-width:100vw!important;margin:0!important}
+ .main{width:100%!important;max-width:100vw!important;min-width:0!important;padding-left:max(16px,env(safe-area-inset-left))!important;padding-right:max(16px,env(safe-area-inset-right))!important;box-sizing:border-box!important}
+ #content{width:100%;max-width:100%;min-width:0}
+ .sense-workspace,.home-grid,.discover-wrap{display:grid;grid-template-columns:minmax(0,1fr)!important}
+ .sense-hero{grid-template-columns:minmax(0,1fr) minmax(0,145px)}
+ .sidebar{left:0!important;right:0!important;max-width:100vw!important;width:100vw!important;box-sizing:border-box!important;overflow:hidden}
+ .home-section,.card,.sense-hero{width:100%;max-width:100%}
+}
+@media(max-width:580px){
+ .main{padding-left:max(16px,env(safe-area-inset-left))!important;padding-right:max(16px,env(safe-area-inset-right))!important}
+ .sense,.sense-workspace{display:grid;grid-template-columns:minmax(0,1fr)!important;width:100%;gap:14px}
+ .sense-hero{display:block;width:100%!important;min-width:0}
+ .sense-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .sense-skill{width:100%;min-width:0;max-width:100%;text-align:left}
+ .sense-workspace>.card{width:100%;min-width:0!important;padding:19px!important}
+ .sense-workspace textarea{display:block;width:100%;min-width:0;max-width:100%;font-size:16px}
+ .sense-workspace .btn{width:100%;min-width:0;white-space:normal}
+ .sense-result{padding:14px;white-space:pre-wrap}
+ .start-cards,.showcase-tiles{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ .sidebar .nav{overflow:hidden;text-overflow:ellipsis;min-width:0!important}
+ .sidebar .nav .txt{white-space:nowrap;font-size:clamp(8px,2.25vw,11px)!important}
+ .head{max-width:100%;min-width:0}
+}
+@supports(overflow:clip){html,body{overflow-x:clip}}
