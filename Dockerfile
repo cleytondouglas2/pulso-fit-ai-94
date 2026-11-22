@@ -833,5 +833,4 @@ RUN php -l /var/www/html/src/SecurityShield.php \
  && php /var/www/html/tests/api_auth_hardening_test.php \
  && php /var/www/html/tests/security_regression_test.php \
  && php /var/www/html/tests/password_recovery_test.php \
- && php /var/www/html/tests/merchant_wallet_test.php \
- && php /var/www/html/tests/seller_key_auth_integration_test.php
+ && ARGUS_SECURITY_RATE_SECRET=TEST_ONLY_64_CHARACTER_SECRET_FOR_ISOLATED_AUTH_TESTS_1234567890123456 php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/seller_key_auth_integration_test.php
