@@ -64,7 +64,7 @@ export function createArgusPayAdapter({
    const data=await request("GET","/api/v2/wallet/balance",null,null,candidate);
    if(typeof data.currency!=="string"&&typeof data.wallet!=="object")
     throw error("A Argus Pay não confirmou a conta da integração");
-   return {ok:true};
+   return {ok:true,depositsEnabled:(data.deposits_enabled??data.wallet?.deposits_enabled)===true};
   },
   async createPixCharge({reference,amountCents,payerName,payerDocument,description}){
    if(!/^[a-f0-9-]{36}$/i.test(String(reference||"")))throw error("Referência inválida",400);
