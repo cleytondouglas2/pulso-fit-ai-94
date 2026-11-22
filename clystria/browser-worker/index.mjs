@@ -1,7 +1,7 @@
 import http from 'node:http';
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { timingSafeEqual, randomUUID } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { chromium } from 'playwright-core';
 
 const PORT=Number(process.env.PORT||10000);
@@ -256,8 +256,8 @@ async function runJob(job){
       scanned++;
       if(!result.recognized||!await nextPage(page))break;
     }
-    if(!recognized)failure(422,'Login efetuado, mas nenhuma lista de clientes foi reconhecida. Use Navegador VPS para abrir manualmente a tela Clientes/Linhas e importar a partir dessa página.');
-    if(!records.size)failure(422,'O painel carregou, mas não foi possível validar login e vencimento de nenhum cliente. Nenhum dado foi importado. Abra a lista Clientes/Linhas pelo Navegador VPS.');
+    if(!recognized)failure(422,'Login efetuado, mas nenhuma lista de clientes foi reconhecida. Verifique se a seção de clientes do Sigma foi aberta e se os campos usuário e vencimento são exibidos.');
+    if(!records.size)failure(422,'Nenhum cliente com login e vencimento válido foi identificado na página do fornecedor. Nenhum dado foi importado.');
     return {ok:true,clients:[...records.values()],plans:[],warning:records.size===0?'Lista de clientes vazia ou não reconhecida; revise antes de considerar sincronizado.':'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
   }catch(e){
@@ -268,110 +268,6 @@ async function runJob(job){
     if(browser)await browser.close().catch(()=>{});
   }
 }
-
-/* Interactive, human-operated Chromium session. No automated challenge solving. */
-let live=null;
-const LAUNCH_ARGS=['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking'];
-async function liveClose(){
-  const old=live;live=null;
-  if(old){await old.context.close().catch(()=>{});await old.browser.close().catch(()=>{});}
-}
-function liveSession(job){
-  if(!live||live.id!==String(job.session||'')||live.panelId!==String(job.panel_id||''))failure(404,'Sessão do navegador encerrada. Abra novamente.');
-  if(Date.now()-live.lastSeen>15*60*1000)failure(410,'Sessão expirada por inatividade. Abra novamente.');
-  live.lastSeen=Date.now();
-  return live;
-}
-async function liveFrame(item){
-  const page=item.page;
-  if(page.isClosed())failure(410,'Página encerrada; abra uma nova sessão');
-  const image=await page.screenshot({type:'jpeg',quality:57,animations:'disabled',timeout:18000});
-  return {ok:true,session:item.id,screen:'data:image/jpeg;base64,'+image.toString('base64'),
-    width:1100,height:720,url:clean(page.url(),450),title:clean(await page.title().catch(()=>''),130)};
-}
-async function liveOpen(job){
-  if(!ALLOW.length)failure(503,'Configure ALLOWED_PANEL_HOSTS no serviço Chromium');
-  const url=(await safeUrl(job.url,true)).href;
-  const panelId=clean(job.panel_id,64);
-  if(!/^[a-f0-9]{32}$/.test(panelId))failure(400,'Identificação do painel inválida');
-  await liveClose();
-  let browser,context;
-  try{
-    browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:23000,args:LAUNCH_ARGS});
-    context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
-      viewport:{width:1100,height:720},deviceScaleFactor:1,acceptDownloads:false,
-      serviceWorkers:'block',ignoreHTTPSErrors:false});
-    await context.route('**/*',async route=>{
-      try{
-        const req=route.request(),target=req.url();
-        if(!target.startsWith('https://')){
-          if(target.startsWith('data:')||target.startsWith('blob:'))return route.continue();
-          return route.abort();
-        }
-        await safeUrl(target,req.isNavigationRequest());
-        return route.continue();
-      }catch{return route.abort().catch(()=>{});}
-    });
-    const page=await context.newPage();page.setDefaultTimeout(10000);
-    await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
-    live={id:randomUUID(),panelId,username:clean(job.username,160),password:String(job.password||''),
-      browser,context,page,lastSeen:Date.now()};
-    return await liveFrame(live);
-  }catch(e){
-    if(context)await context.close().catch(()=>{});
-    if(browser)await browser.close().catch(()=>{});
-    throw e;
-  }
-}
-async function liveAction(job){
-  const item=liveSession(job),page=item.page,action=clean(job.action,30);
-  if(action==='click'){
-    const x=Number(job.x),y=Number(job.y);
-    if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||x>1100||y<0||y>720)failure(400,'Posição inválida');
-    await page.mouse.click(x,y,{timeout:8000});
-  }else if(action==='type'){
-    const value=String(job.text||'');
-    if(value.length>1000)failure(413,'Texto excessivo');
-    await page.keyboard.insertText(value);
-  }else if(action==='key'){
-    const key=clean(job.key,30);
-    if(!['Enter','Tab','Backspace','Escape','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(key))failure(400,'Tecla não aceita');
-    await page.keyboard.press(key);
-  }else if(action==='scroll'){
-    const dy=Math.max(-900,Math.min(900,Number(job.dy)||0));
-    await page.mouse.wheel(0,dy);
-  }else if(action==='reload'){
-    await page.reload({waitUntil:'domcontentloaded',timeout:25000});
-  }else if(action==='autofill'){
-    if(!item.username||!item.password)failure(422,'Salve usuário e senha na conexão antes de preencher o login');
-    let user=page.locator('input[autocomplete="username"],input[name*="user" i],input[name*="login" i],input[name*="email" i],input[type="email"]').first();
-    if(!await user.count())user=page.locator('input[type="text"]').first();
-    const pass=page.locator('input[type="password"]').first();
-    if(!await user.count()||!await pass.count())failure(422,'Campos de login ainda não visíveis; navegue até o login no site');
-    await user.fill(item.username);await pass.fill(item.password);
-  }else failure(400,'Ação não permitida');
-  await page.waitForTimeout(380);
-  return await liveFrame(item);
-}
-async function liveImport(job){
-  const item=liveSession(job),page=item.page;
-  if(await isChallenge(page))failure(409,'O painel ainda exibe verificação de segurança. Conclua manualmente no navegador, se permitido, antes de importar.');
-  const destination='manual_selection';
-  const records=new Map();let scanned=0,rawRows=0,recognized=false;
-  for(let i=0;i<8;i++){
-    const result=await extract(page);scanned++;
-    recognized=recognized||result.recognized>0;rawRows+=result.items.length;
-    for(const entry of result.items){const client=asClient(entry);if(client)records.set(client.username.toLowerCase(),client);}
-    if(!result.recognized||!await nextPage(page))break;
-  }
-  if(!recognized)failure(422,'A sessão está aberta, mas não identifiquei a tabela de clientes. Abra a lista de clientes no navegador e tente novamente.');
-  if(!records.size)failure(422,'Nenhum cliente com usuário e vencimento válido nesta tela. Abra a lista de Clientes/Linhas e tente novamente; nada foi importado.');
-  return {ok:true,clients:[...records.values()],plans:[],
-    warning:records.size?'':'A lista encontrada está vazia. Confira o resultado antes de usar.',
-    diagnostics:{section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
-}
-setInterval(()=>{if(live&&Date.now()-live.lastSeen>15*60*1000)liveClose().catch(()=>{});},60000).unref();
-
 let browserSelfTest='pending';
 async function testChromium(){
  let browser;
@@ -393,23 +289,17 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='POST')console.log('CLYSTRIA_WORKER_REQUEST_'+(req.url==='/ping'?'PING':req.url==='/sync'?'SYNC':'OTHER'));
   try{
     if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',browser_self_test:browserSelfTest,configured:SECRET.length>=32&&ALLOW.length>0});
-    if(req.method!=='POST'||!['/sync','/ping','/live/open','/live/frame','/live/action','/live/import','/live/close'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
+    if(req.method!=='POST'||!['/sync','/ping'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
     if(!equals(supplied,SECRET))return json(res,401,{error:'Não autorizado'});
-    if(req.url==='/ping')return json(res,browserSelfTest==='ok'?200:503,{ok:browserSelfTest==='ok',browser_self_test:browserSelfTest,interactive:true});
-    const heavy=['/sync','/live/open','/live/import'].includes(req.url);
-    if(heavy&&busy)return json(res,429,{error:'O Chromium está atendendo outra operação'});
-    if(req.url==='/sync'&&live)return json(res,409,{error:'Encerre a sessão interativa antes de usar a sincronização automática'});
-    if(heavy){busy=true;acquired=true;}
+    if(req.url==='/ping')return json(res,browserSelfTest==='ok'?200:503,{ok:browserSelfTest==='ok',browser_self_test:browserSelfTest});
+    if(busy)return json(res,429,{error:'Uma sincronização já está em execução; tente novamente'});
+    busy=true;acquired=true;
     let body='';for await(const chunk of req){body+=chunk;if(body.length>12000)failure(413,'Solicitação muito grande');}
     let job;try{job=JSON.parse(body);}catch{failure(400,'JSON inválido');}
-    if(req.url==='/live/open')return json(res,200,await liveOpen(job));
-    if(req.url==='/live/frame')return json(res,200,await liveFrame(liveSession(job)));
-    if(req.url==='/live/action')return json(res,200,await liveAction(job));
-    if(req.url==='/live/import')return json(res,200,await liveImport(job));
-    if(req.url==='/live/close'){liveSession(job);await liveClose();return json(res,200,{ok:true});}
-    return json(res,200,await runJob(job));
+    const payload=await runJob(job);
+    return json(res,200,payload);
   }catch(e){
     // Never print submitted credentials, cookies or HTML from authenticated pages.
     const status=Number(e.status)||502;
