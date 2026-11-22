@@ -72,73 +72,58 @@ async function maybeLogin(page,username,password){
   return 'login_form_sent_not_verified';
 }
 async function navigateClients(page){
-  const norm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-  // Navigate only read-only sections. No account changes or CAPTCHA automation.
-  const topics=/(^|\W)(client|clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?|conexoes?|contas?)(\W|$)/i;
-  const routePattern=/(^|\/)(clients?|customers?|subscribers?|assinantes?|usuarios?|users?|linhas?|lines?|subscriptions?)(\/|$|[?#_-])/i;
-  const mutation=/(^|\W)(excluir|deletar|remover|novo|nova|criar|adicionar|desativar|suspender|renovar|bloquear|editar|atualizar|apagar|vender|cadastrar)(\W|$)/i;
-  const seen=new Set();let last='menu_ausente',attempts=0;
-  for(let step=0;step<5;step++){
-    await page.waitForTimeout(step===0?1300:800);
-    const found=await extract(page);
-    if(found.items.some(i=>i.username&&i.due_date))return 'lista_de_clientes_encontrada';
-    const selector='a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link';
-    const candidates=await page.evaluate(selector=>{
-      return Array.from(document.querySelectorAll(selector)).slice(0,650).map((el,index)=>{
-        const box=el.getBoundingClientRect();
-        if(box.width<2||box.height<2)return null;
-        const style=getComputedStyle(el);
-        if(style.visibility==='hidden'||style.display==='none')return null;
-        const txt=(el.innerText||el.getAttribute('aria-label')||el.getAttribute('title')||el.getAttribute('data-testid')||'').replace(/\s+/g,' ').trim().slice(0,110);
-        const href=(el.getAttribute('href')||'').slice(0,220);
-        return {index,text:txt,href,expanded:el.getAttribute('aria-expanded')};
-      }).filter(Boolean);
-    },selector).catch(()=>[]);
-    const scored=candidates.map(c=>{
-      const label=norm(c.text).replace(/\b\d+\b/g,'').trim();
-      const link=norm(c.href);
-      let score=0;
-      if(label&&label.length<=58&&topics.test(label))score+=18;
-      if(label&&/^(clientes?|linhas?|assinantes?|usuarios?|acessos?)( e | \/ | & )/.test(label))score+=12;
-      if(routePattern.test(link))score+=20;
-      if(/^(lista|meus|minhas|gerenciar|gestao|todos|todas) /.test(label))score+=2;
-      if(/testes|servidor|revendas|creditos|suporte|faturas|contabilidade|financeiro|pagamentos|configurac|relatorios|dashboard/.test(label))score-=12;
-      if(mutation.test(label)||/\/(logout|sair|delete|remove|novo|create|add)(\/|$|\?)/i.test(link))score=-999;
-      const key=label+'|'+link+'|'+c.index;
-      if(seen.has(key))score=-999;
-      return {...c,score,key};
-    }).filter(c=>c.score>=18).sort((a,b)=>b.score-a.score);
-    if(!scored.length){
-      // Collapsed mobile sidebars need to be opened before their entries are visible.
-      if(step===0){
-        const toggle=page.locator('[aria-label*="menu" i],[aria-label*="navega" i],button[class*="hamburger" i],button[class*="sidebar-toggle" i],button[data-bs-toggle="collapse"]').first();
-        if(await toggle.count()&&await toggle.isVisible().catch(()=>false)){
-          try{await toggle.click({timeout:2500});last='menu_expandido';continue;}catch{}
-        }
-      }
-      return last;
-    }
-    let clicked=false;
-    for(const c of scored.slice(0,12)){
-      seen.add(c.key);
+  // The provider's mobile layout has a fixed "Clientes" bottom tab (often a div, not a link).
+  const clientLabels=/^(clientes|assinantes|linhas|meus clientes|lista de clientes|clientes e linhas)$/i;
+  const safeLink=async locator=>{
+    const href=await locator.getAttribute('href').catch(()=>null);
+    if(href&&href!=='#'){try{if(new URL(href,page.url()).origin!==new URL(page.url()).origin)return false;}catch{return false;}}
+    return true;
+  };
+  const started=Date.now();
+  for(let round=0;round<4;round++){
+    const current=await extract(page);
+    const cards=await extractSigmaCards(page);
+    if(current.items.some(x=>x.username&&x.due_date)||cards.items.length)return 'clientes_visiveis';
+    // Only click text directly associated with a navigation destination; text-only labels can bubble to parent.
+    const labels=page.getByText(clientLabels,{exact:true});
+    const count=Math.min(await labels.count().catch(()=>0),15);
+    for(let i=count-1;i>=0;i--){
+      const node=labels.nth(i);
       try{
-        const el=page.locator(selector).nth(c.index);
-        if(c.href&&c.href!=='#'){
-          const to=new URL(c.href,page.url());
-          if(to.origin!==new URL(page.url()).origin)continue;
-        }
-        if(!await el.isVisible()||!await el.isEnabled())continue;
-        await el.click({timeout:4500});
-        attempts++;
-        await page.waitForLoadState('domcontentloaded',{timeout:6500}).catch(()=>{});
-        await page.waitForTimeout(1100);
-        last='menu_clientes_acionado';
-        clicked=true;break;
+        if(!await node.isVisible()||!await safeLink(node))continue;
+        const section=await node.evaluate(el=>{
+          const t=el.closest('nav,footer,[role="navigation"],[role="tablist"],[class*="bottom" i],[class*="tabbar" i],[class*="sidebar" i],[class*="menu" i]');
+          return !!t;
+        }).catch(()=>false);
+        if(!section&&count>1)continue;
+        await node.click({timeout:4500});
+        await page.waitForTimeout(1250);
+        const found=await extractSigmaCards(page);
+        if(found.items.length||/mudar para tabela|limpar filtro/i.test((await page.locator('body').innerText({timeout:1900}).catch(()=>''))))return 'aba_clientes';
       }catch{}
     }
-    if(!clicked)return 'menu_clientes_sem_acesso';
+    const selector='a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link';
+    const candidates=await page.evaluate(sel=>Array.from(document.querySelectorAll(sel)).slice(0,550).map((el,index)=>{
+      const box=el.getBoundingClientRect();
+      if(box.width<2||box.height<2)return null;
+      const label=String(el.innerText||el.getAttribute('aria-label')||el.getAttribute('title')||'').replace(/\s+/g,' ').trim().slice(0,90);
+      return {index,label,href:String(el.getAttribute('href')||'')};
+    }).filter(Boolean),selector).catch(()=>[]);
+    const choice=candidates.find(c=>clientLabels.test(c.label)&&!/\b(novo|adicionar|excluir|remover|editar)\b/i.test(c.label));
+    if(choice){
+      try{
+        const node=page.locator(selector).nth(choice.index);
+        if(await safeLink(node)){await node.click({timeout:4500});await page.waitForTimeout(1150);continue;}
+      }catch{}
+    }
+    if(round===0){
+      const toggle=page.locator('[aria-label*="menu" i],[aria-label*="navega" i],button[class*="hamburger" i],button[class*="sidebar-toggle" i]').first();
+      if(await toggle.count()&&await toggle.isVisible().catch(()=>false)){try{await toggle.click({timeout:2500});continue;}catch{}}
+    }
+    if(Date.now()-started>14000)break;
+    await page.waitForTimeout(1100);
   }
-  return last;
+  return 'menu_clientes_nao_localizado';
 }
 async function extract(page){
  const results={items:[],recognized:0,tables:0,grids:0,frames:0};
@@ -319,7 +304,9 @@ async function runJob(job){
   try{
     browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:18000,
       args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+    const sigma=job.panel_kind==='sigma';
     context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
+      ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{}),
       acceptDownloads:false,serviceWorkers:'block',ignoreHTTPSErrors:false});
     await context.route('**/*',async route=>{
       try{
