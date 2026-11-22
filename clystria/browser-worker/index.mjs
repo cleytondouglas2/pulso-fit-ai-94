@@ -1,5 +1,6 @@
 import http from 'node:http';
 import dns from 'node:dns/promises';
+import { readFile } from 'node:fs/promises';
 import net from 'node:net';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { chromium } from 'playwright-core';
@@ -451,13 +452,28 @@ async function runJob(job){
   const user=clean(job.username,160),password=String(job.password||'');
   if(!user||!password)failure(422,'Credenciais de login não configuradas');
   let browser,context;
+  let forcedTimeout=false,nearMemoryLimit=false,stopping=false;
+  const stop=()=>{
+   if(stopping)return;stopping=true;
+   context?.close().catch(()=>{});
+   browser?.close().catch(()=>{});
+  };
+  const deadline=setTimeout(()=>{forcedTimeout=true;stop();},35000);
+  const monitor=setInterval(async()=>{
+   if(stopping)return;
+   if(await memoryPressure()>0.83){
+    nearMemoryLimit=true;
+    console.log('CLYSTRIA_BROWSER_MEMORY_GUARD');
+    stop();
+   }
+  },900);
   try{
     browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:18000,
-      args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+      args:CHROMIUM_ARGS});
     const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0,blockedHost:'',blockedType:'',blockedResources:[],failedResourceTypes:[]};
     const sigma=job.panel_kind==='sigma';
     context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
-      ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{}),
+      ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{viewport:{width:820,height:630}}),
       acceptDownloads:false,serviceWorkers:'block',ignoreHTTPSErrors:false});
     await context.route('**/*',async route=>{
       try{
@@ -531,8 +547,9 @@ async function runJob(job){
       inflight.add(work);
       work.finally(()=>inflight.delete(work));
     });
-    const entryResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:27000});
+    const entryResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:22000});
     await page.waitForTimeout(900);
+    if(await verificationPending(page))failure(409,'O painel exige verificação Cloudflare. Use Abrir navegador, conclua a verificação manualmente e importe da mesma sessão.');
     let initial=await classifyEntry(page,entryResponse);
     if(initial.controls===0&&initial.passwordFields===0){
       // Give slow SPAs a chance to mount; do not submit credentials to blank/error pages.
@@ -547,6 +564,7 @@ async function runJob(job){
       }
     }
     const login=await maybeLogin(page,user,password,url);
+    if(await verificationPending(page))failure(409,'A autenticação exige verificação Cloudflare. Use Abrir navegador, verifique manualmente e importe clientes desta sessão.');
     const destination=await navigateClients(page);
     await page.waitForTimeout(1300);
     await Promise.allSettled([...inflight]);
@@ -609,9 +627,12 @@ async function runJob(job){
     return {ok:true,clients:[...records.values()],plans:[],warning:'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size,json_responses:scannedJsonResponses,source:captured.size?'pagina_e_requisicoes_da_sessao':'pagina'}};
   }catch(e){
+    if(nearMemoryLimit)failure(503,'O Chromium se aproximou do limite de memória da VPS. Sincronização automática interrompida; use Abrir navegador.');
+    if(forcedTimeout)failure(504,'A navegação automática ultrapassou o tempo seguro. Use Abrir navegador e importe após concluir a verificação.');
     if(/ERR_HTTP_RESPONSE_CODE_FAILURE|net::ERR_/i.test(String(e.message)))failure(502,'Falha de navegação ou resposta do fornecedor; confirme a URL e o acesso HTTPS.');
     throw e;
   }finally{
+    clearTimeout(deadline);clearInterval(monitor);
     if(context)await context.close().catch(()=>{});
     if(browser)await browser.close().catch(()=>{});
   }
@@ -620,6 +641,30 @@ async function runJob(job){
 /* Browser session under the Clystria account. A human controls the page; the worker
    never solves, clicks through or fabricates a Cloudflare challenge. */
 let live=null;
+const CHROMIUM_ARGS=['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run',
+ '--disable-background-networking','--disable-extensions','--disable-component-update','--renderer-process-limit=2'];
+async function memoryPressure(){
+ try{
+  const [usage,maximum]=await Promise.all([
+   readFile('/sys/fs/cgroup/memory.current','utf8'),
+   readFile('/sys/fs/cgroup/memory.max','utf8')
+  ]);
+  const used=Number(usage.trim()),max=Number(maximum.trim());
+  return Number.isFinite(max)&&max>0&&Number.isFinite(used)?used/max:0;
+ }catch{return 0;}
+}
+async function verificationPending(page){
+ if(await isChallenge(page))return true;
+ const passwordVisible=await page.locator('input[type="password"]').count().catch(()=>0)>0;
+ const widgetFrame=page.frames().some(frame=>{
+  try{const host=new URL(frame.url()).hostname;return host==='challenges.cloudflare.com'||host.endsWith('.challenges.cloudflare.com');}
+  catch{return false;}
+ });
+ if(widgetFrame&&!passwordVisible)return true;
+ const challengeElements=await page.locator('.cf-turnstile,[data-sitekey],[id*="challenge" i]').count().catch(()=>0);
+ return !passwordVisible&&challengeElements>0;
+}
+
 const VIEWPORT={width:960,height:720};
 async function closeLive(){
  const previous=live;live=null;
@@ -660,7 +705,7 @@ async function startLive(job){
  let browser=null,context=null;
  try{
   browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
-    args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+    args:CHROMIUM_ARGS});
   context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
     viewport:VIEWPORT,deviceScaleFactor:1,acceptDownloads:false,
     serviceWorkers:'block',ignoreHTTPSErrors:false});
@@ -756,7 +801,7 @@ async function testChromium(){
  let browser;
  try{
   browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
-    args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+    args:CHROMIUM_ARGS});
   const page=await browser.newPage();
   await page.setContent('<table><thead><tr><th>Usuário</th><th>Vencimento</th></tr></thead><tbody><tr><td>teste</td><td>22/12/2026</td></tr></tbody></table>');
   const result=await extract(page);
