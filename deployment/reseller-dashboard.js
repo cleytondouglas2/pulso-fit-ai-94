@@ -183,12 +183,33 @@ function filterCharges(){
  for(const row of rows){
   const matchStatus=!status||row.dataset.chargeStatus===status||
    (status==='checking'&&['unknown','creating'].includes(row.dataset.chargeStatus));
-  setHidden(row,!matchStatus||!normalize(row.textContent).includes(query));
-  if(!row.hidden)visible++;
+  const filtered=!matchStatus||!normalize(row.textContent).includes(query);
+  setHidden(row,filtered);
+  // The premium card stylesheet uses display:grid!important. The hidden
+  // attribute alone therefore cannot hide filtered records in mobile Safari.
+  if(filtered)row.style.setProperty('display','none','important');
+  else row.style.removeProperty('display');
+  if(!filtered)visible++;
  }
  const count=rows.length?(visible===1?'1 cobrança encontrada':visible+' cobranças encontradas'):'';
  const counter=E('res-charge-count');
  if(counter.textContent!==count)counter.textContent=count;
+ // Accessible empty result: do not confuse the user with visible rows
+ // after the counter correctly reaches zero.
+ let empty=E('res-charge-empty');
+ if(rows.length&&visible===0){
+  if(!empty){
+   empty=document.createElement('p');
+   empty.id='res-charge-empty';
+   empty.className='res-filter-empty';
+   empty.setAttribute('role','status');
+   list.appendChild(empty);
+  }
+  empty.textContent='Nenhuma cobrança corresponde aos filtros selecionados. Escolha outro status ou limpe a busca.';
+  empty.hidden=false;
+ }else if(empty){
+  empty.hidden=true;
+ }
 }
 function updateHeader(){
  const dashboard=E('dashboard');

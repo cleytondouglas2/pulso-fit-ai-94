@@ -787,3 +787,14 @@ RUN test -s /var/www/html/public/static/reseller-aurum-experience.css \
  && grep -Fq '/static/reseller-aurum-experience.css?v=20261122-ui1' /var/www/html/public/static/client.html \
  && php /var/www/html/tests/ui_contract.php \
  && php /var/www/html/tests/finance_operations_test.php
+
+
+# Fix filtered charge visibility and Safari date-control overlap.
+# This is strictly UI; financial transactions, settlement and ledger are unchanged.
+COPY deployment/reseller_filter_layout_test.php /var/www/html/tests/reseller_filter_layout_test.php
+RUN php -l /var/www/html/tests/reseller_filter_layout_test.php \
+ && php /var/www/html/tests/reseller_filter_layout_test.php \
+ && sed -i 's#reseller-dashboard.js?v=nav-speed-20261122-1#reseller-dashboard.js?v=filter-visible-20261122-2#; s#reseller-aurum-experience.css?v=20261122-ui1#reseller-aurum-experience.css?v=20261122-ui2#' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-dashboard.js?v=filter-visible-20261122-2' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-aurum-experience.css?v=20261122-ui2' /var/www/html/public/static/client.html \
+ && php /var/www/html/tests/ui_contract.php
