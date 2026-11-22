@@ -50,12 +50,37 @@ elxAskSense=async function(){
  try{
   const answer=await request('/functions/v1/elnex-ai',{method:'POST',body:JSON.stringify({mode:elnexSenseMode,context,consent:agreed})});
   if(!answer||!answer.text)throw Error('Nenhum resultado foi retornado');
-  result.textContent=(answer.source==='generative'?'✦ ELNEX SENSE — IA GENERATIVA':'✦ SUGESTÃO BÁSICA — SEM IA')+'\n\n'+answer.text;
+  result.innerHTML='<div class="elnex-ai-answer"><span class="elnex-answer-badge">'+(answer.source==='generative'?'✦ ELNEX SENSE · IA GENERATIVA':'✦ ELNEX SENSE · MODO BÁSICO')+'</span><div class="elnex-ai-formatted">'+elxAIFormatText(answer.text)+'</div></div>';
  }catch(error){result.textContent='Não foi possível gerar: '+(error.message||String(error))}
  finally{btn.disabled=false;const skill=elnexSkills.find(x=>x.mode===elnexSenseMode);btn.textContent=(skill?.cta||'Gerar sugestão')+' ✦'}
 };
 function elxChatCards(){
  return '<div class="sense-grid">'+elnexSkills.map(x=>'<button class="sense-skill '+(x.mode===elnexSenseMode?'selected':'')+'" data-ai-mode="'+esc(x.mode)+'"><span class="skill-symbol">'+x.icon+'</span><strong>'+esc(x.title)+'</strong><small>'+esc(x.hint)+'</small></button>').join('')+'</div>';
+}
+/* Renderização segura de Markdown simples: todo conteúdo do modelo é escapado antes de receber marcação */
+function elxAIFormatText(value){
+ const source=String(value||'').replace(/\r\n?/g,'\n').slice(0,6000);
+ const inline=(s)=>esc(s).replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<em>$2</em>').replace(/`([^`\n]+)`/g,'<code>$1</code>');
+ const lines=source.split('\n');let out='',list='',paragraph=[];
+ const closeList=()=>{if(list){out+='</'+list+'>';list=''}};
+ const flush=()=>{if(paragraph.length){out+='<p>'+paragraph.map(inline).join(' ')+'</p>';paragraph=[]}};
+ for(const rawLine of lines){
+  const line=rawLine.trim();
+  if(!line){flush();closeList();continue}
+  const heading=line.match(/^#{1,4}\s+(.+)$/);
+  const boldTitle=line.match(/^\*\*([^*]+)\*\*:?\s*$/);
+  const bullet=line.match(/^(?:[-*•])\s+(.+)$/);
+  const numbered=line.match(/^\d{1,3}[.)]\s+(.+)$/);
+  if(heading||boldTitle){flush();closeList();out+='<h4>'+inline(heading?heading[1]:boldTitle[1])+'</h4>';continue}
+  if(bullet||numbered){
+    flush();const type=bullet?'ul':'ol';
+    if(list!==type){closeList();out+='<'+type+'>';list=type}
+    out+='<li>'+inline((bullet||numbered)[1])+'</li>';continue
+  }
+  closeList();paragraph.push(line);
+ }
+ flush();closeList();
+ return out||'<p>Não foi possível exibir a resposta.</p>';
 }
 function elxChatRenderMessages(){
  const host=$('#elnexAIMessages');if(!host)return;
@@ -63,11 +88,14 @@ function elxChatRenderMessages(){
    host.innerHTML='<div class="elnex-ai-welcome"><div class="elnex-ai-avatar">✦</div><h3>Oi! Sou o ELNEX Sense.</h3><p>Posso ajudar com relacionamentos, conversas, autoconhecimento e ideias de encontros respeitosos.</p><p class="muted small">As respostas geradas por IA não substituem conhecer a outra pessoa.</p></div>';
    return;
  }
- host.innerHTML=elxChatMessages.map(x=>'<div class="elnex-ai-message '+(x.role==='user'?'mine':'bot')+'"><span class="elnex-ai-speaker">'+(x.role==='user'?'Você':'✦ Sense')+'</span><p>'+esc(x.content)+'</p></div>').join('');
+ host.innerHTML=elxChatMessages.map(x=>{
+   const mine=x.role==='user';
+   return '<div class="elnex-ai-message '+(mine?'mine':'bot')+'"><span class="elnex-ai-speaker">'+(mine?'Você':'✦ Sense')+'</span><div class="elnex-ai-formatted">'+(mine?'<p>'+esc(x.content)+'</p>':elxAIFormatText(x.content))+'</div></div>';
+ }).join('');
  host.scrollTop=host.scrollHeight;
 }
 function elxPushChat(role,content){
- elxChatMessages.push({role,content:String(content).slice(0,1900)});
+ elxChatMessages.push({role,content:String(content).slice(0,2800)});
  elxChatMessages=elxChatMessages.slice(-20);
  elxChatRenderMessages();
 }
