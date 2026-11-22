@@ -37,7 +37,7 @@ function panelEndpoint(string $root,string $path):string {
  publicUrl($root);if(!str_starts_with($path,'/')||str_starts_with($path,'//')||str_contains($path,'..'))throw new InvalidArgumentException('Rota da API inválida');
  $parts=parse_url($root);return 'https://'.$parts['host'].(isset($parts['port'])?':'.$parts['port']:'').$path;
 }
-function requestPanel(string $url,string $method='GET',?array $data=null,array $headers=[]):array {
+function requestPanel(string $url,string $method='GET',?array $data=null,array $headers=[],string $phase='consulta'):array {
  publicUrl($url);if(!function_exists('curl_init'))throw new RuntimeException('Extensão PHP curl necessária');
  $p=parse_url($url);$host=$p['host'];$port=(int)($p['port']??443);$ip=pinnedIp($host);
  $resHeaders=[];$buf='';$ch=curl_init($url);if(!$ch)throw new RuntimeException('Falha ao inicializar conexão');
@@ -49,7 +49,9 @@ function requestPanel(string $url,string $method='GET',?array $data=null,array $
   if($ok===false)throw new RuntimeException('Erro de rede/API: '.curl_error($ch));
   if(($resHeaders['cf-mitigated'][0]??'')==='challenge'||preg_match('/just a moment|checking your browser|attention required/i',substr($buf,0,500)))throw new RuntimeException('Cloudflare requer autenticação no navegador; solicite uma API autorizada ao fornecedor');
   if($code>=300&&$code<400)throw new RuntimeException('A API redirecionou a solicitação; confira as rotas');
-  if($code<200||$code>=300)throw new RuntimeException($code===401?'Credenciais recusadas pelo painel':($code===403?'A API não autorizou o acesso':"API retornou HTTP $code"));
+  if($code===404)throw new RuntimeException('Rota de '.$phase.' não encontrada (HTTP 404). O endereço do painel não oferece essa rota genérica de API; confirme com o fornecedor o endpoint oficial de integração e ajuste as configurações avançadas.');
+  if($code===405)throw new RuntimeException('A rota de '.$phase.' não aceita este método HTTP (405). Confira o contrato da API do fornecedor.');
+  if($code<200||$code>=300)throw new RuntimeException($code===401?'Credenciais recusadas pela API na etapa de '.$phase:($code===403?'A API não autorizou a etapa de '.$phase:"A etapa de $phase retornou HTTP $code"));
   try{$json=json_decode($buf,true,512,JSON_THROW_ON_ERROR);}catch(Throwable){throw new RuntimeException('A API retornou conteúdo não JSON; confira o endereço de integração');}
   if(!is_array($json))throw new RuntimeException('A API retornou conteúdo inválido');
   if(($json['success']??true)===false||(!empty($json['error'])&&($json['success']??false)!==true))throw new RuntimeException('API: '.clean($json['message']??$json['error']??'falha',140));
@@ -87,18 +89,18 @@ function normalizeClient(array $x,array $plans):?array {
 function fetchPanel(array $panel):array {
  if($panel['auth_mode']==='token'){
   if(!$panel['api_url']||!$panel['token_enc'])throw new RuntimeException('Configure endpoint e token autorizado');
-  $response=requestPanel($panel['api_url'],'GET',null,['Authorization: Bearer '.unseal($panel['token_enc'])]);
+  $response=requestPanel($panel['api_url'],'GET',null,['Authorization: Bearer '.unseal($panel['token_enc'])],'consulta de clientes');
   $clients=listFrom($response['data']);$p=$response['data']['plans']??$response['data']['data']['plans']??[];
   return ['clients'=>$clients,'plans'=>array_values(array_filter(array_map('normalizePlan',is_array($p)?$p:[]))),'warning'=>''];
  }
  if(!$panel['login_user']||!$panel['login_pass_enc'])throw new RuntimeException('Configure usuário e senha do painel');
- $login=requestPanel(panelEndpoint($panel['url'],$panel['login_path']),'POST',[$panel['login_field']=>$panel['login_user'],$panel['password_field']=>unseal($panel['login_pass_enc'])]);
+ $login=requestPanel(panelEndpoint($panel['url'],$panel['login_path']),'POST',[$panel['login_field']=>$panel['login_user'],$panel['password_field']=>unseal($panel['login_pass_enc'])],[],'autenticação');
  $d=$login['data'];$token=field($d,['access_token','token','jwt'])??field($d['data']??[],['access_token','token','jwt'])??field($d['result']??[],['token']);
  $cookies=[];foreach($login['cookies'] as $s){$first=explode(';',$s,2)[0];if(preg_match('/^[\w.\-]+=[^;\r\n]*$/',$first))$cookies[]=$first;}
  if(!$token&&!$cookies)throw new RuntimeException('API não retornou token nem cookie de sessão; é necessário um adaptador do fornecedor');
  $headers=[];if($token)$headers[]='Authorization: Bearer '.$token;if($cookies)$headers[]='Cookie: '.implode('; ',$cookies);
- $clients=listFrom(requestPanel(panelEndpoint($panel['url'],$panel['clients_path']),'GET',null,$headers)['data']);
- $plans=[];$warning='';if($panel['plans_path']){try{$json=requestPanel(panelEndpoint($panel['url'],$panel['plans_path']),'GET',null,$headers)['data'];$plans=array_values(array_filter(array_map('normalizePlan',listFrom($json,['plans','packages','products','items']))));}catch(Throwable $e){$warning='Planos não disponíveis: '.$e->getMessage();}}
+ $clients=listFrom(requestPanel(panelEndpoint($panel['url'],$panel['clients_path']),'GET',null,$headers,'consulta de clientes')['data']);
+ $plans=[];$warning='';if($panel['plans_path']){try{$json=requestPanel(panelEndpoint($panel['url'],$panel['plans_path']),'GET',null,$headers,'consulta de planos')['data'];$plans=array_values(array_filter(array_map('normalizePlan',listFrom($json,['plans','packages','products','items']))));}catch(Throwable $e){$warning='Planos não disponíveis: '.$e->getMessage();}}
  return ['clients'=>$clients,'plans'=>$plans,'warning'=>$warning];
 }
 function syncPanel(string $id,string $actor='Clystria automático'):array {
