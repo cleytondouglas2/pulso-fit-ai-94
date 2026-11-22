@@ -1,0 +1,38 @@
+name: ArgusPay Daily Security Review
+on:
+  schedule:
+    - cron: '21 7 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit-argus-payments-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ARGUS_PAYOUTS_ENABLED: 'no'
+      ARGUS_HYBRID_PAYOUT_LIVE: 'no'
+      ARGUS_NOTIFICATIONS_WORKER_ENABLED: 'no'
+    steps:
+      - name: Read ArgusPay source without using production credentials
+        uses: actions/checkout@v4
+        with:
+          ref: argus-payments-deploy
+          persist-credentials: false
+      - name: Search for committed financial credentials (values redacted)
+        run: python3 deployment/security_secret_scan.py
+      - name: Prepare isolated scanner
+        run: |
+          python3 -m venv .security-venv
+          .security-venv/bin/pip install --disable-pip-version-check semgrep
+      - name: Analyze ArgusPay PHP and JavaScript
+        run: |
+          .security-venv/bin/semgrep scan --config p/php --config p/javascript --config p/security-audit --metrics=off --severity ERROR --error --json --output argus-findings.json deployment
+      - name: Save findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: argus-daily-security
+          path: argus-findings.json
+          retention-days: 14
+          if-no-files-found: ignore
