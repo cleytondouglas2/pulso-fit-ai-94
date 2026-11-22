@@ -780,7 +780,7 @@ RUN php -l /var/www/html/src/AI.php \
 # Runs after finance, access control, payouts, KYC, and AI regression tests.
 COPY deployment/reseller-aurum-experience.css /var/www/html/public/static/reseller-aurum-experience.css
 RUN test -s /var/www/html/public/static/reseller-aurum-experience.css \
- && grep -Fq 'id="argus-reseller-page-statement"' /var/www/html/public/static/reseller-dashboard.js \
+ && grep -Fq "page('statement'" /var/www/html/public/static/reseller-dashboard.js \
  && grep -Fq 'id="seller-withdraw-form"' /var/www/html/public/static/merchant-portal.js \
  && grep -Fq 'id="seller-deposit-form"' /var/www/html/public/static/merchant-portal.js \
  && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-aurum-experience.css?v=20261122-ui1"></head>#' /var/www/html/public/static/client.html \
