@@ -682,3 +682,22 @@ RUN php -l /tmp/chat_payout_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/chat_payout_test.php \
  && php /var/www/html/tests/ui_contract.php \
  && apache2ctl configtest
+
+
+# ARGUS API V2 returns a self-contained QR PNG for authenticated merchant Pix.
+# QR generation is local to the gateway (no third-party QR API and no new Pix).
+# Install as the LAST image step so legacy finance and security patches remain.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends qrencode \
+ && rm -rf /var/lib/apt/lists/*
+COPY deployment/ArgusPixQr.php /var/www/html/src/ArgusPixQr.php
+COPY deployment/argus_pix_qr_api_patch.php /tmp/argus_pix_qr_api_patch.php
+COPY deployment/argus_pix_qr_api_test.php /var/www/html/tests/argus_pix_qr_api_test.php
+RUN php -l /var/www/html/src/ArgusPixQr.php \
+ && php -l /tmp/argus_pix_qr_api_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_pix_qr_api_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/argus_pix_qr_api_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_pix_qr_api_test.php \
+ && php /var/www/html/tests/finance_operations_test.php \
+ && apache2ctl configtest
