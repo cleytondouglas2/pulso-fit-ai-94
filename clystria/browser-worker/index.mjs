@@ -210,14 +210,15 @@ async function runJob(job){
   }
 }
 const server=http.createServer(async(req,res)=>{
+  let acquired=false;
   try{
-    if(req.method==='GET'&&req.url==='/health')return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',configured:SECRET.length>=32&&ALLOW.length>0});
+    if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',configured:SECRET.length>=32&&ALLOW.length>0});
     if(req.method!=='POST'||req.url!=='/sync')return json(res,404,{error:'Recurso não encontrado'});
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
     if(!equals(supplied,SECRET))return json(res,401,{error:'Não autorizado'});
     if(busy)return json(res,429,{error:'Uma sincronização já está em execução; tente novamente'});
-    busy=true;
+    busy=true;acquired=true;
     let body='';for await(const chunk of req){body+=chunk;if(body.length>12000)failure(413,'Solicitação muito grande');}
     let job;try{job=JSON.parse(body);}catch{failure(400,'JSON inválido');}
     const payload=await runJob(job);
@@ -226,6 +227,6 @@ const server=http.createServer(async(req,res)=>{
     // Never print submitted credentials, cookies or HTML from authenticated pages.
     const status=Number(e.status)||502;
     return json(res,status,{error:clean(e.message||'Falha na navegação',250),code:status});
-  }finally{busy=false;}
+  }finally{if(acquired)busy=false;}
 });
 server.listen(PORT,'0.0.0.0',()=>console.log('CLYSTRIA_BROWSER_WORKER_READY'));
