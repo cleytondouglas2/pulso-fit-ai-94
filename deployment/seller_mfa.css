@@ -1,0 +1,10 @@
+.seller-mfa-card{padding:19px!important;margin:16px 0!important;border:1px solid #b58c55!important;border-radius:19px!important;background:linear-gradient(135deg,#2b251d,#19212b)!important}
+.seller-mfa-card h3{color:#f1d4a1!important}
+.seller-mfa-card label,.seller-mfa-code-label{display:grid;gap:7px;margin:12px 0;color:#e8d6bd;font-weight:650;font-size:13px}
+.seller-mfa-card input,.seller-mfa-code-label input{min-height:49px;max-width:100%;width:100%;box-sizing:border-box;border:1px solid #70634f;border-radius:11px;padding:11px;background:#121922;color:#fff3dd;font-size:16px}
+.seller-mfa-card button{padding:12px 16px;min-height:48px;border-radius:12px;border:1px solid #f3d09e;background:#e4ba7d;color:#211912;font-weight:800}
+.seller-mfa-card #seller-mfa-secret{font-family:monospace;letter-spacing:.035em}
+.seller-mfa-card p{font-size:13px;line-height:1.6;color:#ced0d4}
+.seller-mfa-card [hidden]{display:none!important}
+.seller-mfa-code-label{margin:12px 0}
+@media(max-width:500px){.seller-mfa-card{padding:15px!important}}

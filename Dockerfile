@@ -834,3 +834,23 @@ RUN php -l /var/www/html/src/SecurityShield.php \
  && php /var/www/html/tests/security_regression_test.php \
  && php /var/www/html/tests/password_recovery_test.php \
  && ARGUS_SECURITY_RATE_SECRET=TEST_ONLY_64_CHARACTER_SECRET_FOR_ISOLATED_AUTH_TESTS_1234567890123456 php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/seller_key_auth_integration_test.php
+
+
+# Seller financial MFA (TOTP) for browser/chat withdrawals and payout-capable keys.
+# No real transfers in any test. Existing API integrations continue with their
+# explicitly scoped keys; new payout-capable keys require step-up authorization.
+COPY deployment/SellerMfa.php /var/www/html/src/SellerMfa.php
+COPY deployment/seller_mfa_patch.php /tmp/seller_mfa_patch.php
+COPY deployment/seller_mfa.js deployment/seller_mfa.css /var/www/html/public/static/
+COPY deployment/seller_mfa_test.php /var/www/html/tests/seller_mfa_test.php
+RUN php -l /var/www/html/src/SellerMfa.php \
+ && php -l /tmp/seller_mfa_patch.php \
+ && php /tmp/seller_mfa_patch.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && node --check /var/www/html/public/static/seller_mfa.js \
+ && node --check /var/www/html/public/static/merchant-portal.js \
+ && node --check /var/www/html/public/static/chat-payout.js \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/seller_mfa.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/seller_mfa.js?v=20261122-1"></script></body>#' /var/www/html/public/static/client.html \
+ && php /var/www/html/tests/seller_mfa_test.php \
+ && php /var/www/html/tests/security_regression_test.php
