@@ -239,7 +239,18 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    let body;
    try{body=JSON.parse(Buffer.concat(parts).toString("utf8"));}
    catch{return respond(res,400,{error:"Dados inválidos"});}
-   const candidate={key:String(body.apiKey||""),secret:String(body.apiSecret||"")};
+   // Support either raw values or exact environment-variable assignments.
+   // Never log, echo or persist the prefix, only validated credentials.
+   function cleanCredential(value,name){
+    let text=String(value||"").trim().replace(new RegExp("^(?:export\\s+)?"+name+"\\s*=\\s*","i"),"").trim();
+    if((text.startsWith('"')&&text.endsWith('"'))||(text.startsWith("'")&&text.endsWith("'")))
+     text=text.slice(1,-1).trim();
+    return text;
+   }
+   const candidate={
+    key:cleanCredential(body.apiKey,"ARGUS_API_KEY"),
+    secret:cleanCredential(body.apiSecret,"ARGUS_API_SECRET")
+   };
    if(!isArgusCredentialPair(candidate))
     return respond(res,422,{error:"Preencha uma API Key e uma API Secret válidas da Argus Pay."});
    let successfulProbe;
