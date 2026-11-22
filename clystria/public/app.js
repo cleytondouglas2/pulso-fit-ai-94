@@ -172,6 +172,7 @@ async function openRemoteBrowser(panelId){
  '<div class="remote-screen"><img id="remote-shot" alt="Tela remota do navegador Chromium" draggable="false"><span class="remote-wait">A tela do navegador será exibida aqui.</span></div>'+
  '<div class="remote-controls">'+
  '<button type="button" class="btn ghost" id="remote-refresh">↻ Atualizar tela</button>'+
+ '<button type="button" class="btn ghost" id="remote-zoom">⌕ Zoom 100%</button>'+
  '<button type="button" class="btn ghost" id="remote-reload">↻ Recarregar site</button>'+
  '<button type="button" class="btn ghost" id="remote-autofill">✦ Preencher login salvo</button>'+
  '<button type="button" class="btn ghost" id="remote-tab">Tab</button>'+
@@ -192,6 +193,7 @@ async function openRemoteBrowser(panelId){
      y:Math.max(0,Math.min(720,(e.clientY-box.top)*720/box.height))});
  };
  $('#remote-refresh').onclick=()=>remoteStep('frame');
+ $('#remote-zoom').onclick=()=>{let el=$('.remote-screen');el.classList.toggle('zoomed');$('#remote-zoom').textContent=el.classList.contains('zoomed')?'⌕ Ajustar tela':'⌕ Zoom 100%';};
  $('#remote-reload').onclick=()=>remoteStep('reload');
  $('#remote-autofill').onclick=()=>remoteStep('autofill');
  $('#remote-tab').onclick=()=>remoteStep('key',{key:'Tab'});
