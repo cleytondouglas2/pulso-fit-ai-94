@@ -1,0 +1,55 @@
+/* ARGUS Pay Pix reseller charging form — designed for mobile and desktop */
+#argus-reseller-workspace #argus-reseller-page-charges .res-detail-grid{grid-template-columns:minmax(0,1.35fr) minmax(265px,.8fr);gap:20px;align-items:start}
+#argus-reseller-workspace #argus-reseller-page-charges #res-charge-form{min-width:0}
+#argus-reseller-workspace #argus-reseller-page-charges .seller-charge-panel{padding:clamp(20px,3vw,32px)!important;border:1px solid #514638!important;border-radius:21px!important;background:linear-gradient(155deg,#1c2029,#171a21 65%,#151921)!important;box-shadow:0 22px 60px rgba(0,0,0,.18)!important}
+#argus-reseller-workspace .seller-charge-heading{display:flex;gap:15px;align-items:flex-start;margin-bottom:27px}
+#argus-reseller-workspace .seller-charge-symbol{width:49px;height:49px;flex:0 0 49px;display:grid;place-items:center;border:1px solid #715a3d;border-radius:15px;background:linear-gradient(145deg,#463726,#28251f);color:#f1c987}
+#argus-reseller-workspace .seller-charge-symbol svg{width:25px;height:25px}
+#argus-reseller-workspace .seller-charge-kicker{color:#dcb67d;font-size:10px;font-weight:800;letter-spacing:.14em}
+#argus-reseller-workspace .seller-charge-heading h3{font-size:clamp(20px,2.3vw,26px)!important;margin:5px 0 7px!important;color:#faf2e4!important;line-height:1.2}
+#argus-reseller-workspace .seller-charge-heading p{color:#9fa7b3!important;font-size:13px!important;line-height:1.55;margin:0}
+#argus-reseller-workspace #seller-deposit-form{display:grid;max-width:100%!important}
+#argus-reseller-workspace .seller-charge-step{display:flex;align-items:center;gap:10px;margin:0 0 13px}
+#argus-reseller-workspace .seller-charge-step span{display:grid;place-items:center;width:27px;height:27px;border-radius:8px;background:#393125;border:1px solid #665037;color:#edc78d;font-size:11px;font-weight:800}
+#argus-reseller-workspace .seller-charge-step strong{font-size:14px;font-weight:750;color:#ecdfca}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-amount-label{margin:0 0 10px;color:#c2c7cf;font-size:13px}
+#argus-reseller-workspace .seller-money-wrap{width:100%;display:flex;align-items:center;border:1px solid #5e554a;border-radius:15px;min-width:0;overflow:hidden;background:#0d1219;transition:box-shadow .18s,border-color .18s}
+#argus-reseller-workspace .seller-money-wrap:focus-within{border-color:#edc58a;box-shadow:0 0 0 3px rgba(222,178,110,.13)}
+#argus-reseller-workspace .seller-money-prefix{flex:none;display:grid;place-items:center;align-self:stretch;padding:0 20px;color:#e8c38d;font-size:21px;font-weight:850;background:rgba(218,171,101,.08);border-right:1px solid #42382b}
+#argus-reseller-workspace #seller-charge-amount{border:0!important;box-shadow:none!important;outline:0!important;min-width:0!important;min-height:76px;width:100%;font-weight:800!important;font-size:clamp(29px,5vw,40px)!important;letter-spacing:-.04em;text-align:left;padding:13px 18px!important;background:transparent!important;color:#fff6e9!important;font-variant-numeric:tabular-nums}
+#argus-reseller-workspace #seller-charge-amount::placeholder{color:#69727e}
+#argus-reseller-workspace .seller-charge-hint{margin:9px 0 13px!important;color:#a9b3c1!important;font-size:12px!important}
+#argus-reseller-workspace .seller-quick-values{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 23px}
+#argus-reseller-workspace #seller-deposit-form .seller-quick-values button{background:#262a32!important;border:1px solid #494c54!important;color:#e8dac6!important;border-radius:10px!important;font-weight:650;min-height:38px;padding:8px 13px!important;font-size:13px;white-space:nowrap}
+#argus-reseller-workspace #seller-deposit-form .seller-quick-values button:is(:hover,.is-active){background:#3b3022!important;border-color:#d5a96d!important;color:#ffe1af!important}
+#argus-reseller-workspace .seller-charge-divider{height:1px;background:linear-gradient(90deg,transparent,#454447,transparent);margin:0 0 22px}
+#argus-reseller-workspace #seller-deposit-form .seller-payer-choice{display:flex!important;align-items:flex-start;gap:13px;margin:0 0 19px!important;padding:14px!important;border:1px solid #44454d;border-radius:13px;background:#20242d;cursor:pointer}
+#argus-reseller-workspace #seller-deposit-form .seller-payer-choice input{width:20px!important;height:20px;min-width:20px;min-height:20px;margin:2px 0 0!important;accent-color:#eac28b}
+#argus-reseller-workspace .seller-payer-choice span{display:grid;gap:4px}
+#argus-reseller-workspace .seller-payer-choice strong{font-size:14px;color:#f5ecdc}
+#argus-reseller-workspace .seller-payer-choice small{font-size:12px;line-height:1.5;color:#abb3be}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-field{display:grid;gap:8px;margin:0 0 17px!important;font-size:13px;font-weight:650;color:#dcd7d0}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-field[hidden]{display:none!important}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-field input{min-height:51px;border-radius:11px!important;border:1px solid #50535d!important;background:#11161e!important;padding:13px 15px!important;font-size:15px!important;color:#fbf5ed!important}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-field input:focus{outline:none!important;border-color:#d7b27c!important;box-shadow:0 0 0 3px rgba(215,178,124,.12)}
+#argus-reseller-workspace .seller-description-field small{font-size:12px;color:#a0aab7;font-weight:400}
+#argus-reseller-workspace .seller-charge-total{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 17px;margin:8px 0 13px;border:1px solid #514331;border-radius:12px;background:linear-gradient(135deg,#30291f,#29251f)}
+#argus-reseller-workspace .seller-charge-total span{color:#d7c6aa;font-size:13px;font-weight:600}
+#argus-reseller-workspace .seller-charge-total strong{color:#f7d5a0;font-size:clamp(21px,3vw,28px);font-weight:850;white-space:nowrap;font-variant-numeric:tabular-nums}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-submit{display:flex;align-items:center;justify-content:center;gap:11px;padding:17px 18px!important;width:100%;min-height:57px;border:1px solid #f8daaa!important;border-radius:12px!important;background:linear-gradient(120deg,#dfb778,#f2d39f 50%,#d6a86b)!important;color:#221b13!important;font-size:15px;font-weight:850;box-shadow:0 9px 26px rgba(217,173,112,.14)}
+#argus-reseller-workspace .seller-charge-submit svg{width:20px;height:20px;flex:none}
+#argus-reseller-workspace .seller-charge-submit-arrow{font-size:20px;margin-left:auto}
+#argus-reseller-workspace #seller-deposit-form .seller-charge-submit:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}
+#argus-reseller-workspace .seller-charge-footer-note{text-align:center;color:#919eac!important;font-size:12px!important;margin:12px 0 0!important;line-height:1.55!important}
+#argus-reseller-workspace #argus-reseller-page-charges .res-charge-receipt{position:sticky;top:95px;padding:clamp(22px,2.6vw,30px)!important;border:1px solid #424751!important;border-radius:20px!important;background:radial-gradient(circle at 50% 10%,#292a2a,#1b2027 56%,#171a20)!important;min-height:305px}
+#argus-reseller-workspace .res-charge-receipt-label{display:block;letter-spacing:.15em;font-size:10px;font-weight:800;color:#d8b17b;margin-bottom:22px}
+#argus-reseller-workspace .res-receipt-icon{width:73px;height:73px;display:grid;place-items:center;border:1px solid #695136;border-radius:22px;margin:0 0 22px;color:#eac68d;background:#30291f}
+#argus-reseller-workspace .res-receipt-icon svg{width:37px;height:37px}
+#argus-reseller-workspace #argus-reseller-page-charges .res-charge-receipt h3{font-size:22px;color:#f8ecda;margin:0 0 9px}
+#argus-reseller-workspace #res-charge-placeholder{line-height:1.65;font-size:13px;color:#a8b2be;max-width:30ch}
+#argus-reseller-workspace .res-receipt-footer{margin-top:28px;padding-top:16px;border-top:1px solid #42454b;color:#9ba6b2;font-size:12px;line-height:1.6}
+#argus-reseller-workspace .res-receipt-footer span{color:#e2bf88}
+#argus-reseller-workspace #res-charge-result{min-width:0;overflow-wrap:anywhere}
+@media(max-width:950px){#argus-reseller-workspace #argus-reseller-page-charges .res-detail-grid{grid-template-columns:minmax(0,1fr)}#argus-reseller-workspace #argus-reseller-page-charges .res-charge-receipt{position:static;min-height:0}}
+@media(max-width:620px){#argus-reseller-workspace #argus-reseller-page-charges .seller-charge-panel{padding:21px 17px!important}#argus-reseller-workspace #seller-charge-amount{min-height:69px!important;font-size:32px!important}#argus-reseller-workspace .seller-money-prefix{padding:0 16px}#argus-reseller-workspace .seller-quick-values{gap:7px}#argus-reseller-workspace #seller-deposit-form .seller-quick-values button{flex:1 1 calc(50% - 8px);padding:9px 8px!important}#argus-reseller-workspace .seller-charge-total{padding:13px 15px}#argus-reseller-workspace .seller-charge-total strong{font-size:22px}}
+@media(prefers-reduced-motion:reduce){#argus-reseller-workspace #seller-deposit-form button,#argus-reseller-workspace .seller-money-wrap{transition:none!important}}

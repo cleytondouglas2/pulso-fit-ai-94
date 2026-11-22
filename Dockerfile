@@ -701,3 +701,9 @@ RUN php -l /var/www/html/src/ArgusPixQr.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_pix_qr_api_test.php \
  && php /var/www/html/tests/finance_operations_test.php \
  && apache2ctl configtest
+
+
+# Pix seller UX enhancement: no change to gateway, ledger or payment endpoints.
+COPY deployment/reseller-pix-ui.js deployment/reseller-pix-ui.css /var/www/html/public/static/
+RUN sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-pix-ui.css?v=20261122-1"><script defer src="/static/reseller-pix-ui.js?v=20261122-1"></script></head>#' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-pix-ui.js?v=20261122-1' /var/www/html/public/static/client.html
