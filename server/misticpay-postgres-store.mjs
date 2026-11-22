@@ -6,6 +6,7 @@
 const SQL=[
   "CREATE TABLE IF NOT EXISTS pf_billing_orders (reference UUID PRIMARY KEY, user_id TEXT NOT NULL, plan_code TEXT NOT NULL CHECK (plan_code IN ('quinzenal','mensal','teste7d')), amount_cents INTEGER NOT NULL CHECK(amount_cents>0), currency TEXT NOT NULL CHECK(currency='BRL'), provider_payment_id TEXT UNIQUE, status TEXT NOT NULL DEFAULT 'PENDENTE', created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())",
   "DO $body$ BEGIN IF EXISTS(SELECT 1 FROM pg_constraint WHERE conname='pf_billing_orders_plan_code_check' AND conrelid='pf_billing_orders'::regclass) THEN ALTER TABLE pf_billing_orders DROP CONSTRAINT pf_billing_orders_plan_code_check; END IF; ALTER TABLE pf_billing_orders ADD CONSTRAINT pf_billing_orders_plan_code_check CHECK (plan_code IN ('quinzenal','mensal','teste7d')); END $body$",
+  "ALTER TABLE pf_billing_orders ADD COLUMN IF NOT EXISTS provider TEXT NOT NULL DEFAULT 'misticpay'",
   "CREATE INDEX IF NOT EXISTS pf_billing_orders_user_idx ON pf_billing_orders(user_id,created_at DESC)",
   "ALTER TABLE pf_billing_orders ADD COLUMN IF NOT EXISTS last_check_at TIMESTAMPTZ",
   "CREATE INDEX IF NOT EXISTS pf_billing_orders_reconcile_idx ON pf_billing_orders(status,last_check_at,created_at) WHERE provider_payment_id IS NOT NULL",
@@ -14,7 +15,7 @@ const SQL=[
   "CREATE TABLE IF NOT EXISTS pf_billing_trials (user_id TEXT PRIMARY KEY, started_at TIMESTAMPTZ NOT NULL DEFAULT now())"
 ];
 const CATALOG={quinzenal:{amount:1490,days:15},mensal:{amount:2490,days:30},teste7d:{amount:100,days:7}};
-function rowToOrder(o){return o&&{reference:o.reference,userId:o.user_id,planCode:o.plan_code,amountCents:o.amount_cents,currency:o.currency,providerPaymentId:o.provider_payment_id,status:o.status};}
+function rowToOrder(o){return o&&{reference:o.reference,userId:o.user_id,planCode:o.plan_code,amountCents:o.amount_cents,currency:o.currency,provider:o.provider||"misticpay",providerPaymentId:o.provider_payment_id,status:o.status};}
 export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
  if(typeof pool?.query!=="function"||typeof pool?.connect!=="function")throw Error("Pool PostgreSQL necessário");
  if(initialize)for(const sql of SQL)await pool.query(sql);
@@ -33,8 +34,8 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
      "Seu Pix de teste já foi confirmado. Consulte a validade do seu plano.":
      "Já existe um Pix de R$ 1,00 nesta conta. Não gere outro: use 'Já paguei' para consultar o pagamento."),{status:409});
    }
-   await pool.query("INSERT INTO pf_billing_orders(reference,user_id,plan_code,amount_cents,currency) VALUES($1,$2,$3,$4,$5)",
-    [order.reference,String(order.userId),order.planCode,order.amountCents,order.currency]);
+   await pool.query("INSERT INTO pf_billing_orders(reference,user_id,plan_code,amount_cents,currency,provider) VALUES($1,$2,$3,$4,$5,$6)",
+    [order.reference,String(order.userId),order.planCode,order.amountCents,order.currency,order.provider==="arguspay"?"arguspay":"misticpay"]);
   },
   async attachProviderPayment({reference,providerPaymentId}){
    if(!providerPaymentId)throw Error("Transação ausente");
@@ -48,7 +49,7 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
   async getByReference(ref){
    const r=await pool.query("SELECT * FROM pf_billing_orders WHERE reference=$1",[String(ref)]);return rowToOrder(r.rows[0]);
   },
-  async claimPendingForVerification(limit=10){
+  async claimPendingForVerification(limit=10,provider="misticpay"){
    // Atomic reservation: concurrent app workers never claim the same order.
    // This only reads already-created charges; it never creates a new PIX.
    const count=Math.min(15,Math.max(1,Math.trunc(Number(limit)||10)));
@@ -56,12 +57,12 @@ export async function createMisticPayPostgresStore(pool,{initialize=false}={}){
     SET last_check_at=now()
     WHERE orders.reference IN (
      SELECT reference FROM pf_billing_orders
-     WHERE status='PENDENTE' AND provider_payment_id IS NOT NULL
+     WHERE status='PENDENTE' AND provider=$2 AND provider_payment_id IS NOT NULL
       AND created_at>now()-interval '48 hours'
       AND (last_check_at IS NULL OR last_check_at<now()-interval '75 seconds')
      ORDER BY last_check_at ASC NULLS FIRST,created_at ASC
      LIMIT $1 FOR UPDATE SKIP LOCKED)
-    RETURNING orders.*`,[count]);
+    RETURNING orders.*`,[count,provider]);
    return r.rows.map(rowToOrder);
   },
   async getLatestUserOrder(userId){
