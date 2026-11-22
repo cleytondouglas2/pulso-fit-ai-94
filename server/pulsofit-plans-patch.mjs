@@ -15,6 +15,8 @@ import {existsSync,readFileSync,writeFileSync,readdirSync,statSync} from "node:f
 if (basename(process.argv[1]||"")==="server.mjs") {
  try {
   const script=readFileSync(new URL("./pulsofit-plans-stable.js",import.meta.url),"utf8");
+  const qrcodeLibraryJS=readFileSync(new URL("./pulsofit-qrcodejs.js",import.meta.url),"utf8");
+  const pixQrJS=readFileSync(new URL("./pulsofit-pix-qr.js",import.meta.url),"utf8");
   const authJS=readFileSync(new URL("./pulsofit-auth-ui.js",import.meta.url),"utf8");
   const socialJS=readFileSync(new URL("./pulsofit-social-ui.js",import.meta.url),"utf8");
   const performanceJS=readFileSync(new URL("./pulsofit-performance-ui.js",import.meta.url),"utf8");
@@ -86,13 +88,17 @@ if (basename(process.argv[1]||"")==="server.mjs") {
    new JavaScriptSyntax(navigationGuardJS,{filename:"pulsofit-navigation-guard.js"});
    new JavaScriptSyntax(touchFeedbackJS,{filename:"pulsofit-touch-feedback.js"});
    new JavaScriptSyntax(argusAdminJS,{filename:"pulsofit-argus-admin-ui.js"});
+   new JavaScriptSyntax(qrcodeLibraryJS,{filename:"pulsofit-qrcodejs.js"});
+   new JavaScriptSyntax(pixQrJS,{filename:"pulsofit-pix-qr.js"});
   if(!pushCSS.includes("#pf-push-overlay")||!pushCSS.includes("#pf-push-callout"))throw Error("PULSO_PUSH_UI_CSS_INCOMPLETE");
   if(!outdoorCSS.includes("#pf-outdoor-overlay")||!outdoorCSS.includes("#pf-home-welcome"))throw Error("PULSO_OUTDOOR_CSS_INCOMPLETE");
   if(!trainingLabCSS.includes("#pf-tv-overlay")||!trainingLabCSS.includes("#app .pf-tv-launch"))throw Error("PULSO_TRAINING_LAB_STYLES_INCOMPLETE");
   if(!html5ResponsiveCSS.includes("#app .mobile-nav")||!html5ResponsiveCSS.includes("#pf-eval-overlay"))
    throw Error("PULSO_HTML5_RESPONSIVE_STYLES_INCOMPLETE");
   const marker="pulsofit-stable-plans-20261118";
-  const inject='<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
+  const inject='<script id="pf-local-qrcode-vendor-20261122">'+qrcodeLibraryJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="pf-local-pix-qrcode-20261122">'+pixQrJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
+   '<script id="'+marker+'">'+script.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-api-auth-bridge-20261118">'+authFetchJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-auth-required-20261118">'+authJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
    '<script id="pf-social-ui-20261118">'+socialJS.replace(/<\/script/gi,"<\\/script")+"</script>"+
