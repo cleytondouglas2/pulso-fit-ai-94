@@ -37,6 +37,6 @@ const obs=new MutationObserver(()=>{
  if(document.getElementById('argus-reseller-page-registration'))setup();
  if(card?.isConnected && !document.getElementById('dashboard')?.hidden)refresh();
 });
-obs.observe(document.documentElement,{childList:true,subtree:false});
+obs.observe(document.documentElement,{childList:true,subtree:true});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();

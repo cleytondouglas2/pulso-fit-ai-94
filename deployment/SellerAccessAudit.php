@@ -25,8 +25,17 @@ final class SellerAccessAudit {
         email_sent INTEGER NOT NULL DEFAULT 0,
         occurred_at BIGINT NOT NULL
       )");
-      $db->pdo()->exec('CREATE INDEX IF NOT EXISTS argus_seller_access_account_idx
-        ON argus_seller_access_events(account_id,occurred_at)');
+      if($db->driver()==='mysql'){
+        try{$db->pdo()->exec('CREATE INDEX argus_seller_access_account_idx
+          ON argus_seller_access_events(account_id,occurred_at)');}
+        catch(\PDOException $e){
+          // Existing index on redeploy is expected; table isolation remains.
+          if((string)$e->getCode()!=='42000')throw $e;
+        }
+      }else{
+        $db->pdo()->exec('CREATE INDEX IF NOT EXISTS argus_seller_access_account_idx
+          ON argus_seller_access_events(account_id,occurred_at)');
+      }
     }
     public static function record(Database $db,array $account):?string {
       $secret=self::key();
