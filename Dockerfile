@@ -727,3 +727,12 @@ RUN php -l /tmp/reseller_perf_patch.php \
  && sed -i 's#reseller-dashboard.js?v=reseller-layout-20261120-1#reseller-dashboard.js?v=nav-speed-20261122-1#; s#merchant-portal.js?v=seller-submit-20261122-2#merchant-portal.js?v=nav-speed-20261122-1#; s#revenue-dashboard.js?v=workspace-20261120-4#revenue-dashboard.js?v=nav-speed-20261122-1#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-dashboard.js?v=nav-speed-20261122-1' /var/www/html/public/static/client.html \
  && grep -Fq 'merchant-portal.js?v=nav-speed-20261122-1' /var/www/html/public/static/client.html
+
+
+# Premium ARGUS Pay reseller balance cards, presentation-only; values stay API sourced.
+COPY deployment/reseller-premium-wallet.css /var/www/html/public/static/reseller-premium-wallet.css
+RUN sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-premium-wallet.css?v=20261122-premium-1"></head>#' /var/www/html/public/static/client.html \
+ && test -s /var/www/html/public/static/reseller-premium-wallet.css \
+ && grep -Fq '/static/reseller-premium-wallet.css?v=20261122-premium-1' /var/www/html/public/static/client.html \
+ && grep -Fq 'id="res-welcome"' /var/www/html/public/static/reseller-dashboard.js \
+ && grep -Fq 'id="seller-balances"' /var/www/html/public/static/merchant-portal.js
