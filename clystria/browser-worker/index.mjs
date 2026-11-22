@@ -204,13 +204,19 @@ function asClient(item){
     plan_name:clean(item.plan_name,80),price:clean(item.price,30)};
 }
 async function nextPage(page){
-  const n=page.getByRole('button',{name:/^pr[oó]xim[ao]|^next/i}).last();
-  if(await n.count()&&await n.isEnabled().catch(()=>false)){
-    try{await n.click({timeout:2000});await page.waitForTimeout(700);return true;}catch{}
-  }
-  const a=page.getByRole('link',{name:/^pr[oó]xim[ao]|^next/i}).last();
-  if(await a.count()){
-    try{await a.click({timeout:2000});await page.waitForTimeout(700);return true;}catch{}
+  const elements=[
+   page.getByRole('button',{name:/pr[oó]xim[ao]|next(?: page)?|p[aá]gina seguinte|avan[cç]ar|go to next page/i}).last(),
+   page.getByRole('link',{name:/pr[oó]xim[ao]|next(?: page)?|p[aá]gina seguinte|avan[cç]ar/i}).last(),
+   page.locator('button[aria-label*="next" i],button[title*="próxim" i],button[title*="next" i],.ant-pagination-next button,.p-paginator-next,.MuiTablePagination-actions button:last-child').last()
+  ];
+  for(const target of elements){
+   try{
+    if(!await target.count()||!await target.isVisible()||!await target.isEnabled())continue;
+    if(await target.getAttribute('aria-disabled')==='true'||await target.getAttribute('disabled')!==null)continue;
+    await target.click({timeout:4500});
+    await page.waitForTimeout(1300);
+    return true;
+   }catch{}
   }
   return false;
 }
@@ -251,7 +257,7 @@ async function runJob(job){
       if(!result.recognized||!await nextPage(page))break;
     }
     if(!recognized)failure(422,'Login efetuado, mas nenhuma lista de clientes foi reconhecida. Use Navegador VPS para abrir manualmente a tela Clientes/Linhas e importar a partir dessa página.');
-    if(!records.size&&rawRows)failure(422,'Tabela de clientes localizada, mas faltam login e vencimento reconhecíveis; nenhum registro foi importado.');
+    if(!records.size)failure(422,'O painel carregou, mas não foi possível validar login e vencimento de nenhum cliente. Nenhum dado foi importado. Abra a lista Clientes/Linhas pelo Navegador VPS.');
     return {ok:true,clients:[...records.values()],plans:[],warning:records.size===0?'Lista de clientes vazia ou não reconhecida; revise antes de considerar sincronizado.':'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
   }catch(e){
@@ -359,7 +365,7 @@ async function liveImport(job){
     if(!result.recognized||!await nextPage(page))break;
   }
   if(!recognized)failure(422,'A sessão está aberta, mas não identifiquei a tabela de clientes. Abra a lista de clientes no navegador e tente novamente.');
-  if(rawRows&&!records.size)failure(422,'Encontrei linhas, mas não foi possível validar usuário e vencimento; nenhum dado foi alterado.');
+  if(!records.size)failure(422,'Nenhum cliente com usuário e vencimento válido nesta tela. Abra a lista de Clientes/Linhas e tente novamente; nada foi importado.');
   return {ok:true,clients:[...records.values()],plans:[],
     warning:records.size?'':'A lista encontrada está vazia. Confira o resultado antes de usar.',
     diagnostics:{section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
