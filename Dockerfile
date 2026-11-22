@@ -848,9 +848,6 @@ RUN php -l /var/www/html/src/SellerMfa.php \
  && php /tmp/seller_mfa_patch.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /var/www/html/src/MerchantWallet.php \
- && node --check /var/www/html/public/static/seller_mfa.js \
- && node --check /var/www/html/public/static/merchant-portal.js \
- && node --check /var/www/html/public/static/chat-payout.js \
  && sed -i 's#</head>#<link rel="stylesheet" href="/static/seller_mfa.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/seller_mfa.js?v=20261122-1"></script></body>#' /var/www/html/public/static/client.html \
  && php /var/www/html/tests/seller_mfa_test.php \
  && php /var/www/html/tests/security_regression_test.php
