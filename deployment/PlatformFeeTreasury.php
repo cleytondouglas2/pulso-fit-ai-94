@@ -96,6 +96,18 @@ final class PlatformFeeTreasury {
           WHERE l.operation_kind IN ('deposit_paid','deposit_refund','withdraw_paid')
             AND NOT EXISTS (SELECT 1 FROM argus_platform_fee_journal f
               WHERE f.event_kind=l.operation_kind AND f.operation_id=l.operation_id)
+            AND (
+              (l.operation_kind IN ('deposit_paid','deposit_refund')
+                AND EXISTS(SELECT 1 FROM argus_seller_charges c
+                  WHERE c.id=l.operation_id AND c.account_id=l.account_id
+                    AND c.status IN ('paid','refunded')
+                    AND c.provider_id LIKE 'tr_%'))
+              OR
+              (l.operation_kind='withdraw_paid'
+                AND EXISTS(SELECT 1 FROM argus_seller_withdrawals w
+                  WHERE w.id=l.operation_id AND w.account_id=l.account_id
+                    AND w.status='paid' AND w.provider_tx_id IS NOT NULL))
+            )
           ORDER BY l.created_at ASC, l.operation_kind ASC LIMIT ".$limit);
         foreach($rows as $row){
             try{
