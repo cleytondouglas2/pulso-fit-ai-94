@@ -80,6 +80,43 @@ function api():never{
   if($method==='DELETE'){run('DELETE FROM plans WHERE id=?',[$m[1]]);activity($actor,'plano.excluir',$m[1]);jsonout(['ok'=>true]);}
   [$name,$days,$price,$color]=validPlan(body());run('UPDATE plans SET name=?,days=?,price_cents=?,color=? WHERE id=?',[$name,$days,$price,$color,$m[1]]);activity($actor,'plano.editar',$name);jsonout(['ok'=>true]);
  }
+ // Same-origin authenticated CSRF-protected bridge. Provider secrets stay server-side.
+ if(preg_match('~^/api/panels/([a-f0-9]{32})/browser/(open|frame|action|import|close)$~',$route,$bm)&&$method==='POST'){
+  if(!canManage($role))fail(403,'Acesso restrito');
+  $panel=one('SELECT * FROM panels WHERE id=?',[$bm[1]]);
+  if(!$panel)fail(404,'Painel não encontrado');
+  if(!in_array($panel['kind'],['sigma','painelfoda'],true))fail(422,'Este painel não utiliza o Chromium remoto');
+  if(!in_array($panel['auth_mode'],['credentials','remote_browser'],true))fail(422,'Configure URL, usuário e senha nesta integração');
+  $command=$bm[2];$input=body();
+  $payload=['panel_id'=>$panel['id'],'owner'=>$s['staff_id'],'panel_kind'=>$panel['kind']];
+  if($command==='open'){
+   $payload['url']=$panel['url'];
+   $payload['username']=$panel['login_user'];
+   $payload['password']=$panel['login_pass_enc']?unseal($panel['login_pass_enc']):'';
+  }else{
+   $token=clean($input['session']??'',50);
+   if(!preg_match('/^[a-f0-9-]{36}$/',$token))fail(400,'Sessão do navegador inválida. Abra novamente.');
+   $payload['session']=$token;
+   if($command==='action'){
+    $kind=clean($input['action']??'',22);
+    if(!in_array($kind,['click','type','key','scroll','reload','autofill'],true))fail(400,'Comando inválido');
+    $payload['action']=$kind;
+    foreach(['x','y','dy','text','key'] as $param)if(array_key_exists($param,$input))$payload[$param]=$input[$param];
+   }
+  }
+  try{
+   set_time_limit(110);
+   $remote=chromiumManual($command,$payload,$command==='import'?90:($command==='open'?55:25));
+   if($command==='import'){
+    $clients=$remote['clients']??null;
+    if(!is_array($clients)||count($clients)===0||count($clients)>10000)fail(422,'O navegador não retornou clientes válidos');
+    $result=syncPanel($panel['id'],$actor,['clients'=>$clients,'plans'=>[],'warning'=>'']);
+    jsonout($result);
+   }
+   if($command==='open')activity($actor,'painel.navegador',$panel['name'].': navegador remoto iniciado');
+   jsonout($remote);
+  }catch(Throwable $e){fail(502,'Navegador da VPS: '.$e->getMessage());}
+ }
  if($route==='/api/panels'&&$method==='GET')jsonout(['panels'=>all("SELECT id,name,kind,url,api_url,auth_mode,login_user,login_path,clients_path,plans_path,login_field,password_field,auto_sync,last_attempt,last_sync,last_status,created_at,CASE WHEN token_enc<>'' THEN 1 ELSE 0 END has_token,CASE WHEN login_pass_enc<>'' THEN 1 ELSE 0 END has_credentials FROM panels ORDER BY name")]);
  if($route==='/api/panels'&&$method==='POST'){
   if(!canManage($role))fail(403,'Acesso restrito');$d=panelInput(body());$id=id();run('INSERT INTO panels(id,name,kind,url,api_url,token_enc,auth_mode,login_user,login_pass_enc,login_path,clients_path,plans_path,login_field,password_field,auto_sync,last_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[$id,$d['name'],$d['kind'],$d['url'],$d['api_url'],seal($d['token']),$d['auth_mode'],$d['login_user'],seal($d['login_pass']),$d['login_path'],$d['clients_path'],$d['plans_path'],$d['login_field'],$d['password_field'],$d['auto_sync'],$d['auth_mode']==='browser'?'browser_ready':'pending_validation']);activity($actor,'painel.adicionar',$d['name']);jsonout(['id'=>$id],201);
