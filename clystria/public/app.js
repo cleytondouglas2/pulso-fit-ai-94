@@ -10,6 +10,7 @@ const phone=(p)=>String(p||'').replace(/\D/g,'');
 const icon={chart:'◫',clients:'♧',clock:'◷',money:'◈',plans:'▤',star:'✦'};
 const views={dashboard:'Visão geral',clients:'Clientes',reminders:'Vencimentos',payments:'Financeiro',reports:'Relatórios',panels:'Integrações',plans:'Planos & preços',settings:'Configurações',team:'Equipe',activity:'Histórico',leads:'Funil comercial',interactions:'Atendimentos',invoices:'Faturas',campaigns:'Campanhas',referrals:'Indicações',security:'Segurança 2FA'};
 let state={csrf:'',me:null,view:'dashboard',clients:[],plans:[],panels:[],payments:[],dashboard:null,reminders:[],activity:[],settings:null,staff:[],filter:'all',query:''};
+let vps={panelId:null,session:null,pending:false};
 const api=async (p,opts={})=>{const res=await fetch('/api'+p,{credentials:'same-origin',...opts,headers:{...(opts.body?{'content-type':'application/json'}:{}),...(state.csrf?{'x-csrf-token':state.csrf}:{}),...(opts.headers||{})}});let data=await res.json().catch(()=>({}));if(!res.ok){if(res.status===401&&p!=='/login'){showAuth(true);}throw Error(data.error||'Ocorreu um erro');}return data;};
 const request=(p,method,data)=>api(p,{method,body:JSON.stringify(data)});
 function toast(msg,error=false){let n=document.createElement('div');n.className='toast'+(error?' error':'');n.textContent=(error?'⚠ ':'✦ ')+msg;$('#toast-area').append(n);setTimeout(()=>n.remove(),4800);}
@@ -55,7 +56,13 @@ function renderSettings(){const s=state.settings;$('#content').innerHTML=title('
 async function renderTeam(){if(!state.staff.length){try{state.staff=(await api('/staff')).staff;}catch(e){$('#content').innerHTML=title('ADMINISTRAÇÃO','Equipe & permissões','Sua conta não tem permissão para visualizar usuários.');return;}}$('#content').innerHTML=title('CONTROLE DE ACESSO','Sua equipe','Crie acessos diferentes e acompanhe os responsáveis pela operação.',state.me.role==='admin'?btn('＋ Novo membro','new-staff','primary'):'')+`<section class="panel-card"><div class="section-row"><h2>Membros da equipe</h2><span class="muted small">${state.staff.length} cadastrados</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Adicionado</th></tr></thead><tbody>${state.staff.map((u,i)=>`<tr><td><div class="client-cell">${initials(u.name,i)}<strong>${esc(u.name)}</strong></div></td><td>${esc(u.email)}</td><td><span class="status active">${{admin:'Administrador',manager:'Gerente',operator:'Operador'}[u.role]}</span></td><td>${esc(u.created_at.slice(0,10))}</td></tr>`).join('')}</tbody></table></div></section><div class="callout mt20"><b>Perfis:</b> Administrador cria usuários, gerentes gerenciam clientes, planos e integrações; operadores acompanham e atualizam assinaturas e pagamentos. Ações sensíveis ficam registradas no histórico.</div>`;}
 async function renderActivity(){let data=await api('/activity');state.activity=data.activity;$('#content').innerHTML=title('AUDITORIA & SEGURANÇA','Histórico de ações','Acompanhe as principais operações e mudanças feitas por sua equipe.')+`<section class="panel-card"><div class="section-row"><h2>Atividade recente</h2><span class="muted small">${data.activity.length} eventos</span></div>${data.activity.length?data.activity.map(a=>`<div class="activity-row"><span class="activity-dot"></span><div><strong>${esc(a.action.replaceAll('.', ' › '))}</strong><small>${esc(a.actor)} · ${esc(a.detail)}</small></div><time>${esc(a.created_at)}</time></div>`).join(''):`<div class="empty"><h3>Sem atividades registradas</h3></div>`}</section>`;}
 function modal(title,html,onSubmit){$('#modal-title').textContent=title;$('#modal-body').innerHTML=html;$('#modal').classList.remove('hide');document.body.style.overflow='hidden';let form=$('#modal-form');if(form&&onSubmit){form.onsubmit=async e=>{e.preventDefault();let b=$('button[type=submit]',form);if(b)b.disabled=true;try{await onSubmit(form,Object.fromEntries(new FormData(form)));}catch(error){toast(error.message,true);}finally{if(b)b.disabled=false;}};}}
-function closeModal(){$('#modal').classList.add('hide');document.body.style.overflow='';$('#modal-body').innerHTML='';}
+function closeModal(){
+ if(vps.session){
+  const old=vps;vps={panelId:null,session:null,pending:false};
+  request('/panels/'+old.panelId+'/browser/close','POST',{session:old.session}).catch(()=>{});
+ }else vps={panelId:null,session:null,pending:false};
+ $('#modal').classList.add('hide');document.body.style.overflow='';$('#modal-body').innerHTML='';
+}
 function foot(label='Salvar alterações'){return `<div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn primary">${label} ↗</button></div>`;}
 const input=(label,name,val='',type='text',extra='')=>`<label>${label}<input name="${name}" type="${type}" value="${esc(val)}" ${extra}></label>`;
 const fieldSelect=(label,name,list,selected,placeholder='Selecione')=>`<label>${label}<select name="${name}"><option value="">${esc(placeholder)}</option>${list.map(o=>`<option value="${esc(o.id)}" ${String(o.id)===String(selected)?'selected':''}>${esc(o.name)}</option>`).join('')}</select></label>`;
@@ -131,12 +138,108 @@ function importModal(panelId=''){
   }catch(ex){toast('Não foi possível ler o arquivo: '+ex.message,true);}
  };
 }
+
+function drawVps(frame){
+ if(!frame?.ok||!/^data:image\/jpeg;base64,/.test(frame.image||''))throw Error('O navegador não retornou imagem válida');
+ if(!$('#vps-shot'))return;
+ vps.session=frame.session;
+ $('#vps-shot').src=frame.image;
+ $('#vps-host').textContent=frame.host||'Navegador da VPS';
+ $('#vps-result').textContent=frame.verification?
+  'Verificação detectada. Conclua manualmente nesta tela, se o fornecedor permitir.':
+  frame.password_form?'Tela de login disponível. Preencha os campos ou use o login salvo.':
+  'Navegador conectado. Abra Clientes após o login e importe.';
+}
+async function vpsCommand(action,data={}){
+ if(vps.pending||!vps.session)return;
+ const panelId=vps.panelId,session=vps.session;
+ vps.pending=true;
+ const status=$('#vps-result');
+ if(status)status.textContent='Enviando comando ao Chromium...';
+ try{
+  if(action==='import'){
+   const r=await request('/panels/'+panelId+'/browser/import','POST',{session});
+   if(status)status.textContent='Importação concluída';
+   toast('Importação: '+r.created+' novos, '+r.updated+' atualizados, '+r.ignored+' ignorados');
+   await refresh();
+  }else{
+   const endpoint=action==='frame'?'frame':'action';
+   const next=await request('/panels/'+panelId+'/browser/'+endpoint,'POST',
+    {session,...(endpoint==='action'?{action,...data}:{})});
+   if(vps.panelId===panelId&&$('#vps-shot'))drawVps(next);
+  }
+ }catch(e){
+  if(status)status.textContent='Falha: '+e.message;
+  toast(e.message,true);
+ }finally{vps.pending=false;}
+}
+async function openVps(panelId){
+ const p=state.panels.find(x=>x.id===panelId);
+ if(!p)return toast('Painel não encontrado',true);
+ if(vps.session||vps.pending)closeModal();
+ vps={panelId,session:null,pending:true};
+ const html='<div class="vps-viewer">'+
+  '<div class="vps-header"><strong id="vps-host">Conectando à VPS...</strong><span id="vps-result">Abrindo sessão Chromium</span></div>'+
+  '<div class="vps-screen"><img id="vps-shot" alt="Tela do navegador remoto" draggable="false"><div class="vps-placeholder">A tela aparecerá aqui.</div></div>'+
+  '<div class="vps-buttons">'+
+  '<button type="button" class="btn ghost" id="vps-refresh">↻ Atualizar tela</button>'+
+  '<button type="button" class="btn ghost" id="vps-zoom">⌕ Ampliar</button>'+
+  '<button type="button" class="btn ghost" id="vps-reload">↻ Recarregar página</button>'+
+  '<button type="button" class="btn ghost" id="vps-autofill">Preencher login salvo</button>'+
+  '<button type="button" class="btn ghost" id="vps-tab">Tab</button>'+
+  '<button type="button" class="btn ghost" id="vps-enter">Enter</button>'+
+  '<button type="button" class="btn ghost" id="vps-backspace">⌫ Apagar</button>'+
+  '<button type="button" class="btn ghost" id="vps-up">↑ Rolar</button>'+
+  '<button type="button" class="btn ghost" id="vps-down">↓ Rolar</button></div>'+
+  '<div class="vps-type"><input id="vps-input" autocomplete="off" placeholder="Digite para o campo selecionado"><button type="button" class="btn ghost" id="vps-type">Digitar</button></div>'+
+  '<button type="button" class="btn primary vps-import" id="vps-import">↓ Importar clientes desta sessão</button>'+
+  '<p class="helper-text">Toque na imagem para clicar no navegador real da VPS. Se o Cloudflare exigir uma verificação humana, conclua-a nesta sessão, conforme as regras do fornecedor. O Clystria não resolve desafios automaticamente. Depois abra Clientes e importe. A sessão expira por inatividade.</p></div>';
+ modal('Abrir navegador — '+p.name,html);
+ const img=$('#vps-shot');
+ img.onclick=e=>{
+  if(!vps.session||vps.pending)return;
+  const rect=img.getBoundingClientRect();
+  if(!rect.width||!rect.height)return;
+  vpsCommand('click',{x:Math.max(0,Math.min(960,(e.clientX-rect.left)*960/rect.width)),
+    y:Math.max(0,Math.min(720,(e.clientY-rect.top)*720/rect.height))});
+ };
+ $('#vps-refresh').onclick=()=>vpsCommand('frame');
+ $('#vps-zoom').onclick=()=>{
+  const screen=$('.vps-screen');screen.classList.toggle('zoom');
+  $('#vps-zoom').textContent=screen.classList.contains('zoom')?'⌕ Ajustar':'⌕ Ampliar';
+ };
+ $('#vps-reload').onclick=()=>vpsCommand('reload');
+ $('#vps-autofill').onclick=()=>vpsCommand('autofill');
+ $('#vps-tab').onclick=()=>vpsCommand('key',{key:'Tab'});
+ $('#vps-enter').onclick=()=>vpsCommand('key',{key:'Enter'});
+ $('#vps-backspace').onclick=()=>vpsCommand('key',{key:'Backspace'});
+ $('#vps-up').onclick=()=>vpsCommand('scroll',{dy:-520});
+ $('#vps-down').onclick=()=>vpsCommand('scroll',{dy:520});
+ $('#vps-import').onclick=()=>vpsCommand('import');
+ $('#vps-type').onclick=()=>{const inp=$('#vps-input');if(!inp.value)return;const entered=inp.value;inp.value='';vpsCommand('type',{text:entered});};
+ $('#vps-input').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#vps-type').click();}};
+ try{
+  const frame=await request('/panels/'+panelId+'/browser/open','POST',{});
+  if(vps.panelId!==panelId||$('#modal').classList.contains('hide')){
+   request('/panels/'+panelId+'/browser/close','POST',{session:frame.session}).catch(()=>{});
+   return;
+  }
+  drawVps(frame);
+ }catch(e){
+  if($('#vps-result'))$('#vps-result').textContent='Não foi possível abrir: '+e.message;
+  toast(e.message,true);
+ }finally{vps.pending=false;}
+}
+
 function openPanel(p){try{let u=new URL(p.url);if(!['http:','https:'].includes(u.protocol))throw Error('URL não aceita');window.open(u.href,'_blank','noopener,noreferrer');toast('Painel aberto no navegador. Faça login na página original.');}catch(e){toast(e.message,true);}}
 function whatsapp(c){let n=phone(c.phone);if(n.length===10||n.length===11)n='55'+n;if(n.length<12){toast('Informe um WhatsApp válido no cadastro do cliente.',true);return;}let entry=state.reminders.find(r=>r.id===c.id),msg=entry?.message||state.settings.reminder_template.replaceAll('{nome}',c.name).replaceAll('{vencimento}',fdate(c.due_date)).replaceAll('{plano}',c.plan_name||'').replaceAll('{valor}',brl(c.price));window.open('https://wa.me/'+n+'?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');api('/reminders/mark',{method:'POST',body:JSON.stringify({client_id:c.id,channel:'whatsapp'})}).catch(()=>{});toast('Conversa aberta. Confirme o envio no WhatsApp.');}
 async function clickAction(b){let a=b.dataset.action,id=b.dataset.id;try{
 if(a==='close-modal')return closeModal();if(a==='new-client')return clientModal(null,b.dataset.plan||'');if(a==='edit-client')return clientModal(state.clients.find(c=>c.id===id));if(a==='renew-client')return renewModal(state.clients.find(c=>c.id===id));if(a==='new-payment')return paymentModal();if(a==='new-panel')return panelModal();if(a==='new-plan')return planModal();if(a==='edit-plan')return planModal(state.plans.find(p=>p.id===id));if(a==='new-staff')return teamModal();if(a==='browser-check'){const result=await api('/browser/status');toast(result.ok?'Chromium em servidor: pronto para tentar a autenticação.':'Chromium ainda não está pronto.',!result.ok);return;}if(a==='import')return importModal();if(a==='browser-import')return importModal(id);if(a==='go-settings')return route('settings');if(a==='go-reminders')return route('reminders');if(a==='export'){window.location.href='/api/export/clients';return toast('Exportação iniciada');}if(a==='whatsapp')return whatsapp(state.clients.find(c=>c.id===id));
 if(a==='reveal-secret'){const r=await api('/clients/'+id+'/secret');$('#secret-text').textContent=r.password||'(não cadastrada)';return;}
-if(a==='open-panel')return openPanel(state.panels.find(p=>p.id===id));
+if(a==='open-panel'){const p=state.panels.find(x=>x.id===id);if(!p)return;
+ if(['sigma','painelfoda'].includes(p.kind)&&['credentials','remote_browser'].includes(p.auth_mode))return openVps(id);
+ return openPanel(p);
+}
 if(a==='edit-panel')return panelModal(state.panels.find(p=>p.id===id));
 if(a==='sync-panel'){if(state.panels.find(p=>p.id===id)?.auth_mode==='browser'){toast('Modo navegador: importe o arquivo exportado. Para sincronizar automaticamente, configure API autorizada.',true);return;}const label=b.textContent;b.disabled=true;b.textContent='Sincronizando...';try{let r=await request('/panels/'+id+'/sync','POST',{});await afterSave(`Sincronização: ${r.created} novos, ${r.updated} atualizados, ${r.plans_created} planos, ${r.ignored} ignorados`+(r.warning?" · "+r.warning:""));}catch(e){await refresh();route('panels');toast(e.message,true);}finally{b.disabled=false;b.textContent=label;}return;}
 if(a==='remove-plan'){if(!confirm('Excluir este plano? Os clientes permanecem cadastrados.'))return;await request('/plans/'+id,'DELETE',{});return afterSave('Plano excluído');}
