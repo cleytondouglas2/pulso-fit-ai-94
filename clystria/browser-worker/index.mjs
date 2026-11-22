@@ -70,29 +70,60 @@ async function maybeLogin(page,username,password){
   return 'form_submitted';
 }
 async function navigateClients(page){
-  const current=await extract(page);
-  if(current.items.length&&current.recognized)return 'already_on_clients';
-  const sections=page.locator('a, button, [role="menuitem"], [role="tab"], [role="link"], [data-menu], [data-testid]');
-  const count=Math.min(await sections.count(),260);
-  let candidate=null;
-  for(let i=0;i<count;i++){
-    const node=sections.nth(i);
-    const label=clean(await node.innerText({timeout:350}).catch(()=>''),90).replace(/\s+/g,' ').trim();
-    if(!label||label.length>60||!/^(clientes|assinantes|linhas|usuários|usuarios|meus clientes|minhas linhas|gerenciar clientes|lista de clientes|lista de usuários|lista de usuarios|clientes ativos|gerenciar linhas|acessos)(\s*\(\d+\))?$/i.test(label))continue;
-    const href=await node.getAttribute('href').catch(()=>null);
-    if(href&&href!=='#'){
-      try{const url=new URL(href,page.url());if(url.origin!==new URL(page.url()).origin)continue;}catch{continue;}
+  // Inspect only visible navigation controls; never guess private endpoints.
+  const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  const validLabel=/\b(clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?)\b/i;
+  const sectionLabel=/^(meus? |minhas? |todos? os? |lista de |listar |gerenciar |gestao de |gestao |ver |painel de |area de |controle de |consultar |relacao de |administrar )*(clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?)( (ativos?|cadastrados?|vencidos?|pagos?|iptv|online|todos?|lista|gerenciar|\d+))*$/i;
+  const routeLabel=/(^|\/)(clients?|customers?|subscribers?|assinantes?|usuarios?|users?|linhas?|lines?|subscriptions?)(\/|$|[?#_-])/i;
+  const visited=new Set();
+  let last='menu_ausente';
+  for(let step=0;step<4;step++){
+    const found=await extract(page);
+    if(found.items.some(i=>i.username&&i.due_date))return step?'secao_clientes_aberta':'lista_ja_aberta';
+    const candidates=await page.evaluate(()=>{
+      const selector='a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link';
+      const nodes=Array.from(document.querySelectorAll(selector)).slice(0,450);
+      return nodes.map((el,index)=>{
+        const rect=el.getBoundingClientRect();
+        if(rect.width<3||rect.height<3)return null;
+        const text=String(el.innerText||el.getAttribute('aria-label')||el.getAttribute('title')||'').replace(/\s+/g,' ').trim().slice(0,100);
+        const href=String(el.getAttribute('href')||'').slice(0,300);
+        return {index,text,href,tag:el.tagName,expanded:el.getAttribute('aria-expanded')};
+      }).filter(Boolean);
+    }).catch(()=>[]);
+    const scored=candidates.map(c=>{
+      const label=normalize(c.text).replace(/\b\d+\b/g,'').trim();
+      let points=0;
+      if(sectionLabel.test(label))points+=18;
+      if(validLabel.test(label)&&label.length<42)points+=7;
+      if(routeLabel.test(c.href))points+=16;
+      if(/\blista\b|\bgerenciar\b|\bmeus\b/.test(label))points+=2;
+      if(/\/(logout|sair|delete|remove|deletar|excluir|novo|create|add)(\/|$|\?)/i.test(c.href)||/remover|excluir|deletar|novo |criar |adicionar |deletar/i.test(label))points=-999;
+      const key=String(c.index)+'|'+label+'|'+c.href;
+      if(visited.has(key))points=-999;
+      return {...c,points,key};
+    }).filter(c=>c.points>=14).sort((a,b)=>b.points-a.points);
+    if(!scored.length)return last;
+    let clicked=false;
+    for(const c of scored.slice(0,8)){
+      visited.add(c.key);
+      try{
+        const control=page.locator('a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link').nth(c.index);
+        if(c.href&&c.href!=='#'){
+          const target=new URL(c.href,page.url());
+          if(target.origin!==new URL(page.url()).origin)continue;
+        }
+        if(!await control.isVisible()||!await control.isEnabled())continue;
+        await control.click({timeout:4500});
+        await page.waitForLoadState('domcontentloaded',{timeout:6500}).catch(()=>{});
+        await page.waitForTimeout(1350);
+        last='menu_clientes_acionado';
+        clicked=true;break;
+      }catch{}
     }
-    candidate=node;break;
+    if(!clicked)return 'menu_clientes_sem_acesso';
   }
-  if(!candidate)return 'client_menu_not_found';
-  const name=clean(await candidate.innerText().catch(()=>''),70);
-  try{
-    await candidate.click({timeout:5000});
-    await page.waitForLoadState('domcontentloaded',{timeout:9000}).catch(()=>{});
-    await page.waitForTimeout(1800);
-    return name||'client_section';
-  }catch{return 'menu_click_failed';}
+  return last;
 }
 async function extract(page){
  const results={items:[],recognized:0,tables:0,grids:0,frames:0};
