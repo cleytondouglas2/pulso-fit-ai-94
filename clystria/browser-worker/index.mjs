@@ -10,6 +10,7 @@ const ALLOW=(process.env.ALLOWED_PANEL_HOSTS||'').toLowerCase().split(',').map(s
 const TRUSTED_REDIRECT_DOMAINS=(process.env.ALLOWED_PANEL_REDIRECT_SUFFIXES||'').toLowerCase().split(',').map(s=>s.trim()).filter(s=>/^[a-z0-9.-]+\.[a-z]{2,}$/.test(s)&&s.split('.').length>=2);
 const BROWSER_PATH=process.env.CHROMIUM_PATH||'/usr/bin/chromium';
 const CLOUDFLARE_WIDGET_HOST=process.env.CLOUDFLARE_WIDGET_HOST==='challenges.cloudflare.com'?'challenges.cloudflare.com':'';
+const CLOUDFLARE_OFFICIAL_RESOURCE_HOSTS=new Set(['challenges.cloudflare.com','hagen.challenges.cloudflare.com','brunhild.challenges.cloudflare.com']);
 let busy=false;
 const json=(res,status,payload)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});res.end(JSON.stringify(payload));};
 const failure=(code,msg)=>{const e=new Error(msg);e.status=code;throw e;};
@@ -31,11 +32,16 @@ async function safeUrl(input,documentRequest=false,allowCloudflareSubframe=false
   if(u.protocol!=='https:'||u.username||u.password||u.port&&u.port!=='443')failure(400,'Somente URLs HTTPS comuns são aceitas');
   const host=u.hostname.toLowerCase();
   if(net.isIP(host)||!host.includes('.')||host==='localhost'||host.endsWith('.local'))failure(400,'Host não autorizado');
+  // Only verified Cloudflare challenge resource hosts are exempt from the Node DNS precheck.
+  // Cloudflare documents these subdomains can fail DNS lookups intentionally; the browser
+  // must perform its own HTTPS/TLS validation. Top-level navigation stays restricted.
+  const isOfficialChallengeResource=!!CLOUDFLARE_WIDGET_HOST&&
+    CLOUDFLARE_OFFICIAL_RESOURCE_HOSTS.has(host)&&(!documentRequest||allowCloudflareSubframe);
   if(documentRequest){
     const sameProvider=TRUSTED_REDIRECT_DOMAINS.some(domain=>host===domain||host.endsWith('.'+domain));
-    const cloudflareWidget=!!CLOUDFLARE_WIDGET_HOST&&allowCloudflareSubframe&&host===CLOUDFLARE_WIDGET_HOST;
-    if(!ALLOW.includes(host)&&!sameProvider&&!cloudflareWidget)failure(403,'Host não está na lista de painéis permitidos');
+    if(!ALLOW.includes(host)&&!sameProvider&&!isOfficialChallengeResource)failure(403,'Host não está na lista de painéis permitidos');
   }
+  if(isOfficialChallengeResource)return u;
   const addresses=await dns.resolve4(host).catch(()=>[]);
   if(!addresses.length||addresses.some(isBadIp))failure(403,'DNS do painel não permitido');
   return u;
@@ -463,7 +469,7 @@ async function runJob(job){
         if(req.isNavigationRequest()){
           try{
             const target=new URL(url);
-            isCloudflareFrame=!!CLOUDFLARE_WIDGET_HOST&&target.hostname===CLOUDFLARE_WIDGET_HOST&&!!req.frame().parentFrame();
+            isCloudflareFrame=!!CLOUDFLARE_WIDGET_HOST&&CLOUDFLARE_OFFICIAL_RESOURCE_HOSTS.has(target.hostname)&&!!req.frame().parentFrame();
           }catch{}
         }
         await safeUrl(url,req.isNavigationRequest(),isCloudflareFrame);
@@ -586,6 +592,11 @@ async function runJob(job){
       };
       console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify(fingerprint));
       const challengeVisible=await page.evaluate(()=>!!document.querySelector('iframe[src*="challenges.cloudflare.com"],.cf-turnstile,[data-sitekey],[id*="challenge" i],[class*="turnstile" i]')).catch(()=>false);
+      const challengeFrame=page.frames().some(frame=>{try{return /(^|\\.)challenges\\.cloudflare\\.com$/i.test(new URL(frame.url()).hostname);}catch{return false;}});
+      if((challengeVisible||challengeFrame)&&login==='sem_formulario_login_visivel'){
+        console.log('CLYSTRIA_CHALLENGE_PENDING '+JSON.stringify({stage:destination,frames:page.frames().length,controls:state.controls,blockedResources:diagnostics.blockedResources}));
+        failure(409,'O Zeus carregou uma verificação Cloudflare antes de exibir o login. Não foi possível confirmar a autenticação; é necessário concluir a verificação por meio autorizado.');
+      }
       const problem=challengeVisible?
         'O Zeus está aguardando uma verificação Cloudflare na VPS; a autenticação precisa ser concluída por um método autorizado.':
         state.contentType.toLowerCase().includes('json')?
