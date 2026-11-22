@@ -9,7 +9,7 @@ function publicUrl(string $input):string {
 function panelInput(array $x,?array $old=null):array {
  $name=clean($x['name']??'',90);$kind=clean($x['kind']??'',40);$url=publicUrl(clean($x['url']??'',500));$mode=clean($x['auth_mode']??'credentials',30);
  if(!$name||!in_array($kind,['sigma','painelfoda','xtream','custom'],true))throw new InvalidArgumentException('Nome ou tipo de painel inválido');
- if(!in_array($mode,['credentials','token'],true))throw new InvalidArgumentException('Tipo de autenticação inválido');
+ if(!in_array($mode,['credentials','token','browser'],true))throw new InvalidArgumentException('Tipo de autenticação inválido');
  $apiUrl=empty($x['api_url'])?'':publicUrl(clean($x['api_url'],500));$user=clean($x['login_user']??'',140);$pass=(string)($x['login_pass']??'');$token=clean($x['token']??'',400);
  if(strlen($pass)>500)throw new InvalidArgumentException('Senha do painel muito longa');
  if($mode==='credentials'&&(!$user||(!$pass&&empty($old['login_pass_enc']))))throw new InvalidArgumentException('Informe usuário e senha para conectar ao painel');
@@ -17,7 +17,7 @@ function panelInput(array $x,?array $old=null):array {
  foreach(['login_path'=>'/api/login','clients_path'=>'/api/clients','plans_path'=>'/api/plans'] as $f=>$fallback){$path=clean($x[$f]??$fallback,256);if($path!==''&&(!str_starts_with($path,'/')||str_starts_with($path,'//')||str_contains($path,'..')||!preg_match('~^/[a-zA-Z0-9_./?=&%-]*$~',$path)))throw new InvalidArgumentException('Rota da API inválida');$paths[$f]=$path;}
  $loginField=clean($x['login_field']??'username',40);$passwordField=clean($x['password_field']??'password',40);
  if(!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/',$loginField)||!preg_match('/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/',$passwordField)||$loginField===$passwordField)throw new InvalidArgumentException('Campos de autenticação inválidos');
- return ['name'=>$name,'kind'=>$kind,'url'=>$url,'api_url'=>$apiUrl,'auth_mode'=>$mode,'login_user'=>$user,'login_pass'=>$pass,'token'=>$token,'login_path'=>$paths['login_path'],'clients_path'=>$paths['clients_path'],'plans_path'=>$paths['plans_path'],'login_field'=>$loginField,'password_field'=>$passwordField,'auto_sync'=>empty($x['auto_sync'])?0:1];
+ return ['name'=>$name,'kind'=>$kind,'url'=>$url,'api_url'=>$apiUrl,'auth_mode'=>$mode,'login_user'=>$user,'login_pass'=>$pass,'token'=>$token,'login_path'=>$paths['login_path'],'clients_path'=>$paths['clients_path'],'plans_path'=>$paths['plans_path'],'login_field'=>$loginField,'password_field'=>$passwordField,'auto_sync'=>($mode==='browser'||empty($x['auto_sync']))?0:1];
 }
 function goodIP(string $ip):bool {
  if(!filter_var($ip,FILTER_VALIDATE_IP,FILTER_FLAG_NO_PRIV_RANGE|FILTER_FLAG_NO_RES_RANGE))return false;
@@ -87,6 +87,7 @@ function normalizeClient(array $x,array $plans):?array {
  return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
 }
 function fetchPanel(array $panel):array {
+ if($panel['auth_mode']==='browser')throw new RuntimeException('Login pelo Safari/Chrome não libera acesso do servidor à sessão externa. Abra o painel no navegador e importe o arquivo de clientes exportado, ou configure uma API autorizada.');
  if($panel['auth_mode']==='token'){
   if(!$panel['api_url']||!$panel['token_enc'])throw new RuntimeException('Configure endpoint e token autorizado');
   $response=requestPanel($panel['api_url'],'GET',null,['Authorization: Bearer '.unseal($panel['token_enc'])],'consulta de clientes');

@@ -8,7 +8,7 @@ function csvCell(mixed $x):string{$s=(string)($x??'');if(preg_match('/^[=+@\-\t\
 function csvRows(string $csv):array {
  if(strlen($csv)>1100000)throw new InvalidArgumentException('Arquivo CSV muito grande');
  $csv=preg_replace('/^\xEF\xBB\xBF/','',$csv);
- $first=strtok($csv,"\r\n")?:'';$delimiter=substr_count($first,';')>substr_count($first,',')?';':',';
+ $first=strtok($csv,"\r\n")?:'';$delimiter=substr_count($first,"\t")>max(substr_count($first,';'),substr_count($first,','))?"\t":(substr_count($first,';')>substr_count($first,',')?';':',');
  $f=fopen('php://temp','w+');fwrite($f,$csv);rewind($f);$head=fgetcsv($f,0,$delimiter,'"','');if($head===false){fclose($f);return [];}
  $head=array_map(function($s){$s=strtolower(trim($s));return strtr($s,['á'=>'a','à'=>'a','â'=>'a','ã'=>'a','é'=>'e','ê'=>'e','í'=>'i','ó'=>'o','ô'=>'o','õ'=>'o','ú'=>'u','ç'=>'c']);},$head);
  $result=[];while(($cells=fgetcsv($f,0,$delimiter,'"',''))!==false){if(!array_filter($cells,fn($v)=>trim($v)!==''))continue;$result[]=array_combine($head,array_slice(array_pad($cells,count($head),''),0,count($head)));if(count($result)>1000)break;}fclose($f);return $result;
@@ -76,12 +76,12 @@ function api():never{
  }
  if($route==='/api/panels'&&$method==='GET')jsonout(['panels'=>all("SELECT id,name,kind,url,api_url,auth_mode,login_user,login_path,clients_path,plans_path,login_field,password_field,auto_sync,last_attempt,last_sync,last_status,created_at,CASE WHEN token_enc<>'' THEN 1 ELSE 0 END has_token,CASE WHEN login_pass_enc<>'' THEN 1 ELSE 0 END has_credentials FROM panels ORDER BY name")]);
  if($route==='/api/panels'&&$method==='POST'){
-  if(!canManage($role))fail(403,'Acesso restrito');$d=panelInput(body());$id=id();run('INSERT INTO panels(id,name,kind,url,api_url,token_enc,auth_mode,login_user,login_pass_enc,login_path,clients_path,plans_path,login_field,password_field,auto_sync,last_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[$id,$d['name'],$d['kind'],$d['url'],$d['api_url'],seal($d['token']),$d['auth_mode'],$d['login_user'],seal($d['login_pass']),$d['login_path'],$d['clients_path'],$d['plans_path'],$d['login_field'],$d['password_field'],$d['auto_sync'],'pending_validation']);activity($actor,'painel.adicionar',$d['name']);jsonout(['id'=>$id],201);
+  if(!canManage($role))fail(403,'Acesso restrito');$d=panelInput(body());$id=id();run('INSERT INTO panels(id,name,kind,url,api_url,token_enc,auth_mode,login_user,login_pass_enc,login_path,clients_path,plans_path,login_field,password_field,auto_sync,last_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[$id,$d['name'],$d['kind'],$d['url'],$d['api_url'],seal($d['token']),$d['auth_mode'],$d['login_user'],seal($d['login_pass']),$d['login_path'],$d['clients_path'],$d['plans_path'],$d['login_field'],$d['password_field'],$d['auto_sync'],$d['auth_mode']==='browser'?'browser_ready':'pending_validation']);activity($actor,'painel.adicionar',$d['name']);jsonout(['id'=>$id],201);
  }
  if(preg_match('~^/api/panels/([a-f0-9]{32})$~',$route,$m)&&in_array($method,['PUT','DELETE'],true)){
   if(!canManage($role))fail(403,'Acesso restrito');$old=one('SELECT * FROM panels WHERE id=?',[$m[1]]);if(!$old)fail(404,'Painel não encontrado');
   if($method==='DELETE'){run('DELETE FROM panels WHERE id=?',[$m[1]]);activity($actor,'painel.remover',$old['name']);jsonout(['ok'=>true]);}
-  $d=panelInput(body(),$old);run('UPDATE panels SET name=?,kind=?,url=?,api_url=?,token_enc=?,auth_mode=?,login_user=?,login_pass_enc=?,login_path=?,clients_path=?,plans_path=?,login_field=?,password_field=?,auto_sync=?,last_status=? WHERE id=?',[$d['name'],$d['kind'],$d['url'],$d['api_url'],$d['token']?seal($d['token']):$old['token_enc'],$d['auth_mode'],$d['login_user'],$d['login_pass']?seal($d['login_pass']):$old['login_pass_enc'],$d['login_path'],$d['clients_path'],$d['plans_path'],$d['login_field'],$d['password_field'],$d['auto_sync'],'pending_validation',$m[1]]);activity($actor,'painel.editar',$d['name']);jsonout(['ok'=>true]);
+  $d=panelInput(body(),$old);run('UPDATE panels SET name=?,kind=?,url=?,api_url=?,token_enc=?,auth_mode=?,login_user=?,login_pass_enc=?,login_path=?,clients_path=?,plans_path=?,login_field=?,password_field=?,auto_sync=?,last_status=? WHERE id=?',[$d['name'],$d['kind'],$d['url'],$d['api_url'],$d['auth_mode']==='browser'?'':($d['token']?seal($d['token']):$old['token_enc']),$d['auth_mode'],$d['login_user'],$d['auth_mode']==='browser'?'':($d['login_pass']?seal($d['login_pass']):$old['login_pass_enc']),$d['login_path'],$d['clients_path'],$d['plans_path'],$d['login_field'],$d['password_field'],$d['auto_sync'],$d['auth_mode']==='browser'?'browser_ready':'pending_validation',$m[1]]);activity($actor,'painel.editar',$d['name']);jsonout(['ok'=>true]);
  }
  if(preg_match('~^/api/panels/([a-f0-9]{32})/sync$~',$route,$m)&&$method==='POST'){
   if(!canManage($role))fail(403,'Acesso restrito');try{$data=syncPanel($m[1],$actor);}catch(Throwable $e){fail(502,'Falha de sincronização: '.$e->getMessage());}jsonout($data);
@@ -113,12 +113,47 @@ function api():never{
   foreach(all('SELECT c.*,p.name plan_name,pa.name panel_name FROM clients c LEFT JOIN plans p ON p.id=c.plan_id LEFT JOIN panels pa ON pa.id=c.panel_id WHERE c.archived_at IS NULL ORDER BY c.name') as $c)fputcsv($out,array_map('csvCell',[$c['name'],$c['phone'],$c['email'],$c['username'],$c['status'],$c['due_date'],$c['plan_name']??'',number_format((int)$c['price_cents']/100,2,'.',''),$c['panel_name']??'',$c['device'],$c['notes']]),',','"','');exit;
  }
  if($route==='/api/import/clients'&&$method==='POST'){
-  if(!canManage($role))fail(403,'Acesso restrito');$x=body();$rows=csvRows((string)($x['csv']??''));if(count($rows)>1000)fail(400,'Limite de 1.000 clientes por importação');$panelId=$x['panel_id']??'';if($panelId&&!one('SELECT id FROM panels WHERE id=?',[$panelId]))fail(400,'Painel não encontrado');$created=$ignored=0;$db=getDb();$db->beginTransaction();try{
-   foreach($rows as $r){$username=clean($r['login']??$r['username']??$r['usuario']??'',100);$name=clean($r['nome']??$r['name']??$r['cliente']??$username,100);$due=parseDue($r['vencimento']??$r['due_date']??$r['expiration']??'');
-    if(!$name||!$due||($username&&one("SELECT 1 FROM clients WHERE username=? AND COALESCE(panel_id,'')=? AND archived_at IS NULL",[$username,$panelId]))){$ignored++;continue;}
-    $price=(string)($r['valor']??$r['price']??'0');$price=str_replace(',','.',preg_replace('/[R$\s]/','',$price));if(!is_numeric($price)||$price<0)$price='0';$status=in_array($r['status']??'',['active','trial','paused','canceled'],true)?$r['status']:'active';
-    run('INSERT INTO clients(id,name,phone,email,username,password_enc,status,due_date,panel_id,price_cents,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[id(),$name,clean($r['telefone']??$r['phone']??'',40),clean($r['email']??'',180),$username,seal(clean($r['senha']??$r['password']??'',180)),$status,$due,$panelId?:null,money($price),clean($r['observacoes']??$r['notes']??'',3000)]);$created++;
-   }$db->commit();}catch(Throwable $e){$db->rollBack();throw $e;}activity($actor,'cliente.importar',"$created clientes importados");jsonout(['created'=>$created,'ignored'=>$ignored,'total'=>count($rows)]);
+  if(!canManage($role))fail(403,'Acesso restrito');
+  $x=body();$rows=csvRows((string)($x['csv']??''));
+  if(count($rows)>1000)fail(400,'Limite de 1.000 clientes por importação');
+  $panelId=clean($x['panel_id']??'',80);
+  if($panelId&&!one('SELECT id FROM panels WHERE id=?',[$panelId]))fail(400,'Painel não encontrado');
+  $upsert=!empty($x['upsert'])&&$panelId!=='';
+  $created=$updated=$ignored=0;$db=getDb();$db->beginTransaction();
+  try{
+   foreach($rows as $r){
+    $username=clean($r['login']??$r['username']??$r['usuario']??$r['user']??'',100);
+    $name=clean($r['nome']??$r['name']??$r['cliente']??$r['full_name']??$username,100);
+    $due=parseDue($r['vencimento']??$r['due_date']??$r['expiration']??$r['expires_at']??$r['expire_at']??'');
+    if(!$name||!$due){$ignored++;continue;}
+    $existing=$username!==''?one("SELECT * FROM clients WHERE username=? AND COALESCE(panel_id,'')=? AND archived_at IS NULL",[$username,$panelId]):null;
+    if($existing&&!$upsert){$ignored++;continue;}
+    $priceRaw=trim((string)($r['valor']??$r['price']??''));
+    $priceRaw=str_replace(',','.',preg_replace('/[R$\s]/','',$priceRaw));
+    $priceCents=($priceRaw!==''&&is_numeric($priceRaw)&&(float)$priceRaw>=0)?money($priceRaw):($existing['price_cents']??0);
+    $statusRaw=strtolower(trim((string)($r['status']??$r['situacao']??'')));
+    $statusMap=['active'=>'active','ativo'=>'active','ativa'=>'active','trial'=>'trial','teste'=>'trial','paused'=>'paused','pausado'=>'paused','inativo'=>'paused','bloqueado'=>'paused','expired'=>'paused','vencido'=>'paused','canceled'=>'canceled','cancelado'=>'canceled'];
+    $status=$statusMap[$statusRaw]??($existing['status']??'active');
+    $phone=clean($r['telefone']??$r['phone']??$r['whatsapp']??'',40);
+    $email=clean($r['email']??'',180);
+    $password=clean($r['senha']??$r['password']??'',180);
+    $notes=clean($r['observacoes']??$r['notes']??'',3000);
+    $planName=clean($r['plano']??$r['plan_name']??'',80);
+    $matchedPlan=$planName!==''?one('SELECT id FROM plans WHERE LOWER(name)=LOWER(?) LIMIT 1',[$planName]):null;
+    $planId=$matchedPlan['id']??($existing['plan_id']??null);
+    if($existing){
+      run('UPDATE clients SET name=?,phone=?,email=?,due_date=?,status=?,password_enc=?,plan_id=?,price_cents=?,notes=?,updated_at=CURRENT_TIMESTAMP WHERE id=?',
+       [$name,$phone?:$existing['phone'],$email?:$existing['email'],$due,$status,$password?seal($password):$existing['password_enc'],$planId,$priceCents,$notes?:$existing['notes'],$existing['id']]);
+      $updated++;
+    }else{
+      run('INSERT INTO clients(id,name,phone,email,username,password_enc,status,due_date,panel_id,plan_id,price_cents,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+       [id(),$name,$phone,$email,$username,seal($password),$status,$due,$panelId?:null,$planId,$priceCents,$notes]);$created++;
+    }
+   }
+   $db->commit();
+  }catch(Throwable $e){$db->rollBack();throw $e;}
+  activity($actor,'cliente.importar',"$created novos, $updated atualizados, $ignored ignorados");
+  jsonout(['created'=>$created,'updated'=>$updated,'ignored'=>$ignored,'total'=>count($rows)]);
  }
  growthApi($route,$method,$role,$actor,$s);
  fail(404,'Recurso não encontrado');
