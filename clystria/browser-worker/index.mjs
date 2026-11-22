@@ -40,36 +40,87 @@ async function isChallenge(page){
   const txt=await page.locator('body').innerText({timeout:2200}).catch(()=>'');
   return /just a moment|checking your browser|verify you are human|attention required|challenge-platform|cloudflare.*(challenge|verification)|verifique se você é humano/i.test((title+' '+txt.slice(0,1700)).toLowerCase());
 }
-async function maybeLogin(page,username,password){
-  if(await isChallenge(page))failure(409,'O fornecedor exige verificação Cloudflare. A automação não contorna desafios; solicite um método de acesso autorizado ao fornecedor.');
-  const pw=page.locator('input[type="password"]').first();
-  if(await pw.count()===0)return 'no_form';
+async function browserState(page){
+  const info=await page.evaluate(()=>{
+    const body=document.body?.innerText||'';
+    return {
+      contentType:document.contentType||'',
+      controls:document.querySelectorAll('a,button,input,[role="button"],[role="tab"],[role="navigation"]').length,
+      passwordFields:document.querySelectorAll('input[type="password"]').length,
+      bodyLength:body.length,
+      jsonLike:/^\s*[\[{]/.test(body.slice(0,40)),
+      hasClientsTab:/\b(clientes|assinantes|linhas)\b/i.test(body.slice(0,3000))
+    };
+  }).catch(()=>({contentType:'unknown',controls:0,passwordFields:0,bodyLength:0,jsonLike:false,hasClientsTab:false}));
+  let path='unknown';
+  try{const uri=new URL(page.url());path=uri.pathname.slice(0,100);}catch{}
+  return {...info,path};
+}
+// A native form sometimes navigates to a JSON login response rather than rendering the SPA.
+// Interpret only success/failure markers; never log or expose credentials, tokens or JSON bodies.
+async function jsonLoginStatus(page){
+ return await page.evaluate(()=>{
+   const raw=String(document.body?.innerText||'').trim();
+   const ctype=document.contentType||'';
+   if(!(/json/i.test(ctype)||/^[\[{]/.test(raw))||raw.length>50000)return {json:false,accepted:false,rejected:false};
+   try{
+     const data=JSON.parse(raw);
+     if(!data||typeof data!=='object'||Array.isArray(data))return {json:true,accepted:false,rejected:false};
+     const status=String(data.status||'').toLowerCase();
+     return {
+       json:true,
+       rejected:data.success===false||data.ok===false||['error','failed','invalid','unauthorized'].includes(status)||data.valid===false,
+       accepted:data.success===true||data.ok===true||data.authenticated===true||['success','ok','authenticated'].includes(status)||!!data.access_token||!!data.token,
+     };
+   }catch{return {json:/json/i.test(ctype),accepted:false,rejected:false};}
+ }).catch(()=>({json:false,accepted:false,rejected:false}));
+}
+async function maybeLogin(page,username,password,entryUrl){
+  if(await isChallenge(page))failure(409,'O fornecedor exige verificação Cloudflare. A automação não contorna desafios.');
+  let pw=page.locator('input[type="password"]').first();
+  if(await pw.count()===0){
+    const state=await browserState(page);
+    if(state.controls===0)await page.waitForTimeout(4500);
+    pw=page.locator('input[type="password"]').first();
+    if(await pw.count()===0)return 'sem_formulario_login_visivel';
+  }
   if(!username||!password)failure(422,'Configure usuário e senha do painel no Clystria');
-  let user=page.locator('input[autocomplete="username"], input[name*="user" i], input[name*="login" i], input[name*="email" i], input[type="email"]').first();
+  let user=page.locator('input[autocomplete="username"],input[name*="user" i],input[name*="login" i],input[name*="email" i],input[type="email"]').first();
   if(await user.count()===0)user=page.locator('input[type="text"]').first();
   if(await user.count()===0)failure(422,'Campo de usuário não identificado na página de login');
   const action=await pw.evaluate(el=>{
     const f=el.closest('form');return f?{action:f.action,method:f.method}:{action:'',method:''};
   }).catch(()=>({action:'',method:''}));
   if(action.action){
-    const a=new URL(action.action);
-    if(a.origin!==new URL(page.url()).origin)failure(422,'Login usa outro domínio. É necessário adaptar o fluxo autorizado desse fornecedor.');
+    const to=new URL(action.action);
+    if(to.origin!==new URL(page.url()).origin)failure(422,'O login utiliza outro domínio e precisa de adaptação autorizada');
   }
   await user.fill(username,{timeout:7000});await pw.fill(password,{timeout:7000});
   const form=pw.locator('xpath=ancestor::form[1]');
-  const button=(await form.count())?form.locator('button[type="submit"], input[type="submit"], button').first():page.getByRole('button',{name:/entrar|acessar|login|sign in|conectar/i}).first();
+  const button=(await form.count())?form.locator('button[type="submit"],input[type="submit"],button').first():page.getByRole('button',{name:/entrar|acessar|login|sign in|conectar/i}).first();
   if(await button.count())await button.click({timeout:12000});else await pw.press('Enter');
   await page.waitForLoadState('domcontentloaded',{timeout:13000}).catch(()=>{});
-  // SPAs may take seconds to mount the authenticated dashboard.
-  await page.waitForTimeout(2500);
-  await page.waitForLoadState('networkidle',{timeout:6500}).catch(()=>{});
-  if(await isChallenge(page))failure(409,'Após o login, o fornecedor exigiu um desafio Cloudflare. Não é possível automatizar sua resolução.');
-  if(await page.locator('input[type="password"]').count()){
-    const text=await page.locator('body').innerText({timeout:2000}).catch(()=>'');
-    if(/credenciais inv[aá]lidas|senha incorreta|login inv[aá]lido|invalid password|invalid credentials/i.test(text))failure(401,'Credenciais recusadas pelo painel');
-    failure(422,'Login não confirmado. O formulário deste fornecedor precisa de um adaptador específico.');
+  await page.waitForTimeout(2200);
+  if(await isChallenge(page))failure(409,'Após o login, o fornecedor exigiu verificação Cloudflare.');
+  const response=await jsonLoginStatus(page);
+  if(response.json){
+    if(response.rejected)failure(401,'O painel rejeitou a autenticação. Confira as credenciais cadastradas.');
+    if(!response.accepted)failure(422,'O formulário levou a uma resposta JSON sem confirmação de login, em vez de abrir a área administrativa do Sigma.');
+    // Explicit success. Reopen the public entry URL in the same authenticated browser context.
+    console.log('CLYSTRIA_LOGIN_JSON_REDIRECT detected; returning to panel entry');
+    await page.goto(entryUrl,{waitUntil:'domcontentloaded',timeout:27000});
+    await page.waitForTimeout(2300);
   }
-  return 'login_form_sent_not_verified';
+  const state=await browserState(page);
+  if(state.passwordFields){
+    const txt=await page.locator('body').innerText({timeout:2000}).catch(()=>'');
+    if(/credenciais inv[aá]lidas|senha incorreta|login inv[aá]lido|invalid password|invalid credentials/i.test(txt))failure(401,'Credenciais recusadas pelo painel');
+    failure(422,'O formulário ainda está na tela. Não foi possível confirmar a autenticação do Sigma.');
+  }
+  if(state.controls===0&&state.bodyLength<100){
+    await page.waitForTimeout(3000);
+  }
+  return response.json?'login_json_reabriu_painel':'formulario_enviado';
 }
 async function navigateClients(page){
   // The provider's mobile layout has a fixed "Clientes" bottom tab (often a div, not a link).
@@ -401,7 +452,7 @@ async function runJob(job){
     });
     await page.goto(url,{waitUntil:'domcontentloaded',timeout:27000});
     await page.waitForTimeout(900);
-    const login=await maybeLogin(page,user,password);
+    const login=await maybeLogin(page,user,password,url);
     const destination=await navigateClients(page);
     await page.waitForTimeout(1300);
     await Promise.allSettled([...inflight]);
