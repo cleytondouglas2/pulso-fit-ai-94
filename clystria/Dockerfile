@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev libcu
 WORKDIR /var/www/html
 COPY public/ /var/www/html/public/
 COPY src/ /var/www/html/src/
+RUN set -eu; for file in /var/www/html/src/*.php; do php -l "$file"; done
 COPY start.sh /usr/local/bin/clystria-start
 RUN chmod +x /usr/local/bin/clystria-start \
     && chown -R www-data:www-data /var/www/html \
