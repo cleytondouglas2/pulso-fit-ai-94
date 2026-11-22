@@ -17,6 +17,13 @@ function validPlan(array $x):array{$name=clean($x['name']??'',80);$days=$x['days
 function api():never{
  $method=$_SERVER['REQUEST_METHOD']??'GET';$route=explode('?',$_SERVER['REQUEST_URI']??'',2)[0];$segments=explode('/',trim($route,'/'));
  if($route==='/api/health'&&$method==='GET')jsonout(['ok'=>true,'service'=>'clystria-php','date'=>today()]);
+ if($route==='/api/ready'&&$method==='GET'){
+  if(envv('APP_ENV')!=='production'||envv('DATABASE_URL')===''||!preg_match('/^[a-f0-9]{64}$/i',envv('APP_KEY')))fail(503,'Armazenamento persistente e segredos de produção não configurados');
+  $db=getDb();$db->query('SELECT 1')->fetch();
+  if(!one('SELECT 1 FROM staff LIMIT 1')&&strlen(envv('SETUP_TOKEN'))<20)fail(503,'Configure a chave inicial SETUP_TOKEN antes de criar o administrador');
+  jsonout(['ok'=>true,'service'=>'clystria-php','storage'=>'postgres']);
+ }
+
  if($route==='/api/bootstrap'&&$method==='GET')jsonout(['initialized'=>(bool)one('SELECT 1 FROM staff LIMIT 1'),'brand'=>'Clystria']);
  if($route==='/api/setup'&&$method==='POST'){
   if(one('SELECT 1 FROM staff LIMIT 1'))fail(409,'Configuração inicial já realizada');
