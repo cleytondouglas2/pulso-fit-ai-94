@@ -2,6 +2,7 @@
 /** Clystria — PHP JSON API with login sessions, CSRF, RBAC and full CRUD */
 declare(strict_types=1);
 require_once __DIR__.'/integrations.php';
+require_once __DIR__.'/growth.php';
 
 function csvCell(mixed $x):string{$s=(string)($x??'');if(preg_match('/^[=+@\-\t\r]/',$s))$s="'".$s;return $s;}
 function csvRows(string $csv):array {
@@ -31,6 +32,7 @@ function api():never{
   $key='loginfail:'.hash('sha256',$ip);$raw=config($key,'');$attempts=$raw?json_decode($raw,true):[];$now=time();$attempts=array_values(array_filter(is_array($attempts)?$attempts:[],fn($t)=>is_numeric($t)&&$now-(int)$t<900));
   if(count($attempts)>=8)fail(429,'Muitas tentativas; aguarde 15 minutos');
   $u=one('SELECT * FROM staff WHERE email=?',[$email]);if(!$u||!password_verify((string)($x['password']??''),$u['passhash'])){$attempts[]=$now;setConfig($key,json_encode($attempts));fail(401,'E-mail ou senha incorretos');}
+  if(!verifyGrowth2fa($u,$x['otp']??null))fail(401,'Código de autenticação de dois fatores inválido ou ausente');
   setConfig($key,'');run('DELETE FROM sessions WHERE expires_at<?',[time()*1000]);$csrf=sessionNew($u);activity($email,'login','Entrada no sistema');jsonout(['ok'=>true,'csrf'=>$csrf]);
  }
  $s=currentSession();if(!$s)fail(401,'Faça login novamente');
@@ -111,6 +113,7 @@ function api():never{
     run('INSERT INTO clients(id,name,phone,email,username,password_enc,status,due_date,panel_id,price_cents,notes) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[id(),$name,clean($r['telefone']??$r['phone']??'',40),clean($r['email']??'',180),$username,seal(clean($r['senha']??$r['password']??'',180)),$status,$due,$panelId?:null,money($price),clean($r['observacoes']??$r['notes']??'',3000)]);$created++;
    }$db->commit();}catch(Throwable $e){$db->rollBack();throw $e;}activity($actor,'cliente.importar',"$created clientes importados");jsonout(['created'=>$created,'ignored'=>$ignored,'total'=>count($rows)]);
  }
+ growthApi($route,$method,$role,$actor,$s);
  fail(404,'Recurso não encontrado');
 }
 try{api();}catch(PDOException $e){error_log('Clystria DB error: '.$e->getMessage());fail(($e->getCode()==='23505'||str_contains($e->getMessage(),'UNIQUE constraint'))?409:503,($e->getCode()==='23505'||str_contains($e->getMessage(),'UNIQUE constraint'))?'Registro duplicado':'Falha ao acessar o banco de dados');}catch(InvalidArgumentException $e){fail(400,$e->getMessage());}catch(Throwable $e){error_log('Clystria PHP error: '.$e->getMessage());fail(500,production()?'Falha interna do servidor':$e->getMessage());}
