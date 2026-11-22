@@ -27,6 +27,7 @@ import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
 import {createArgusPayAdapter,isArgusCredentialPair} from "./arguspay-adapter.mjs";
 import {createArgusPayCredentialStore} from "./arguspay-config.mjs";
+import {applyOneTimeAdminGrant} from "./pulsofit-admin-grant-once.mjs";
 import {createMisticPayPostgresStore} from "./misticpay-postgres-store.mjs";
 import {createMisticPayBilling,settleVerifiedMisticPayOrder} from "./misticpay-billing.mjs";
 import {createProductionPixReconciler} from "./misticpay-auto-reconcile.mjs";
@@ -87,6 +88,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    const r=await pool.query("SELECT column_name,data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='pf_users' AND column_name IN ('id','plan')");
    state.accountSchemaVerified=r.rows.some(x=>x.column_name==="id"&&x.data_type==="uuid")&&r.rows.some(x=>x.column_name==="plan");
    if(!state.accountSchemaVerified)throw Error("Account schema mismatch");
+   await applyOneTimeAdminGrant(pool);
    store=await createMisticPayPostgresStore(pool,{initialize:true});
    credentialStore=createArgusPayCredentialStore(pool);
    await credentialStore.init();
