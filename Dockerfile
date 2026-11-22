@@ -919,6 +919,6 @@ RUN php -l /var/www/html/src/PlatformFeeTreasury.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/platform_fee_treasury_patch.php \
  && php -l /var/www/html/src/MerchantWallet.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/platform_fee_treasury_test.php \
- && php /var/www/html/tests/merchant_wallet_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/merchant_wallet_test.php \
  && php /var/www/html/tests/hybrid_payout_test.php \
  && php /var/www/html/tests/security_regression_test.php
