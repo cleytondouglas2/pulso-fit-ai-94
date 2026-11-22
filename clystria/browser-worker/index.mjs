@@ -646,11 +646,17 @@ async function liveCapture(item){
   host:hostname,verification:await isChallenge(page),password_form:(await page.locator('input[type="password"]').count())>0};
 }
 async function startLive(job){
- if(live)failure(409,'Já existe uma sessão de navegador em uso; encerre-a antes de abrir outra');
  if(!ALLOW.length)failure(503,'Navegador não configurado');
  const entry=(await safeUrl(job.url,true)).href;
  const panelId=clean(job.panel_id,40),owner=clean(job.owner,64);
  if(!/^[a-f0-9]{32}$/.test(panelId)||!/^[a-f0-9]{32}$/.test(owner))failure(400,'Identificação inválida');
+ if(live){
+  if(live.panelId===panelId&&live.owner===owner){
+   live.lastActive=Date.now();
+   return await liveCapture(live);
+  }
+  failure(409,'Já existe uma sessão de navegador em uso; encerre-a antes de abrir outra');
+ }
  let browser=null,context=null;
  try{
   browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
