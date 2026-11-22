@@ -707,3 +707,8 @@ RUN php -l /var/www/html/src/ArgusPixQr.php \
 COPY deployment/reseller-pix-ui.js deployment/reseller-pix-ui.css /var/www/html/public/static/
 RUN sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-pix-ui.css?v=20261122-1"><script defer src="/static/reseller-pix-ui.js?v=20261122-1"></script></head>#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-pix-ui.js?v=20261122-1' /var/www/html/public/static/client.html
+
+# Seller Pix: distinguish page refresh and finance operation, show inline validation status.
+RUN sed -i 's#reseller-pix-ui.js?v=20261122-1#reseller-pix-ui.js?v=20261122-2#; s#reseller-pix-ui.css?v=20261122-1#reseller-pix-ui.css?v=20261122-2#; s#merchant-portal.js?v=seller-pix-modal-20261120-1#merchant-portal.js?v=seller-submit-20261122-2#' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-pix-ui.js?v=20261122-2' /var/www/html/public/static/client.html \
+ && grep -Fq 'merchant-portal.js?v=seller-submit-20261122-2' /var/www/html/public/static/client.html

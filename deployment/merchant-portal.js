@@ -2,7 +2,7 @@
 'use strict';
 const E=id=>document.getElementById(id),BRL=x=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(x)||0)/100);
 const escapeText=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let working=false,active=false,at=0;
+let working=false,active=false,at=0,financeBusy=false;
 let ownCharges=new Map();
 let modalCharge=null,modalTimer=null,checkingId=null;
 const FEE=100;
@@ -262,11 +262,11 @@ function createKey(){
  else notice('Consulte os requisitos de emissão de chaves na sua conta.',true);
 }
 async function withdraw(event){
- event.preventDefault();if(working)return;
+ event.preventDefault();if(working||financeBusy)return;
  const form=event.currentTarget,v=new FormData(form),amount=cents(v.get('amount'));
  if(amount===null||amount<200||amount>10000||!v.get('confirm')){notice('Confira o valor e confirme a taxa de serviço.',true);return}
  if(!confirm('Valor total descontado do saldo: '+BRL(amount)+'\nTaxa de serviço: R$ 1,00\nValor do Pix: '+BRL(amount-FEE)+'\n\nConfirmar saque direto?'))return;
- working=true;const button=form.querySelector('button[type="submit"]');button.disabled=true;
+ working=true;financeBusy=true;const button=form.querySelector('button[type="submit"]');button.disabled=true;
  const idem=form.dataset.idem||crypto.randomUUID();form.dataset.idem=idem;
  try{
   await request('/api/portal/wallet/withdrawals',{method:'POST',body:{
@@ -275,33 +275,63 @@ async function withdraw(event){
   delete form.dataset.idem;form.reset();quote();notice('Saque enviado para processamento. Acompanhe o status em Meus saques.');
   await activities();
  }catch(err){notice('Confira o status em Meus saques antes de tentar novamente: '+err.message,true);await activities()}
- finally{working=false;button.disabled=false;}
+ finally{working=false;financeBusy=false;button.disabled=false;}
+}
+function sellerChargeFeedback(message,isError=false){
+ const inline=E('seller-charge-feedback');
+ if(inline){inline.textContent=message;inline.dataset.state=isError?'error':'info';}
+ if(isError)notice(message,true);
 }
 async function deposit(event){
- event.preventDefault();if(working)return;
+ event.preventDefault();
+ if(financeBusy){
+  sellerChargeFeedback('Já existe uma operação em andamento. Verifique o status antes de tentar novamente.',true);
+  return;
+ }
  const form=event.currentTarget,v=new FormData(form),amount=cents(v.get('amount'));
- if(amount===null||amount<100||amount>10000){notice('Depósito permitido entre R$ 1,00 e R$ 100,00.',true);return}
- const button=form.querySelector('button[type="submit"]');button.disabled=true;working=true;
- const idem=form.dataset.idem||crypto.randomUUID();form.dataset.idem=idem;
+ if(amount===null||amount<100||amount>10000){
+  sellerChargeFeedback('Informe um valor entre R$ 1,00 e R$ 100,00. Use os botões de valor rápido se preferir.',true);
+  form.elements.namedItem('amount')?.focus();
+  return;
+ }
+ const description=String(v.get('description')||'').trim();
+ if(!description){
+  sellerChargeFeedback('Informe a descrição da cobrança.',true);
+  form.elements.namedItem('description')?.focus();
+  return;
+ }
+ const button=form.querySelector('button[type="submit"]');
+ financeBusy=true;button.disabled=true;
+ const idem=form.dataset.idem||crypto.randomUUID();
+ form.dataset.idem=idem;
+ sellerChargeFeedback('Gerando QR Code Pix…');
  try{
   const selfPayer=!!E('seller-self-payer')?.checked;
-  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),idempotency_key:idem};
-  if(selfPayer){payment.payer_mode='registered_seller';payment.seller_is_payer=true}
+  const payment={amount_cents:amount,description,idempotency_key:idem};
+  if(selfPayer){payment.payer_mode='registered_seller';payment.seller_is_payer=true;}
   else{
    payment.payer_name=String(v.get('payer_name')||'').trim();
    payment.payer_document=String(v.get('payer_document')||'');
   }
   const response=await request('/api/portal/wallet/charges',{method:'POST',body:payment});
-  const charge=response.charge,box=E('seller-pix-result');
-  box.replaceChildren();
-  box.dataset.chargeId=charge.id;
+  const charge=response?.charge;
+  if(!charge?.id)throw new Error('O servidor não retornou uma cobrança válida. Consulte o histórico antes de tentar novamente.');
+  const box=E('seller-pix-result');
+  box.replaceChildren();box.dataset.chargeId=charge.id;
   ownCharges.set(charge.id,charge);
   updatePixSummary(charge);
   showPix(charge);
-  delete form.dataset.idem;form.reset();togglePayerMode();notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');
+  delete form.dataset.idem;
+  form.reset();togglePayerMode();
+  sellerChargeFeedback('Cobrança criada. O QR Code está disponível para compartilhar.');
+  notice('Cobrança registrada; o crédito depende da confirmação do pagamento.');
   await activities();
- }catch(err){notice('Verifique o histórico antes de tentar novamente: '+err.message,true)}
- finally{button.disabled=false;working=false;}
+ }catch(err){
+  sellerChargeFeedback('Não foi possível gerar o QR Code: '+String(err?.message||'falha na comunicação')+'. Consulte o histórico antes de tentar novamente.',true);
+ }finally{
+  button.disabled=false;
+  financeBusy=false;
+ }
 }
 function start(){ensure();setTimeout(()=>load(true),750);window.addEventListener('focus',()=>load());document.addEventListener('visibilitychange',()=>{if(!document.hidden)load()});
  setInterval(()=>{if(!document.hidden&&!E('dashboard')?.hidden)load()},25000);}

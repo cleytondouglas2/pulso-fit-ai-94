@@ -96,11 +96,22 @@ function enhanceCharge(){
  if(!description.defaultValue.trim())description.defaultValue='Pagamento de produto ou serviço';
  if(!description.value.trim())description.value=description.defaultValue;
  descLabel.append(el('small','','Já preenchida; você também pode personalizar.'));
+ const feedback=el('p','seller-charge-feedback');feedback.id='seller-charge-feedback';feedback.setAttribute('role','status');feedback.setAttribute('aria-live','polite');
  const total=el('div','seller-charge-total','<span>Valor da cobrança</span><strong id="seller-charge-preview-amount">R$ 0,00</strong>');
- button.before(total);
+ button.before(total);total.after(feedback);
  button.classList.add('seller-charge-submit');
  button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM14 14h2m4 0v2m-6 4h2m4-1v1m-3-4v4"/></svg><span>Gerar QR Code Pix</span><span class="seller-charge-submit-arrow" aria-hidden="true">→</span>';
  button.after(el('p','seller-charge-footer-note','O QR Code e o Pix Copia e Cola serão exibidos em uma janela.'));
+ form.addEventListener('invalid',event=>{
+  const field=event.target;
+  const labels={amount:'Informe o valor da cobrança.',description:'Informe a descrição da cobrança.',payer_name:'Informe o nome do pagador.',payer_document:'Informe o CPF/CNPJ do pagador.'};
+  feedback.textContent=labels[field.name]||'Confira os campos obrigatórios.';
+  feedback.dataset.state='error';
+ },true);
+ form.addEventListener('submit',()=>{
+  feedback.textContent='Solicitando QR Code Pix…';
+  feedback.dataset.state='info';
+ });
  amount.addEventListener('input',mask);
  form.addEventListener('reset',()=>Promise.resolve().then(update));
  if(amount.value)mask();else update();
