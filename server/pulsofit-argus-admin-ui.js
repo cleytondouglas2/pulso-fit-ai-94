@@ -77,9 +77,9 @@
   '<p>Gerencie as credenciais da Argus Pay sem editar o Render. Uma alteração só entra em vigor após a validação da API e o salvamento seguro no servidor.</p>',
   '<div class="pf-argus-info" aria-live="polite">Consultando a configuração atual…</div>',
   '<form class="pf-argus-form" autocomplete="off"><div class="pf-argus-fields">',
-  '<label>Nova API Key<div class="pf-argus-input-wrap"><input name="apiKey" type="password" placeholder="agp_live_…" required autocomplete="off" spellcheck="false"><button type="button" class="pf-argus-show" data-for="apiKey" aria-label="Mostrar ou ocultar a API Key">Mostrar</button></div></label>',
-  '<label>Nova API Secret<div class="pf-argus-input-wrap"><input name="apiSecret" type="password" placeholder="ags_live_…" required autocomplete="new-password" spellcheck="false"><button type="button" class="pf-argus-show" data-for="apiSecret" aria-label="Mostrar ou ocultar a API Secret">Mostrar</button></div></label>',
-  '</div><div class="pf-argus-buttons"><button class="pf-argus-test" type="button" disabled>Testar conexão</button><button class="pf-argus-save" type="submit" disabled>Salvar novas credenciais</button></div>',
+  '<label>Nova API Key<div class="pf-argus-input-wrap"><input name="apiKey" type="password" placeholder="agp_live_… ou ARGUS_API_KEY=…" required autocomplete="off" spellcheck="false"><button type="button" class="pf-argus-show" data-for="apiKey" aria-label="Mostrar ou ocultar a API Key">Mostrar</button></div></label>',
+  '<label>Nova API Secret<div class="pf-argus-input-wrap"><input name="apiSecret" type="password" placeholder="ags_live_… ou ARGUS_API_SECRET=…" required autocomplete="new-password" spellcheck="false"><button type="button" class="pf-argus-show" data-for="apiSecret" aria-label="Mostrar ou ocultar a API Secret">Mostrar</button></div></label>',
+  '</div><p class="pf-argus-help">Você pode colar a chave diretamente ou como <code>ARGUS_API_KEY=...</code> e <code>ARGUS_API_SECRET=...</code>. O prefixo será removido automaticamente.</p><div class="pf-argus-buttons"><button class="pf-argus-test" type="button" disabled>Testar conexão</button><button class="pf-argus-save" type="submit" disabled>Salvar novas credenciais</button></div>',
   '<div class="pf-argus-feedback" role="status" aria-live="polite"></div></form>',
   '<div class="pf-argus-help">Endpoint: <code class="pf-argus-api-url">consultando</code>. As chaves anteriores não são exibidas, a Secret nunca é enviada pelo servidor ao navegador e nenhum pagamento é gerado durante o teste. Antes de revogar chaves antigas, confira as cobranças pendentes.</div>'
   ].join("");
@@ -90,12 +90,32 @@
    b.textContent=input.type==="password"?"Mostrar":"Ocultar";
   })});
   var form=panel.querySelector("form");
+  function normalizeCredential(raw,variableName){
+   var value=String(raw||"").trim();
+   // Accept the exact environment-variable assignment pasted from Render or docs.
+   // Only the intended field prefix may be stripped; never log its value.
+   var prefix=new RegExp("^(?:export\\s+)?"+variableName+"\\s*=\\s*","i");
+   value=value.replace(prefix,"").trim();
+   if((value.startsWith('"')&&value.endsWith('"'))||(value.startsWith("'")&&value.endsWith("'")))
+    value=value.slice(1,-1).trim();
+   return value;
+  }
+  [["apiKey","ARGUS_API_KEY"],["apiSecret","ARGUS_API_SECRET"]].forEach(function(pair){
+   var element=form.elements[pair[0]];
+   element.addEventListener("change",function(){
+    element.value=normalizeCredential(element.value,pair[1]);
+   });
+  });
   async function submit(save){
    if(pending)return;
-   var key=form.elements.apiKey.value.trim(),secret=form.elements.apiSecret.value.trim();
+   var key=normalizeCredential(form.elements.apiKey.value,"ARGUS_API_KEY");
+   var secret=normalizeCredential(form.elements.apiSecret.value,"ARGUS_API_SECRET");
    if(!/^agp_live_[a-f0-9]{24}$/.test(key)||!/^ags_live_[a-f0-9]{64}$/.test(secret)){
-    showFeedback("Informe uma API Key e uma API Secret válidas da Argus Pay.",true);return;
+    showFeedback("Confira as chaves: use apenas agp_live_… e ags_live_…, ou cole as variáveis ARGUS_API_KEY= e ARGUS_API_SECRET= completas.",true);return;
    }
+   // Remove environment-variable labels from the fields and avoid reintroducing them.
+   form.elements.apiKey.value=key;
+   form.elements.apiSecret.value=secret;
    pending=true;panel.querySelectorAll(".pf-argus-test,.pf-argus-save").forEach(function(btn){btn.disabled=true});
    showFeedback(save?"Validando e salvando com criptografia…":"Testando autenticação sem gerar Pix…",false);
    try{
