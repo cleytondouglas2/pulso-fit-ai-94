@@ -901,7 +901,7 @@ COPY deployment/admin_payout_stepup_patch.php /tmp/admin_payout_stepup_patch.php
 COPY deployment/admin_payout_stepup_test.php /var/www/html/tests/admin_payout_stepup_test.php
 RUN php -l /tmp/admin_payout_stepup_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/admin_payout_stepup_patch.php \
- && php /var/www/html/tests/admin_payout_stepup_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/admin_payout_stepup_test.php \
  && php /var/www/html/tests/security_2fa_unit.php \
  && php /var/www/html/tests/finance_qr_unit.php \
  && php /var/www/html/tests/security_regression_test.php
