@@ -58,6 +58,22 @@ async function browserState(page){
 }
 // A native form sometimes navigates to a JSON login response rather than rendering the SPA.
 // Interpret only success/failure markers; never log or expose credentials, tokens or JSON bodies.
+async function classifyEntry(page,response){
+  const state=await browserState(page);
+  const httpStatus=response?.status()||0;
+  const txt=String(await page.locator('body').innerText({timeout:1200}).catch(()=>'' )).trim().slice(0,240);
+  const info=/^\s*[\[{]/.test(txt)?'json_text':
+    /acesso negado|access denied|forbidden|unauthorized|bloquead|not allowed/i.test(txt)?'access_denied':
+    /manuten|maintenance|service unavailable|temporarily unavailable/i.test(txt)?'unavailable':
+    /404|not found|page not found/i.test(txt)?'not_found':
+    /500|server error|internal error/i.test(txt)?'server_error':
+    /verify you are human|just a moment|cloudflare|checking your browser/i.test(txt)?'challenge':
+    'unrecognized';
+  return {httpStatus,kind:info,controls:state.controls,bodyLength:state.bodyLength,
+    pageType:state.contentType.includes('json')?'json':state.contentType.includes('html')?'html':'other',
+    passwordFields:state.passwordFields};
+}
+
 async function jsonLoginStatus(page){
  return await page.evaluate(()=>{
    const raw=String(document.body?.innerText||'').trim();
@@ -454,8 +470,21 @@ async function runJob(job){
       inflight.add(work);
       work.finally(()=>inflight.delete(work));
     });
-    await page.goto(url,{waitUntil:'domcontentloaded',timeout:27000});
+    const entryResponse=await page.goto(url,{waitUntil:'domcontentloaded',timeout:27000});
     await page.waitForTimeout(900);
+    let initial=await classifyEntry(page,entryResponse);
+    if(initial.controls===0&&initial.passwordFields===0){
+      // Give slow SPAs a chance to mount; do not submit credentials to blank/error pages.
+      await page.waitForFunction(()=>document.querySelector('input,button,a,[role="button"],[role="tab"]'),{timeout:6500}).catch(()=>{});
+      initial=await classifyEntry(page,entryResponse);
+      if(initial.controls===0&&initial.passwordFields===0){
+        console.log('CLYSTRIA_ENTRY_DIAGNOSTIC '+JSON.stringify(initial));
+        const message=initial.httpStatus>=400?
+          'O servidor do Sigma respondeu HTTP '+initial.httpStatus+' para a VPS.':
+          'A VPS recebeu uma página sem formulário nem controles do Sigma (HTTP '+initial.httpStatus+', '+initial.bodyLength+' caracteres, tipo '+initial.kind+').';
+        failure(502,message+' Nenhuma autenticação foi realizada; verifique com o fornecedor se o acesso da VPS ao endereço cadastrado está autorizado.');
+      }
+    }
     const login=await maybeLogin(page,user,password,url);
     const destination=await navigateClients(page);
     await page.waitForTimeout(1300);
