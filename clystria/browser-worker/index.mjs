@@ -592,7 +592,7 @@ async function runJob(job){
       };
       console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify(fingerprint));
       const challengeVisible=await page.evaluate(()=>!!document.querySelector('iframe[src*="challenges.cloudflare.com"],.cf-turnstile,[data-sitekey],[id*="challenge" i],[class*="turnstile" i]')).catch(()=>false);
-      const challengeFrame=page.frames().some(frame=>{try{return /(^|\\.)challenges\\.cloudflare\\.com$/i.test(new URL(frame.url()).hostname);}catch{return false;}});
+      const challengeFrame=page.frames().some(frame=>{try{const host=new URL(frame.url()).hostname;return host==='challenges.cloudflare.com'||host.endsWith('.challenges.cloudflare.com');}catch{return false;}});
       if((challengeVisible||challengeFrame)&&login==='sem_formulario_login_visivel'){
         console.log('CLYSTRIA_CHALLENGE_PENDING '+JSON.stringify({stage:destination,frames:page.frames().length,controls:state.controls,blockedResources:diagnostics.blockedResources}));
         failure(409,'O Zeus carregou uma verificação Cloudflare antes de exibir o login. Não foi possível confirmar a autenticação; é necessário concluir a verificação por meio autorizado.');
