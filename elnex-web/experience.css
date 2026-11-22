@@ -209,3 +209,32 @@ body{width:100%;max-width:100%;min-width:0;overflow-x:clip}
 .sense-prompt:hover{background:#8757af70;transform:translateY(-2px)}
 .sense-result{line-height:1.65;font-size:14px;letter-spacing:.05px;overflow-wrap:anywhere}
 @media(max-width:580px){.sense-quick{display:flex;gap:6px}.sense-prompt{font-size:11px;padding:9px 10px}.sense-quick-label{font-size:9px}}
+
+/* ELNEX Sense | generative chat */
+.elnex-ai-chat{padding:clamp(16px,3vw,27px)!important;display:flex;flex-direction:column;min-width:0;max-width:100%;gap:13px}
+.elnex-ai-chat-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.elnex-ai-chat-top h2{font-size:clamp(19px,3vw,27px);overflow-wrap:anywhere}
+.elnex-ai-messages{height:clamp(280px,44vh,510px);overflow-y:auto;border:1px solid #ffffff20;border-radius:19px;background:linear-gradient(145deg,#1d102c,#231632);padding:clamp(12px,3vw,24px);display:flex;flex-direction:column;gap:14px;overscroll-behavior:contain;min-width:0;max-width:100%}
+.elnex-ai-welcome{margin:auto;text-align:center;max-width:380px;animation:rise .5s ease both}
+.elnex-ai-avatar{width:76px;height:76px;margin:0 auto 16px;display:grid;place-items:center;border-radius:26px;background:linear-gradient(135deg,#9a5ff1,#ef76bd);font-size:40px;box-shadow:0 10px 40px #db64b055}
+.elnex-ai-welcome h3{font-size:24px}
+.elnex-ai-welcome p{color:#d5bddf}
+.elnex-ai-message{border-radius:18px;max-width:min(90%,730px);padding:15px 18px;overflow-wrap:anywhere;min-width:0;white-space:pre-wrap;animation:rise .24s ease both}
+.elnex-ai-message p{margin:8px 0 0;line-height:1.6;overflow-wrap:anywhere;font-size:14px}
+.elnex-ai-message.bot{background:#392149;border:1px solid #9b6fbb42;align-self:flex-start;border-bottom-left-radius:5px}
+.elnex-ai-message.mine{background:linear-gradient(135deg,#a44eda,#df60ae);align-self:flex-end;border-bottom-right-radius:5px}
+.elnex-ai-speaker{font-weight:800;letter-spacing:.5px;font-size:11px;color:#ffe3f5;text-transform:uppercase}
+.elnex-ai-quick{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;width:100%;padding:4px 0;min-width:0}
+.elnex-ai-quick button{flex-shrink:0;background:#623a75aa;color:#f4deff;border:1px solid #ffffff30;border-radius:99px;font-size:12px;padding:9px 13px;transition:transform .2s,background .2s}
+.elnex-ai-quick button:hover{transform:translateY(-2px);background:#81499a}
+.elnex-ai-consent-label{display:flex;align-items:flex-start;gap:9px;font-size:12px;color:#e6cce8;line-height:1.5;cursor:pointer}
+.elnex-ai-consent-label input{flex:0 0 18px!important;width:18px!important;height:18px!important;margin:2px 0 0;accent-color:#ce70e9}
+.elnex-ai-consent-wrap{margin-top:12px;padding:12px;background:#ffffff0b;border:1px solid #ffffff22;border-radius:14px;max-width:100%}
+.elnex-ai-consent-hint{font-size:12px;color:#e0c8e9;margin-top:8px;overflow-wrap:anywhere}
+.elnex-ai-composer{display:flex;align-items:stretch;gap:9px;min-width:0;width:100%;margin-top:10px}
+.elnex-ai-composer textarea{flex:1;min-width:0;resize:vertical;max-height:150px;min-height:59px;line-height:1.55;font-size:16px}
+.elnex-ai-composer button{flex-shrink:0;max-width:110px;padding:12px 16px;white-space:nowrap}
+.elnex-ai-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:#cbb2d5;font-size:12px}
+.elnex-ai-footer .btn{font-size:11px;padding:9px 12px}
+.elnex-ai-footer span{overflow-wrap:anywhere;flex:1}
+@media(max-width:700px){.sense-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.elnex-ai-chat{padding:17px!important}.elnex-ai-messages{height:clamp(280px,45svh,440px);padding:12px}.elnex-ai-message{max-width:96%;padding:12px}.elnex-ai-composer{flex-wrap:wrap;gap:7px}.elnex-ai-composer textarea{flex:1 1 100%;width:100%}.elnex-ai-composer button{width:100%;max-width:none;min-height:47px}.elnex-ai-chat-top{flex-direction:column;align-items:flex-start}.elnex-ai-chat-top .tag-rose{font-size:11px}.elnex-ai-footer{align-items:flex-start;flex-direction:column}}
