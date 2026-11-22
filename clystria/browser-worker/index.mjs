@@ -413,7 +413,7 @@ async function runJob(job){
       const sigmaCards=job.panel_kind==='sigma'?await extractSigmaCards(page):{items:[],cards:0};
       // Use card identifier as an external key only when the provider did not expose
       // actual client logins in its loaded JSON or table. Avoid duplicate identities.
-      const fallback=records.size===0&&result.items.length===0?sigmaCards.items:[];
+      const fallback=records.size===0&&!result.items.some(item=>asClient(item))?sigmaCards.items:[];
       recognized=recognized||result.recognized>0||sigmaCards.cards>0;
       rawRows+=result.items.length+fallback.length;
       for(const r of [...result.items,...fallback]){
