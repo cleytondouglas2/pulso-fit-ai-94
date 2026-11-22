@@ -107,14 +107,6 @@ function remoteBrowserFetch(array $panel):array {
  $details=isset($diag['valid_clients'])?'Navegador real: '.((int)$diag['valid_clients']).' clientes lidos da interface.':'';
  return ['clients'=>$json['clients'],'plans'=>[],'warning'=>trim($details.' '.clean($json['warning']??'',150))];
 }
-function browserCommand(string $action,array $payload=[],int $timeout=45):array {
- $endpoint=envv('BROWSER_WORKER_URL');$token=envv('BROWSER_WORKER_TOKEN');
- if($endpoint===''||strlen($token)<32)throw new RuntimeException('O navegador da VPS não está configurado');
- if(!in_array($action,['open','frame','action','import','close'],true))throw new InvalidArgumentException('Ação de navegador inválida');
- $response=requestPanel(rtrim($endpoint,'/').'/live/'.$action,'POST',$payload,['Authorization: Bearer '.$token],'navegação Chromium',$timeout);
- if(($response['data']['ok']??false)!==true)throw new RuntimeException('A sessão remota retornou uma resposta inválida');
- return $response['data'];
-}
 function fetchPanel(array $panel):array {
  if($panel['auth_mode']==='remote_browser'||($panel['auth_mode']==='credentials'&&in_array($panel['kind'],['sigma','painelfoda'],true)&&envv('BROWSER_WORKER_URL')!==''))return remoteBrowserFetch($panel);
  if($panel['auth_mode']==='browser')throw new RuntimeException('Login pelo Safari/Chrome não libera acesso do servidor à sessão externa. Abra o painel no navegador e importe o arquivo de clientes exportado, ou configure uma API autorizada.');
@@ -134,11 +126,11 @@ function fetchPanel(array $panel):array {
  $plans=[];$warning='';if($panel['plans_path']){try{$json=requestPanel(panelEndpoint($panel['url'],$panel['plans_path']),'GET',null,$headers,'consulta de planos')['data'];$plans=array_values(array_filter(array_map('normalizePlan',listFrom($json,['plans','packages','products','items']))));}catch(Throwable $e){$warning='Planos não disponíveis: '.$e->getMessage();}}
  return ['clients'=>$clients,'plans'=>$plans,'warning'=>$warning];
 }
-function syncPanel(string $id,string $actor='Clystria automático',?array $sessionData=null):array {
+function syncPanel(string $id,string $actor='Clystria automático'):array {
  $panel=one('SELECT * FROM panels WHERE id=?',[$id]);if(!$panel)throw new RuntimeException('Painel não encontrado');
  run('UPDATE panels SET last_attempt=CURRENT_TIMESTAMP WHERE id=?',[$id]);
  try{
-  $remote=$sessionData??fetchPanel($panel);$rows=$remote['clients'];$plans=$remote['plans'];if(count($rows)>10000)throw new RuntimeException('Máximo de 10.000 clientes por sincronização');
+  $remote=fetchPanel($panel);$rows=$remote['clients'];$plans=$remote['plans'];if(count($rows)>10000)throw new RuntimeException('Máximo de 10.000 clientes por sincronização');
   $pdo=getDb();$pdo->beginTransaction();$created=$updated=$ignored=$plansCreated=0;
   $map=[];
   foreach($plans as $r){$name=clean($r['name'].' • '.$panel['name'],80);$found=one('SELECT id FROM plans WHERE name=?',[$name]);if(!$found){$new=id();run('INSERT INTO plans(id,name,days,price_cents,color) VALUES(?,?,?,?,?)',[$new,$name,$r['days'],money($r['price']),'#31DAB3']);$found=['id'=>$new];$plansCreated++;}$map[strtolower($r['name'])]=$found['id'];}
