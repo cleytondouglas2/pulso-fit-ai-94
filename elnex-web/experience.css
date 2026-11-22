@@ -409,3 +409,8 @@ input,textarea,select{max-width:100%;min-width:0;box-sizing:border-box}
 @media(prefers-reduced-motion:reduce){
  .elx-route-overlay,#content.elx-page-enter,#content.elx-page-enter>*,.elx-loading-symbol,.elx-loading-symbol i,.elx-loading-track i{animation:none!important;transition:none!important}
 }
+
+/* Keep authenticated pages truly hidden until login, even with responsive overrides */
+body #shell.hidden,body #auth.hidden{display:none!important;visibility:hidden!important}
+body #shell:not(.hidden){visibility:visible}
+@media(max-width:900px){body #shell.hidden{display:none!important}}
