@@ -70,6 +70,6 @@ if((int)$mine['n']!==3||(int)$mine['net']!==100)
 if($s['mode']!=='internal_accounting_only'||$s['not_withdrawable']!==true||
     $s['provider_transfer_created']!==false)
  throw new RuntimeException('Unsafe promise of financial transfer');
-$ledger=$db->all('SELECT event_kind,amount_cents FROM argus_platform_fee_journal WHERE owner_email=?',[$s['owner_email']]);
-if(count($ledger)!==3)throw new RuntimeException('Unexpected fee journal count');
+$ledger=$db->all('SELECT event_kind,amount_cents FROM argus_platform_fee_journal WHERE owner_email=? AND seller_account_id=?',[$s['owner_email'],$id]);
+if(count($ledger)!==3)throw new RuntimeException('Unexpected fee journal count for synthetic seller');
 echo "PASS: fee admin attribution from PSP-paid seller deposits and payouts, refund reversal, no duplicates, read-only accrual and no real transfer\n";
