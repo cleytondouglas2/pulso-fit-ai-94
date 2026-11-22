@@ -48,7 +48,7 @@ foreach([
  'autocomplete="one-time-code"'
 ] as $token)
  if(!str_contains($dialog,$token))throw new RuntimeException('Missing modal behavior '.$token);
-if(str_contains($dialog,"fetch(")||str_contains($dialog,"/api/admin/payouts"))
+if(str_contains($dialog,"fetch(")||str_contains($dialog,"post(")||str_contains($dialog,"XMLHttpRequest("))
  throw new RuntimeException('Modal must never make payment requests itself');
 if(!str_contains($css,'#argus-admin-pix-otp-dialog::backdrop')||
    !str_contains($css,'max-height:calc(100dvh - 32px)'))
