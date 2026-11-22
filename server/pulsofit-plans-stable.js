@@ -210,7 +210,7 @@
    '</form>'+
    '<div id="pf-stable-pix-result" hidden style="padding-top:15px;text-align:center">'+
    '<strong style="display:block;font-size:17px">Pague usando o QR Code ou o Pix copia e cola</strong>'+
-   '<img id="pf-stable-pix-image" alt="QR Code Pix para pagamento" hidden style="display:block;max-width:250px;width:85%;margin:16px auto;border-radius:10px;border:10px solid white;background:white">'+
+   '<div id="pf-stable-pix-image" role="img" aria-label="QR Code Pix para pagamento" hidden></div>'+
    '<label for="pf-stable-pix-code" style="display:block;margin:10px 0">Código Pix copia e cola</label>'+
    '<textarea id="pf-stable-pix-code" readonly rows="4" style="box-sizing:border-box;width:100%;background:#0d1429;color:white;border:1px solid #8077ac;border-radius:10px;padding:12px;overflow-wrap:anywhere"></textarea>'+
    '<button type="button" id="pf-stable-pix-copy" style="margin:12px 5px 4px;background:#8a49db;color:white;border:0;padding:12px;border-radius:10px;font-weight:800">Copiar código Pix</button>'+
@@ -280,13 +280,10 @@
     autoWasConfirmed=false;autoPendingPix=true;autoLastCheckedAt=0;
     try{localStorage.setItem("pulsofit-pix-pending-ref-v1",reference)}catch{}
     body.querySelector("#pf-stable-pix-code").value=j.copyPaste;
-    var img=body.querySelector("#pf-stable-pix-image");
-    var raw=String(j.qrCodeBase64||"").trim();
-    var data=/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(raw)?raw:
-      /^[A-Za-z0-9+/=]{200,}$/.test(raw)?"data:image/png;base64,"+raw:"";
-    if(data){img.src=data;img.hidden=false;img.style.display="block"}
-    status.textContent=data?"QR Code Pix gerado. Aguardando pagamento...":
-       "Pix gerado. Use o código copia e cola abaixo no aplicativo do seu banco.";
+    var qrHost=body.querySelector("#pf-stable-pix-image");
+    var qrReady=Boolean(window.PULSO_PIX_QR&&window.PULSO_PIX_QR.render(qrHost,j.copyPaste,j.qrCodeBase64));
+    status.textContent=qrReady?"QR Code Pix gerado. Aguardando pagamento...":
+       "Pix gerado. Não foi possível desenhar o QR Code; use o código copia e cola no aplicativo do banco.";
     stopPolling();paymentPoll=setInterval(verify,12000);
     setTimeout(verify,2500);
    }).catch(function(e){status.textContent="Não foi possível gerar Pix: "+e.message;btn.disabled=false})
