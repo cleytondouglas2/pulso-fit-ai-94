@@ -1,0 +1,79 @@
+/* Admin Pix 2FA: top-layer confirmation, safe-area aware on iPhone */
+#argus-admin-pix-otp-dialog:not([open]){display:none!important}
+#argus-admin-pix-otp-dialog{
+ box-sizing:border-box!important;position:fixed!important;margin:auto!important;
+ width:min(460px,calc(100vw - 26px))!important;
+ max-width:calc(100vw - 26px)!important;min-width:0!important;
+ max-height:calc(100dvh - 32px)!important;
+ padding:0!important;overflow:auto!important;
+ border:1px solid #bf9256!important;border-radius:24px!important;
+ background:linear-gradient(145deg,#252128 0%,#151a24 80%)!important;
+ color:#f6e8d5!important;
+ box-shadow:0 25px 85px rgba(0,0,0,.82),inset 0 1px rgba(255,226,174,.14)!important;
+ z-index:2147483000!important;overscroll-behavior:contain;
+ animation:argus-admin-otp-enter .22s ease-out;
+}
+#argus-admin-pix-otp-dialog::backdrop{background:rgba(3,7,13,.83);backdrop-filter:blur(6px)}
+#argus-admin-pix-otp-dialog *{box-sizing:border-box}
+#argus-admin-pix-otp-dialog .argus-admin-otp-header{
+ display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 19px 4px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-header img{
+ display:block;width:144px;max-width:65%;height:auto;max-height:64px;object-fit:contain}
+#argus-admin-pix-otp-dialog .argus-admin-otp-header button{
+ flex:none;width:40px;height:40px;line-height:1;font-size:27px;border:1px solid #816745;
+ border-radius:12px;background:rgba(223,177,104,.1);color:#f5d6a0}
+#argus-admin-pix-otp-dialog .argus-admin-otp-content{padding:7px 20px max(21px,env(safe-area-inset-bottom))}
+#argus-admin-pix-otp-dialog .argus-admin-otp-mark{
+ width:49px;height:49px;display:grid;place-items:center;margin:0 auto 10px;
+ border:1px solid #987144;border-radius:15px;color:#f1c889;
+ background:linear-gradient(130deg,#5a4230,#27252b);font-size:30px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-eyebrow{
+ margin:0 0 9px;text-align:center;color:#d5af7b;font-size:10px;letter-spacing:.17em;font-weight:800}
+#argus-admin-pix-otp-dialog h2{
+ color:#fae8ce;font-size:23px;line-height:1.24;text-align:center;margin:0 0 10px}
+#argus-admin-pix-otp-dialog #argus-admin-pix-otp-intro{
+ font-size:13px;color:#b9c2ce;line-height:1.55;text-align:center;margin:0 0 18px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-summary{
+ padding:12px 14px;border-radius:15px;border:1px solid rgba(220,169,101,.40);
+ background:linear-gradient(135deg,rgba(80,60,40,.42),rgba(15,21,31,.7));
+ display:grid;gap:3px;margin-bottom:12px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-summary>div{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:29px;
+ font-size:12px;color:#c4c0be}
+#argus-admin-pix-otp-dialog .argus-admin-otp-summary strong{
+ max-width:60%;text-align:right;overflow-wrap:anywhere;color:#f8e8cd;font-size:12px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-summary .argus-admin-otp-net{
+ border-top:1px solid rgba(220,169,101,.3);padding-top:10px;margin-top:5px;color:#efc58e}
+#argus-admin-pix-otp-dialog .argus-admin-otp-summary .argus-admin-otp-net strong{
+ color:#f5cb91;font-size:17px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-note{
+ font-size:11px;color:#adb5c1;line-height:1.5;margin:0 0 15px}
+#argus-admin-pix-otp-dialog #argus-admin-pix-otp-form{
+ display:grid;gap:9px;margin:0}
+#argus-admin-pix-otp-dialog #argus-admin-pix-otp-form label{
+ color:#f0dbbc;font-size:13px;font-weight:700}
+#argus-admin-pix-otp-dialog #argus-admin-pix-otp-code{
+ box-sizing:border-box!important;width:100%!important;min-width:0!important;
+ min-height:59px!important;padding:11px!important;text-align:center;
+ font-size:24px!important;letter-spacing:.34em;font-weight:750;font-variant-numeric:tabular-nums;
+ color:#f9e9d3!important;background:#0f1521!important;
+ border:1px solid #77664c!important;border-radius:12px!important;outline:none}
+#argus-admin-pix-otp-dialog #argus-admin-pix-otp-code:focus{
+ border-color:#f2c994!important;box-shadow:0 0 0 3px rgba(239,190,116,.2)!important}
+#argus-admin-pix-otp-dialog #argus-admin-otp-help{
+ color:#b7bec8;font-size:11px;line-height:1.5}
+#argus-admin-pix-otp-dialog .argus-admin-otp-error{margin:0;color:#ffbbae;font-size:12px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-buttons{
+ display:grid;grid-template-columns:1fr 1.45fr;gap:10px;margin-top:13px}
+#argus-admin-pix-otp-dialog .argus-admin-otp-buttons button{
+ box-sizing:border-box!important;min-width:0!important;min-height:49px!important;
+ padding:9px 7px!important;border-radius:12px!important;
+ font-size:14px;font-weight:750;cursor:pointer}
+#argus-admin-pix-otp-dialog .argus-admin-otp-back{
+ color:#f3ddbe!important;border:1px solid #886b48!important;background:transparent!important}
+#argus-admin-pix-otp-dialog .argus-admin-otp-approve{
+ color:#1e170e!important;border:1px solid #f4d29b!important;
+ background:linear-gradient(120deg,#f6d6a1,#c7975d)!important}
+@keyframes argus-admin-otp-enter{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+@media(max-width:385px){#argus-admin-pix-otp-dialog .argus-admin-otp-content{padding-left:14px;padding-right:14px}}
+@media(prefers-reduced-motion:reduce){#argus-admin-pix-otp-dialog{animation:none!important}}

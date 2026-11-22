@@ -893,6 +893,15 @@ RUN php -l /tmp/seller_withdraw_money_mask_patch.php \
  && php /var/www/html/tests/security_regression_test.php
 
 
-# Diagnostic: inspect only non-sensitive fragments of admin payout UI before
-# integrating a step-up TOTP modal. No auth decisions or PSP calls are changed.
-RUN php -r '$h=file_get_contents("/var/www/html/public/static/admin.html"); foreach(["Enviar saldo via Pix","Valor em reais","Confirme com NOVO","payout-form","send-balance"] as $needle){$p=strpos($h,$needle);if($p!==false){$s=substr($h,max(0,$p-550),1900);echo "\nADMIN HTML ".$needle." ".$p.": ".str_replace("\n"," ",$s)."\n";}} $j=file_get_contents("/var/www/html/public/static/admin.js");foreach(["withdraw","transfer","sendPix","pix-send","otp","totp","send-balance","payout"] as $needle){$p=stripos($j,$needle);if($p!==false){$s=substr($j,max(0,$p-650),3200);echo "\nADMIN JS ".$needle." ".$p.": ".str_replace("\n"," ",$s)."\n";}}'
+
+# ARGUS Super Admin: post-submit TOTP in branded, responsive Pix confirmation.
+# Must retain the quoted fee policy, existing superadmin security and provider API.
+COPY deployment/admin-pix-stepup.js deployment/admin-pix-stepup.css /var/www/html/public/static/
+COPY deployment/admin_payout_stepup_patch.php /tmp/admin_payout_stepup_patch.php
+COPY deployment/admin_payout_stepup_test.php /var/www/html/tests/admin_payout_stepup_test.php
+RUN php -l /tmp/admin_payout_stepup_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/admin_payout_stepup_patch.php \
+ && php /var/www/html/tests/admin_payout_stepup_test.php \
+ && php /var/www/html/tests/security_2fa_unit.php \
+ && php /var/www/html/tests/finance_qr_unit.php \
+ && php /var/www/html/tests/security_regression_test.php
