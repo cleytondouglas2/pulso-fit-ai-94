@@ -867,3 +867,15 @@ RUN php -l /var/www/html/src/SellerAccessAudit.php \
  && php /var/www/html/tests/seller_access_audit_test.php \
  && php /var/www/html/tests/password_recovery_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# ARGUS reseller: ask TOTP only AFTER tapping "Solicitar saque".
+# Accessible branded modal; no financial requests in the modal itself.
+COPY deployment/seller_withdraw_modal_patch.php /tmp/seller_withdraw_modal_patch.php
+COPY deployment/seller_withdraw_modal_test.php /var/www/html/tests/seller_withdraw_modal_test.php
+RUN php -l /tmp/seller_withdraw_modal_patch.php \
+ && php /tmp/seller_withdraw_modal_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php /var/www/html/tests/seller_withdraw_modal_test.php \
+ && php /var/www/html/tests/seller_mfa_test.php \
+ && php /var/www/html/tests/security_regression_test.php

@@ -36,14 +36,6 @@ function init(){
   '<p id="seller-mfa-status" role="status" aria-live="polite"></p>'
  ].join('');
  form.parentNode.insertBefore(card,form);
- const label=document.createElement('label');
- label.className='seller-mfa-code-label';
- label.textContent='Código de 6 dígitos do aplicativo autenticador';
- const inp=document.createElement('input');
- inp.name='mfa_code';inp.inputMode='numeric';inp.autocomplete='one-time-code';inp.maxLength=6;
- inp.pattern='[0-9]{6}';inp.placeholder='000000';inp.required=true;
- label.append(inp);
- form.insertBefore(label,form.querySelector('button[type="submit"]'));
  by('seller-mfa-begin').addEventListener('click',async()=>{
   const button=by('seller-mfa-begin'),password=by('seller-mfa-password').value;
   if(!password){by('seller-mfa-status').textContent='Digite sua senha para começar.';return;}
@@ -71,6 +63,107 @@ function init(){
  });
  refresh();
 }
+
+/**
+ * One-time code is requested only AFTER the seller selects "Solicitar saque".
+ * The existing server-side SellerMfa::requireCode is still the authorization
+ * gate. This component never calls the Pix / withdrawal endpoint.
+ */
+function makeWithdrawalDialog(){
+ let dialog=by('argus-seller-otp-dialog');
+ if(dialog)return dialog;
+ dialog=document.createElement('dialog');
+ dialog.id='argus-seller-otp-dialog';
+ dialog.setAttribute('aria-labelledby','argus-otp-heading');
+ dialog.setAttribute('aria-describedby','argus-otp-description');
+ dialog.innerHTML=[
+  '<div class="argus-otp-heading-band">',
+  '<img src="/static/assets/argus-payments-logo-transparent.webp" width="138" height="56" alt="Argus Payments">',
+  '<button type="button" class="argus-otp-x" data-otp-cancel aria-label="Fechar">×</button></div>',
+  '<div class="argus-otp-body">',
+  '<div class="argus-otp-symbol" aria-hidden="true">✦</div>',
+  '<h2 id="argus-otp-heading">Autorizar saque Pix</h2>',
+  '<p id="argus-otp-description">Confirme os dados da transferência e insira o código temporário do seu aplicativo autenticador.</p>',
+  '<div class="argus-otp-summary" aria-label="Resumo do saque">',
+  '<div><span>Valor do saque</span><strong data-otp-gross></strong></div>',
+  '<div><span>Taxa de serviço</span><strong data-otp-fee></strong></div>',
+  '<div class="argus-otp-net"><span>Valor líquido do Pix</span><strong data-otp-net></strong></div>',
+  '<div><span>Destino Pix</span><strong data-otp-target></strong></div></div>',
+  '<form id="argus-otp-form" autocomplete="off">',
+  '<label for="argus-otp-code">Código de segurança</label>',
+  '<input id="argus-otp-code" name="otp" inputmode="numeric" type="text" ',
+  'autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6" ',
+  'placeholder="000000" spellcheck="false" required aria-describedby="argus-otp-help">',
+  '<small id="argus-otp-help">Código de 6 dígitos. Ele muda a cada 30 segundos e só pode ser utilizado uma vez.</small>',
+  '<p class="argus-otp-error" role="alert" data-otp-error hidden></p>',
+  '<div class="argus-otp-actions">',
+  '<button type="button" data-otp-cancel class="argus-otp-back">Cancelar</button>',
+  '<button type="submit" class="argus-otp-approve">Confirmar saque</button>',
+  '</div></form></div>'
+ ].join('');
+ document.body.appendChild(dialog);
+ return dialog;
+}
+window.ArgusSellerWithdrawModal={
+ request({amountCents,feeCents,pixKeyType,pixKey}){
+  if(!Number.isSafeInteger(amountCents)||amountCents<=0||!Number.isSafeInteger(feeCents)||
+     feeCents<0||feeCents>=amountCents)return Promise.resolve(null);
+  const dialog=makeWithdrawalDialog();
+  if(dialog.open)return Promise.resolve(null);
+  const money=amount=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(amount/100);
+  const types={cpf:'CPF',cnpj:'CNPJ',email:'E-mail',phone:'Celular',evp:'Aleatória'};
+  const target=String(pixKey||'').trim();
+  if(!target)return Promise.resolve(null);
+  dialog.querySelector('[data-otp-gross]').textContent=money(amountCents);
+  dialog.querySelector('[data-otp-fee]').textContent=money(feeCents);
+  dialog.querySelector('[data-otp-net]').textContent=money(amountCents-feeCents);
+  const masked=target.length<=4?'••••':('•••• '+target.slice(-4));
+  dialog.querySelector('[data-otp-target]').textContent=(types[pixKeyType]||'Chave Pix')+' · '+masked;
+  const form=dialog.querySelector('#argus-otp-form');
+  const input=dialog.querySelector('#argus-otp-code');
+  const error=dialog.querySelector('[data-otp-error]');
+  input.value='';error.hidden=true;error.textContent='';
+  return new Promise(resolve=>{
+   let settled=false;
+   const finish=value=>{
+    if(settled)return;
+    settled=true;
+    dialog.removeEventListener('close',onClose);
+    dialog.removeEventListener('cancel',onCancel);
+    dialog.removeEventListener('click',onBackdrop);
+    form.removeEventListener('submit',onSubmit);
+    for(const button of dialog.querySelectorAll('[data-otp-cancel]'))
+     button.removeEventListener('click',onCancel);
+    input.value='';
+    if(dialog.open)dialog.close();
+    resolve(value);
+   };
+   const onClose=()=>finish(null);
+   const onCancel=event=>{event?.preventDefault();finish(null);};
+   const onBackdrop=event=>{if(event.target===dialog)finish(null);};
+   const onSubmit=event=>{
+    event.preventDefault();
+    const value=input.value.trim();
+    if(!/^[0-9]{6}$/.test(value)){
+     error.textContent='Informe os 6 dígitos do seu aplicativo autenticador.';
+     error.hidden=false;input.focus();return;
+    }
+    finish(value);
+   };
+   dialog.addEventListener('close',onClose);
+   dialog.addEventListener('cancel',onCancel);
+   dialog.addEventListener('click',onBackdrop);
+   form.addEventListener('submit',onSubmit);
+   for(const button of dialog.querySelectorAll('[data-otp-cancel]'))
+    button.addEventListener('click',onCancel);
+   try{
+    dialog.showModal();
+    input.focus({preventScroll:true});
+   }catch(_){finish(null);}
+  });
+ }
+};
+
 const observer=new MutationObserver(()=>{if(!rendered&&by('seller-withdraw-form'))init();});
 observer.observe(document.documentElement,{subtree:true,childList:true});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

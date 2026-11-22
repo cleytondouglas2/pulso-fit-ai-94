@@ -8,3 +8,92 @@
 .seller-mfa-card [hidden]{display:none!important}
 .seller-mfa-code-label{margin:12px 0}
 @media(max-width:500px){.seller-mfa-card{padding:15px!important}}
+
+
+/* Security confirmation is displayed as a true top-layer dialog on iOS Safari. */
+#argus-seller-otp-dialog:not([open]){display:none!important}
+#argus-seller-otp-dialog{
+ box-sizing:border-box!important;
+ width:min(440px,calc(100vw - 28px))!important;
+ min-width:0!important;
+ max-width:calc(100vw - 28px)!important;
+ max-height:min(740px,calc(100dvh - 42px))!important;
+ margin:auto!important;padding:0!important;overflow:auto!important;
+ border:1px solid #b98f56!important;border-radius:23px!important;
+ background:linear-gradient(155deg,#23212a 0%,#131a25 82%)!important;
+ color:#f8ebd6!important;
+ box-shadow:0 27px 90px rgba(0,0,0,.78),inset 0 1px rgba(251,218,163,.20)!important;
+ overscroll-behavior:contain;z-index:2147483000!important;
+ animation:argus-otp-enter .22s ease-out;
+}
+#argus-seller-otp-dialog::backdrop{background:rgba(3,8,16,.84);backdrop-filter:blur(6px)}
+#argus-seller-otp-dialog *{box-sizing:border-box}
+#argus-seller-otp-dialog .argus-otp-heading-band{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:12px;padding:17px 19px 9px
+}
+#argus-seller-otp-dialog .argus-otp-heading-band img{max-width:145px;height:auto;max-height:58px;object-fit:contain}
+#argus-seller-otp-dialog .argus-otp-x{
+ width:40px;height:40px;flex:0 0 40px;border:1px solid #776040;
+ background:rgba(213,164,103,.09);color:#f4d39c;border-radius:12px;
+ font-size:27px;line-height:1;cursor:pointer
+}
+#argus-seller-otp-dialog .argus-otp-body{padding:3px 21px max(21px,env(safe-area-inset-bottom))}
+#argus-seller-otp-dialog .argus-otp-symbol{
+ width:54px;height:54px;display:grid;place-items:center;
+ margin:0 auto 10px;border:1px solid #956f46;border-radius:17px;
+ color:#f0c58e;background:linear-gradient(135deg,#56402c,#232127);
+ font-size:32px;text-shadow:0 0 14px #c19c72
+}
+#argus-seller-otp-dialog h2{text-align:center;font-size:24px;line-height:1.2;margin:0 0 8px;color:#f4dfbc}
+#argus-seller-otp-dialog #argus-otp-description{
+ text-align:center;font-size:13px;line-height:1.5;color:#bfc3ce;margin:0 auto 17px
+}
+#argus-seller-otp-dialog .argus-otp-summary{
+ display:grid;gap:0;padding:12px 15px;
+ border:1px solid rgba(209,163,100,.32);border-radius:15px;
+ background:linear-gradient(130deg,rgba(89,63,38,.40),rgba(14,23,34,.65));
+ margin-bottom:16px
+}
+#argus-seller-otp-dialog .argus-otp-summary>div{
+ display:flex;justify-content:space-between;gap:8px;align-items:center;
+ min-height:32px;font-size:12px;color:#c6bdaf;
+}
+#argus-seller-otp-dialog .argus-otp-summary strong{
+ max-width:58%;overflow-wrap:anywhere;text-align:right;font-size:13px;color:#f4e3c7
+}
+#argus-seller-otp-dialog .argus-otp-summary .argus-otp-net{
+ padding-top:8px;border-top:1px solid rgba(209,163,100,.3);margin-top:6px;
+ color:#e0b77e
+}
+#argus-seller-otp-dialog .argus-otp-summary .argus-otp-net strong{font-size:18px;color:#f4c484}
+#argus-seller-otp-dialog #argus-otp-form{display:grid;gap:9px;margin:0}
+#argus-seller-otp-dialog #argus-otp-form label{font-size:13px;font-weight:700;color:#ecd9bf}
+#argus-seller-otp-dialog #argus-otp-code{
+ display:block;width:100%!important;min-width:0!important;min-height:58px;
+ text-align:center;letter-spacing:.35em;font-variant-numeric:tabular-nums;
+ font-weight:700;font-size:24px!important;
+ padding:12px 8px!important;background:#0d1521!important;color:#f8e7cf!important;
+ border:1px solid #71614f!important;border-radius:12px!important;outline:none
+}
+#argus-seller-otp-dialog #argus-otp-code:focus{
+ border-color:#eec08a!important;box-shadow:0 0 0 3px rgba(233,187,128,.18)!important
+}
+#argus-seller-otp-dialog #argus-otp-help{font-size:11px;line-height:1.5;color:#aeb6c3}
+#argus-seller-otp-dialog .argus-otp-error{color:#ffc6b7;font-size:12px;margin:0}
+#argus-seller-otp-dialog .argus-otp-actions{display:grid;grid-template-columns:1fr 1.3fr;gap:10px;margin-top:13px}
+#argus-seller-otp-dialog .argus-otp-actions button{
+ min-width:0!important;min-height:49px;padding:11px 8px!important;border-radius:12px!important;
+ font:700 14px/1.25 inherit;cursor:pointer
+}
+#argus-seller-otp-dialog .argus-otp-back{
+ color:#e8d2b7!important;border:1px solid #776047!important;background:transparent!important
+}
+#argus-seller-otp-dialog .argus-otp-approve{
+ border:1px solid #f6d49f!important;color:#1c1710!important;
+ background:linear-gradient(120deg,#f8dbaa,#c99a5e)!important;
+ box-shadow:0 5px 18px rgba(217,162,83,.16)
+}
+@keyframes argus-otp-enter{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){#argus-seller-otp-dialog{animation:none!important}}
+@media(max-width:390px){#argus-seller-otp-dialog .argus-otp-body{padding-left:15px;padding-right:15px}}
