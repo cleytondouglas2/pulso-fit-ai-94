@@ -83,7 +83,7 @@ function normalizeClient(array $x,array $plans):?array {
  $matched=null;foreach($plans as $p){if($p['key']!==''&&$p['key']===(string)$key){$matched=$p;break;}}
  $name=field($x,['plan_name','package_name','plano','pacote']);if($name===null)$name=is_string($planObj)?$planObj:(is_array($planObj)?field($planObj,['name','title']):null);$name??=$matched['name']??'';
  $raw=strtolower((string)(field($x,['status','state','situation','situacao'])??''));
- $status=preg_match('/cancel/i',$raw)?'canceled':(preg_match('/expire|inactiv|disabled|block|suspend|paus|vencid|bloque/i',$raw)||($x['active']??null)===false||($x['enabled']??null)===false?'paused':(preg_match('/trial|teste/i',$raw)?'trial':'active'));
+ $status=preg_match('/cancel/i',$raw)?'canceled':(preg_match('/expire|expirad|inactiv|inativ|disabled|block|suspend|paus|vencid|bloque/i',$raw)||($x['active']??null)===false||($x['enabled']??null)===false?'paused':(preg_match('/trial|teste/i',$raw)?'trial':'active'));
  $price=field($x,['price','value','valor','amount']);$price=$price!==null&&is_numeric($price)&&$price>=0?(float)$price:null;
  return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name','customerName'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
 }
