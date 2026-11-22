@@ -107,8 +107,8 @@ function initSeller(){
   const box=document.createElement('section');box.id='argus-seller-csv';box.className='argus-seller-csv';
   box.innerHTML='<div><strong>Meu extrato financeiro</strong>'+
    '<p>Baixe um arquivo CSV com movimentos e taxas somente da sua conta. Horários em UTC.</p></div>'+
-   '<form id="argus-seller-csv-form"><label>Início<input type="date" name="from" required></label>'+
-   '<label>Fim<input type="date" name="to" required></label>'+
+   '<form id="argus-seller-csv-form"><label>Início<span class="argus-date-shell"><input type="date" name="from" required></span></label>'+
+   '<label>Fim<span class="argus-date-shell"><input type="date" name="to" required></span></label>'+
    '<button type="submit">Baixar extrato</button></form>';
   dest.append(box);
   const form=E('argus-seller-csv-form');
