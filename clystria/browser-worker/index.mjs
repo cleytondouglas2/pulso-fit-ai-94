@@ -24,7 +24,7 @@ const isBadIp=ip=>{
     (p[0]===198&&p[1]===51&&p[2]===100)||
     (p[0]===203&&p[1]===0&&p[2]===113);
 };
-async function safeUrl(input,documentRequest=false){
+async function safeUrl(input,documentRequest=false,allowCloudflareSubframe=false){
   let u;
   try{u=new URL(String(input));}catch{failure(400,'URL inválida');}
   if(u.protocol!=='https:'||u.username||u.password||u.port&&u.port!=='443')failure(400,'Somente URLs HTTPS comuns são aceitas');
@@ -32,7 +32,8 @@ async function safeUrl(input,documentRequest=false){
   if(net.isIP(host)||!host.includes('.')||host==='localhost'||host.endsWith('.local'))failure(400,'Host não autorizado');
   if(documentRequest){
     const sameProvider=TRUSTED_REDIRECT_DOMAINS.some(domain=>host===domain||host.endsWith('.'+domain));
-    if(!ALLOW.includes(host)&&!sameProvider)failure(403,'Host não está na lista de painéis permitidos');
+    const cloudflareWidget=allowCloudflareSubframe&&host==='challenges.cloudflare.com';
+    if(!ALLOW.includes(host)&&!sameProvider&&!cloudflareWidget)failure(403,'Host não está na lista de painéis permitidos');
   }
   const addresses=await dns.resolve4(host).catch(()=>[]);
   if(!addresses.length||addresses.some(isBadIp))failure(403,'DNS do painel não permitido');
@@ -455,7 +456,16 @@ async function runJob(job){
       try{
         const req=route.request(),url=req.url();
         if(!url.startsWith('https://')){if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();diagnostics.blockedHttp++;return route.abort();}
-        await safeUrl(url,req.isNavigationRequest());
+        // Cloudflare Turnstile loads its verification UI in a nested document.
+        // Permit only the official iframe host; never exempt top-level navigation.
+        let isCloudflareFrame=false;
+        if(req.isNavigationRequest()){
+          try{
+            const target=new URL(url);
+            isCloudflareFrame=target.hostname==='challenges.cloudflare.com'&&!!req.frame().parentFrame();
+          }catch{}
+        }
+        await safeUrl(url,req.isNavigationRequest(),isCloudflareFrame);
         await route.continue();
       }catch(err){
         diagnostics.blockedUnsafe++;
