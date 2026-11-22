@@ -60,63 +60,78 @@ async function maybeLogin(page,username,password){
   const button=(await form.count())?form.locator('button[type="submit"], input[type="submit"], button').first():page.getByRole('button',{name:/entrar|acessar|login|sign in|conectar/i}).first();
   if(await button.count())await button.click({timeout:12000});else await pw.press('Enter');
   await page.waitForLoadState('domcontentloaded',{timeout:13000}).catch(()=>{});
-  await page.waitForTimeout(1600);
+  // SPAs may take seconds to mount the authenticated dashboard.
+  await page.waitForTimeout(2500);
+  await page.waitForLoadState('networkidle',{timeout:6500}).catch(()=>{});
   if(await isChallenge(page))failure(409,'Após o login, o fornecedor exigiu um desafio Cloudflare. Não é possível automatizar sua resolução.');
   if(await page.locator('input[type="password"]').count()){
     const text=await page.locator('body').innerText({timeout:2000}).catch(()=>'');
     if(/credenciais inv[aá]lidas|senha incorreta|login inv[aá]lido|invalid password|invalid credentials/i.test(text))failure(401,'Credenciais recusadas pelo painel');
     failure(422,'Login não confirmado. O formulário deste fornecedor precisa de um adaptador específico.');
   }
-  return 'form_submitted';
+  return 'login_form_sent_not_verified';
 }
 async function navigateClients(page){
-  // Inspect only visible navigation controls; never guess private endpoints.
-  const normalize=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-  const validLabel=/\b(clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?)\b/i;
-  const sectionLabel=/^(meus? |minhas? |todos? os? |lista de |listar |gerenciar |gestao de |gestao |ver |painel de |area de |controle de |consultar |relacao de |administrar )*(clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?)( (ativos?|cadastrados?|vencidos?|pagos?|iptv|online|todos?|lista|gerenciar|\d+))*$/i;
-  const routeLabel=/(^|\/)(clients?|customers?|subscribers?|assinantes?|usuarios?|users?|linhas?|lines?|subscriptions?)(\/|$|[?#_-])/i;
-  const visited=new Set();
-  let last='menu_ausente';
-  for(let step=0;step<4;step++){
+  const norm=t=>String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  // Navigate only read-only sections. No account changes or CAPTCHA automation.
+  const topics=/(^|\W)(client|clientes?|assinantes?|usuarios?|linhas?|acessos?|customers?|subscribers?|conexoes?|contas?)(\W|$)/i;
+  const routePattern=/(^|\/)(clients?|customers?|subscribers?|assinantes?|usuarios?|users?|linhas?|lines?|subscriptions?)(\/|$|[?#_-])/i;
+  const mutation=/(^|\W)(excluir|deletar|remover|novo|nova|criar|adicionar|desativar|suspender|renovar|bloquear|editar|atualizar|apagar|vender|cadastrar)(\W|$)/i;
+  const seen=new Set();let last='menu_ausente',attempts=0;
+  for(let step=0;step<5;step++){
+    await page.waitForTimeout(step===0?1300:800);
     const found=await extract(page);
-    if(found.items.some(i=>i.username&&i.due_date))return step?'secao_clientes_aberta':'lista_ja_aberta';
-    const candidates=await page.evaluate(()=>{
-      const selector='a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link';
-      const nodes=Array.from(document.querySelectorAll(selector)).slice(0,450);
-      return nodes.map((el,index)=>{
-        const rect=el.getBoundingClientRect();
-        if(rect.width<3||rect.height<3)return null;
-        const text=String(el.innerText||el.getAttribute('aria-label')||el.getAttribute('title')||'').replace(/\s+/g,' ').trim().slice(0,100);
-        const href=String(el.getAttribute('href')||'').slice(0,300);
-        return {index,text,href,tag:el.tagName,expanded:el.getAttribute('aria-expanded')};
+    if(found.items.some(i=>i.username&&i.due_date))return 'lista_de_clientes_encontrada';
+    const selector='a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link';
+    const candidates=await page.evaluate(selector=>{
+      return Array.from(document.querySelectorAll(selector)).slice(0,650).map((el,index)=>{
+        const box=el.getBoundingClientRect();
+        if(box.width<2||box.height<2)return null;
+        const style=getComputedStyle(el);
+        if(style.visibility==='hidden'||style.display==='none')return null;
+        const txt=(el.innerText||el.getAttribute('aria-label')||el.getAttribute('title')||el.getAttribute('data-testid')||'').replace(/\s+/g,' ').trim().slice(0,110);
+        const href=(el.getAttribute('href')||'').slice(0,220);
+        return {index,text:txt,href,expanded:el.getAttribute('aria-expanded')};
       }).filter(Boolean);
-    }).catch(()=>[]);
+    },selector).catch(()=>[]);
     const scored=candidates.map(c=>{
-      const label=normalize(c.text).replace(/\b\d+\b/g,'').trim();
-      let points=0;
-      if(sectionLabel.test(label))points+=18;
-      if(validLabel.test(label)&&label.length<42)points+=7;
-      if(routeLabel.test(c.href))points+=16;
-      if(/\blista\b|\bgerenciar\b|\bmeus\b/.test(label))points+=2;
-      if(/\/(logout|sair|delete|remove|deletar|excluir|novo|create|add)(\/|$|\?)/i.test(c.href)||/remover|excluir|deletar|novo |criar |adicionar |deletar/i.test(label))points=-999;
-      const key=String(c.index)+'|'+label+'|'+c.href;
-      if(visited.has(key))points=-999;
-      return {...c,points,key};
-    }).filter(c=>c.points>=14).sort((a,b)=>b.points-a.points);
-    if(!scored.length)return last;
-    let clicked=false;
-    for(const c of scored.slice(0,8)){
-      visited.add(c.key);
-      try{
-        const control=page.locator('a,button,[role="menuitem"],[role="link"],[role="tab"],[data-menu],[data-testid],[class*="menu-item" i],[class*="nav-item" i],[class*="sidebar-item" i],.menu-link,.sidebar-link').nth(c.index);
-        if(c.href&&c.href!=='#'){
-          const target=new URL(c.href,page.url());
-          if(target.origin!==new URL(page.url()).origin)continue;
+      const label=norm(c.text).replace(/\b\d+\b/g,'').trim();
+      const link=norm(c.href);
+      let score=0;
+      if(label&&label.length<=58&&topics.test(label))score+=18;
+      if(label&&/^(clientes?|linhas?|assinantes?|usuarios?|acessos?)( e | \/ | & )/.test(label))score+=12;
+      if(routePattern.test(link))score+=20;
+      if(/^(lista|meus|minhas|gerenciar|gestao|todos|todas) /.test(label))score+=2;
+      if(/testes|servidor|revendas|creditos|suporte|faturas|contabilidade|financeiro|pagamentos|configurac|relatorios|dashboard/.test(label))score-=12;
+      if(mutation.test(label)||/\/(logout|sair|delete|remove|novo|create|add)(\/|$|\?)/i.test(link))score=-999;
+      const key=label+'|'+link+'|'+c.index;
+      if(seen.has(key))score=-999;
+      return {...c,score,key};
+    }).filter(c=>c.score>=18).sort((a,b)=>b.score-a.score);
+    if(!scored.length){
+      // Collapsed mobile sidebars need to be opened before their entries are visible.
+      if(step===0){
+        const toggle=page.locator('[aria-label*="menu" i],[aria-label*="navega" i],button[class*="hamburger" i],button[class*="sidebar-toggle" i],button[data-bs-toggle="collapse"]').first();
+        if(await toggle.count()&&await toggle.isVisible().catch(()=>false)){
+          try{await toggle.click({timeout:2500});last='menu_expandido';continue;}catch{}
         }
-        if(!await control.isVisible()||!await control.isEnabled())continue;
-        await control.click({timeout:4500});
+      }
+      return last;
+    }
+    let clicked=false;
+    for(const c of scored.slice(0,12)){
+      seen.add(c.key);
+      try{
+        const el=page.locator(selector).nth(c.index);
+        if(c.href&&c.href!=='#'){
+          const to=new URL(c.href,page.url());
+          if(to.origin!==new URL(page.url()).origin)continue;
+        }
+        if(!await el.isVisible()||!await el.isEnabled())continue;
+        await el.click({timeout:4500});
+        attempts++;
         await page.waitForLoadState('domcontentloaded',{timeout:6500}).catch(()=>{});
-        await page.waitForTimeout(1350);
+        await page.waitForTimeout(1100);
         last='menu_clientes_acionado';
         clicked=true;break;
       }catch{}
@@ -364,7 +379,15 @@ async function runJob(job){
     for(const [key,item] of captured)if(!records.has(key))records.set(key,item);
     if(!records.size){
       const reason=destination==='menu_ausente'?'menu de clientes não identificado':destination==='menu_clientes_sem_acesso'?'não foi possível abrir o menu de clientes':destination==='menu_clientes_acionado'?'menu acionado, mas sem registros reconhecidos':'dados de clientes não reconhecidos';
-      failure(422,'O login foi enviado, porém '+reason+'. Não foram encontrados usuários com vencimentos válidos; nenhum cliente foi alterado.');
+      const signals=await page.evaluate(()=>({
+        login:!!document.querySelector('input[type="password"]'),
+        links:Array.from(document.querySelectorAll('nav a,aside a,[role="navigation"] a')).length,
+        visibleMenus:Array.from(document.querySelectorAll('a,button,[role="menuitem"]')).filter(el=>{const b=el.getBoundingClientRect();return b.width>0&&b.height>0}).length,
+        ready:document.readyState
+      })).catch(()=>({login:false,links:0,visibleMenus:0,ready:'unknown'}));
+      const evidence=signals.login?'A tela ainda contém campo de senha; autenticação não confirmada.':'A autenticação ainda não pôde ser confirmada.';
+      console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify({stage:destination,loginField:signals.login,navLinks:signals.links,controls:signals.visibleMenus,json:scannedJsonResponses,rows:rawRows,valid:records.size}));
+      failure(422,evidence+' Navegação: '+reason+'. Menu(s): '+signals.links+'; respostas de dados: '+scannedJsonResponses+'. Nenhum cliente foi alterado.');
     }
     return {ok:true,clients:[...records.values()],plans:[],warning:'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size,json_responses:scannedJsonResponses,source:captured.size?'pagina_e_requisicoes_da_sessao':'pagina'}};
