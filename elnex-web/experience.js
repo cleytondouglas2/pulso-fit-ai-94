@@ -145,7 +145,7 @@ async function loadSense(){
  const guide=s.missing.length?'Para começar, vale completar: '+s.missing.slice(0,3).join(', ')+'.':'Seu perfil básico está preenchido. Continue sendo você mesmo: a qualidade da conexão depende das duas pessoas.';
  $('#content').innerHTML='<div class="sense motion-in"><section class="sense-hero"><div><div class="tag">✦ ELNEX SENSE • INTELIGÊNCIA PARA CONEXÕES REAIS</div><h2 class="display-title">O match começa<br>com <span style="color:#ffb2e0">uma boa conexão.</span></h2><p>Um espaço exclusivo para desenvolver conversas, valorizar sua personalidade e pensar em encontros mais significativos.</p><div class="tag-rose"><span class="pulse-dot"></span> ASSISTENTE ELNEX SENSE</div></div><div class="sense-orb" aria-hidden="true">✦</div></section>'+
  '<div class="sense-grid">'+elnexSkills.map(x=>'<button class="sense-skill '+(x.mode===elnexSenseMode?'selected':'')+'" data-mode="'+x.mode+'"><span class="skill-symbol">'+x.icon+'</span><strong>'+x.title+'</strong><small>'+x.hint+'</small></button>').join('')+'</div>'+
- '<div class="sense-workspace"><section class="card"><div class="tag">✦ ASSISTÊNCIA PERSONALIZADA</div><h2 id="senseTitle" style="margin:12px 0">'+esc(active.title)+'</h2><p class="muted">'+esc(active.hint)+'</p><label for="senseInput">O que você quer conversar ou melhorar?</label><textarea id="senseInput" rows="5" maxlength="600" placeholder="'+esc(active.placeholder)+'"></textarea><button id="senseGenerate" class="btn" style="margin-top:13px;width:100%">'+esc(active.cta)+' ✦</button><p class="sense-status">A geração personalizada precisa estar conectada à API de IA no servidor. Seus dados não serão enviados até você tocar em gerar.</p></section>'+
+ '<div class="sense-workspace"><section class="card"><div class="tag">✦ ASSISTÊNCIA PERSONALIZADA</div><h2 id="senseTitle" style="margin:12px 0">'+esc(active.title)+'</h2><p class="muted">'+esc(active.hint)+'</p><label for="senseInput">O que você quer conversar ou melhorar?</label><textarea id="senseInput" rows="5" maxlength="600" placeholder="'+esc(active.placeholder)+'"></textarea><button id="senseGenerate" class="btn" style="margin-top:13px;width:100%">'+esc(active.cta)+' ✦</button><p class="sense-status">O Sense responde em modo básico, sem chave de API. Com IA generativa ativada, as sugestões ficam mais personalizadas. O contexto só é enviado ao tocar no botão.</p></section>'+
  '<section class="card"><div class="tag">SEU RESULTADO</div><h2 style="margin:12px 0">Para você, com cuidado.</h2><div id="senseResult" class="sense-result"><div class="empty">✦ Escolha um recurso, escreva seu contexto e peça uma sugestão.</div></div><div style="margin-top:18px" class="welcome-signal"><span class="emoji">💜</span><div><strong>Análise inicial de perfil</strong><p>'+esc(s.percent)+'% preenchido. '+esc(guide)+'</p><p style="font-size:11px">Indicador de preenchimento, não avaliação do seu valor ou de sua personalidade.</p></div></div></section></div>'+
  '<section class="home-section"><div class="section-head"><h3>Seu jeito de se conectar</h3><span class="tag-rose">ELNEX SENSE 360</span></div><div class="showcase-tiles"><div class="showcase-tile"><span>🧠</span><strong>Autoconhecimento</strong><small>Valorize seus valores e interesses</small></div><div class="showcase-tile"><span>💬</span><strong>Conversas sinceras</strong><small>Sem manipulação nem scripts prontos</small></div><div class="showcase-tile"><span>☕</span><strong>Segurança</strong><small>Encontros em locais públicos</small></div></div></section></div>';
  $('#content').querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>{
@@ -155,8 +155,29 @@ async function loadSense(){
  $('#senseTitle').textContent=info.title;$('#senseInput').placeholder=info.placeholder;
  $('#senseGenerate').textContent=info.cta+' ✦';
  $('#senseResult').textContent='✦ Agora descreva um pouco do seu contexto e toque em gerar.';
+ elxAddQuickPrompts();
  });
  $('#senseGenerate').onclick=elxAskSense;
+ elxAddQuickPrompts();
+}
+function elxAddQuickPrompts(){
+ const input=$('#senseInput');if(!input)return;
+ let host=$('#senseQuickPrompts');
+ if(!host){host=document.createElement('div');host.id='senseQuickPrompts';host.className='sense-quick';input.insertAdjacentElement('afterend',host)}
+ const suggestions={
+  opener:[['Como começar?', 'Quero começar uma conversa interessante com alguém que acabei de conhecer. O que posso dizer?'],['Interesses em comum','Nós dois gostamos de cinema, mas ainda não conversamos. Como abordar com naturalidade?']],
+  insight:[['Nossos valores','Quero entender a importância de valores em comum antes de conhecer alguém melhor.'],['Compatibilidade','Quais perguntas ajudam a conhecer a compatibilidade de forma respeitosa?']],
+  profile:[['Minha biografia','Gosto de músicas, viagens e passar tempo com pessoas queridas. Quero uma biografia autêntica.'],['Mostrar personalidade','Quero deixar meu perfil mais interessante sem parecer artificial ou exagerado.']],
+  date:[['Primeiro encontro','Quero uma sugestão de primeiro encontro seguro, leve e em local público.'],['Café ou passeio','Estamos planejando o primeiro encontro e gostamos de café e passeios culturais.']]
+ };
+ const choices=suggestions[elnexSenseMode]||suggestions.opener;
+ host.innerHTML='<div class="sense-quick-label">EXPERIMENTE UMA SUGESTÃO</div>'+choices.map((item,i)=>'<button type="button" class="sense-prompt" data-prompt-index="'+i+'">✦ '+esc(item[0])+'</button>').join('');
+ host.querySelectorAll('[data-prompt-index]').forEach(b=>{
+  b.onclick=()=>{
+   input.value=choices[Number(b.dataset.promptIndex)][1];
+   input.focus();input.scrollIntoView({block:'center',behavior:'smooth'});
+  };
+ });
 }
 async function elxAskSense(){
  const input=$('#senseInput'),result=$('#senseResult'),btn=$('#senseGenerate');
@@ -166,11 +187,13 @@ async function elxAskSense(){
  btn.disabled=true;btn.textContent='✨ Pensando na sua sugestão...';result.textContent='Conectando ao ELNEX Sense...';
  try{
  const r=await request('/functions/v1/elnex-ai',{method:'POST',body:JSON.stringify({mode:elnexSenseMode,context:context.slice(0,600)})});
- if(!r||!r.text)throw Error('A IA não retornou texto. Tente novamente.');
- result.textContent=r.text;
+ if(!r||!r.text)throw Error('O assistente não retornou texto. Tente novamente.');
+ const title=r.source==='basic'?'✦ SUGESTÃO ELNEX · MODO BÁSICO':'✦ ELNEX SENSE · IA GENERATIVA';
+ result.textContent=title+'\n\n'+r.text+(r.source==='basic'?'\n\nModo básico: orientações produzidas por regras, não por um modelo de IA. A IA generativa exige configurar o provedor no Supabase.':'');
+ result.scrollIntoView({block:'nearest',behavior:'smooth'});
  }catch(e){
  const message=String(e.message||e);
- if(/OPENAI_API_KEY|não ativada|503|indisponível/i.test(message))result.textContent='A interface ELNEX Sense está pronta, mas a IA generativa ainda não foi ativada no servidor. A administração precisa configurar a chave OPENAI_API_KEY no Supabase (Edge Functions → Secrets). Até lá, os recursos dependentes da IA não podem gerar respostas.';
+ if(/OPENAI_API_KEY|não ativada|503|indisponível/i.test(message))result.textContent='Serviço de sugestões temporariamente indisponível. Tente novamente. A versão básica pode funcionar sem a API generativa externa.';
  else if(/Limite diário|429/i.test(message))result.textContent='Seu limite diário de sugestões foi atingido. Você poderá continuar em outro dia.';
  else result.textContent='Não foi possível gerar a sugestão agora: '+message;
  }finally{btn.disabled=false;btn.textContent=(elnexSkills.find(x=>x.mode===elnexSenseMode)||elnexSkills[0]).cta+' ✦'}
