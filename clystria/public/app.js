@@ -205,7 +205,7 @@ async function openVps(panelId){
   vpsCommand('click',{x:Math.max(0,Math.min(960,(e.clientX-rect.left)*960/rect.width)),
     y:Math.max(0,Math.min(720,(e.clientY-rect.top)*720/rect.height))});
  };
- $('#vps-refresh').onclick=()=>vpsCommand('frame');
+ $('#vps-refresh').onclick=()=>vps.session?vpsCommand('frame'):openVps(panelId);
  $('#vps-zoom').onclick=()=>{
   const screen=$('.vps-screen');screen.classList.toggle('zoom');
   $('#vps-zoom').textContent=screen.classList.contains('zoom')?'⌕ Ajustar':'⌕ Ampliar';
@@ -228,7 +228,7 @@ async function openVps(panelId){
   }
   drawVps(frame);
  }catch(e){
-  if($('#vps-result'))$('#vps-result').textContent='Não foi possível abrir: '+e.message;
+  if($('#vps-result'))$('#vps-result').textContent='Não foi possível abrir: '+e.message+' • Toque em Atualizar tela para tentar novamente sem recarregar a página do Zeus.';
   toast(e.message,true);
  }finally{vps.pending=false;}
 }
