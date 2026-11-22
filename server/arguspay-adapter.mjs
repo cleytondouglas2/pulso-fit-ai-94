@@ -81,8 +81,12 @@ export function createArgusPayAdapter({
        typeof created.pix_copy_paste!=="string"||created.pix_copy_paste.length<20||
        Number(created.amount_cents)!==amountCents)
     throw error("Cobrança criada sem Pix verificável; consulte o gateway antes de tentar novamente");
+   // Prefer the PNG returned by ARGUS API; keep client-side QR fallback.
+   const image=typeof created.qr_code_base64==="string"?created.qr_code_base64:"";
+   const qrCodeBase64=image.length<160000&&
+     /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(image)?image:null;
    return {providerPaymentId:created.id,copyPaste:created.pix_copy_paste,
-    qrCodeBase64:null,status:"pending"};
+    qrCodeBase64,status:"pending"};
   },
   async getTransaction(id){
    if(!/^mwc_[a-f0-9]{32}$/.test(String(id||"")))throw error("ID Argus Pay inválido",400);
