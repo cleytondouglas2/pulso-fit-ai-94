@@ -125,6 +125,60 @@ async function navigateClients(page){
   }
   return 'menu_clientes_nao_localizado';
 }
+// Sigma mobile card structure: identifier, details, "Vencimento", active status, plan.
+async function extractSigmaCards(page){
+ const output={items:[],cards:0};
+ for(const frame of page.frames().slice(0,8)){
+  let found;
+  try{found=await frame.evaluate(()=>{
+    const date=/\b(\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}-\d{2}-\d{2})\b/;
+    const leaves=Array.from(document.querySelectorAll('strong,b,span,label,p,div,h3,h4,h5'))
+      .filter(el=>el.children.length<=1&&/^vencimento\s*:?$/i.test((el.innerText||'').trim())).slice(0,250);
+    const items=[],seen=new Set();
+    const getLine=(s)=>String(s||'').split('\n').map(v=>v.trim()).filter(Boolean);
+    for(const leaf of leaves){
+      let el=leaf,container=null,lines=null;
+      for(let depth=0;el&&depth<10;depth++,el=el.parentElement){
+        const raw=String(el.innerText||'');
+        if(raw.length>2200)break;
+        if(!/\bVencimento\b/i.test(raw)||!date.test(raw)||!/\b(Ativo|Vencido|Inativo|Expirado|Teste)\b/i.test(raw))continue;
+        const before=raw.split(/\bVencimento\b/i)[0];
+        const head=getLine(before);
+        const first=head.find(t=>/^(?:\d{7,20}|[\w.+-]+@[\w.-]+\.[a-z]{2,}|[a-z0-9_.-]{8,60})$/i.test(t));
+        if(first&&head.length>=1){container=raw;lines=head;break;}
+      }
+      if(!container)continue;
+      const identifier=lines.find(t=>/^\d{7,20}$/.test(t))||
+        lines.find(t=>/^[a-z0-9_.-]{8,60}$/i.test(t))||
+        lines.find(t=>/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(t));
+      if(!identifier||seen.has(identifier))continue;
+      const expiration=container.match(/Vencimento\s*:?\s*(\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}-\d{2}-\d{2})/i)
+        ||container.match(/Vencimento[^\d]{0,35}(\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}-\d{2}-\d{2})/i);
+      if(!expiration)continue;
+      seen.add(identifier);
+      const mail=lines.find(t=>/^[\w.+-]+@[\w.-]+\.[a-z]{2,}$/i.test(t))||'';
+      const detail=lines.find(t=>t!==identifier&&t!==mail&&/mes|tela|adulto|completo|basico|premium|iptv|pacote/i.test(t))||'';
+      const price=container.match(/Plano\s*:\s*R\$\s*([\d.,]+)/i)?.[1]||'';
+      const state=(container.match(/\b(Ativo|Inativo|Vencido|Expirado|Teste)\b/i)||[])[1]||'';
+      const plan=detail||((container.match(/\b(IPTV|P2P)\b/i)||[])[1]||'');
+      items.push({
+        username:'sigma:'+identifier,
+        name:identifier,
+        phone:/^\d{10,11}$/.test(identifier)?identifier:'',
+        due_date:expiration[1],
+        plan_name:plan.slice(0,90),
+        price:price.replace(/\./g,'').replace(',','.'),
+        status:state,
+      });
+    }
+    return items.slice(0,500);
+  });}catch{continue;}
+  output.cards+=found.length;
+  output.items.push(...found);
+ }
+ return output;
+}
+
 async function extract(page){
  const results={items:[],recognized:0,tables:0,grids:0,frames:0};
  const frames=page.frames().slice(0,8);
@@ -356,11 +410,21 @@ async function runJob(job){
     let scanned=0,recognized=false,rawRows=0;
     for(let i=0;i<8;i++){
       const result=await extract(page);
-      recognized=recognized||result.recognized>0;
-      rawRows+=result.items.length;
-      for(const r of result.items){const c=asClient(r);if(c)records.set(c.username.toLowerCase(),c);}
+      const sigmaCards=job.panel_kind==='sigma'?await extractSigmaCards(page):{items:[],cards:0};
+      recognized=recognized||result.recognized>0||sigmaCards.cards>0;
+      rawRows+=result.items.length+sigmaCards.items.length;
+      for(const r of [...result.items,...sigmaCards.items]){
+        const c=asClient(r);
+        if(c)records.set(c.username.toLowerCase(),c);
+      }
       scanned++;
-      if(!result.recognized||!await nextPage(page))break;
+      if(!result.recognized&&!sigmaCards.cards&&job.panel_kind==='sigma'&&i===0){
+        const switcher=page.getByText(/mudar para tabela/i).first();
+        if(await switcher.count()&&await switcher.isVisible().catch(()=>false)){
+          try{await switcher.click({timeout:4000});await page.waitForTimeout(1200);continue;}catch{}
+        }
+      }
+      if((!result.recognized&&!sigmaCards.cards)||!await nextPage(page))break;
     }
     await Promise.allSettled([...inflight]);
     for(const [key,item] of captured)if(!records.has(key))records.set(key,item);
