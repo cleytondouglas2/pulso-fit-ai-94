@@ -17,12 +17,11 @@ stabilitySwap($dashboard,
  "#argus-seller-csv,#argus-notification-widget,#seller-deposit-form,.seller-panel';",
  'form creation observer');
 stabilitySwap($dashboard,
- "  move(E('seller-payout-history'),E('res-payout-history'));",
- "  // Recover late-mounted Pix form even when its panel was already detached\n".
- "  // from the original merchant root; move nodes rather than cloning handlers.\n".
+ "  filterCharges();",
+ "  // Recover financial forms already detached from the original merchant root.\n".
  "  move(E('seller-deposit-form')?.closest('.seller-panel'),E('res-charge-form'));\n".
  "  move(E('seller-withdraw-form')?.closest('.seller-panel'),E('res-payout-form'));\n".
- "  move(E('seller-payout-history'),E('res-payout-history'));",
+ "  filterCharges();",
  'recover form node');
 stabilitySwap($dashboard,
  "  openDrawer(false);\n  if(focus){",
