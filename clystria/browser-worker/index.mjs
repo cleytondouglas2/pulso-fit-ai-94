@@ -720,7 +720,7 @@ async function liveCapture(item){
  }catch(e){
   console.log('CLYSTRIA_CDP_CAPTURE_UNAVAILABLE '+clean(e.message,90));
   // Do not reload the page or discard the authenticated session.
-  failure(503,'A captura da tela do navegador demorou mais que o permitido. A sessão foi preservada; use Atualizar tela.');
+  failure(503,'A imagem não foi capturada nesta tentativa. O navegador não será recarregado; use Atualizar tela ou reabra a sessão.');
  }finally{if(taskTimer)clearTimeout(taskTimer);}
  if(!capture?.data)failure(502,'O Chromium não devolveu uma imagem. Atualize a tela mantendo a sessão.');
  let hostname='';
@@ -778,9 +778,15 @@ async function startLive(job){
   console.log('CLYSTRIA_INTERACTIVE_OPEN panel_kind='+clean(job.panel_kind,24));
   return await liveCapture(item);
  }catch(e){
-  if(context)await context.close().catch(()=>{});
-  if(browser)await browser.close().catch(()=>{});
-  if(live?.browser===browser)live=null;
+  // If opening succeeded but only the screenshot failed, retain the session
+  // so the user can press Abrir navegador again without repeating Cloudflare.
+  const keep=live?.browser===browser&&!page?.isClosed()&&e?.status===503&&
+    /imagem|captur/i.test(String(e.message||''));
+  if(!keep){
+   if(context)await context.close().catch(()=>{});
+   if(browser)await browser.close().catch(()=>{});
+   if(live?.browser===browser)live=null;
+  }
   throw e;
  }
 }
