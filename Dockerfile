@@ -914,11 +914,12 @@ COPY deployment/PlatformFeeTreasury.php /var/www/html/src/PlatformFeeTreasury.ph
 COPY deployment/admin-platform-fees.js deployment/admin-platform-fees.css /var/www/html/public/static/
 COPY deployment/platform_fee_treasury_patch.php /tmp/platform_fee_treasury_patch.php
 COPY deployment/platform_fee_treasury_test.php /var/www/html/tests/platform_fee_treasury_test.php
+COPY deployment/merchant_wallet_fee_compat_test.php /var/www/html/tests/merchant_wallet_fee_compat_test.php
 RUN php -l /var/www/html/src/PlatformFeeTreasury.php \
  && php -l /tmp/platform_fee_treasury_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/platform_fee_treasury_patch.php \
  && php -l /var/www/html/src/MerchantWallet.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/platform_fee_treasury_test.php \
- && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/merchant_wallet_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/merchant_wallet_fee_compat_test.php \
  && php /var/www/html/tests/hybrid_payout_test.php \
  && php /var/www/html/tests/security_regression_test.php
