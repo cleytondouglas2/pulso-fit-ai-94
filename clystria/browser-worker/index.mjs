@@ -7,6 +7,7 @@ import { chromium } from 'playwright-core';
 const PORT=Number(process.env.PORT||10000);
 const SECRET=process.env.BROWSER_WORKER_TOKEN||'';
 const ALLOW=(process.env.ALLOWED_PANEL_HOSTS||'').toLowerCase().split(',').map(s=>s.trim()).filter(Boolean);
+const TRUSTED_REDIRECT_DOMAINS=(process.env.ALLOWED_PANEL_REDIRECT_SUFFIXES||'').toLowerCase().split(',').map(s=>s.trim()).filter(s=>/^[a-z0-9.-]+\.[a-z]{2,}$/.test(s)&&s.split('.').length>=2);
 const BROWSER_PATH=process.env.CHROMIUM_PATH||'/usr/bin/chromium';
 let busy=false;
 const json=(res,status,payload)=>{res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'});res.end(JSON.stringify(payload));};
@@ -29,7 +30,10 @@ async function safeUrl(input,documentRequest=false){
   if(u.protocol!=='https:'||u.username||u.password||u.port&&u.port!=='443')failure(400,'Somente URLs HTTPS comuns são aceitas');
   const host=u.hostname.toLowerCase();
   if(net.isIP(host)||!host.includes('.')||host==='localhost'||host.endsWith('.local'))failure(400,'Host não autorizado');
-  if(documentRequest&&(!ALLOW.length||!ALLOW.includes(host)))failure(403,'Host não está na lista de painéis permitidos');
+  if(documentRequest){
+    const sameProvider=TRUSTED_REDIRECT_DOMAINS.some(domain=>host===domain||host.endsWith('.'+domain));
+    if(!ALLOW.includes(host)&&!sameProvider)failure(403,'Host não está na lista de painéis permitidos');
+  }
   const addresses=await dns.resolve4(host).catch(()=>[]);
   if(!addresses.length||addresses.some(isBadIp))failure(403,'DNS do painel não permitido');
   return u;
@@ -98,7 +102,24 @@ async function maybeLogin(page,username,password,entryUrl){
     const state=await browserState(page);
     if(state.controls===0)await page.waitForTimeout(4500);
     pw=page.locator('input[type="password"]').first();
-    if(await pw.count()===0)return 'sem_formulario_login_visivel';
+    if(await pw.count()===0){
+      // A public provider landing page may require one click to expose the login form.
+      const loginTarget=page.getByRole('link',{name:/^(entrar|login|fazer login|acessar|iniciar sess[aã]o|sign in)$/i}).first();
+      const loginButton=page.getByRole('button',{name:/^(entrar|login|fazer login|acessar|iniciar sess[aã]o|sign in)$/i}).first();
+      for(const target of [loginTarget,loginButton]){
+        if(!await target.count()||!await target.isVisible().catch(()=>false))continue;
+        const href=await target.getAttribute('href').catch(()=>null);
+        if(href){try{await safeUrl(new URL(href,page.url()).href,true);}catch{continue;}}
+        try{
+          await target.click({timeout:5500});
+          await page.waitForLoadState('domcontentloaded',{timeout:8500}).catch(()=>{});
+          await page.waitForTimeout(900);
+        }catch{}
+        break;
+      }
+      pw=page.locator('input[type="password"]').first();
+      if(await pw.count()===0)return 'sem_formulario_login_visivel';
+    }
   }
   if(!username||!password)failure(422,'Configure usuário e senha do painel no Clystria');
   let user=page.locator('input[autocomplete="username"],input[name*="user" i],input[name*="login" i],input[name*="email" i],input[type="email"]').first();
@@ -425,7 +446,7 @@ async function runJob(job){
   try{
     browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:18000,
       args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
-    const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0};
+    const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0,blockedHost:'',blockedType:''};
     const sigma=job.panel_kind==='sigma';
     context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
       ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{}),
@@ -436,7 +457,15 @@ async function runJob(job){
         if(!url.startsWith('https://')){if(url.startsWith('data:')||url.startsWith('blob:'))return route.continue();diagnostics.blockedHttp++;return route.abort();}
         await safeUrl(url,req.isNavigationRequest());
         await route.continue();
-      }catch{diagnostics.blockedUnsafe++;await route.abort().catch(()=>{});}
+      }catch(err){
+        diagnostics.blockedUnsafe++;
+        const blockedRequest=route.request();
+        if(blockedRequest.isNavigationRequest()&&!diagnostics.blockedHost){
+          try{const b=new URL(blockedRequest.url());diagnostics.blockedHost=b.hostname.slice(0,150);}catch{}
+          diagnostics.blockedType=err?.status===403?'not_allowed':'other';
+        }
+        await route.abort().catch(()=>{});
+      }
     });
     const page=await context.newPage();
     page.setDefaultTimeout(9000);
@@ -524,6 +553,7 @@ async function runJob(job){
         controls:state.controls,bodyLength:state.bodyLength,hasClientsTab:state.hasClientsTab,
         json:scannedJsonResponses,rows:rawRows,valid:records.size,
         blockedHttp:diagnostics.blockedHttp,blockedUnsafe:diagnostics.blockedUnsafe,
+        blockedHost:diagnostics.blockedHost,blockedType:diagnostics.blockedType,
         failedRequests:diagnostics.failedRequests,pageErrors:diagnostics.pageErrors,
         documentResponses:diagnostics.documentResponses
       };
@@ -533,7 +563,7 @@ async function runJob(job){
         state.controls===0?'A página carregada na VPS está sem controles visíveis.':
         state.passwordFields?'O formulário de acesso ainda aparece.':
         'A página carregou, mas a aba Clientes não foi reconhecida.';
-      failure(422,problem+' Diagnóstico: '+reason+', '+diagnostics.failedRequests+' falha(s) de recurso, '+diagnostics.blockedHttp+' conexão(ões) HTTP bloqueada(s). Nenhum cliente foi alterado.');
+      failure(422,problem+' Diagnóstico: '+reason+', '+diagnostics.failedRequests+' falha(s) de recurso, '+diagnostics.blockedHttp+' conexão(ões) HTTP bloqueada(s)'+(diagnostics.blockedHost?' (domínio: '+diagnostics.blockedHost+')':'')+'. Nenhum cliente foi alterado.');
     }
     return {ok:true,clients:[...records.values()],plans:[],warning:'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size,json_responses:scannedJsonResponses,source:captured.size?'pagina_e_requisicoes_da_sessao':'pagina'}};
