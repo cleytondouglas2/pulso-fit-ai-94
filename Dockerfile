@@ -905,3 +905,20 @@ RUN php -l /tmp/admin_payout_stepup_patch.php \
  && php /var/www/html/tests/security_2fa_unit.php \
  && php /var/www/html/tests/finance_qr_unit.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Recognize every commercially collected seller ARGUS fee as revenue of the
+# verified owner email, ONLY after a confirmed PSP paid result. Never send a
+# second Pix: a bank transfer to that owner needs independent, verified payout.
+COPY deployment/PlatformFeeTreasury.php /var/www/html/src/PlatformFeeTreasury.php
+COPY deployment/admin-platform-fees.js deployment/admin-platform-fees.css /var/www/html/public/static/
+COPY deployment/platform_fee_treasury_patch.php /tmp/platform_fee_treasury_patch.php
+COPY deployment/platform_fee_treasury_test.php /var/www/html/tests/platform_fee_treasury_test.php
+RUN php -l /var/www/html/src/PlatformFeeTreasury.php \
+ && php -l /tmp/platform_fee_treasury_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/platform_fee_treasury_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php /var/www/html/tests/platform_fee_treasury_test.php \
+ && php /var/www/html/tests/merchant_wallet_test.php \
+ && php /var/www/html/tests/hybrid_payout_test.php \
+ && php /var/www/html/tests/security_regression_test.php
