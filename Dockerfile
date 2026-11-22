@@ -809,3 +809,12 @@ RUN php -l /var/www/html/tests/reseller_statement_boundary_test.php \
  && php /var/www/html/tests/ui_contract.php \
  && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-statement-boundary.css?v=20261122-3"></head>#; s#finance-operations.js?v=20261119-1#finance-operations.js?v=20261122-boundary-1#' /var/www/html/public/static/client.html \
  && php /var/www/html/tests/reseller_statement_boundary_test.php
+
+
+# Permit password recovery from exact ArgusPay Render service URLs, never arbitrary origins.
+COPY deployment/password_reset_origin_test.php /var/www/html/tests/password_reset_origin_test.php
+RUN php -l /var/www/html/src/PortalPasswordReset.php \
+ && php -l /var/www/html/tests/password_reset_origin_test.php \
+ && php /var/www/html/tests/password_reset_origin_test.php \
+ && php /var/www/html/tests/password_recovery_test.php \
+ && php /var/www/html/tests/security_regression_test.php

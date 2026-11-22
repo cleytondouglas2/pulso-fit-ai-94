@@ -65,7 +65,14 @@ final class PortalPasswordReset {
     private static function origin(string $base):void {
         // Only first-party ARGUS web entry points may initiate password recovery.
         // The canonical reset link itself still uses $base (app.arguspay.com.br).
-        $allowed=array_unique([$base,'https://arguspay.com.br','https://www.arguspay.com.br','https://app.arguspay.com.br']);
+        // Production ArgusPay custom domains and the three exact Render service URLs.
+        // Never trust arbitrary Host / X-Forwarded-Host / *.onrender.com input.
+        $allowed=array_unique([$base,
+            'https://arguspay.com.br','https://www.arguspay.com.br','https://app.arguspay.com.br',
+            'https://argus-payments-oregon-testes.onrender.com',
+            'https://argus-payments-b2b-misticpay.onrender.com',
+            'https://argus-payments-php-demo.onrender.com'
+        ]);
         $origin=rtrim(trim((string)($_SERVER['HTTP_ORIGIN']??'')),'/');
         if($origin!==''&&!in_array($origin,$allowed,true))
             self::fail('Origem de acesso não autorizada',403);
