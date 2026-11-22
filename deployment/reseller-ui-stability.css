@@ -1,0 +1,15 @@
+
+#argus-reseller-workspace .res-charge-load-note{
+  margin:16px 0;padding:17px;border:1px solid #826143;border-radius:13px;
+  color:#efd6aa;background:linear-gradient(125deg,#302821,#1b2029);
+  font-size:14px;line-height:1.5
+}
+#argus-reseller-workspace .res-charge-load-note p{margin:0 0 13px}
+#argus-reseller-workspace .res-charge-load-note button{
+  background:linear-gradient(110deg,#efc488,#d4a366);color:#271a10;
+  border:1px solid #f1d09d;border-radius:9px;
+  min-height:42px;padding:10px 15px;font-weight:750
+}
+#argus-reseller-workspace #ar-seller-revenue .ar-revenue-pending{
+ color:#e7c89e;line-height:1.6;margin:0;font-size:14px
+}
