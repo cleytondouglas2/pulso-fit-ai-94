@@ -448,7 +448,7 @@ async function runJob(job){
   try{
     browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:18000,
       args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
-    const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0,blockedHost:'',blockedType:''};
+    const diagnostics={blockedHttp:0,blockedUnsafe:0,failedRequests:0,pageErrors:0,documentResponses:0,blockedHost:'',blockedType:'',blockedResources:[],failedResourceTypes:[]};
     const sigma=job.panel_kind==='sigma';
     context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
       ...(sigma?{viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1}:{}),
@@ -471,9 +471,15 @@ async function runJob(job){
       }catch(err){
         diagnostics.blockedUnsafe++;
         const blockedRequest=route.request();
+        const reason=err?.status===403?'not_allowed':/dns/i.test(String(err?.message||''))?'dns_error':err?.status===400?'invalid_url':'other';
+        let hostname='';
+        try{hostname=new URL(blockedRequest.url()).hostname.slice(0,150);}catch{}
+        const type=blockedRequest.resourceType().slice(0,20);
+        if(diagnostics.blockedResources.length<4&&!diagnostics.blockedResources.some(x=>x.host===hostname&&x.type===type))
+          diagnostics.blockedResources.push({host:hostname,type,reason});
         if(blockedRequest.isNavigationRequest()&&!diagnostics.blockedHost){
-          try{const b=new URL(blockedRequest.url());diagnostics.blockedHost=b.hostname.slice(0,150);}catch{}
-          diagnostics.blockedType=err?.status===403?'not_allowed':'other';
+          diagnostics.blockedHost=hostname;
+          diagnostics.blockedType=reason;
         }
         await route.abort().catch(()=>{});
       }
@@ -481,7 +487,16 @@ async function runJob(job){
     const page=await context.newPage();
     page.setDefaultTimeout(9000);
     page.on('pageerror',()=>{diagnostics.pageErrors++;});
-    page.on('requestfailed',()=>{diagnostics.failedRequests++;});
+    page.on('requestfailed',request=>{
+      diagnostics.failedRequests++;
+      if(diagnostics.failedResourceTypes.length<4){
+        let hostname='';
+        try{hostname=new URL(request.url()).hostname.slice(0,140);}catch{}
+        const type=request.resourceType().slice(0,20);
+        if(!diagnostics.failedResourceTypes.some(x=>x.host===hostname&&x.type===type))
+          diagnostics.failedResourceTypes.push({host:hostname,type});
+      }
+    });
     page.on('response',response=>{if(response.request().isNavigationRequest())diagnostics.documentResponses++;});
     const captured=new Map(),inflight=new Set();
     let scannedJsonResponses=0;
@@ -563,13 +578,17 @@ async function runJob(job){
         route:state.path==='/'?'root':/\/(api|auth|login)(\/|$)/i.test(state.path)?'auth_or_api':'other',
         controls:state.controls,bodyLength:state.bodyLength,hasClientsTab:state.hasClientsTab,
         json:scannedJsonResponses,rows:rawRows,valid:records.size,
+        blockedResources:diagnostics.blockedResources,failedResourceTypes:diagnostics.failedResourceTypes,
         blockedHttp:diagnostics.blockedHttp,blockedUnsafe:diagnostics.blockedUnsafe,
         blockedHost:diagnostics.blockedHost,blockedType:diagnostics.blockedType,
         failedRequests:diagnostics.failedRequests,pageErrors:diagnostics.pageErrors,
         documentResponses:diagnostics.documentResponses
       };
       console.log('CLYSTRIA_SYNC_DIAGNOSTIC '+JSON.stringify(fingerprint));
-      const problem=state.contentType.toLowerCase().includes('json')?
+      const challengeVisible=await page.evaluate(()=>!!document.querySelector('iframe[src*="challenges.cloudflare.com"],.cf-turnstile,[data-sitekey],[id*="challenge" i],[class*="turnstile" i]')).catch(()=>false);
+      const problem=challengeVisible?
+        'O Zeus está aguardando uma verificação Cloudflare na VPS; a autenticação precisa ser concluída por um método autorizado.':
+        state.contentType.toLowerCase().includes('json')?
         'O navegador terminou em uma resposta JSON, não na tela de Clientes do Sigma.':
         state.controls===0?'A página carregada na VPS está sem controles visíveis.':
         state.passwordFields?'O formulário de acesso ainda aparece.':
