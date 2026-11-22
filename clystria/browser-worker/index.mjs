@@ -70,67 +70,120 @@ async function maybeLogin(page,username,password){
   return 'form_submitted';
 }
 async function navigateClients(page){
-  const links=page.locator('a, button, [role="menuitem"], [role="tab"]');
-  const count=Math.min(await links.count(),130);
+  const current=await extract(page);
+  if(current.items.length&&current.recognized)return 'already_on_clients';
+  const sections=page.locator('a, button, [role="menuitem"], [role="tab"], [role="link"], [data-menu], [data-testid]');
+  const count=Math.min(await sections.count(),260);
+  let candidate=null;
   for(let i=0;i<count;i++){
-    const node=links.nth(i);
-    const text=clean(await node.innerText({timeout:600}).catch(()=>''),80);
-    if(!/^(clientes|assinantes|usuários|usuarios|meus clientes|gerenciar clientes|lista de clientes|linhas)$/i.test(text))continue;
+    const node=sections.nth(i);
+    const label=clean(await node.innerText({timeout:350}).catch(()=>''),90).replace(/\s+/g,' ').trim();
+    if(!label||label.length>60||!/^(clientes|assinantes|linhas|usuários|usuarios|meus clientes|minhas linhas|gerenciar clientes|lista de clientes|lista de usuários|lista de usuarios|clientes ativos|gerenciar linhas|acessos)(\s*\(\d+\))?$/i.test(label))continue;
     const href=await node.getAttribute('href').catch(()=>null);
     if(href&&href!=='#'){
-      try{let url=new URL(href,page.url());if(url.hostname!==new URL(page.url()).hostname)continue;}catch{continue;}
+      try{const url=new URL(href,page.url());if(url.origin!==new URL(page.url()).origin)continue;}catch{continue;}
     }
-    try{await node.click({timeout:4000});await page.waitForLoadState('domcontentloaded',{timeout:7000}).catch(()=>{});await page.waitForTimeout(1000);return text;}catch{}
+    candidate=node;break;
   }
-  return 'no_link';
+  if(!candidate)return 'client_menu_not_found';
+  const name=clean(await candidate.innerText().catch(()=>''),70);
+  try{
+    await candidate.click({timeout:5000});
+    await page.waitForLoadState('domcontentloaded',{timeout:9000}).catch(()=>{});
+    await page.waitForTimeout(1800);
+    return name||'client_section';
+  }catch{return 'menu_click_failed';}
 }
 async function extract(page){
- return await page.evaluate(()=>{
-   const normalized=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-   const rules={
-    username:/^(usuario|login|user|username|acesso|identificador|linha|usuario de acesso)$/,
-    name:/^(nome|nome completo|cliente|assinante|titular|name|customer|full name)$/,
-    due_date:/(vencimento|expiracao|expires|expiration|validade|data vencimento|valid until|due date)/,
-    phone:/(telefone|whatsapp|celular|phone|mobile)/,
-    status:/(situacao|status|estado)/,
-    plan_name:/(plano|pacote|plan|package)/,
-    price:/(valor|preco|price|mensalidade)/
-   };
-   const pick=h=>Object.keys(rules).find(k=>rules[k].test(normalized(h)))||null;
-   let found=[],recognized=0;
-   const tables=Array.from(document.querySelectorAll('table')).slice(0,6);
-   for(const table of tables){
-    const headerCells=Array.from(table.querySelectorAll('thead th'));
-    const fallback=headerCells.length?headerCells:Array.from(table.querySelectorAll('tr:first-child th'));
-    const heads=fallback.map(x=>pick(x.textContent));
-    if(!heads.includes('username')&&!heads.includes('due_date'))continue;
-    recognized++;
-    const rows=Array.from(table.querySelectorAll('tbody tr')).slice(0,300);
-    for(const tr of rows){
-      const cells=Array.from(tr.querySelectorAll('td'));
-      if(!cells.length)continue;
-      const item={};
-      cells.forEach((cell,i)=>{const field=heads[i];if(field&&field!=='password')item[field]=(cell.innerText||cell.textContent||'').trim().slice(0,220);});
-      if(item.username||item.due_date)found.push(item);
-    }
-   }
-   if(!found.length){
-    const cards=Array.from(document.querySelectorAll('[data-client-id], [data-user-id], .client-card, .customer-card, .user-card')).slice(0,220);
-    for(const el of cards){
-      const txt=(el.innerText||'').slice(0,1300);
-      const match=(re)=>txt.match(re)?.[1]?.trim()||'';
-      const username=match(/(?:login|usu[aá]rio|user)\s*[:\-]\s*([^\n]+)/i);
-      const due_date=match(/(?:vencimento|validade|expira(?:ção|cao))\s*[:\-]\s*([^\n]+)/i);
-      if(username&&due_date)found.push({
-       username,due_date,name:match(/(?:nome|cliente)\s*[:\-]\s*([^\n]+)/i)||username,
-       phone:match(/(?:telefone|whatsapp)\s*[:\-]\s*([^\n]+)/i),
-       status:match(/(?:situa(?:ção|cao)|status)\s*[:\-]\s*([^\n]+)/i)
+ const results={items:[],recognized:0,tables:0,grids:0,frames:0};
+ const frames=page.frames().slice(0,8);
+ for(const frame of frames){
+  let data;
+  try{
+   data=await frame.evaluate(()=>{
+    const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+    const fields={
+      username:/^(usuario|user|username|login|acesso|usuario de acesso|usuario iptv|login de acesso|user name|identificador|linha|usuario cliente|login cliente)( |$)/,
+      due_date:/(vencimento|vence|expira|expiracao|expiration|expiry|validade|data final|data de validade|exp date|due date|valid until|validade ate)/,
+      name:/^(nome|nome do cliente|nome completo|cliente|assinante|titular|customer|name|full name)( |$)/,
+      phone:/(telefone|whatsapp|celular|phone|mobile|contato)/,
+      status:/(situacao|status|estado)/,
+      plan_name:/(plano|pacote|plan|package)/,
+      price:/(valor|preco|price|mensalidade)/
+    };
+    const pick=k=>Object.keys(fields).find(f=>fields[f].test(norm(k)))||null;
+    const datePattern=/\b(?:\d{2}[/.-]\d{2}[/.-]\d{4}|\d{4}[-/]\d{2}[-/]\d{2})\b/;
+    const items=[];let recognized=0,tableCount=0,gridCount=0;
+    const clean=v=>String(v||'').replace(/\s+/g,' ').trim().slice(0,220);
+    const push=i=>{
+     if(!i||typeof i!=='object')return;
+     const normalized={};
+     for(const [key,val] of Object.entries(i))if(fields[key]&&val)normalized[key]=clean(val);
+     if(normalized.username||normalized.due_date)items.push(normalized);
+    };
+    function mapCells(cells,headers){
+      const out={};
+      cells.forEach((node,j)=>{
+       const rawLabel=node.getAttribute?.('data-field')||node.getAttribute?.('data-column')||
+           node.getAttribute?.('aria-label')?.split(':')[0]||headers[j]||'';
+       const key=pick(rawLabel)||pick(headers[j]||'');
+       if(key&&!out[key])out[key]=clean(node.innerText||node.textContent);
       });
+      return out;
     }
-    if(cards.length&&found.length)recognized++;
-   }
-   return {items:found,recognized,tables:tables.length};
- });
+    const tables=Array.from(document.querySelectorAll('table')).slice(0,15);
+    tableCount=tables.length;
+    for(const table of tables){
+     const headEls=Array.from(table.querySelectorAll('thead th, thead td'));
+     const heads=(headEls.length?headEls:Array.from(table.querySelectorAll('tr:first-child th, tr:first-child td'))).map(x=>clean(x.innerText||x.textContent));
+     if(!heads.some(h=>pick(h)==='username'||pick(h)==='due_date'))continue;
+     recognized++;
+     let trs=Array.from(table.querySelectorAll('tbody tr'));
+     if(!trs.length)trs=Array.from(table.querySelectorAll('tr')).slice(1);
+     for(const tr of trs.slice(0,600)){
+       const cells=Array.from(tr.querySelectorAll(':scope > td'));
+       if(!cells.length)continue;
+       push(mapCells(cells,heads));
+     }
+    }
+    const grids=Array.from(document.querySelectorAll('[role="grid"],[role="table"],.MuiDataGrid-root,.ag-root,.ant-table,.p-datatable,[class*="data-grid" i]')).slice(0,12);
+    gridCount=grids.length;
+    for(const grid of grids){
+     const headingNodes=Array.from(grid.querySelectorAll('[role="columnheader"],[data-col-id],.ag-header-cell')).slice(0,35);
+     const heads=headingNodes.map(h=>clean(h.getAttribute('data-field')||h.getAttribute('col-id')||h.innerText||h.textContent));
+     const rows=Array.from(grid.querySelectorAll('[role="row"],.ag-row,.MuiDataGrid-row')).filter(r=>r.querySelector('[role="gridcell"],[role="cell"],.ag-cell,[data-field]')).slice(0,650);
+     if(!heads.some(h=>['username','due_date'].includes(pick(h)))&&!rows.some(r=>r.querySelector('[data-field*="user" i],[data-field*="login" i],[data-field*="expir" i],[data-field*="venc" i]')))continue;
+     recognized++;
+     for(const row of rows){
+       const cells=Array.from(row.querySelectorAll(':scope > [role="gridcell"],:scope > [role="cell"],:scope > [data-field],:scope > .ag-cell'));
+       const nested=cells.length?cells:Array.from(row.querySelectorAll('[role="gridcell"],[role="cell"],.ag-cell,[data-field]'));
+       push(mapCells(nested.slice(0,35),heads));
+     }
+    }
+    const cards=Array.from(document.querySelectorAll('[data-client-id],[data-user-id],[data-testid*="client" i],[data-testid*="customer" i],.client-card,.customer-card,.user-card,[class*="cliente-card" i],[class*="customer-item" i]')).slice(0,350);
+    const value=(s,re)=>{const m=s.match(re);return m?clean(m[1]):'';};
+    for(const el of cards){
+      if(el.matches('table,tr,tbody,thead'))continue;
+      const raw=String(el.innerText||'').slice(0,2000);
+      const username=clean(el.getAttribute('data-username')||el.getAttribute('data-login')||value(raw,/(?:^|\n)\s*(?:login|usu[aá]rio|username|user)\s*[:\-]\s*([^\n]+)/i));
+      const due=value(raw,/(?:^|\n)\s*(?:vencimento|vence|validade|expira(?:ção|cao)|expiration)\s*[:\-]\s*([^\n]+)/i);
+      const date=due||clean(el.getAttribute('data-due-date')||el.getAttribute('data-expiration'));
+      if(username&&datePattern.test(date)){
+        push({username,due_date:date,name:value(raw,/(?:^|\n)\s*(?:nome|cliente)\s*[:\-]\s*([^\n]+)/i)||username,
+          phone:value(raw,/(?:^|\n)\s*(?:telefone|whatsapp)\s*[:\-]\s*([^\n]+)/i),
+          plan_name:value(raw,/(?:^|\n)\s*(?:plano|pacote)\s*[:\-]\s*([^\n]+)/i),
+          status:value(raw,/(?:^|\n)\s*(?:status|situa(?:ção|cao))\s*[:\-]\s*([^\n]+)/i)});
+        recognized++;
+      }
+    }
+    return {items,recognized,tables:tableCount,grids:gridCount};
+   });
+  }catch{continue;}
+  results.frames++;
+  results.recognized+=data.recognized||0;results.tables+=data.tables||0;results.grids+=data.grids||0;
+  results.items.push(...(data.items||[]));
+ }
+ return results;
 }
 function normalizeDate(value){
   const s=clean(value,70);
@@ -197,7 +250,7 @@ async function runJob(job){
       scanned++;
       if(!result.recognized||!await nextPage(page))break;
     }
-    if(!recognized)failure(422,'Login realizado, mas não foi possível identificar a tabela de clientes no painel. Será necessário configurar os seletores específicos desta versão.');
+    if(!recognized)failure(422,'Login efetuado, mas nenhuma lista de clientes foi reconhecida. Use Navegador VPS para abrir manualmente a tela Clientes/Linhas e importar a partir dessa página.');
     if(!records.size&&rawRows)failure(422,'Tabela de clientes localizada, mas faltam login e vencimento reconhecíveis; nenhum registro foi importado.');
     return {ok:true,clients:[...records.values()],plans:[],warning:records.size===0?'Lista de clientes vazia ou não reconhecida; revise antes de considerar sincronizado.':'',
       diagnostics:{login,section:destination,pages:scanned,rows_seen:rawRows,valid_clients:records.size}};
@@ -297,7 +350,7 @@ async function liveAction(job){
 async function liveImport(job){
   const item=liveSession(job),page=item.page;
   if(await isChallenge(page))failure(409,'O painel ainda exibe verificação de segurança. Conclua manualmente no navegador, se permitido, antes de importar.');
-  const destination=await navigateClients(page);
+  const destination='manual_selection';
   const records=new Map();let scanned=0,rawRows=0,recognized=false;
   for(let i=0;i<8;i++){
     const result=await extract(page);scanned++;
