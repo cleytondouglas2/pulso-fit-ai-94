@@ -753,3 +753,9 @@ RUN test -s /var/www/html/public/static/reseller-unified-card.css \
  && grep -Fq 'id="argus-reseller-overview-balances"' /var/www/html/public/static/reseller-dashboard.js \
  && sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-unified-card.css?v=20261122-card-1"></head>#' /var/www/html/public/static/client.html \
  && grep -Fq '/static/reseller-unified-card.css?v=20261122-card-1' /var/www/html/public/static/client.html
+
+
+# REFRESH: Match original ARGUS Pay premium three-card mockup: compact width,
+# separate main gold card + two secondary cards, instead of one wide frame.
+RUN sed -i 's#reseller-unified-card.css?v=20261122-card-1#reseller-unified-card.css?v=20261122-card-2#' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-unified-card.css?v=20261122-card-2' /var/www/html/public/static/client.html
