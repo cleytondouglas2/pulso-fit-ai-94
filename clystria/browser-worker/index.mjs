@@ -743,7 +743,7 @@ async function startLive(job){
   }
   failure(409,'Já existe uma sessão de navegador em uso; encerre-a antes de abrir outra');
  }
- let browser=null,context=null;
+ let browser=null,context=null,page=null;
  try{
   browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
     args:CHROMIUM_ARGS});
@@ -765,7 +765,7 @@ async function startLive(job){
     return route.continue();
    }catch{return route.abort().catch(()=>{});}
   });
-  const page=await context.newPage();
+  page=await context.newPage();
   page.setDefaultTimeout(9500);
   // Credentials are retained server-side only for user-requested autofill, never sent to the phone.
   const item={id:randomUUID(),panelId,owner,browser,context,page,cdp:null,
