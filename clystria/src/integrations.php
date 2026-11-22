@@ -101,14 +101,14 @@ function remoteBrowserFetch(array $panel):array {
  $token=envv('BROWSER_WORKER_TOKEN');
  if($endpoint===''||strlen($token)<32)throw new RuntimeException('O navegador remoto ainda não está configurado no Clystria');
  if(!$panel['login_user']||!$panel['login_pass_enc'])throw new RuntimeException('Configure o usuário e a senha da conexão');
- set_time_limit(110);
+ set_time_limit(80);
  $payload=[
   'url'=>$panel['url'],
   'username'=>$panel['login_user'],
   'password'=>unseal($panel['login_pass_enc']),
   'panel_kind'=>$panel['kind'],
  ];
- $response=requestPanel(rtrim($endpoint,'/').'/sync','POST',$payload,['Authorization: Bearer '.$token],'navegação Chromium',95);
+ $response=requestPanel(rtrim($endpoint,'/').'/sync','POST',$payload,['Authorization: Bearer '.$token],'navegação Chromium',58);
  $json=$response['data'];
  if(($json['ok']??false)!==true||!isset($json['clients'])||!is_array($json['clients']))throw new RuntimeException('O navegador não retornou uma lista válida de clientes');
  if(count($json['clients'])>10000)throw new RuntimeException('O navegador retornou clientes demais');
