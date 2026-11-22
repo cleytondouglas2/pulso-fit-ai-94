@@ -47,6 +47,12 @@ function api():never{
  $actor=$s['email'];$role=$s['role'];$x=null;
  if($route==='/api/me'&&$method==='GET')jsonout(['name'=>$s['name'],'email'=>$s['email'],'role'=>$role,'csrf'=>$s['csrf']]);
  if($route==='/api/logout'&&$method==='POST'){run('DELETE FROM sessions WHERE token_hash=?',[hash('sha256',$_COOKIE['cly_session']??'')]);cookie('',-3600);jsonout(['ok'=>true]);}
+ if($route==='/api/browser/status'&&$method==='GET'){
+  $url=envv('BROWSER_WORKER_URL');$token=envv('BROWSER_WORKER_TOKEN');
+  if($url===''||strlen($token)<32)fail(503,'Serviço de navegador remoto não configurado');
+  try{$r=requestPanel(rtrim($url,'/').'/ping','POST',[],['Authorization: Bearer '.$token],'navegação Chromium',30)['data'];jsonout(['ok'=>(bool)($r['ok']??false),'browser_self_test'=>$r['browser_self_test']??'unknown']);}
+  catch(Throwable $e){fail(502,'Não foi possível verificar o Chromium: '.$e->getMessage());}
+ }
  if($route==='/api/dashboard'&&$method==='GET')jsonout(dashboardData());
  if($route==='/api/clients'&&$method==='GET')jsonout(['clients'=>array_map('toPublic',all('SELECT c.*,p.name plan_name,pa.name panel_name FROM clients c LEFT JOIN plans p ON c.plan_id=p.id LEFT JOIN panels pa ON c.panel_id=pa.id WHERE c.archived_at IS NULL ORDER BY c.due_date ASC'))]);
  if($route==='/api/clients'&&$method==='POST'){

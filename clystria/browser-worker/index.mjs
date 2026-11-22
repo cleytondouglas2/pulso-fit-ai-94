@@ -233,6 +233,7 @@ const server=http.createServer(async(req,res)=>{
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
     if(!equals(supplied,SECRET))return json(res,401,{error:'Não autorizado'});
+    if(req.url==='/ping')return json(res,browserSelfTest==='ok'?200:503,{ok:browserSelfTest==='ok',browser_self_test:browserSelfTest});
     if(busy)return json(res,429,{error:'Uma sincronização já está em execução; tente novamente'});
     busy=true;acquired=true;
     let body='';for await(const chunk of req){body+=chunk;if(body.length>12000)failure(413,'Solicitação muito grande');}
