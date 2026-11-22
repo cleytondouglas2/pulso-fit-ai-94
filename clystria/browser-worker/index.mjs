@@ -665,6 +665,28 @@ async function verificationPending(page){
  return !passwordVisible&&challengeElements>0;
 }
 
+
+/* Cloudflare Managed Challenge can approve the real browser without a human click.
+   We only wait for Cloudflare's own page/JS navigation; never solve interactive
+   CAPTCHA, fabricate tokens or manipulate challenge frames. */
+async function awaitPassiveVerification(page,ms=12000){
+ const began=Date.now();
+ const first=await verificationPending(page);
+ if(!first)return {wasChallenge:false,passed:false};
+ let passed=false;
+ while(Date.now()-began<ms){
+  if(page.isClosed())break;
+  if(!await verificationPending(page)){
+   await page.waitForTimeout(450);
+   if(!await verificationPending(page)){passed=true;break;}
+  }
+  if(await memoryPressure()>=0.78)break;
+  await page.waitForTimeout(850);
+ }
+ console.log('CLYSTRIA_MANAGED_CHALLENGE '+(passed?'CLEARED':'MANUAL_OR_PENDING'));
+ return {wasChallenge:true,passed};
+}
+
 const VIEWPORT={width:960,height:720};
 async function closeLive(){
  const previous=live;live=null;
@@ -688,7 +710,9 @@ async function liveCapture(item){
  try{hostname=new URL(page.url()).hostname;}catch{}
  return {ok:true,session:item.id,width:VIEWPORT.width,height:VIEWPORT.height,
   image:'data:image/jpeg;base64,'+screenshot.toString('base64'),
-  host:hostname,verification:await isChallenge(page),password_form:(await page.locator('input[type="password"]').count())>0};
+  host:hostname,verification:await verificationPending(page),
+  managed_verification_cleared:!!item.managedVerified,
+  password_form:(await page.locator('input[type="password"]').count())>0};
 }
 async function startLive(job){
  if(!ALLOW.length)failure(503,'Navegador não configurado');
@@ -729,8 +753,11 @@ async function startLive(job){
   // Credentials are retained server-side only for user-requested autofill, never sent to the phone.
   const item={id:randomUUID(),panelId,owner,browser,context,page,
     username:clean(job.username,160),password:String(job.password||''),lastActive:Date.now()};
-  await page.goto(entry,{waitUntil:'domcontentloaded',timeout:30000});
+  await page.goto(entry,{waitUntil:'domcontentloaded',timeout:23000});
   live=item;
+  const managed=await awaitPassiveVerification(page,11000);
+  item.managedVerified=managed.passed;
+  if(await memoryPressure()>=0.86)failure(503,'Limite de memória da VPS próximo do máximo. Navegador encerrado para evitar travamento.');
   console.log('CLYSTRIA_INTERACTIVE_OPEN panel_kind='+clean(job.panel_kind,24));
   return await liveCapture(item);
  }catch(e){
@@ -760,7 +787,9 @@ async function interactLive(job){
   if(!Number.isFinite(dy))failure(400,'Rolagem inválida');
   await page.mouse.wheel(0,Math.max(-700,Math.min(700,dy)));
  }else if(kind==='reload'){
-  await page.reload({waitUntil:'domcontentloaded',timeout:25000});
+  await page.reload({waitUntil:'domcontentloaded',timeout:20000});
+  const managed=await awaitPassiveVerification(page,6500);
+  item.managedVerified=item.managedVerified||managed.passed;
  }else if(kind==='autofill'){
   if(!item.username||!item.password)failure(422,'A conexão precisa ter usuário e senha salvos');
   let username=page.locator('input[autocomplete="username"],input[type="email"],input[name*="user" i],input[name*="login" i]').first();
