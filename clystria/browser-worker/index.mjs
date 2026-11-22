@@ -705,11 +705,28 @@ function getLive(job){
 async function liveCapture(item){
  const page=item.page;
  if(page.isClosed())failure(410,'A página foi encerrada');
- const screenshot=await page.screenshot({type:'jpeg',quality:56,animations:'disabled',timeout:12000});
+ // CDP captures the current compositor frame directly; Playwright's screenshot
+ // waits for document.fonts.ready, which Cloudflare challenge pages can hang on.
+ let capture=null,taskTimer=null;
+ try{
+  if(!item.cdp)item.cdp=await item.context.newCDPSession(page);
+  const task=item.cdp.send('Page.captureScreenshot',{
+    format:'jpeg',quality:55,fromSurface:true,captureBeyondViewport:false
+  });
+  capture=await Promise.race([
+    task,
+    new Promise((_,reject)=>{taskTimer=setTimeout(()=>reject(new Error('capture_deadline')),6500);})
+  ]);
+ }catch(e){
+  console.log('CLYSTRIA_CDP_CAPTURE_UNAVAILABLE '+clean(e.message,90));
+  // Do not reload the page or discard the authenticated session.
+  failure(503,'A captura da tela do navegador demorou mais que o permitido. A sessão foi preservada; use Atualizar tela.');
+ }finally{if(taskTimer)clearTimeout(taskTimer);}
+ if(!capture?.data)failure(502,'O Chromium não devolveu uma imagem. Atualize a tela mantendo a sessão.');
  let hostname='';
  try{hostname=new URL(page.url()).hostname;}catch{}
  return {ok:true,session:item.id,width:VIEWPORT.width,height:VIEWPORT.height,
-  image:'data:image/jpeg;base64,'+screenshot.toString('base64'),
+  image:'data:image/jpeg;base64,'+capture.data,
   host:hostname,verification:await verificationPending(page),
   managed_verification_cleared:!!item.managedVerified,
   password_form:(await page.locator('input[type="password"]').count())>0};
@@ -751,7 +768,7 @@ async function startLive(job){
   const page=await context.newPage();
   page.setDefaultTimeout(9500);
   // Credentials are retained server-side only for user-requested autofill, never sent to the phone.
-  const item={id:randomUUID(),panelId,owner,browser,context,page,
+  const item={id:randomUUID(),panelId,owner,browser,context,page,cdp:null,
     username:clean(job.username,160),password:String(job.password||''),lastActive:Date.now()};
   await page.goto(entry,{waitUntil:'domcontentloaded',timeout:23000});
   live=item;
