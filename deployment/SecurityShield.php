@@ -108,6 +108,27 @@ final class SecurityShield {
         [$max,$window]=$limits[$action];
         self::rate($db,'merchant_'.$action,$accountId,$max,$window);
     }
+
+    /**
+     * Failed integration authentication only. Successful checkout, reads and
+     * payouts NEVER consume these limits. No raw API key or IP is persisted.
+     * Unknown keys use only a coarse network bucket to prevent unbounded
+     * creation of per-key rows by requests with random public keys.
+     */
+    public static function failedApi(Database $db,string $publicKey,bool $known):void{
+        self::rate($db,'api_invalid_network',self::remoteTag(),1500,600);
+        if($known){
+            self::rate($db,'api_invalid_key',$publicKey,25,600);
+        }
+    }
+
+    /** Token-bearing reset confirmations remain bounded during abuse attempts. */
+    public static function resetVerify(Database $db,bool $admin):void{
+        $category=$admin?'reset_admin_verify':'reset_portal_verify';
+        // A generous network limit avoids locking users behind a shared proxy.
+        self::rate($db,$category,self::remoteTag(),1500,600);
+    }
+
     public static function unknownPayout(Database $db,string $accountId):void{
         $subject=hash_hmac('sha256','payout-account:'.$accountId,self::secret());
         self::audit($db,'uncertain_payout',$subject);

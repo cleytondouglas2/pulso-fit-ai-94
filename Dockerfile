@@ -818,3 +818,20 @@ RUN php -l /var/www/html/src/PortalPasswordReset.php \
  && php /var/www/html/tests/password_reset_origin_test.php \
  && php /var/www/html/tests/password_recovery_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Post-build ARGUS security hardening. Successful charge/payout flows remain unchanged.
+COPY deployment/SecurityShield.php /var/www/html/src/SecurityShield.php
+COPY deployment/api_auth_hardening_patch.php /tmp/api_auth_hardening_patch.php
+COPY deployment/api_auth_hardening_test.php /var/www/html/tests/api_auth_hardening_test.php
+RUN php -l /var/www/html/src/SecurityShield.php \
+ && php -l /tmp/api_auth_hardening_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/api_auth_hardening_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/PortalPasswordReset.php \
+ && php /var/www/html/tests/api_auth_hardening_test.php \
+ && php /var/www/html/tests/security_regression_test.php \
+ && php /var/www/html/tests/password_recovery_test.php \
+ && php /var/www/html/tests/merchant_wallet_test.php \
+ && php /var/www/html/tests/seller_key_auth_integration_test.php
