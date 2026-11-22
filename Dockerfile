@@ -708,7 +708,11 @@ COPY deployment/reseller-pix-ui.js deployment/reseller-pix-ui.css /var/www/html/
 RUN sed -i 's#</head>#<link rel="stylesheet" href="/static/reseller-pix-ui.css?v=20261122-1"><script defer src="/static/reseller-pix-ui.js?v=20261122-1"></script></head>#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-pix-ui.js?v=20261122-1' /var/www/html/public/static/client.html
 
-# Seller Pix: distinguish page refresh and finance operation, show inline validation status.
-RUN sed -i 's#reseller-pix-ui.js?v=20261122-1#reseller-pix-ui.js?v=20261122-2#; s#reseller-pix-ui.css?v=20261122-1#reseller-pix-ui.css?v=20261122-2#; s#merchant-portal.js?v=seller-pix-modal-20261120-1#merchant-portal.js?v=seller-submit-20261122-2#' /var/www/html/public/static/client.html \
+# Seller Pix submission: update the compiled UI after strict legacy payment and KYC tests.
+COPY deployment/seller_pix_submit_patch.php /tmp/seller_pix_submit_patch.php
+RUN php -l /tmp/seller_pix_submit_patch.php \
+ && php -d display_errors=1 -d log_errors=0 /tmp/seller_pix_submit_patch.php \
+ && grep -Fq 'sellerChargeBusy=false' /var/www/html/public/static/merchant-portal.js \
+ && sed -i 's#reseller-pix-ui.js?v=20261122-1#reseller-pix-ui.js?v=20261122-2#; s#reseller-pix-ui.css?v=20261122-1#reseller-pix-ui.css?v=20261122-2#; s#merchant-portal.js?v=seller-pix-modal-20261120-1#merchant-portal.js?v=seller-submit-20261122-2#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-pix-ui.js?v=20261122-2' /var/www/html/public/static/client.html \
  && grep -Fq 'merchant-portal.js?v=seller-submit-20261122-2' /var/www/html/public/static/client.html
