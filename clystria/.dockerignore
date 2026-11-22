@@ -1,0 +1,8 @@
+.git
+.gitignore
+data/
+tests/
+*.zip
+.env
+*.sqlite
+*.key

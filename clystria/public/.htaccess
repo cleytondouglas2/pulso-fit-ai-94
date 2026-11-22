@@ -1,0 +1,10 @@
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+RewriteEngine On
+RewriteRule ^api(/.*)?$ index.php [L,QSA]
+<FilesMatch "\.(?:env|sql|sqlite|db|key|bak|log|php)$">
+  Require all denied
+</FilesMatch>
+<Files "index.php">
+  Require all granted
+</Files>
