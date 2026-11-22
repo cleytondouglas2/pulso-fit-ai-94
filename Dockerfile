@@ -891,3 +891,8 @@ RUN php -l /tmp/seller_withdraw_money_mask_patch.php \
  && php /var/www/html/tests/seller_withdraw_money_mask_test.php \
  && php /var/www/html/tests/seller_mfa_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Diagnostic: inspect only non-sensitive fragments of admin payout UI before
+# integrating a step-up TOTP modal. No auth decisions or PSP calls are changed.
+RUN php -r '$h=file_get_contents("/var/www/html/public/static/admin.html"); foreach(["Enviar saldo via Pix","Valor em reais","Confirme com NOVO","payout-form","send-balance"] as $needle){$p=strpos($h,$needle);if($p!==false){$s=substr($h,max(0,$p-550),1900);echo "\nADMIN HTML ".$needle." ".$p.": ".str_replace("\n"," ",$s)."\n";}} $j=file_get_contents("/var/www/html/public/static/admin.js");foreach(["withdraw","transfer","sendPix","pix-send","otp","totp","send-balance","payout"] as $needle){$p=stripos($j,$needle);if($p!==false){$s=substr($j,max(0,$p-650),3200);echo "\nADMIN JS ".$needle." ".$p.": ".str_replace("\n"," ",$s)."\n";}}'
