@@ -10,6 +10,7 @@ const phone=(p)=>String(p||'').replace(/\D/g,'');
 const icon={chart:'◫',clients:'♧',clock:'◷',money:'◈',plans:'▤',star:'✦'};
 const views={dashboard:'Visão geral',clients:'Clientes',reminders:'Vencimentos',payments:'Financeiro',reports:'Relatórios',panels:'Integrações',plans:'Planos & preços',settings:'Configurações',team:'Equipe',activity:'Histórico',leads:'Funil comercial',interactions:'Atendimentos',invoices:'Faturas',campaigns:'Campanhas',referrals:'Indicações',security:'Segurança 2FA'};
 let state={csrf:'',me:null,view:'dashboard',clients:[],plans:[],panels:[],payments:[],dashboard:null,reminders:[],activity:[],settings:null,staff:[],filter:'all',query:''};
+let remoteState={panelId:null,session:null,busy:false};
 const api=async (p,opts={})=>{const res=await fetch('/api'+p,{credentials:'same-origin',...opts,headers:{...(opts.body?{'content-type':'application/json'}:{}),...(state.csrf?{'x-csrf-token':state.csrf}:{}),...(opts.headers||{})}});let data=await res.json().catch(()=>({}));if(!res.ok){if(res.status===401&&p!=='/login'){showAuth(true);}throw Error(data.error||'Ocorreu um erro');}return data;};
 const request=(p,method,data)=>api(p,{method,body:JSON.stringify(data)});
 function toast(msg,error=false){let n=document.createElement('div');n.className='toast'+(error?' error':'');n.textContent=(error?'⚠ ':'✦ ')+msg;$('#toast-area').append(n);setTimeout(()=>n.remove(),4800);}
@@ -47,7 +48,7 @@ function renderPanels(){
  <div class="mini-card"><div class="mini-icon">⟳</div><h3>Leitura autorizada</h3><p>Consulta login, vencimento e demais campos apresentados na página, com limite de páginas e detecção de erros.</p><small>Não apaga clientes por ausência na resposta</small></div>
  <div class="mini-card"><div class="mini-icon">🌐</div><h3>Chromium em servidor</h3><p>O navegador remoto identifica telas de login e tabelas de clientes. Caso a Cloudflare solicite um desafio, o processo informa o bloqueio em vez de simular sucesso.</p><small>Sem extensão no celular nem navegador embutido</small></div></div>
  <div class="section-row mt28"><h2>Suas conexões</h2><span class="muted small">${panels.length} painéis</span></div>
- <div class="cards-grid">${panels.length?panels.map(p=>{const browser=p.auth_mode==='browser',ok=!browser&&p.last_status==='ok',failed=!browser&&String(p.last_status||'').startsWith('error:'),text=browser?'◷ Login pelo navegador':ok?'● Sincronizado':failed?'● Erro de conexão':'◷ Aguardando validação';return `<div class="mini-card"><div class="mini-icon">${p.kind==='sigma'?'◈':p.kind==='painelfoda'?'✦':'⌘'}</div><h3>${esc(p.name)}</h3><p>${esc(p.kind.toUpperCase())} · <span class="panel-status" style="color:${failed?'#FF99A9':ok?'#79E3C3':'#CBBEFD'}">${text}</span></p><div class="line-details">${esc(p.url)}</div><p class="helper-text">Autenticação: ${browser?'Apenas abrir no navegador':p.auth_mode==='remote_browser'?'Chromium na VPS':p.auth_mode==='token'?'Token de API':'Usuário e senha'} · ${browser?'Importação pelo arquivo exportado':p.auto_sync?'Sincronização por API ativada':'Sincronização manual por API'}</p>${p.login_user?`<p class="helper-text">Usuário: ${esc(p.login_user)}</p>`:''}${failed?`<div class="inline-notice" style="color:#FF99A9">${esc(p.last_status.slice(7))}${p.kind==='sigma'&&/404|rota de/i.test(p.last_status)?'<p style="margin-top:8px;color:#CFD4E8">O login pelo navegador não fornece uma API ao Clystria. Peça ao fornecedor Sigma a rota oficial de autenticação e consulta de clientes, ou uma chave de API autorizada. Edite a conexão nas configurações avançadas.</p>':''}</div>`:''}<div class="mini-bottom mt20">${btn('Abrir navegador ↗','open-panel','ghost',`data-id="${p.id}"`)}${btn('↓ Importar dados','browser-import','primary',`data-id="${p.id}"`)}${browser?'':btn('⟳ API','sync-panel','ghost',`data-id="${p.id}"`)}<button class="action-dot" title="Editar" data-action="edit-panel" data-id="${p.id}">✎</button><button class="action-dot" title="Remover" data-action="remove-panel" data-id="${p.id}">×</button></div>${p.last_sync?`<p class="helper-text">Última sincronização bem-sucedida: ${esc(p.last_sync)}</p>`:''}</div>`;}).join(''):`<div class="mini-card"><div class="mini-icon">＋</div><h3>Nenhum painel conectado</h3><p>Cadastre URL, usuário e senha para tentar a sincronização por API.</p>${btn('Conectar meu painel','new-panel','primary')}</div>`}</div>
+ <div class="cards-grid">${panels.length?panels.map(p=>{const browser=p.auth_mode==='browser',ok=!browser&&p.last_status==='ok',failed=!browser&&String(p.last_status||'').startsWith('error:'),text=browser?'◷ Login pelo navegador':ok?'● Sincronizado':failed?'● Erro de conexão':'◷ Aguardando validação';return `<div class="mini-card"><div class="mini-icon">${p.kind==='sigma'?'◈':p.kind==='painelfoda'?'✦':'⌘'}</div><h3>${esc(p.name)}</h3><p>${esc(p.kind.toUpperCase())} · <span class="panel-status" style="color:${failed?'#FF99A9':ok?'#79E3C3':'#CBBEFD'}">${text}</span></p><div class="line-details">${esc(p.url)}</div><p class="helper-text">Autenticação: ${browser?'Apenas abrir no navegador':p.auth_mode==='remote_browser'?'Chromium na VPS':p.auth_mode==='token'?'Token de API':'Usuário e senha'} · ${browser?'Importação pelo arquivo exportado':p.auto_sync?'Sincronização por API ativada':'Sincronização manual por API'}</p>${p.login_user?`<p class="helper-text">Usuário: ${esc(p.login_user)}</p>`:''}${failed?`<div class="inline-notice" style="color:#FF99A9">${esc(p.last_status.slice(7))}${p.kind==='sigma'&&/404|rota de/i.test(p.last_status)?'<p style="margin-top:8px;color:#CFD4E8">O login pelo navegador não fornece uma API ao Clystria. Peça ao fornecedor Sigma a rota oficial de autenticação e consulta de clientes, ou uma chave de API autorizada. Edite a conexão nas configurações avançadas.</p>':''}</div>`:''}<div class="mini-bottom mt20">${btn('🌐 Navegador VPS','remote-browser','ghost',`data-id="${p.id}"`)}${btn('↓ Importar dados','remote-browser','primary',`data-id="${p.id}"`)}${!browser&&p.auth_mode!=='remote_browser'?btn('⟳ API','sync-panel','ghost',`data-id="${p.id}"`):''}${btn('↗ Site original','open-panel','ghost',`data-id="${p.id}"`)}<button class="action-dot" title="Editar" data-action="edit-panel" data-id="${p.id}">✎</button><button class="action-dot" title="Remover" data-action="remove-panel" data-id="${p.id}">×</button></div>${p.last_sync?`<p class="helper-text">Última sincronização bem-sucedida: ${esc(p.last_sync)}</p>`:''}</div>`;}).join(''):`<div class="mini-card"><div class="mini-icon">＋</div><h3>Nenhum painel conectado</h3><p>Cadastre URL, usuário e senha para tentar a sincronização por API.</p>${btn('Conectar meu painel','new-panel','primary')}</div>`}</div>
  <div class="callout mt20"><b>Compatibilidade:</b> no modo Chromium, a autenticação acontece em um navegador real da VPS e os dados são lidos da página exibida. Cada painel tem interface própria; o reconhecimento de login, vencimentos e paginação deve ser testado. Desafios Cloudflare e CAPTCHA não são contornados. Se a lista não for reconhecida, a sincronização falha sem alterar clientes.</div>`;
 }
 function renderPlans(){let plans=state.plans;$('#content').innerHTML=title('CATÁLOGO DE SERVIÇOS','Planos & assinaturas','Padronize preços, periodicidades e cadastro de clientes.',btn('＋ Novo plano','new-plan','primary'))+`<div class="cards-grid">${plans.length?plans.map(p=>`<div class="mini-card" style="border-top:3px solid ${esc(p.color)}"><div class="mini-icon" style="color:${esc(p.color)}">▤</div><h3>${esc(p.name)}</h3><div style="font-size:28px;font-weight:850;letter-spacing:-1px;margin:16px 0">${brl(p.price)}</div><p>${p.days} dias de validade • ${state.clients.filter(c=>c.plan_id===p.id).length} clientes vinculados</p><div class="mini-bottom">${btn('Cadastrar cliente','new-client','ghost',`data-plan="${p.id}"`)}<button class="action-dot" title="Editar plano" data-action="edit-plan" data-id="${p.id}">✎</button><button class="action-dot" title="Excluir plano" data-action="remove-plan" data-id="${p.id}">×</button></div></div>`).join(''):'<div class="empty"><h3>Nenhum plano</h3></div>'}</div>`;}
@@ -55,7 +56,7 @@ function renderSettings(){const s=state.settings;$('#content').innerHTML=title('
 async function renderTeam(){if(!state.staff.length){try{state.staff=(await api('/staff')).staff;}catch(e){$('#content').innerHTML=title('ADMINISTRAÇÃO','Equipe & permissões','Sua conta não tem permissão para visualizar usuários.');return;}}$('#content').innerHTML=title('CONTROLE DE ACESSO','Sua equipe','Crie acessos diferentes e acompanhe os responsáveis pela operação.',state.me.role==='admin'?btn('＋ Novo membro','new-staff','primary'):'')+`<section class="panel-card"><div class="section-row"><h2>Membros da equipe</h2><span class="muted small">${state.staff.length} cadastrados</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Adicionado</th></tr></thead><tbody>${state.staff.map((u,i)=>`<tr><td><div class="client-cell">${initials(u.name,i)}<strong>${esc(u.name)}</strong></div></td><td>${esc(u.email)}</td><td><span class="status active">${{admin:'Administrador',manager:'Gerente',operator:'Operador'}[u.role]}</span></td><td>${esc(u.created_at.slice(0,10))}</td></tr>`).join('')}</tbody></table></div></section><div class="callout mt20"><b>Perfis:</b> Administrador cria usuários, gerentes gerenciam clientes, planos e integrações; operadores acompanham e atualizam assinaturas e pagamentos. Ações sensíveis ficam registradas no histórico.</div>`;}
 async function renderActivity(){let data=await api('/activity');state.activity=data.activity;$('#content').innerHTML=title('AUDITORIA & SEGURANÇA','Histórico de ações','Acompanhe as principais operações e mudanças feitas por sua equipe.')+`<section class="panel-card"><div class="section-row"><h2>Atividade recente</h2><span class="muted small">${data.activity.length} eventos</span></div>${data.activity.length?data.activity.map(a=>`<div class="activity-row"><span class="activity-dot"></span><div><strong>${esc(a.action.replaceAll('.', ' › '))}</strong><small>${esc(a.actor)} · ${esc(a.detail)}</small></div><time>${esc(a.created_at)}</time></div>`).join(''):`<div class="empty"><h3>Sem atividades registradas</h3></div>`}</section>`;}
 function modal(title,html,onSubmit){$('#modal-title').textContent=title;$('#modal-body').innerHTML=html;$('#modal').classList.remove('hide');document.body.style.overflow='hidden';let form=$('#modal-form');if(form&&onSubmit){form.onsubmit=async e=>{e.preventDefault();let b=$('button[type=submit]',form);if(b)b.disabled=true;try{await onSubmit(form,Object.fromEntries(new FormData(form)));}catch(error){toast(error.message,true);}finally{if(b)b.disabled=false;}};}}
-function closeModal(){$('#modal').classList.add('hide');document.body.style.overflow='';$('#modal-body').innerHTML='';}
+function closeModal(){if(remoteState.session){const p=remoteState.panelId,session=remoteState.session;remoteState={panelId:null,session:null,busy:false};request('/panels/'+p+'/browser/close','POST',{session}).catch(()=>{});}else remoteState={panelId:null,session:null,busy:false};$('#modal').classList.add('hide');document.body.style.overflow='';$('#modal-body').innerHTML='';}
 function foot(label='Salvar alterações'){return `<div class="modal-foot"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn primary">${label} ↗</button></div>`;}
 const input=(label,name,val='',type='text',extra='')=>`<label>${label}<input name="${name}" type="${type}" value="${esc(val)}" ${extra}></label>`;
 const fieldSelect=(label,name,list,selected,placeholder='Selecione')=>`<label>${label}<select name="${name}"><option value="">${esc(placeholder)}</option>${list.map(o=>`<option value="${esc(o.id)}" ${String(o.id)===String(selected)?'selected':''}>${esc(o.name)}</option>`).join('')}</select></label>`;
@@ -131,11 +132,93 @@ function importModal(panelId=''){
   }catch(ex){toast('Não foi possível ler o arquivo: '+ex.message,true);}
  };
 }
+
+function remoteFrame(frame){
+ if(!frame||!frame.ok||!String(frame.screen||'').startsWith('data:image/jpeg;base64,'))throw Error('A VPS não retornou uma imagem válida do navegador');
+ remoteState.session=frame.session;
+ const img=$('#remote-shot');
+ if(img)img.src=frame.screen;
+ if($('#remote-url'))$('#remote-url').textContent=frame.url||'Página do fornecedor';
+ if($('#remote-status'))$('#remote-status').textContent='Sessão conectada • toque na tela para clicar';
+}
+async function remoteStep(kind,data={}){
+ if(remoteState.busy||!remoteState.session)return;
+ const panelId=remoteState.panelId,session=remoteState.session;
+ remoteState.busy=true;
+ if($('#remote-status'))$('#remote-status').textContent='Processando no navegador da VPS...';
+ try{
+  if(kind==='import'){
+   const r=await request('/panels/'+panelId+'/browser/import','POST',{session});
+   toast('Importação concluída: '+r.created+' novos, '+r.updated+' atualizados, '+r.ignored+' ignorados');
+   await refresh();
+   if($('#remote-status'))$('#remote-status').textContent='Dados importados com sucesso';
+  }else{
+   const path=kind==='frame'?'frame':'action';
+   const result=await request('/panels/'+panelId+'/browser/'+path,'POST',{session,...(kind==='frame'?{}:{action:kind,...data})});
+   if(remoteState.panelId===panelId)remoteFrame(result);
+  }
+ }catch(e){
+  if($('#remote-status'))$('#remote-status').textContent='Falha: '+e.message;
+  toast(e.message,true);
+ }finally{remoteState.busy=false;}
+}
+async function openRemoteBrowser(panelId){
+ const panel=state.panels.find(p=>p.id===panelId);
+ if(!panel)return toast('Conexão não encontrada',true);
+ if(remoteState.session)closeModal();
+ remoteState={panelId,session:null,busy:true};
+ const html='<div class="remote-browser">'+
+ '<div class="remote-top"><span id="remote-url">Conectando ao navegador Chromium...</span><span id="remote-status">Abrindo a sessão na VPS</span></div>'+
+ '<div class="remote-screen"><img id="remote-shot" alt="Tela remota do navegador Chromium" draggable="false"><span class="remote-wait">A tela do navegador será exibida aqui.</span></div>'+
+ '<div class="remote-controls">'+
+ '<button type="button" class="btn ghost" id="remote-refresh">↻ Atualizar tela</button>'+
+ '<button type="button" class="btn ghost" id="remote-reload">↻ Recarregar site</button>'+
+ '<button type="button" class="btn ghost" id="remote-autofill">✦ Preencher login salvo</button>'+
+ '<button type="button" class="btn ghost" id="remote-tab">Tab</button>'+
+ '<button type="button" class="btn ghost" id="remote-enter">Enter</button>'+
+ '<button type="button" class="btn ghost" id="remote-backspace">⌫ Apagar</button>'+
+ '<button type="button" class="btn ghost" id="remote-scroll-up">↑ Rolar</button>'+
+ '<button type="button" class="btn ghost" id="remote-scroll-down">↓ Rolar</button></div>'+
+ '<div class="remote-type"><input id="remote-input" autocomplete="off" placeholder="Digite aqui para o campo selecionado na tela"><button type="button" class="btn ghost" id="remote-type-btn">Digitar</button></div>'+
+ '<div class="remote-actions"><button type="button" class="btn primary" id="remote-import">↓ Importar clientes desta página</button>'+
+ '<button type="button" class="btn danger" id="remote-finish">Encerrar navegador</button></div>'+
+ '<p class="helper-text">Sessão real no Chromium da VPS, controlada por toque ou mouse. Faça login na página do fornecedor. A verificação humana, quando exigida, depende das regras do site; o Clystria não a contorna. Senhas salvas são preenchidas somente após seu comando.</p></div>';
+ modal('Navegador VPS — '+panel.name,html);
+ const shot=$('#remote-shot');
+ shot.onclick=e=>{
+  if(!remoteState.session||remoteState.busy)return;
+  const box=shot.getBoundingClientRect();
+  remoteStep('click',{x:Math.max(0,Math.min(1100,(e.clientX-box.left)*1100/box.width)),
+     y:Math.max(0,Math.min(720,(e.clientY-box.top)*720/box.height))});
+ };
+ $('#remote-refresh').onclick=()=>remoteStep('frame');
+ $('#remote-reload').onclick=()=>remoteStep('reload');
+ $('#remote-autofill').onclick=()=>remoteStep('autofill');
+ $('#remote-tab').onclick=()=>remoteStep('key',{key:'Tab'});
+ $('#remote-enter').onclick=()=>remoteStep('key',{key:'Enter'});
+ $('#remote-backspace').onclick=()=>remoteStep('key',{key:'Backspace'});
+ $('#remote-scroll-up').onclick=()=>remoteStep('scroll',{dy:-550});
+ $('#remote-scroll-down').onclick=()=>remoteStep('scroll',{dy:550});
+ $('#remote-type-btn').onclick=()=>{let t=$('#remote-input');if(t.value){remoteStep('type',{text:t.value});t.value='';}};
+ $('#remote-input').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#remote-type-btn').click();}};
+ $('#remote-import').onclick=()=>remoteStep('import');
+ $('#remote-finish').onclick=()=>closeModal();
+ try{
+  const frame=await request('/panels/'+panelId+'/browser/open','POST',{});
+  if(remoteState.panelId!==panelId||$('#modal').classList.contains('hide')){
+   request('/panels/'+panelId+'/browser/close','POST',{session:frame.session}).catch(()=>{});return;
+  }
+  remoteFrame(frame);
+ }catch(e){if($('#remote-status'))$('#remote-status').textContent='Falha: '+e.message;toast(e.message,true);}
+ finally{remoteState.busy=false;}
+}
+
 function openPanel(p){try{let u=new URL(p.url);if(!['http:','https:'].includes(u.protocol))throw Error('URL não aceita');window.open(u.href,'_blank','noopener,noreferrer');toast('Painel aberto no navegador. Faça login na página original.');}catch(e){toast(e.message,true);}}
 function whatsapp(c){let n=phone(c.phone);if(n.length===10||n.length===11)n='55'+n;if(n.length<12){toast('Informe um WhatsApp válido no cadastro do cliente.',true);return;}let entry=state.reminders.find(r=>r.id===c.id),msg=entry?.message||state.settings.reminder_template.replaceAll('{nome}',c.name).replaceAll('{vencimento}',fdate(c.due_date)).replaceAll('{plano}',c.plan_name||'').replaceAll('{valor}',brl(c.price));window.open('https://wa.me/'+n+'?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');api('/reminders/mark',{method:'POST',body:JSON.stringify({client_id:c.id,channel:'whatsapp'})}).catch(()=>{});toast('Conversa aberta. Confirme o envio no WhatsApp.');}
 async function clickAction(b){let a=b.dataset.action,id=b.dataset.id;try{
-if(a==='close-modal')return closeModal();if(a==='new-client')return clientModal(null,b.dataset.plan||'');if(a==='edit-client')return clientModal(state.clients.find(c=>c.id===id));if(a==='renew-client')return renewModal(state.clients.find(c=>c.id===id));if(a==='new-payment')return paymentModal();if(a==='new-panel')return panelModal();if(a==='new-plan')return planModal();if(a==='edit-plan')return planModal(state.plans.find(p=>p.id===id));if(a==='new-staff')return teamModal();if(a==='browser-check'){const result=await api('/browser/status');toast(result.ok?'Chromium em servidor: pronto para tentar a autenticação.':'Chromium ainda não está pronto.',!result.ok);return;}if(a==='import')return importModal();if(a==='browser-import')return importModal(id);if(a==='go-settings')return route('settings');if(a==='go-reminders')return route('reminders');if(a==='export'){window.location.href='/api/export/clients';return toast('Exportação iniciada');}if(a==='whatsapp')return whatsapp(state.clients.find(c=>c.id===id));
+if(a==='close-modal')return closeModal();if(a==='new-client')return clientModal(null,b.dataset.plan||'');if(a==='edit-client')return clientModal(state.clients.find(c=>c.id===id));if(a==='renew-client')return renewModal(state.clients.find(c=>c.id===id));if(a==='new-payment')return paymentModal();if(a==='new-panel')return panelModal();if(a==='new-plan')return planModal();if(a==='edit-plan')return planModal(state.plans.find(p=>p.id===id));if(a==='new-staff')return teamModal();if(a==='browser-check'){const result=await api('/browser/status');toast(result.ok?'Chromium em servidor: pronto para tentar a autenticação.':'Chromium ainda não está pronto.',!result.ok);return;}if(a==='import')return importModal();if(a==='browser-import')return openRemoteBrowser(id);if(a==='go-settings')return route('settings');if(a==='go-reminders')return route('reminders');if(a==='export'){window.location.href='/api/export/clients';return toast('Exportação iniciada');}if(a==='whatsapp')return whatsapp(state.clients.find(c=>c.id===id));
 if(a==='reveal-secret'){const r=await api('/clients/'+id+'/secret');$('#secret-text').textContent=r.password||'(não cadastrada)';return;}
+if(a==='remote-browser')return openRemoteBrowser(id);
 if(a==='open-panel')return openPanel(state.panels.find(p=>p.id===id));
 if(a==='edit-panel')return panelModal(state.panels.find(p=>p.id===id));
 if(a==='sync-panel'){if(state.panels.find(p=>p.id===id)?.auth_mode==='browser'){toast('Modo navegador: importe o arquivo exportado. Para sincronizar automaticamente, configure API autorizada.',true);return;}const label=b.textContent;b.disabled=true;b.textContent='Sincronizando...';try{let r=await request('/panels/'+id+'/sync','POST',{});await afterSave(`Sincronização: ${r.created} novos, ${r.updated} atualizados, ${r.plans_created} planos, ${r.ignored} ignorados`+(r.warning?" · "+r.warning:""));}catch(e){await refresh();route('panels');toast(e.message,true);}finally{b.disabled=false;b.textContent=label;}return;}
