@@ -475,7 +475,7 @@ async function runJob(job){
     let initial=await classifyEntry(page,entryResponse);
     if(initial.controls===0&&initial.passwordFields===0){
       // Give slow SPAs a chance to mount; do not submit credentials to blank/error pages.
-      await page.waitForFunction(()=>document.querySelector('input,button,a,[role="button"],[role="tab"]'),{timeout:6500}).catch(()=>{});
+      await page.waitForFunction(()=>!!document.querySelector('input,button,a,[role="button"],[role="tab"]'),null,{timeout:6500}).catch(()=>{});
       initial=await classifyEntry(page,entryResponse);
       if(initial.controls===0&&initial.passwordFields===0){
         console.log('CLYSTRIA_ENTRY_DIAGNOSTIC '+JSON.stringify(initial));
