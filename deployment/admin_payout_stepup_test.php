@@ -42,7 +42,6 @@ foreach([
  'item.showModal();',
  'const onCancel=event=>',
  'const onBackdrop=event=>',
- 'finish',
  'end(code);',
  'feeQuote.recipient_cents+feeQuote.argus_fee_cents!==amountCents',
  'role="alert"',
