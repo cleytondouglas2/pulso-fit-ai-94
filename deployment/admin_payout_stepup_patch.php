@@ -42,10 +42,11 @@ adminStepReplace($js,
  "if(!raw.confirm||!raw.otp){toast('Confirme e informe um novo código do autenticador',true);return}",
  "if(!raw.confirm){toast('Confirme o valor, a chave Pix e a autorização da transferência',true);return}",
  'form authorization guard');
-$start=strpos($js,"  const feeText='Valor solicitado: '");
-$finish=($start===false)?false:strpos($js,"  const idempotency_key=form.dataset.idem", $start);
-if($start===false||$finish===false||$finish<=$start||($finish-$start)>2000)
- throw new RuntimeException('ARGUS admin fee quote and submit boundaries have changed');
+$start=strpos($js,"const feeText='Valor solicitado: '");
+$finish=($start===false)?false:strpos($js,"const idempotency_key=form.dataset.idem", $start);
+if($start===false||$finish===false||$finish<=$start||($finish-$start)>5000)
+ throw new RuntimeException('ARGUS admin fee quote boundary changed: start='.
+   var_export($start,true).', finish='.var_export($finish,true));
 $original=substr($js,$start,$finish-$start);
 if(!str_contains($original,"feeQuote.argus_fee_cents")||
    !str_contains($original,"feeQuote.recipient_cents")||
