@@ -13,8 +13,8 @@ function otpModalReplace(string &$source,string $before,string $after,string $wh
  $source=str_replace($before,$after,$source);
 }
 $old=<<<'JS'
-  if(!confirm('Valor total descontado do saldo: '+BRL(amount)+'\nTaxa de serviço: R$ 1,00\nValor do Pix: '+BRL(amount-FEE)+'\n\nConfirmar saque direto?'))return;
-  working=true;const button=form.querySelector('button[type="submit"]');button.disabled=true;
+ if(!confirm('Valor total descontado do saldo: '+BRL(amount)+'\nTaxa de serviço: R$ 1,00\nValor do Pix: '+BRL(amount-FEE)+'\n\nConfirmar saque direto?'))return;
+ working=true;const button=form.querySelector('button[type="submit"]');button.disabled=true;
 JS;
 $new=<<<'JS'
   // Stage 1: original form validation. Stage 2: top-layer branded OTP prompt.
@@ -36,12 +36,6 @@ $new=<<<'JS'
   // Cancel/close: no Pix, no new withdrawal, no change to wallet reservations.
   if(!otp){working=false;button.disabled=false;return;}
 JS;
-if(substr_count($script,$old)!==1){
-  $start=strpos($script,'async function withdraw(event){');
-  $end=$start!==false?strpos($script,'async function deposit(event){',$start):false;
-  $section=$start===false?'no handler found':substr($script,$start,($end===false?1800:min(1800,$end-$start)));
-  throw new RuntimeException('Withdrawal modal source mismatch - handler: '.str_replace("\n",' | ',$section));
-}
 otpModalReplace($script,$old,$new,'branded OTP before submit');
 otpModalReplace($script,"mfa_code:String(v.get('mfa_code')||'')","mfa_code:otp",'one-time code payload');
 if(file_put_contents($file,$script)===false)throw new RuntimeException('Withdrawal modal script update failed');
