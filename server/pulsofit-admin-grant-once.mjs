@@ -1,85 +1,57 @@
 /**
- * One-time operator-authorized account role correction.
- * Activates only with two ephemeral environment values on the application
- * server. It never creates accounts or grants roles to future registrations.
+ * Assigns a server-side admin identity to exactly one existing account.
+ * The target is located by email only during an explicitly configured,
+ * one-time operation; all later authorization uses the immutable user UUID.
+ * No permanent password, email allowlist or public admin endpoint is created.
  */
 export async function applyOneTimeAdminGrant(pool,{logger=console}={}){
+ if(!pool||typeof pool.connect!=="function")throw Error("Postgres connection required");
  const email=String(process.env.PULSO_ADMIN_GRANT_EMAIL_ONCE||"").trim().toLowerCase();
  const requestId=String(process.env.PULSO_ADMIN_GRANT_REQUEST_ONCE||"").trim();
- if(!email&&!requestId)return {status:"disabled"};
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||
-    !/^admin-[a-z0-9-]{18,100}$/.test(requestId)){
-  logger.warn("[pulso-admin] One-time grant skipped: missing or invalid authorization configuration");
-  return {status:"invalid_configuration"};
- }
- if(!pool||typeof pool.connect!=="function")throw Error("Postgres connection required");
- const conn=await pool.connect();
- let tx=false;
+ let status="not_requested";
  try{
-  await conn.query("BEGIN");tx=true;
-  const schema=await conn.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='pf_users' AND column_name IN ('id','email','role')");
-  if(!["id","email","role"].every(col=>schema.rows.some(r=>r.column_name===col))){
-   const all=await conn.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='pf_users'");
-   const cols=all.rows.map(r=>r.column_name);
-   const markers=["id","email","role","is_admin","admin","user_role","account_role","type","role_id","access_level","status"].map(name=>name+"="+cols.includes(name));
-   logger.warn("[pulso-admin] User schema capability check: "+markers.join(" "));
-   logger.warn("[pulso-admin] User table columns: "+cols.sort().join(",").slice(0,700));
-   try{
-    const {readFileSync}=await import("node:fs");
-    const source=readFileSync(new URL("../server.mjs",import.meta.url),"utf8");
-    const found=[...source.matchAll(/isAdmin|adminOnly|adminEmail|ADMIN_EMAIL|role|\/api\/admin|\/api\/me/gi)];
-    const selected=found.slice(0,18).map(m=>{
-     const fragment=source.slice(Math.max(0,m.index-100),m.index+170);
-     return m.index+":"+fragment.replace(/"[^"\r\n]{0,300}"|'[^'\r\n]{0,300}'/g,"'[string]'")
-      .replace(/[a-z0-9._%+-]+@[a-z0-9.-]+/gi,"[email]")
-      .replace(/[A-Za-z0-9_-]{48,}/g,"[long]").replace(/\s+/g," ").slice(0,240);
-    });
-    logger.warn("[pulso-admin] Generated admin backend inspection: "+JSON.stringify(selected).slice(0,3600));
-   }catch{logger.warn("[pulso-admin] Generated backend inspection unavailable");}
-   throw Error("User role schema missing");
+  // The FK means deleting an old account cannot grant access to a later sign-up.
+  await pool.query("CREATE TABLE IF NOT EXISTS pf_admin_identities (user_id uuid PRIMARY KEY REFERENCES pf_users(id) ON DELETE CASCADE, granted_at timestamptz NOT NULL DEFAULT now(), active boolean NOT NULL DEFAULT true)");
+  await pool.query("CREATE TABLE IF NOT EXISTS pf_admin_identity_audit (request_id text PRIMARY KEY, user_id uuid NOT NULL REFERENCES pf_users(id), granted_at timestamptz NOT NULL DEFAULT now())");
+  if(email||requestId){
+   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.length>254||
+      !/^admin-[a-z0-9-]{18,100}$/.test(requestId)){
+    status="invalid_configuration";
+   }else{
+    const db=await pool.connect();
+    let inTransaction=false;
+    try{
+     await db.query("BEGIN");inTransaction=true;
+     const found=await db.query("SELECT id::text AS id FROM pf_users WHERE lower(email)=lower($1) FOR UPDATE",[email]);
+     if(found.rowCount!==1){
+      status="existing_account_not_found_or_ambiguous";
+      await db.query("ROLLBACK");inTransaction=false;
+     }else{
+      const userId=found.rows[0].id;
+      const previous=await db.query("SELECT user_id::text AS user_id FROM pf_admin_identity_audit WHERE request_id=$1 FOR UPDATE",[requestId]);
+      if(previous.rowCount){
+       if(previous.rows[0].user_id!==userId)throw Error("Audit request does not match user");
+       status="already_processed";
+      }else{
+       await db.query("INSERT INTO pf_admin_identities(user_id,active) VALUES($1::uuid,true) ON CONFLICT(user_id) DO UPDATE SET active=true",[userId]);
+       await db.query("INSERT INTO pf_admin_identity_audit(request_id,user_id) VALUES($1,$2::uuid)",[requestId,userId]);
+       status="applied";
+      }
+      await db.query("COMMIT");inTransaction=false;
+     }
+    }catch(error){
+     if(inTransaction)await db.query("ROLLBACK").catch(()=>{});
+     status="grant_failed";
+     logger.warn("[pulso-admin] One-time grant transaction failed code="+String(error.code||"transaction").replace(/[^A-Za-z0-9_]/g,"").slice(0,32));
+    }finally{db.release();}
+   }
   }
-  // Existing-account-only: nothing is created or queued if the target is missing.
-  const candidates=await conn.query(
-   "SELECT id::text AS id, role::text AS role FROM pf_users WHERE lower(email)=lower($1) FOR UPDATE",
-   [email]
-  );
-  if(candidates.rowCount!==1){
-   await conn.query("ROLLBACK");tx=false;
-   logger.warn("[pulso-admin] One-time grant not applied: target existing account count="+candidates.rowCount);
-   return {status:"account_not_found_or_duplicate"};
-  }
-  const account=candidates.rows[0];
-  if(!["user","admin"].includes(account.role)){
-   throw Error("Unexpected current account role");
-  }
-  await conn.query("CREATE TABLE IF NOT EXISTS pf_admin_role_grant_audit (request_id text PRIMARY KEY, user_id uuid NOT NULL, previous_role text NOT NULL, resulting_role text NOT NULL, granted_at timestamptz NOT NULL DEFAULT now())");
-  const done=await conn.query(
-   "SELECT user_id::text AS user_id FROM pf_admin_role_grant_audit WHERE request_id=$1 FOR UPDATE",
-   [requestId]);
-  if(done.rowCount){
-   if(done.rows[0].user_id!==account.id)throw Error("Grant request replay does not match target");
-   await conn.query("COMMIT");tx=false;
-   logger.log("[pulso-admin] One-time grant already applied; no changes made.");
-   return {status:"already_processed"};
-  }
-  if(account.role==="user"){
-   const updated=await conn.query(
-    "UPDATE pf_users SET role='admin' WHERE id=$1::uuid AND role='user' RETURNING id",
-    [account.id]);
-   if(updated.rowCount!==1)throw Error("Account role changed during update");
-  }
-  await conn.query(
-   "INSERT INTO pf_admin_role_grant_audit(request_id,user_id,previous_role,resulting_role) VALUES($1,$2::uuid,$3,'admin')",
-   [requestId,account.id,account.role]);
-  await conn.query("COMMIT");tx=false;
-  logger.log("[pulso-admin] One-time existing-account administrator grant "+(account.role==="admin"?"already_admin":"applied")+
-   "; audit recorded; no other accounts changed.");
-  return {status:account.role==="admin"?"already_admin":"applied"};
- }catch(e){
-  if(tx)await conn.query("ROLLBACK").catch(()=>{});
-  const known=["User role schema missing","Unexpected current account role","Account role changed during update","Grant request replay does not match target"];
-  const category=known.includes(e.message)?e.message.replaceAll(" ","_"):String(e.code||"unclassified_db_failure");
-  logger.warn("[pulso-admin] One-time administrator grant failed category="+category.replace(/[^a-zA-Z0-9_]/g,"").slice(0,60));
-  return {status:"failed"};
- }finally{conn.release();}
+  const active=await pool.query("SELECT user_id::text AS id FROM pf_admin_identities WHERE active=true");
+  globalThis.__PULSO_ADMIN_IDS=new Set(active.rows.map(r=>String(r.id)));
+  logger.log("[pulso-admin] Audited administrator identity store loaded: count="+active.rowCount+" grant="+status);
+  return {status,loaded:active.rowCount};
+ }catch(error){
+  logger.warn("[pulso-admin] Admin identity store unavailable code="+String(error.code||"storage").replace(/[^A-Za-z0-9_]/g,"").slice(0,32));
+  return {status:"storage_unavailable"};
+ }
 }
