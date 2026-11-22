@@ -6,7 +6,7 @@ ini_set('display_errors','0');
 error_reporting(E_ALL);
 
 function envv(string $name, string $fallback=''): string { $v=getenv($name); return $v===false?$fallback:$v; }
-function production(): bool { return envv('APP_ENV','development')==='production'; }
+function production(): bool { return in_array(envv('APP_ENV','development'), ['production','demo'],true); }
 function today(): string {return date('Y-m-d');}
 function id(): string {return bin2hex(random_bytes(16));}
 function clean(mixed $v,int $max=200):string {return mbcut(trim((string)($v??'')),$max);}
@@ -29,7 +29,7 @@ function getDb():PDO {
   $pdo=new PDO($dsn,urldecode($v['user']??''),urldecode($v['pass']??''),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);
   $pdo->exec('CREATE SCHEMA IF NOT EXISTS clystria');$pdo->exec('SET search_path TO clystria');
  } else {
-  if(production())throw new RuntimeException('Configure DATABASE_URL para armazenar clientes de forma persistente em produção');
+  if(production()&&envv('APP_ENV')!=='demo')throw new RuntimeException('Configure DATABASE_URL para armazenar clientes de forma persistente em produção');
   $folder=dirname(__DIR__).'/data';if(!is_dir($folder))mkdir($folder,0700,true);
   $pdo=new PDO('sqlite:'.$folder.'/clystria.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
   $pdo->exec('PRAGMA journal_mode=WAL');$pdo->exec('PRAGMA foreign_keys=ON');$pdo->exec('PRAGMA busy_timeout=5000');
