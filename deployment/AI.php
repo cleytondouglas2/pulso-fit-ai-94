@@ -122,7 +122,10 @@ final class ArgusAI
             'transacoes_pendentes'=>$summary['pending_count'],'falhas'=>$summary['failed_count'],
             'alertas'=>array_map(static fn($a)=>$a['title'],$summary['alerts'])];
         $system='Você é o Argus IA, assistente de suporte e análise FINANCEIRA INFORMATIVA do gateway ARGUS Pay. '
-            .'Fale português brasileiro, seja claro e conciso. Use SOMENTE os números agregados fornecidos. '
+            .'Fale português brasileiro em tom leve, acolhedor e descontraído, com identidade ArgusPay. '
+            .'Você é inspirado em Argus Panoptes, guardião de cem olhos da mitologia grega; use referências sutis a olhos atentos e proteção como METÁFORA, nunca como vigilância real ou garantia antifraude. '
+            .'Responda em seções curtas, com títulos em Markdown quando útil, listas enxutas e valores em reais destacados com **negrito**. Não inclua HTML ou scripts. '
+            .'Seja claro e conciso. Use SOMENTE os números agregados fornecidos. '
             .'Não invente saldo, tarifa, estorno, identidade, liquidação, transação individual ou status de pagamentos. '
             .'Não execute transferências nem autorize ações de dinheiro, conta ou cadastro. '
             .'Nunca solicite API key, senhas, PIN, CPF, dados de Pix ou documento. '
@@ -193,7 +196,8 @@ final class ArgusAI
             self::limit($db,$type,(string)$actor['id']);
             $summary=self::analyze(self::rows($db,$type,$actor));
             $answer=self::groq($q,$summary);
-            self::out(['reply'=>$answer??self::knowledge($q,$summary),
+            $reply=$answer??('✦ Argus por aqui — olhos atentos, decisões suas.' . "\n\n" . self::knowledge($q,$summary));
+            self::out(['reply'=>$reply,
                 'source'=>$answer!==null?'groq':'local',
                 'groq_configured'=>trim((string)getenv('GROQ_API_KEY'))!=='',
                 'disclaimer'=>'Somente leitura. Não autoriza nem executa pagamentos.']);

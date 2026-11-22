@@ -1,0 +1,395 @@
+/* ARGUS IA | Conversa financeira moderna + guardião de cem olhos
+   Responsive, scoped to existing AI pages, with reduced motion support. */
+.argus-ai.argus-ai-mythic{
+ --argus-ai-bg:#101218;
+ --argus-ai-surface:#1c2029;
+ --argus-ai-border:#63523c;
+ --argus-ai-gold:#edc38a;
+ --argus-ai-muted:#a9afba;
+}
+.argus-ai.argus-ai-mythic .ai-shell{
+ grid-template-columns:minmax(0,1.3fr) minmax(270px,.7fr);
+ gap:18px;
+ align-items:start;
+}
+.argus-ai.argus-ai-mythic .ai-box{
+ min-width:0;
+ border:1px solid rgba(209,168,106,.28);
+ border-radius:24px;
+ padding:clamp(15px,2.6vw,25px);
+ background:
+  radial-gradient(ellipse at 98% 2%,rgba(194,136,61,.13),transparent 42%),
+  linear-gradient(150deg,#1b1e26 0%,#151921 100%);
+ box-shadow:0 18px 42px rgba(0,0,0,.16),inset 0 1px 0 rgba(249,221,176,.06);
+}
+.argus-ai.argus-ai-mythic .ai-heading{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:12px;
+ margin-bottom:17px;
+}
+.argus-ai.argus-ai-mythic .ai-heading h2{
+ margin:0;
+ font-weight:820;
+ font-size:clamp(20px,2.1vw,25px);
+ color:#f6e4c8;
+}
+.argus-ai.argus-ai-mythic .ai-refresh{
+ border:1px solid #69543a;
+ border-radius:12px;
+ background:#31291f;
+ color:#eace9f;
+ font-size:12px;
+ padding:11px 13px;
+ min-height:41px;
+}
+.argus-ai.argus-ai-mythic .ai-argus-banner{
+ display:flex;align-items:center;gap:14px;
+ padding:17px;margin:0 0 14px;
+ border:1px solid rgba(228,182,115,.32);
+ border-radius:18px;
+ background:linear-gradient(125deg,#352b20,#24252b 56%,#1d2028);
+ position:relative;overflow:hidden;
+}
+.argus-ai.argus-ai-mythic .ai-argus-banner::after{
+ content:"";position:absolute;right:-70px;top:-100px;
+ width:185px;height:185px;border-radius:50%;
+ border:1px solid rgba(240,179,92,.17);
+ box-shadow:0 0 0 25px rgba(217,165,85,.035),0 0 0 55px rgba(217,165,85,.02);
+ pointer-events:none;
+}
+.argus-ai.argus-ai-mythic .ai-argus-avatar{
+ display:grid;place-items:center;flex:none;
+ width:57px;height:57px;
+ border:1px solid #af8251;border-radius:18px;
+ background:linear-gradient(135deg,#53402c,#22242b);
+ color:#f5c786;
+ box-shadow:inset 0 1px 0 rgba(255,236,197,.24),0 0 17px rgba(218,155,76,.09);
+}
+.argus-ai.argus-ai-mythic .ai-argus-avatar svg{width:32px;height:32px}
+.argus-ai.argus-ai-mythic .ai-argus-brand{min-width:0;position:relative;z-index:1}
+.argus-ai.argus-ai-mythic .ai-argus-eyebrow{
+ display:block;font-size:10px;letter-spacing:.15em;
+ font-weight:820;color:#e0b67e;margin-bottom:5px;
+}
+.argus-ai.argus-ai-mythic .ai-argus-brand strong{
+ display:block;font-size:clamp(14px,1.75vw,19px);
+ font-weight:800;color:#fbe8c9;line-height:1.3;
+}
+.argus-ai.argus-ai-mythic .ai-argus-brand p{
+ font-size:12px;line-height:1.5;margin:5px 0 0;
+ color:#bab9b9;
+}
+.argus-ai.argus-ai-mythic .ai-status{
+ border:1px solid rgba(126,136,154,.18);
+ padding:9px 12px;border-radius:10px;
+ background:rgba(11,15,22,.32);
+ font-size:11px;color:#abb6c5;
+ opacity:1;margin:0 0 11px;
+}
+.argus-ai.argus-ai-mythic .ai-conversation{
+ height:clamp(325px,52vh,520px);
+ min-height:300px;
+ display:flex;flex-direction:column;
+ gap:14px;
+ padding:17px clamp(10px,1.4vw,17px);
+ border:1px solid #393941;
+ border-radius:19px;
+ background:
+   radial-gradient(ellipse at top left,rgba(177,129,68,.07),transparent 49%),
+   linear-gradient(#10151d,#131820);
+ scroll-behavior:smooth;
+ overscroll-behavior:contain;
+ scrollbar-color:#826746 transparent;
+}
+.argus-ai.argus-ai-mythic .ai-message{
+ width:fit-content;max-width:min(94%,690px);
+ box-sizing:border-box;
+ padding:16px 18px;
+ border:1px solid #48505e;
+ border-radius:19px 19px 19px 5px;
+ background:linear-gradient(140deg,#242a35,#1d222c);
+ box-shadow:0 8px 24px rgba(0,0,0,.11);
+ color:#f5f1e9;
+ overflow-wrap:anywhere;
+ position:relative;
+ animation:argus-message-in .25s ease both;
+}
+.argus-ai.argus-ai-mythic .ai-message.ai-assistant{
+ align-self:flex-start;
+ border-color:#554737;
+ padding-left:59px;
+ background:linear-gradient(145deg,#262526 0%,#1d222a 82%);
+}
+.argus-ai.argus-ai-mythic .ai-message.ai-assistant::before{
+ content:"✧";position:absolute;
+ top:15px;left:14px;
+ display:grid;place-items:center;
+ width:32px;height:32px;border-radius:11px;
+ border:1px solid #805d37;
+ background:#3b3023;
+ color:#f1c787;font-size:21px;
+ box-shadow:0 0 14px rgba(215,156,74,.1);
+}
+.argus-ai.argus-ai-mythic .ai-message.ai-user{
+ align-self:flex-end;
+ max-width:min(87%,580px);
+ padding:14px 17px;
+ border:1px solid #927349;
+ border-radius:19px 19px 5px 19px;
+ background:linear-gradient(140deg,#56432b,#393126);
+ color:#fff1dc;
+}
+.argus-ai.argus-ai-mythic .ai-bubble-signature{
+ display:block;font-size:10px;font-weight:820;
+ text-transform:uppercase;letter-spacing:.11em;
+ color:#e4bb7e;opacity:1!important;
+ margin-bottom:9px;
+}
+.argus-ai.argus-ai-mythic .ai-user .ai-bubble-signature{color:#efdbb8}
+.argus-ai.argus-ai-mythic .ai-rich-content{
+ display:grid;gap:9px;
+ min-width:0;line-height:1.6;
+ color:#e5e2db;font-size:13px;
+}
+.argus-ai.argus-ai-mythic .ai-rich-content p{
+ margin:0;white-space:normal;
+ line-height:1.66;
+ font-size:13px;
+}
+.argus-ai.argus-ai-mythic .ai-rich-content h4{
+ font-size:14px;font-weight:800;
+ margin:3px 0 0;
+ color:#ffdb9a;line-height:1.4;
+}
+.argus-ai.argus-ai-mythic .ai-rich-content ul,
+.argus-ai.argus-ai-mythic .ai-rich-content ol{
+ padding-left:21px;margin:2px 0 4px;
+ display:grid;gap:6px;
+}
+.argus-ai.argus-ai-mythic .ai-rich-content li{padding-left:2px;line-height:1.55}
+.argus-ai.argus-ai-mythic .ai-rich-content li::marker{color:#e4b878}
+.argus-ai.argus-ai-mythic .ai-number-accent{font-weight:850;color:#ffe0a5;white-space:nowrap;font-variant-numeric:tabular-nums}
+.argus-ai.argus-ai-mythic .ai-emphasis{font-weight:770;color:#fae1bb}
+.argus-ai.argus-ai-mythic .ai-argus-prompt{
+ margin:15px 0 8px;
+ color:#b7bfcb;font-size:12px;
+}
+.argus-ai.argus-ai-mythic .ai-form{
+ display:flex;gap:9px;align-items:stretch;
+ padding:7px;border:1px solid #6f5c42;
+ border-radius:16px;background:#11161e;
+ box-shadow:inset 0 0 0 1px rgba(241,188,116,.035);
+ transition:border-color .2s,box-shadow .2s;
+}
+.argus-ai.argus-ai-mythic .ai-form:focus-within{border-color:#e4b978;box-shadow:0 0 0 3px rgba(231,182,109,.1)}
+.argus-ai.argus-ai-mythic .ai-question{
+ min-height:52px;max-height:160px;
+ resize:vertical;flex:1;
+ border:0;background:transparent;
+ border-radius:11px;padding:12px 13px;
+ color:#fff6e8;font-size:14px;line-height:1.45;
+ outline:0;
+}
+.argus-ai.argus-ai-mythic .ai-question::placeholder{color:#8794a5}
+.argus-ai.argus-ai-mythic .ai-send{
+ flex:none;min-width:110px;
+ padding:12px 19px;border-radius:11px;
+ border:1px solid #f9d7a2;
+ background:linear-gradient(128deg,#e2b879,#f0cf99 65%,#d1a168);
+ color:#292014;font-size:14px;font-weight:830;
+ box-shadow:0 5px 16px rgba(219,165,93,.09);
+ transition:transform .18s,filter .18s;
+}
+.argus-ai.argus-ai-mythic .ai-send:hover:not(:disabled){filter:brightness(1.055);transform:translateY(-1px)}
+.argus-ai.argus-ai-mythic .ai-presets.ai-argus-quick{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.argus-ai.argus-ai-mythic .ai-presets.ai-argus-quick button{
+ font-size:12px;line-height:1.3;
+ min-height:38px;padding:9px 13px;
+ border:1px solid #5f5446;border-radius:22px;
+ background:#282831;color:#eedabe;
+ transition:background .18s,border-color .18s;
+}
+.argus-ai.argus-ai-mythic .ai-presets.ai-argus-quick button:hover{
+ background:#393126;border-color:#ddb27d;
+}
+.argus-ai.argus-ai-mythic .ai-presets.ai-argus-quick .ai-payout-shortcut{
+ border-color:#be955e;
+ background:linear-gradient(120deg,#473622,#30291f);
+ color:#ffe4b6;font-weight:780;
+}
+.argus-ai.argus-ai-mythic .ai-typing-indicator{
+ display:flex;align-items:center;gap:10px;
+ width:fit-content;padding:10px 14px;
+ border:1px solid #6c5136;border-radius:17px;
+ background:#262522;color:#e0c4a0;
+ font-size:12px;
+ animation:argus-message-in .2s ease both;
+}
+.argus-ai.argus-ai-mythic .ai-typing-eye svg{width:19px;height:19px;color:#f0be78}
+.argus-ai.argus-ai-mythic .ai-typing-indicator i{
+ display:inline-block;margin-left:3px;width:5px;height:5px;border-radius:50%;
+ background:#dbac6a;animation:argus-dot 1.15s ease-in-out infinite;
+}
+.argus-ai.argus-ai-mythic .ai-typing-indicator i:nth-child(2){animation-delay:.15s}
+.argus-ai.argus-ai-mythic .ai-typing-indicator i:nth-child(3){animation-delay:.3s}
+.argus-ai.argus-ai-mythic .ai-box:nth-child(2) h3{color:#f1d6a7;font-size:16px;font-weight:800}
+.argus-ai.argus-ai-mythic .ai-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.argus-ai.argus-ai-mythic .ai-metric{
+ border:1px solid #514735;
+ border-radius:13px;
+ padding:13px;
+ background:linear-gradient(137deg,#2a2621,#1d222b);
+}
+.argus-ai.argus-ai-mythic .ai-metric small{color:#abb4bf;opacity:1;font-size:11px;line-height:1.4}
+.argus-ai.argus-ai-mythic .ai-metric strong{
+ color:#ffdb9b;font-size:clamp(15px,1.7vw,21px);
+ font-weight:830;font-variant-numeric:tabular-nums;
+}
+.argus-ai.argus-ai-mythic .ai-alerts p{
+ padding:11px 12px;margin:9px 0;border-radius:10px;
+ border:1px solid #454951;background:#212630;
+ color:#bfc6d1;font-size:12px;line-height:1.6;
+}
+.argus-ai.argus-ai-mythic .ai-alerts strong{color:#edc78d}
+/* A secure finance flow that reads like a guided conversation,
+   not a plain administrative form. Existing consent and API controls remain. */
+#argus-portal-ai.argus-ai-mythic .ai-message.ai-withdrawal-dialogue{
+ width:min(100%,660px);max-width:100%;
+ padding:17px 19px!important;
+ border:1px solid #a47a47;
+ background:linear-gradient(145deg,#2c261f,#1f232c 75%);
+}
+#argus-portal-ai.argus-ai-mythic .ai-withdrawal-dialogue::before{display:none!important}
+#argus-portal-ai.argus-ai-mythic .ai-payout-form{
+ width:100%;max-width:none;min-width:0;
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px 15px;
+ margin-top:14px;
+ padding:17px;
+ border:1px solid #62533f;
+ border-radius:16px;
+ background:rgba(10,14,20,.35);
+ box-sizing:border-box;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-header{
+ grid-column:1/-1;display:grid;gap:9px;
+ padding:0 0 16px;
+ border-bottom:1px solid #524739;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-kicker{
+ font-size:10px;letter-spacing:.13em;
+ font-weight:830;color:#dcb57d;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-header>strong{
+ font-size:17px;color:#f9e6c9;font-weight:850;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress span{
+ display:flex;align-items:center;gap:6px;min-width:0;
+ border:1px solid #514b47;border-radius:9px;
+ padding:9px 7px;color:#919ead;background:#20252d;
+ font-size:11px;font-weight:650;
+ transition:background .2s,border-color .2s;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress b{
+ display:grid;place-items:center;flex:none;width:22px;height:22px;
+ border:1px solid #616370;border-radius:7px;color:#bfc6d0;
+ font-size:11px;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress .is-current,
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress .is-done{
+ border-color:#b28c59;background:#373023;color:#f7dfba;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-progress .is-done b{border-color:#d5ae76;background:#d4ad73;color:#2b2012}
+#argus-portal-ai.argus-ai-mythic .ai-payout-form label:not(.ai-payout-consent){
+ font-size:12px;color:#efdbc3;line-height:1.55;gap:8px;
+}
+#argus-portal-ai.argus-ai-mythic .ai-payout-form input:not([type=checkbox]),
+#argus-portal-ai.argus-ai-mythic .ai-payout-form select{
+ min-height:50px;border:1px solid #675c4b;
+ border-radius:11px;background:#111821;
+ color:#fff3df;padding:13px 13px;font-size:14px;
+}
+#argus-portal-ai.argus-ai-mythic .ai-payout-form input:focus-visible,
+#argus-portal-ai.argus-ai-mythic .ai-payout-form select:focus-visible{
+ outline:2px solid #d9b479;outline-offset:2px;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-wallet,
+#argus-portal-ai.argus-ai-mythic .ai-flow-summary{
+ padding:12px 14px;border-radius:11px;
+ border:1px solid #5c503f;background:#25241f;
+ color:#f6d8a8;font-size:13px;line-height:1.65;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-summary{
+ border-color:#a17a48;
+ background:linear-gradient(125deg,#362b1c,#2a251e);
+ font-weight:740;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-help{
+ grid-column:1/-1;
+ margin:-1px 0 4px;color:#aeb8c6;
+ font-size:11px;line-height:1.6;
+}
+#argus-portal-ai.argus-ai-mythic .ai-payout-consent{
+ grid-column:1/-1;padding:13px 12px;
+ border:1px solid #6c6152;border-radius:11px;
+ background:#262b33;color:#e6e0d7;
+ line-height:1.6;
+}
+#argus-portal-ai.argus-ai-mythic .ai-payout-consent input{margin-top:2px;accent-color:#e7ba79}
+#argus-portal-ai.argus-ai-mythic .ai-payout-actions{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(120px,1fr);gap:10px}
+#argus-portal-ai.argus-ai-mythic .ai-flow-confirm{
+ border-color:#f4d5a7;background:linear-gradient(115deg,#e7ba7b,#f3d29e);
+ color:#251a12;font-weight:820;
+}
+#argus-portal-ai.argus-ai-mythic .ai-payout-actions button{
+ min-height:50px;border-radius:11px;font-size:13px;
+}
+#argus-portal-ai.argus-ai-mythic .ai-flow-privacy{
+ font-size:11px;color:#b2bcc9;line-height:1.6;
+}
+@keyframes argus-message-in{
+ from{opacity:0;transform:translateY(8px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@keyframes argus-dot{
+ 0%,70%,100%{opacity:.3;transform:translateY(0)}
+ 35%{opacity:1;transform:translateY(-3px)}
+}
+@media(max-width:940px){
+ .argus-ai.argus-ai-mythic .ai-shell{grid-template-columns:minmax(0,1fr)}
+ .argus-ai.argus-ai-mythic .ai-conversation{height:clamp(325px,48vh,520px)}
+}
+@media(max-width:560px){
+ .argus-ai.argus-ai-mythic .ai-box{border-radius:17px;padding:13px}
+ .argus-ai.argus-ai-mythic .ai-argus-banner{padding:13px;gap:10px}
+ .argus-ai.argus-ai-mythic .ai-argus-avatar{width:45px;height:45px;border-radius:13px}
+ .argus-ai.argus-ai-mythic .ai-argus-avatar svg{width:25px;height:25px}
+ .argus-ai.argus-ai-mythic .ai-argus-brand strong{font-size:14px}
+ .argus-ai.argus-ai-mythic .ai-argus-brand p{font-size:11px}
+ .argus-ai.argus-ai-mythic .ai-heading h2{font-size:18px}
+ .argus-ai.argus-ai-mythic .ai-conversation{padding:12px 8px;height:390px;gap:11px}
+ .argus-ai.argus-ai-mythic .ai-message{max-width:96%;padding:13px}
+ .argus-ai.argus-ai-mythic .ai-message.ai-assistant{padding:13px 12px 13px 49px}
+ .argus-ai.argus-ai-mythic .ai-message.ai-assistant::before{width:26px;height:26px;left:11px;top:12px;border-radius:8px}
+ .argus-ai.argus-ai-mythic .ai-message.ai-user{max-width:90%;padding:13px}
+ .argus-ai.argus-ai-mythic .ai-form{flex-direction:row;align-items:stretch}
+ .argus-ai.argus-ai-mythic .ai-question{min-height:50px}
+ .argus-ai.argus-ai-mythic .ai-send{width:auto;min-width:82px;font-size:12px;padding:10px}
+ .argus-ai.argus-ai-mythic .ai-metrics{gap:8px}
+ #argus-portal-ai.argus-ai-mythic .ai-message.ai-withdrawal-dialogue{padding:13px 11px!important}
+ #argus-portal-ai.argus-ai-mythic .ai-payout-form{grid-template-columns:minmax(0,1fr);padding:11px;gap:11px}
+ #argus-portal-ai.argus-ai-mythic .ai-flow-progress span{font-size:10px;padding:7px 5px}
+ #argus-portal-ai.argus-ai-mythic .ai-payout-actions{grid-template-columns:minmax(0,1fr)}
+ #argus-portal-ai.argus-ai-mythic .ai-payout-actions button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){
+ .argus-ai.argus-ai-mythic .ai-message,
+ .argus-ai.argus-ai-mythic .ai-typing-indicator,
+ .argus-ai.argus-ai-mythic .ai-typing-indicator i{animation:none!important}
+ .argus-ai.argus-ai-mythic *,
+ .argus-ai.argus-ai-mythic *::before,
+ .argus-ai.argus-ai-mythic *::after{transition:none!important;scroll-behavior:auto!important}
+}

@@ -759,3 +759,18 @@ RUN test -s /var/www/html/public/static/reseller-unified-card.css \
 # separate main gold card + two secondary cards, instead of one wide frame.
 RUN sed -i 's#reseller-unified-card.css?v=20261122-card-1#reseller-unified-card.css?v=20261122-card-2#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-unified-card.css?v=20261122-card-2' /var/www/html/public/static/client.html
+
+
+# Argus IA mythology/financial chat polish, existing AI and payout auth unchanged.
+# Static presentation only; never sends money in build tests.
+COPY deployment/ai-conversation-experience.js deployment/ai-conversation-experience.css /var/www/html/public/static/
+RUN php -l /var/www/html/src/AI.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/ai_test.php \
+ && php -d display_errors=1 -d log_errors=0 /var/www/html/tests/chat_payout_test.php \
+ && test -s /var/www/html/public/static/ai-conversation-experience.js \
+ && test -s /var/www/html/public/static/ai-conversation-experience.css \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/ai-conversation-experience.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/ai-conversation-experience.js?v=20261122-1"></script></body>#' /var/www/html/public/static/client.html \
+ && sed -i 's#</head>#<link rel="stylesheet" href="/static/ai-conversation-experience.css?v=20261122-1"></head>#; s#</body>#<script defer src="/static/ai-conversation-experience.js?v=20261122-1"></script></body>#' /var/www/html/public/static/admin.html \
+ && grep -Fq 'ai-conversation-experience.js?v=20261122-1' /var/www/html/public/static/client.html \
+ && grep -Fq 'ai-conversation-experience.js?v=20261122-1' /var/www/html/public/static/admin.html \
+ && grep -Fq 'chat-payout.js?v=20261120-1' /var/www/html/public/static/client.html
