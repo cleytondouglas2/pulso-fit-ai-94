@@ -65,3 +65,8 @@ Envio SMTP TLS/SSL com `SMTP_HOST`, `SMTP_PORT` (465 ou 587), `SMTP_USER`, `SMTP
 - A conexão com Sigma/PainelFoda real precisa ser homologada. Uma URL, um usuário e uma senha **não bastam** para superar proteção Cloudflare nem para deduzir endpoints proprietários.
 - A edição inclui rotas de API para gerenciamento, mas não inclui gateway de pagamento nem integrações homologadas WhatsApp Business para disparo automático.
 - Realize testes de ponta a ponta em hospedagem com as extensões PHP e banco disponíveis antes de uso crítico.
+
+
+## Pesquisa pública TopGestor (22/11/2026)
+
+A página https://topgestor.com/site informa que o usuário cadastra credenciais, enquanto o serviço emprega **APIs dos fornecedores nos bastidores**. Não há detalhes públicos suficientes para reproduzir os adaptadores proprietários ou transferir sessões do Chrome/Safari. Os comunicados oficiais do TopGestor mencionam conectores específicos e importação de planilhas para Sigma. Portanto, o Clystria não deve presumir que `/api/login` funcione em todos os painéis, nem mostrar status de sucesso quando a API falha. A sincronização com Sigma/PainelFoda permanece não homologada até obter endpoints e respostas autorizados para cada fornecedor.

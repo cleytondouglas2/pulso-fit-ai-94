@@ -58,7 +58,7 @@ function requestPanel(string $url,string $method='GET',?array $data=null,array $
   return ['data'=>$json,'cookies'=>$resHeaders['set-cookie']??[]];
  }finally{curl_close($ch);}
 }
-function listFrom(mixed $data,array $keys=['clients','users','customers','subscribers','results','items']):array {
+function listFrom(mixed $data,array $keys=['clients','users','customers','subscribers','results','items','records']):array {
  if(!is_array($data))throw new RuntimeException('Resposta da API inválida');
  foreach([$data,$data['data']??null,$data['data']['data']??null,$data['result']??null,$data['response']??null,$data['payload']??null] as $part){
   if(!is_array($part))continue;if(array_is_list($part))return $part;
@@ -75,8 +75,8 @@ function parseDue(mixed $v):string{
 }
 function normalizePlan(array $x):?array {$name=field($x,['name','title','plan_name','package_name','nome']);if($name===null)return null;$days=(int)(field($x,['days','duration_days','duration','period_days','validity_days'])??30);if($days<1||$days>730)$days=30;$price=field($x,['price','value','valor','amount'])??0;if(!is_numeric($price)||$price<0)$price=0;return ['key'=>clean(field($x,['id','plan_id','package_id','uuid'])??'',100),'name'=>clean($name,65),'days'=>$days,'price'=>(float)$price];}
 function normalizeClient(array $x,array $plans):?array {
- $username=clean(field($x,['username','login','user','usuario','user_name'])??'',100);
- $due=parseDue(field($x,['due_date','expiration_date','expiration','exp_date','expires_at','expire_at','expires','vencimento','end_date','date_end']));
+ $username=clean(field($x,['username','login','user','usuario','user_name','customer_username'])??'',100);
+ $due=parseDue(field($x,['due_date','dueDate','expiration_date','expirationDate','expiry_date','expiration','exp_date','expires_at','expire_at','expired_at','expires','vencimento','data_vencimento','end_date','date_end','valid_until']));
  if(!$username||!$due)return null;
  $planObj=field($x,['plan','package','subscription']);$key=field($x,['plan_id','package_id','subscription_id'])??(is_array($planObj)?field($planObj,['id','plan_id','package_id']):null);
  $matched=null;foreach($plans as $p){if($p['key']!==''&&$p['key']===(string)$key){$matched=$p;break;}}
@@ -84,7 +84,7 @@ function normalizeClient(array $x,array $plans):?array {
  $raw=strtolower((string)(field($x,['status','state','situation','situacao'])??''));
  $status=preg_match('/cancel/i',$raw)?'canceled':(preg_match('/expire|inactiv|disabled|block|suspend|paus|vencid|bloque/i',$raw)||($x['active']??null)===false||($x['enabled']??null)===false?'paused':(preg_match('/trial|teste/i',$raw)?'trial':'active'));
  $price=field($x,['price','value','valor','amount']);$price=$price!==null&&is_numeric($price)&&$price>=0?(float)$price:null;
- return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
+ return ['username'=>$username,'due_date'=>$due,'name'=>clean(field($x,['name','customer_name','nome','display_name','full_name','customerName'])??$username,100),'phone'=>clean(field($x,['phone','telefone','whatsapp','mobile'])??'',40),'email'=>clean($x['email']??'',180),'password'=>clean(field($x,['password','senha'])??'',180),'status'=>$status,'plan_name'=>clean($name,65),'price'=>$price];
 }
 function fetchPanel(array $panel):array {
  if($panel['auth_mode']==='browser')throw new RuntimeException('Login pelo Safari/Chrome não libera acesso do servidor à sessão externa. Abra o painel no navegador e importe o arquivo de clientes exportado, ou configure uma API autorizada.');
@@ -96,7 +96,7 @@ function fetchPanel(array $panel):array {
  }
  if(!$panel['login_user']||!$panel['login_pass_enc'])throw new RuntimeException('Configure usuário e senha do painel');
  $login=requestPanel(panelEndpoint($panel['url'],$panel['login_path']),'POST',[$panel['login_field']=>$panel['login_user'],$panel['password_field']=>unseal($panel['login_pass_enc'])],[],'autenticação');
- $d=$login['data'];$token=field($d,['access_token','token','jwt'])??field($d['data']??[],['access_token','token','jwt'])??field($d['result']??[],['token']);
+ $d=$login['data'];$token=field($d,['access_token','accessToken','token','jwt'])??field(is_array($d['data']??null)?$d['data']:[],['access_token','accessToken','token','jwt'])??field(is_array($d['result']??null)?$d['result']:[],['token','access_token']);
  $cookies=[];foreach($login['cookies'] as $s){$first=explode(';',$s,2)[0];if(preg_match('/^[\w.\-]+=[^;\r\n]*$/',$first))$cookies[]=$first;}
  if(!$token&&!$cookies)throw new RuntimeException('API não retornou token nem cookie de sessão; é necessário um adaptador do fornecedor');
  $headers=[];if($token)$headers[]='Authorization: Bearer '.$token;if($cookies)$headers[]='Cookie: '.implode('; ',$cookies);
