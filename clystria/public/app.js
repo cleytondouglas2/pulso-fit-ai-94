@@ -146,9 +146,11 @@ function drawVps(frame){
  $('#vps-shot').src=frame.image;
  $('#vps-host').textContent=frame.host||'Navegador da VPS';
  $('#vps-result').textContent=frame.verification?
-  'Verificação detectada. Conclua manualmente nesta tela, se o fornecedor permitir.':
-  frame.password_form?'Tela de login disponível. Preencha os campos ou use o login salvo.':
-  'Navegador conectado. Abra Clientes após o login e importe.';
+  'O Chromium aguardou o Cloudflare, mas ainda é necessária uma verificação humana nesta sessão.':
+  frame.password_form?
+    (frame.managed_verification_cleared?'Cloudflare liberou a sessão automaticamente. Faça o login para continuar.':'Tela de login disponível. Preencha os campos ou use o login salvo.'):
+  frame.managed_verification_cleared?'Verificação automática concluída pelo Cloudflare. Confira o login e abra Clientes para importar.':
+  'Página carregada. Confirme se está autenticado e abra Clientes para importar.';
 }
 async function vpsCommand(action,data={}){
  if(vps.pending||!vps.session)return;
