@@ -716,3 +716,14 @@ RUN php -l /tmp/seller_pix_submit_patch.php \
  && sed -i 's#reseller-pix-ui.js?v=20261122-1#reseller-pix-ui.js?v=20261122-2#; s#reseller-pix-ui.css?v=20261122-1#reseller-pix-ui.css?v=20261122-2#; s#merchant-portal.js?v=seller-pix-modal-20261120-1#merchant-portal.js?v=seller-submit-20261122-2#' /var/www/html/public/static/client.html \
  && grep -Fq 'reseller-pix-ui.js?v=20261122-2' /var/www/html/public/static/client.html \
  && grep -Fq 'merchant-portal.js?v=seller-submit-20261122-2' /var/www/html/public/static/client.html
+
+# Responsive reseller SPA: reduce redundant work and parallelize read-only GETs.
+# Installed AFTER all ledger, Pix, KYC, and previous release regression tests.
+COPY deployment/reseller_perf_patch.php /tmp/reseller_perf_patch.php
+RUN php -l /tmp/reseller_perf_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_perf_patch.php \
+ && grep -Fq 'structuralSelector=' /var/www/html/public/static/reseller-dashboard.js \
+ && grep -Fq 'sessionResult,keysResult,activityResult' /var/www/html/public/static/merchant-portal.js \
+ && sed -i 's#reseller-dashboard.js?v=reseller-layout-20261120-1#reseller-dashboard.js?v=nav-speed-20261122-1#; s#merchant-portal.js?v=seller-submit-20261122-2#merchant-portal.js?v=nav-speed-20261122-1#; s#revenue-dashboard.js?v=workspace-20261120-4#revenue-dashboard.js?v=nav-speed-20261122-1#' /var/www/html/public/static/client.html \
+ && grep -Fq 'reseller-dashboard.js?v=nav-speed-20261122-1' /var/www/html/public/static/client.html \
+ && grep -Fq 'merchant-portal.js?v=nav-speed-20261122-1' /var/www/html/public/static/client.html
