@@ -281,6 +281,20 @@ renderPerson=function(){
  elxDiscoveryGallery();
 };
 // Photo manager remains separated from the form's other personal information fields.
+const elxOriginalOpenChat=openChat;
+openChat=async function(match){
+ const route=elnexNavigationToken;
+ const veil=elxTransitionBegin('Abrindo sua conversa...');
+ try{await elxOriginalOpenChat(match)}
+ finally{if(route===elnexNavigationToken)await elxTransitionEnd(veil)}
+};
+const elxOriginalSaveProfile=saveProfile;
+saveProfile=async function(event){
+ const route=elnexNavigationToken;
+ const veil=elxTransitionBegin('Salvando seu perfil...');
+ try{await elxOriginalSaveProfile(event)}
+ finally{if(route===elnexNavigationToken)await elxTransitionEnd(veil)}
+};
 function elxInitMotion(){
  elxOverlay();
  document.querySelectorAll('[data-tab]').forEach(node=>node.classList.add('elx-smooth-nav'));
