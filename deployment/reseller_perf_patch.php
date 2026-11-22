@@ -78,7 +78,7 @@ if(file_put_contents($merchantPath,$merchant)===false)throw new RuntimeException
 $dashboardPath=$dir.'/reseller-dashboard.js';
 $dashboard=file_get_contents($dashboardPath);
 if(!is_string($dashboard))throw new RuntimeException('Navigation performance: reseller workspace missing');
-$previous="  const observer=new MutationObserver(schedule);\n  observer.observe(dashboard,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});";
+$previous='const observer=new MutationObserver(schedule);';
 $optimized=<<<'JS'
   // Rerender the workspace only for structural changes. The legacy observer
   // used to re-run rearrangement on *every* hidden attribute and all row
@@ -103,7 +103,6 @@ $optimized=<<<'JS'
     }
    }
   });
-  observer.observe(dashboard,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
 JS;
 argusPerfReplace($dashboard,$previous,$optimized,'workspace observer');
 if(!str_contains($dashboard,'function select(id,')||!str_contains($dashboard,'filterCharges();')){
