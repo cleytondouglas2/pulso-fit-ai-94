@@ -1,5 +1,5 @@
 /**
- * PulsoFit AI — runtime MisticPay para o servidor gerado pelo Render.
+ * PulsoFit AI — runtime dos pagamentos Argus Pay para o servidor gerado pelo Render.
  * `NODE_OPTIONS=--import=./server/misticpay-runtime.mjs`
  *
  * Intercepta exclusivamente rotas de cobrança, mantém o backend de contas
@@ -24,6 +24,8 @@ import "./pulsofit-social-auth.mjs";
 import {Server} from "node:http";
 import {basename} from "node:path";
 import {createMisticPayAdapter} from "./misticpay-adapter.mjs";
+import {createArgusPayAdapter,isArgusCredentialPair} from "./arguspay-adapter.mjs";
+import {createArgusPayCredentialStore} from "./arguspay-config.mjs";
 import {createMisticPayPostgresStore} from "./misticpay-postgres-store.mjs";
 import {createMisticPayBilling,settleVerifiedMisticPayOrder} from "./misticpay-billing.mjs";
 import {createProductionPixReconciler} from "./misticpay-auto-reconcile.mjs";
@@ -33,10 +35,13 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
  globalThis.__PULSO_BILLING_RUNTIME__=true;
  const origin="https://pulso-fit-ai-95-online.onrender.com";
  const managed=new Set(["/api/billing/config","/api/billing/health","/api/billing/checkout",
-  "/api/billing/payment","/api/billing/recover","/api/billing/webhook","/api/admin/billing/config","/api/subscription/status"]);
+  "/api/billing/payment","/api/billing/recover","/api/billing/webhook","/api/admin/billing/config","/api/admin/billing/test","/api/subscription/status"]);
  const dbVar=["PULSO_BILLING_DATABASE_URL","DATABASE_URL","PULSO_DATABASE_URL","POSTGRES_URL","PG_CONNECTION_STRING"].find(k=>!!process.env[k]);
- const gateway=createMisticPayAdapter();
- const state={provider:"misticpay",backendMounted:true,ready:false,production:true,
+ const argusCredentials={key:process.env.ARGUS_API_KEY||"",secret:process.env.ARGUS_API_SECRET||""};
+ const gateway=createArgusPayAdapter({getCredentials:()=>argusCredentials});
+ const legacyGateway=createMisticPayAdapter();
+ let credentialStore=null,lastKeySaveAt=0;
+ const state={provider:"arguspay",backendMounted:true,ready:false,production:true,
    credentialsConfigured:gateway.credentialsReady(),databaseConfigured:Boolean(dbVar),
    databaseReachable:false,accountSchemaVerified:false,storageReady:false,
    providerAuth:"unchecked",supportedMethods:[],webhookPath:"/api/billing/webhook",
@@ -48,7 +53,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
  const temporaryDatabaseApproved=()=>process.env.PULSO_BILLING_TEMP_DB_ACK==="1";
  const requiredFlags=()=>(
    process.env.PULSO_BILLING_STABLE_DB==="1"||temporaryDatabaseApproved()
-  )&&premiumGuardInstalled&&process.env.PULSO_MISTICPAY_ENABLE_CHARGES==="1";
+  )&&premiumGuardInstalled&&process.env.PULSO_ARGUSPAY_ENABLE_CHARGES==="1";
  function respond(res,status,data){
   if(res.writableEnded)return;
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
@@ -82,6 +87,15 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    state.accountSchemaVerified=r.rows.some(x=>x.column_name==="id"&&x.data_type==="uuid")&&r.rows.some(x=>x.column_name==="plan");
    if(!state.accountSchemaVerified)throw Error("Account schema mismatch");
    store=await createMisticPayPostgresStore(pool,{initialize:true});
+   credentialStore=createArgusPayCredentialStore(pool);
+   await credentialStore.init();
+   const savedCredentials=await credentialStore.load();
+   argusCredentials.key=savedCredentials.key;
+   argusCredentials.secret=savedCredentials.secret;
+   state.credentialsConfigured=gateway.credentialsReady();
+   state.credentialSource=savedCredentials.source;
+   state.credentialsUpdatedAt=savedCredentials.updatedAt||null;
+   state.secureAdminStorageReady=credentialStore.secureStorageReady;
    // One-time scoped reactivation of seven free days; never modifies paid Pix.
    const resetEmail=String(process.env.PULSO_TRIAL_RESET_EMAIL_ONCE||"").trim();
    const resetId=String(process.env.PULSO_TRIAL_RESET_ID_ONCE||"").trim();
@@ -106,130 +120,24 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
     }finally{db.release()}
    }
    state.storageReady=true;
-   billing=createMisticPayBilling({authenticate,store,origin,gateway});
+   billing=createMisticPayBilling({authenticate,store,origin,gateway,
+    resolveGateway(order){return order.provider==="misticpay"?legacyGateway:gateway;}});
   }catch(error){
    state.storageReady=false;
    console.error("[pulso-billing] Storage unavailable ("+String(error.code||"initialization")+"); payments disabled.");
   }
+  // Read-only probe; no Pix is created by testing configuration.
   if(state.credentialsConfigured){
-   try{
-    // Consulta autenticada de um ID inexistente: nenhum PIX é criado.
-    await gateway.getTransaction("0");
-    state.providerAuth="verified";
-   }catch(error){
-    const code=String(error.code||"");
-    state.providerAuth=["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","API_CREDENTIAL_REQUIRED","IP_NOT_ALLOWED"].includes(code)?"denied":(["TRANSACTION_NOT_FOUND","VALIDATION_ERROR"].includes(code)?"verified":"checked");
-    console.log("[pulso-billing] Provider read-only probe: http="+(Number(error.status)||0)+" code="+code.replace(/[^A-Z0-9_]/g,"").slice(0,64)+" kind="+String(error.name||"").replace(/[^a-zA-Z]/g,"").slice(0,24)+"; no charge created.");
-    // Um ID inexistente pode provocar INTERNAL_ERROR no gateway. Consulte
-    // validação de parâmetro vazio para distinguir escopo de falha do provedor.
-    // Este teste não cria transação, nem divulga credenciais.
-    if(state.providerAuth==="checked"){
-     try{
-      const id=process.env.PULSO_MISTICPAY_CLIENT_ID,secret=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
-      const response=await fetch("https://api.misticpay.com/api/transactions/check",{
-       method:"POST",redirect:"error",signal:AbortSignal.timeout(7000),
-       headers:{"Authorization":"Basic "+Buffer.from(id+":"+secret).toString("base64"),
-        "Content-Type":"application/json","Accept":"application/json"},
-       body:JSON.stringify({transactionId:""})
-      });
-      const result=await response.json().catch(()=>({}));
-      const safeCode=String(result?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,48);
-      const requestId=String(result?.requestId||"").replace(/[^a-zA-Z0-9-]/g,"").slice(0,80);
-      if(response.status===400&&["VALIDATION_ERROR","TRANSACTION_ID_REQUIRED"].includes(safeCode)){
-       // Confirme a ordem de autenticação: uma credencial fictícia deve ser
-       // rejeitada antes da validação do corpo. Só então a resposta 400
-       // das credenciais reais comprova que elas foram aceitas.
-       const fake=await fetch("https://api.misticpay.com/api/transactions/check",{
-        method:"POST",redirect:"error",signal:AbortSignal.timeout(7000),
-        headers:{"Authorization":"Basic "+Buffer.from("pk_invalid_proof:sk_invalid_proof").toString("base64"),
-         "Content-Type":"application/json","Accept":"application/json"},
-        body:JSON.stringify({transactionId:""})
-       });
-       const fakeBody=await fake.json().catch(()=>({}));
-       const fakeCode=String(fakeBody?.code||"");
-       if(fake.status===401&&fakeCode==="INVALID_API_CREDENTIAL")state.providerAuth="verified";
-       console.log("[pulso-billing] Negative credential control: http="+fake.status+
-        " code="+fakeCode.replace(/[^A-Z0-9_]/g,"").slice(0,50)+
-        " readScope="+state.providerAuth+"; no charge created.");
-      }
-      else if(["INVALID_API_CREDENTIAL","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(safeCode))state.providerAuth="denied";
-      console.log("[pulso-billing] Read scope fallback: http="+response.status+" code="+safeCode+
-       " requestId="+(requestId||"not_provided")+" result="+state.providerAuth+"; no charge created.");
-     }catch{console.log("[pulso-billing] Read scope fallback network error; charges stay disabled.");}
-    }
-   }
-  }
-  /* Confirmação diferencial dos escopos de criar e consultar sem cobrança */
-  if(state.credentialsConfigured&&state.providerAuth!=="denied"){
-   async function validateScope(url){
-    const id=process.env.PULSO_MISTICPAY_CLIENT_ID,secret=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
-    const data=JSON.stringify({}); // JSON sem campos obrigatórios: jamais gera PIX
-    async function call(user,pass){
-     const response=await fetch(url,{method:"POST",redirect:"error",signal:AbortSignal.timeout(6000),
-      headers:{"Authorization":"Basic "+Buffer.from(user+":"+pass).toString("base64"),
-        "Content-Type":"application/json","Accept":"application/json"},
-      body:data});
-     const result=await response.json().catch(()=>({}));
-     return {status:response.status,code:String(result?.code||"").slice(0,64)};
-    }
-    try{
-     const real=await call(id,secret);
-     const fake=await call("pk_invalid_pulsofit_scope_probe","sk_invalid_pulsofit_scope_probe");
-     const invalidFake=fake.status===401&&["INVALID_API_CREDENTIAL","IP_NOT_ALLOWED"].includes(fake.code);
-     const validReal=real.status===400&&!["INVALID_API_CREDENTIAL","API_CREDENTIAL_REQUIRED","API_SCOPE_DENIED","IP_NOT_ALLOWED"].includes(real.code);
-     console.log("[pulso-billing] Scope contrast "+url.split("/").pop()+": realStatus="+real.status+
-      " realCode="+real.code.replace(/[^A-Z0-9_]/g,"")+" fakeStatus="+fake.status+
-      " fakeCode="+fake.code.replace(/[^A-Z0-9_]/g,"")+
-      " verified="+Boolean(invalidFake&&validReal)+"; no PIX created.");
-     return invalidFake&&validReal;
-    }catch{
-     console.log("[pulso-billing] Scope contrast unavailable, no PIX created.");
-     return false;
-    }
-   }
-   const readOk=await validateScope("https://api.misticpay.com/api/transactions/check");
-   const createOk=await validateScope("https://api.misticpay.com/api/transactions/create");
-   state.readScopeVerified=readOk;
-   state.createScopeVerified=createOk;
-   if(readOk&&createOk)state.providerAuth="verified";
-   else if(state.providerAuth!=="denied")state.providerAuth="checked";
-  }
-
-  /* Teste diferencial com ID não vazio: somente leitura, nenhum Pix */
-  if(state.credentialsConfigured&&state.providerAuth!=="denied"){
-   try{
-    const reference="978154328728161432"; // ID improvável, sem dados de cliente
-    const id=process.env.PULSO_MISTICPAY_CLIENT_ID,sk=process.env.PULSO_MISTICPAY_CLIENT_SECRET;
-    async function readWith(user,pass){
-     const res=await fetch("https://api.misticpay.com/api/transactions/check",{
-      method:"POST",redirect:"error",signal:AbortSignal.timeout(6500),
-      headers:{"Authorization":"Basic "+Buffer.from(user+":"+pass).toString("base64"),"Content-Type":"application/json"},
-      body:JSON.stringify({transactionId:reference})
-     });
-     const body=await res.json().catch(()=>({}));
-     return {http:res.status,code:String(body?.code||"").replace(/[^A-Z0-9_]/g,"").slice(0,45)};
-    }
-    const real=await readWith(id,sk);
-    const fake=await readWith("pk_invalid_pulsofit","sk_invalid_pulsofit");
-    const validFake=fake.http===401&&fake.code==="INVALID_API_CREDENTIAL";
-    const realAuthorized=(real.http===404&&real.code==="TRANSACTION_NOT_FOUND")||
-      (real.http===200);
-    if(validFake&&realAuthorized)state.providerAuth="verified";
-    else if(validFake&&real.http===502)state.providerAuth="checked";
-    state.readProbeResult={realHttp:real.http,realCode:real.code,fakeHttp:fake.http,fakeCode:fake.code,confirmed:Boolean(validFake&&realAuthorized)};
-    console.log("[pulso-billing] Nonempty read contrast: real="+real.http+"/"+real.code+
-      " invalid="+fake.http+"/"+fake.code+" authorized="+Boolean(validFake&&realAuthorized)+
-      "; no transaction created.");
-   }catch{
-    console.log("[pulso-billing] Nonempty read contrast unavailable; no PIX created.");
-   }
+   try{await gateway.testConnection();state.providerAuth="verified";}
+   catch(error){state.providerAuth=error?.status===401?"denied":"unavailable";
+    console.warn("[pulso-billing] ArgusPay balance probe unavailable; no charges created.");}
   }
 
   // Uso temporário autorizado pelo proprietário; não exigir banco permanente
   // durante piloto. Checkout exige confirmação de leitura da própria cobrança
   // antes de exibir o Pix. Bloqueio de acesso é uma flag independente.
   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&
-    state.credentialsConfigured&&state.providerAuth!=="denied"&&requiredFlags());
+    state.credentialsConfigured&&state.providerAuth==="verified"&&requiredFlags());
   state.ready=configured;
   if(configured)state.supportedMethods=["pix"];
   state.accessEnforcementActive=configured&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1";
@@ -239,23 +147,28 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    " (no keys or user records logged).");
  }
  const bootPromise=boot();
- let verifiedPixWorker=null,livePixTest=null;
- // Verify existing production PIX transactions. Never create or pay a charge.
+ let argusWorker=null,legacyWorker=null,livePixTest=null;
  async function reconcileExistingPix(){
   await bootPromise;
-  if(!configured||!store?.claimPendingForVerification)return;
-  if(!verifiedPixWorker)verifiedPixWorker=createProductionPixReconciler({
-   store,gateway,settle:settleVerifiedMisticPayOrder,logger(stats){
-    livePixTest={...stats,lastCheckedAt:new Date().toISOString(),environment:"production",newChargesCreated:0};
-    // Count-only telemetry. No transaction IDs, payer identities or secrets in logs.
-    console.log("[pulso-billing] Production PIX verification: checked="+stats.checked+
-     " confirmed="+stats.confirmed+" pending="+stats.pending+
-     " failedOrCancelled="+stats.declined+" unverified="+stats.unverified+" created=0");
-   }});
-  try{await verifiedPixWorker.check()}catch(error){
-   console.warn("[pulso-billing] Production PIX verification unavailable code="+
-    String(error.code||"runtime").replace(/[^A-Z0-9_]/gi,"").slice(0,40));
+  if(!store?.claimPendingForVerification)return;
+  async function run(provider,adapter){
+   if(!adapter.credentialsReady())return;
+   if(provider==="arguspay"&&!configured)return;
+   const providerStore={...store,
+    claimPendingForVerification:(limit)=>store.claimPendingForVerification(limit,provider)};
+   if(provider==="arguspay"&&!argusWorker)argusWorker=createProductionPixReconciler({
+    store:providerStore,gateway:adapter,settle:settleVerifiedMisticPayOrder,logger(stats){
+     livePixTest={...stats,lastCheckedAt:new Date().toISOString(),environment:"production",newChargesCreated:0};
+     console.log("[pulso-billing] Argus Pix reconciliation: checked="+stats.checked+" confirmed="+stats.confirmed);
+    }});
+   if(provider==="misticpay"&&!legacyWorker)legacyWorker=createProductionPixReconciler({
+    store:providerStore,gateway:adapter,settle:settleVerifiedMisticPayOrder,logger(stats){
+     console.log("[pulso-billing] Legacy Pix reconciliation: checked="+stats.checked+" confirmed="+stats.confirmed);
+    }});
+   await (provider==="arguspay"?argusWorker:legacyWorker).check();
   }
+  try{await run("arguspay",gateway);}catch{console.warn("[pulso-billing] Argus reconciliation unavailable");}
+  try{await run("misticpay",legacyGateway);}catch{console.warn("[pulso-billing] Legacy reconciliation unavailable");}
  }
  const pixPoll=setInterval(()=>{void reconcileExistingPix()},65000);
  pixPoll.unref?.();
@@ -264,8 +177,8 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   await bootPromise;
   if(path==="/api/billing/health"||path==="/api/billing/config"){
    if(req.method!=="GET")return respond(res,405,{error:"Método inválido"});
-   return respond(res,200,{...state,autoVerification:{enabled:configured,intervalSeconds:65,workerActive:!!verifiedPixWorker,productionTest:livePixTest},plans:availableBillingPlans(state.plans),testOffer:testOfferState(),
-    nextAction:state.ready?"Conectado":"Pagamento indisponível; verifique integração com a MisticPay."});
+   return respond(res,200,{...state,autoVerification:{enabled:configured,intervalSeconds:65,workerActive:!!argusWorker,productionTest:livePixTest},plans:availableBillingPlans(state.plans),testOffer:testOfferState(),
+    nextAction:state.ready?"Conectado":"Pagamento indisponível; verifique a integração com a Argus Pay."});
   }
   // Mostrar o trial da conta no servidor, mesmo com bloqueio automático desligado.
   if(path==="/api/subscription/status"){
@@ -282,7 +195,7 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
    const paid=Boolean(entitlement?.active);
    const enforce=configured&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1";
    return respond(res,200,{
-     provider:"misticpay",billingEnforced:enforce,checkoutEnabled:configured,
+     provider:"arguspay",billingEnforced:enforce,checkoutEnabled:configured,
      trialDays:7,trialStartedAt:start.toISOString(),trialEndsAt:until.toISOString(),
      trialActive,remainingTrialDays:Math.max(0,Math.ceil((until.getTime()-Date.now())/86400000)),
      planActive:paid,planExpiresAt:entitlement?.expiresAt||null,
@@ -290,16 +203,69 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
      accessEnforcementActive:enforce
    });
   }
-  if(path==="/api/admin/billing/config"&&!configured){
+  if(path==="/api/admin/billing/config"||path==="/api/admin/billing/test"){
    const user=await authenticate(req);
-   if(user?.role!=="admin")return respond(res,403,{error:"Acesso restrito"});
-   if(req.method==="GET")return respond(res,200,{provider:"misticpay",configured:false,
-    webhookUrl:origin+"/api/billing/webhook",readyForSecureWrite:false,
-    message:"Client ID e Client Secret estão configurados no Render. Checkout aguarda banco permanente e controle do acesso."});
-   return respond(res,409,{error:"Credenciais só podem ser alteradas por variáveis protegidas no Render."});
+   if(user?.role!=="admin")return respond(res,403,{error:"Acesso restrito a administradores."});
+   if(path==="/api/admin/billing/config"&&req.method==="GET"){
+    return respond(res,200,{provider:"arguspay",configured:gateway.credentialsReady(),
+     ready:configured,readyForSecureWrite:Boolean(credentialStore?.secureStorageReady&&state.storageReady),
+     webhookVerificationReady:Boolean(state.storageReady),providerAuth:state.providerAuth,
+     credentialSource:state.credentialSource||"none",updatedAt:state.credentialsUpdatedAt||null,
+     keyMasked:gateway.credentialsReady()?"•••• "+argusCredentials.key.slice(-4):null,
+     apiBaseUrl:gateway.baseUrl,webhookUrl:origin+"/api/billing/webhook"});
+   }
+   if(!credentialStore?.secureStorageReady||!state.storageReady)
+    return respond(res,503,{error:"Armazenamento criptografado não está disponível."});
+   if(path==="/api/admin/billing/config"&&req.method!=="PUT"||
+      path==="/api/admin/billing/test"&&req.method!=="POST")
+    return respond(res,405,{error:"Método não permitido"});
+   const originHeader=String(req.headers.origin||"");
+   if(originHeader&&originHeader!==origin)
+    return respond(res,403,{error:"Origem não autorizada"});
+   if(String(req.headers["sec-fetch-site"]||"")==="cross-site")
+    return respond(res,403,{error:"Requisição não autorizada"});
+   if(!String(req.headers["content-type"]||"").startsWith("application/json"))
+    return respond(res,415,{error:"Envie JSON"});
+   let size=0,parts=[];
+   for await(const chunk of req){
+    size+=chunk.length;
+    if(size>4096)return respond(res,413,{error:"Dados muito grandes"});
+    parts.push(chunk);
+   }
+   let body;
+   try{body=JSON.parse(Buffer.concat(parts).toString("utf8"));}
+   catch{return respond(res,400,{error:"Dados inválidos"});}
+   const candidate={key:String(body.apiKey||""),secret:String(body.apiSecret||"")};
+   if(!isArgusCredentialPair(candidate))
+    return respond(res,422,{error:"Preencha uma API Key e uma API Secret válidas da Argus Pay."});
+   try{await gateway.testConnection(candidate);}
+   catch(error){
+    return respond(res,422,{error:error.status===401?
+     "A Argus Pay rejeitou as chaves. Nenhuma configuração foi alterada.":
+     "Não foi possível validar as novas chaves na Argus Pay. A configuração anterior foi mantida."});
+   }
+   if(path==="/api/admin/billing/test")
+    return respond(res,200,{valid:true,message:"Autenticação de leitura validada na Argus Pay. Nenhum Pix foi gerado."});
+   if(Date.now()-lastKeySaveAt<20000)return respond(res,429,{error:"Aguarde antes de alterar as credenciais novamente."});
+   try{await credentialStore.save(candidate,user.id);}
+   catch{return respond(res,503,{error:"Não foi possível salvar as credenciais com segurança."});}
+   argusCredentials.key=candidate.key;
+   argusCredentials.secret=candidate.secret;
+   state.credentialSource="database";
+   state.credentialsUpdatedAt=new Date().toISOString();
+   state.credentialsConfigured=true;
+   state.providerAuth="verified";
+   configured=Boolean(billing&&state.storageReady&&state.accountSchemaVerified&&requiredFlags());
+   state.ready=configured;
+   state.supportedMethods=configured?["pix"]:[];
+   state.accessEnforcementActive=configured&&process.env.PULSO_BILLING_ENFORCE_ACCESS==="1";
+   lastKeySaveAt=Date.now();
+   console.log("[pulso-billing] Argus credentials rotated by authenticated admin; secrets redacted.");
+   return respond(res,200,{saved:true,configured:true,ready:configured,
+    keyMasked:"•••• "+candidate.key.slice(-4),updatedAt:state.credentialsUpdatedAt});
   }
   if(!configured){
-   return respond(res,503,{error:"Pagamentos MisticPay em preparação; não é possível criar ou confirmar cobranças antes de validar o banco e as assinaturas."});
+   return respond(res,503,{error:"Pagamentos Argus Pay ainda não disponíveis. Verifique banco, credenciais e autorização de recebimentos."});
   }
   await billing(req,res);
  }
@@ -339,5 +305,5 @@ if(basename(process.argv[1]||"")==="server.mjs"&&!globalThis.__PULSO_BILLING_RUN
   }
   return originalEmit.call(this,event,...args);
  };
- console.log("[pulso-billing] MisticPay runtime mounted; default fail-closed.");
+ console.log("[pulso-billing] Argus Pay runtime mounted; default fail-closed.");
 }
