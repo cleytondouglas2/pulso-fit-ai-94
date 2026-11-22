@@ -12,6 +12,7 @@ if [ -n "${BROWSER_WORKER_URL:-}" ] && [ -n "${BROWSER_WORKER_TOKEN:-}" ]; then
   (
     sleep 10
     php -r 'require "/var/www/html/src/integrations.php";
+      echo "CLYSTRIA_BROWSER_TARGET_HOST=".parse_url(envv("BROWSER_WORKER_URL"),PHP_URL_HOST)."\\n";
       try {
         $url=rtrim(envv("BROWSER_WORKER_URL"),"/")."/ping";
         $response=requestPanel($url,"POST",[],["Authorization: Bearer ".envv("BROWSER_WORKER_TOKEN")],"navegação Chromium",55);

@@ -227,6 +227,7 @@ async function testChromium(){
 testChromium().catch(()=>{});
 const server=http.createServer(async(req,res)=>{
   let acquired=false;
+  if(req.method==='POST')console.log('CLYSTRIA_WORKER_REQUEST_'+(req.url==='/ping'?'PING':req.url==='/sync'?'SYNC':'OTHER'));
   try{
     if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',browser_self_test:browserSelfTest,configured:SECRET.length>=32&&ALLOW.length>0});
     if(req.method!=='POST'||!['/sync','/ping'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
