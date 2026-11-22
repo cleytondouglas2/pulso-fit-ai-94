@@ -1,7 +1,7 @@
 import http from 'node:http';
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { chromium } from 'playwright-core';
 
 const PORT=Number(process.env.PORT||10000);
@@ -616,6 +616,135 @@ async function runJob(job){
     if(browser)await browser.close().catch(()=>{});
   }
 }
+
+/* Browser session under the Clystria account. A human controls the page; the worker
+   never solves, clicks through or fabricates a Cloudflare challenge. */
+let live=null;
+const VIEWPORT={width:960,height:720};
+async function closeLive(){
+ const previous=live;live=null;
+ if(previous){
+  await previous.context.close().catch(()=>{});
+  await previous.browser.close().catch(()=>{});
+ }
+}
+function getLive(job){
+ if(!live||live.id!==String(job.session||'')||live.panelId!==String(job.panel_id||'')||
+    live.owner!==String(job.owner||''))failure(404,'Sessão encerrada ou não autorizada');
+ if(Date.now()-live.lastActive>20*60*1000)failure(410,'Sessão expirada por inatividade; abra novamente');
+ live.lastActive=Date.now();
+ return live;
+}
+async function liveCapture(item){
+ const page=item.page;
+ if(page.isClosed())failure(410,'A página foi encerrada');
+ const screenshot=await page.screenshot({type:'jpeg',quality:56,animations:'disabled',timeout:12000});
+ let hostname='';
+ try{hostname=new URL(page.url()).hostname;}catch{}
+ return {ok:true,session:item.id,width:VIEWPORT.width,height:VIEWPORT.height,
+  image:'data:image/jpeg;base64,'+screenshot.toString('base64'),
+  host:hostname,verification:await isChallenge(page),password_form:(await page.locator('input[type="password"]').count())>0};
+}
+async function startLive(job){
+ if(live)failure(409,'Já existe uma sessão de navegador em uso; encerre-a antes de abrir outra');
+ if(!ALLOW.length)failure(503,'Navegador não configurado');
+ const entry=(await safeUrl(job.url,true)).href;
+ const panelId=clean(job.panel_id,40),owner=clean(job.owner,64);
+ if(!/^[a-f0-9]{32}$/.test(panelId)||!/^[a-f0-9]{32}$/.test(owner))failure(400,'Identificação inválida');
+ let browser=null,context=null;
+ try{
+  browser=await chromium.launch({executablePath:BROWSER_PATH,headless:true,timeout:22000,
+    args:['--disable-dev-shm-usage','--no-sandbox','--disable-gpu','--no-first-run','--disable-background-networking']});
+  context=await browser.newContext({locale:'pt-BR',timezoneId:'America/Sao_Paulo',
+    viewport:VIEWPORT,deviceScaleFactor:1,acceptDownloads:false,
+    serviceWorkers:'block',ignoreHTTPSErrors:false});
+  // Restrict every request to public HTTPS and allowed provider / Cloudflare resource domains.
+  await context.route('**/*',async route=>{
+   const request=route.request();
+   try{
+    const u=request.url();
+    if(u.startsWith('data:')||u.startsWith('blob:'))return route.continue();
+    let cfFrame=false;
+    if(request.isNavigationRequest()){
+     const target=new URL(u);
+     cfFrame=!!CLOUDFLARE_WIDGET_HOST&&CLOUDFLARE_OFFICIAL_RESOURCE_HOSTS.has(target.hostname)&&!!request.frame().parentFrame();
+    }
+    await safeUrl(u,request.isNavigationRequest(),cfFrame);
+    return route.continue();
+   }catch{return route.abort().catch(()=>{});}
+  });
+  const page=await context.newPage();
+  page.setDefaultTimeout(9500);
+  // Credentials are retained server-side only for user-requested autofill, never sent to the phone.
+  const item={id:randomUUID(),panelId,owner,browser,context,page,
+    username:clean(job.username,160),password:String(job.password||''),lastActive:Date.now()};
+  await page.goto(entry,{waitUntil:'domcontentloaded',timeout:30000});
+  live=item;
+  console.log('CLYSTRIA_INTERACTIVE_OPEN panel_kind='+clean(job.panel_kind,24));
+  return await liveCapture(item);
+ }catch(e){
+  if(context)await context.close().catch(()=>{});
+  if(browser)await browser.close().catch(()=>{});
+  if(live?.browser===browser)live=null;
+  throw e;
+ }
+}
+async function interactLive(job){
+ const item=getLive(job),page=item.page;
+ const kind=clean(job.action,22);
+ if(kind==='click'){
+  const x=Number(job.x),y=Number(job.y);
+  if(!Number.isFinite(x)||!Number.isFinite(y)||x<0||y<0||x>VIEWPORT.width||y>VIEWPORT.height)failure(400,'Clique fora da área visível');
+  await page.mouse.click(x,y,{timeout:9000});
+ }else if(kind==='type'){
+  const content=String(job.text||'');
+  if(content.length>500)failure(413,'Texto muito longo');
+  await page.keyboard.insertText(content);
+ }else if(kind==='key'){
+  const k=clean(job.key,30);
+  if(!['Enter','Tab','Escape','Backspace','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k))failure(400,'Tecla inválida');
+  await page.keyboard.press(k);
+ }else if(kind==='scroll'){
+  const dy=Number(job.dy);
+  if(!Number.isFinite(dy))failure(400,'Rolagem inválida');
+  await page.mouse.wheel(0,Math.max(-700,Math.min(700,dy)));
+ }else if(kind==='reload'){
+  await page.reload({waitUntil:'domcontentloaded',timeout:25000});
+ }else if(kind==='autofill'){
+  if(!item.username||!item.password)failure(422,'A conexão precisa ter usuário e senha salvos');
+  let username=page.locator('input[autocomplete="username"],input[type="email"],input[name*="user" i],input[name*="login" i]').first();
+  if(!await username.count())username=page.locator('input[type="text"]').first();
+  const password=page.locator('input[type="password"]').first();
+  if(!await username.count()||!await password.count())failure(422,'Abra a tela de login antes de preencher');
+  await username.fill(item.username);
+  await password.fill(item.password);
+ }else failure(400,'Comando não autorizado');
+ await page.waitForTimeout(600);
+ return await liveCapture(item);
+}
+async function importLive(job){
+ const item=getLive(job),page=item.page;
+ if(await isChallenge(page))failure(409,'Conclua a verificação Cloudflare manualmente nesta sessão');
+ if(await page.locator('input[type="password"]').count())failure(409,'Conclua o login do fornecedor antes de importar');
+ let rows=new Map();
+ const section=await navigateClients(page);
+ const captures=[];
+ for(let i=0;i<8;i++){
+  const table=await extract(page);
+  const cards=job.panel_kind==='sigma'?await extractSigmaCards(page):{items:[],cards:0};
+  for(const value of [...table.items,...cards.items]){
+   const client=asClient(value);
+   if(client)rows.set(client.username.toLowerCase(),client);
+  }
+  captures.push({table:table.recognized,cards:cards.cards});
+  if(!(table.recognized||cards.cards)||!await nextPage(page))break;
+ }
+ if(!rows.size)failure(422,'O navegador chegou à página, mas nenhum cliente válido foi reconhecido. Abra a seção Clientes na tela e tente novamente; nenhum dado foi alterado.');
+ console.log('CLYSTRIA_INTERACTIVE_IMPORT section='+clean(section,50)+' count='+rows.size);
+ return {ok:true,clients:[...rows.values()],plans:[],diagnostics:{valid_clients:rows.size,section}};
+}
+setInterval(()=>{if(live&&Date.now()-live.lastActive>20*60*1000)closeLive().catch(()=>{});},60000).unref();
+
 let browserSelfTest='pending';
 async function testChromium(){
  let browser;
@@ -637,15 +766,21 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='POST')console.log('CLYSTRIA_WORKER_REQUEST_'+(req.url==='/ping'?'PING':req.url==='/sync'?'SYNC':'OTHER'));
   try{
     if((req.method==='GET'||req.method==='HEAD')&&(req.url==='/'||req.url==='/health'))return json(res,200,{ok:true,service:'clystria-browser-worker',browser:'chromium',browser_self_test:browserSelfTest,configured:SECRET.length>=32&&ALLOW.length>0});
-    if(req.method!=='POST'||!['/sync','/ping'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
+    if(req.method!=='POST'||!['/sync','/ping','/live/open','/live/frame','/live/action','/live/import','/live/close'].includes(req.url))return json(res,404,{error:'Recurso não encontrado'});
     if(SECRET.length<32)return json(res,503,{error:'Serviço sem token de autenticação'});
     const supplied=(req.headers.authorization||'').replace(/^Bearer /i,'');
     if(!equals(supplied,SECRET))return json(res,401,{error:'Não autorizado'});
-    if(req.url==='/ping')return json(res,browserSelfTest==='ok'?200:503,{ok:browserSelfTest==='ok',browser_self_test:browserSelfTest});
-    if(busy)return json(res,429,{error:'Uma sincronização já está em execução; tente novamente'});
+    if(req.url==='/ping')return json(res,browserSelfTest==='ok'?200:503,{ok:browserSelfTest==='ok',browser_self_test:browserSelfTest,interactive:true});
+    if(busy)return json(res,429,{error:'O Chromium está atendendo outra operação; tente novamente'});
     busy=true;acquired=true;
     let body='';for await(const chunk of req){body+=chunk;if(body.length>12000)failure(413,'Solicitação muito grande');}
     let job;try{job=JSON.parse(body);}catch{failure(400,'JSON inválido');}
+    if(req.url==='/live/open')return json(res,200,await startLive(job));
+    if(req.url==='/live/frame')return json(res,200,await liveCapture(getLive(job)));
+    if(req.url==='/live/action')return json(res,200,await interactLive(job));
+    if(req.url==='/live/import')return json(res,200,await importLive(job));
+    if(req.url==='/live/close'){getLive(job);await closeLive();return json(res,200,{ok:true});}
+    if(live)failure(409,'Existe uma sessão manual aberta; encerre-a para executar a sincronização automática');
     const payload=await runJob(job);
     return json(res,200,payload);
   }catch(e){
