@@ -26,12 +26,11 @@ final class SellerAccessAudit {
         occurred_at BIGINT NOT NULL
       )");
       if($db->driver()==='mysql'){
-        try{$db->pdo()->exec('CREATE INDEX argus_seller_access_account_idx
-          ON argus_seller_access_events(account_id,occurred_at)');}
-        catch(\PDOException $e){
-          // Existing index on redeploy is expected; table isolation remains.
-          if((string)$e->getCode()!=='42000')throw $e;
-        }
+        $existing=$db->one("SELECT INDEX_NAME AS name FROM information_schema.statistics
+          WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='argus_seller_access_events'
+            AND INDEX_NAME='argus_seller_access_account_idx' LIMIT 1");
+        if(!$existing)$db->pdo()->exec('CREATE INDEX argus_seller_access_account_idx
+          ON argus_seller_access_events(account_id,occurred_at)');
       }else{
         $db->pdo()->exec('CREATE INDEX IF NOT EXISTS argus_seller_access_account_idx
           ON argus_seller_access_events(account_id,occurred_at)');
