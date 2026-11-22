@@ -2,6 +2,8 @@
 /** Run through an external scheduler: php src/tasks.php */
 declare(strict_types=1);
 require_once __DIR__.'/integrations.php';
+require_once __DIR__.'/growth.php';
+require_once __DIR__.'/growth_tasks.php';
 
 function smtpSend(string $recipient,string $subject,string $message):void {
  $host=envv('SMTP_HOST');$port=(int)envv('SMTP_PORT','465');$from=envv('SMTP_FROM');$user=envv('SMTP_USER');$pass=envv('SMTP_PASS');
@@ -31,5 +33,6 @@ try{
    if(one('SELECT 1 FROM reminders WHERE client_id=? AND channel=? AND due_date=? AND sent_on=?',[$c['id'],'email',$c['due_date'],today()]))continue;
    try{smtpSend($c['email'],config('email_subject'),reminderMessage($c));run('INSERT INTO reminders(id,client_id,channel,due_date,sent_on,status) VALUES(?,?,?,?,?,?) ON CONFLICT(client_id,channel,due_date,sent_on) DO NOTHING',[id(),$c['id'],'email',$c['due_date'],today(),'sent']);$sent++;}catch(Throwable $e){error_log('Clystria mail failed for ID '. $c['id'].': '.$e->getMessage());}}
  }
- echo json_encode(['ok'=>true,'sync_count'=>$syncCount,'emails_sent'=>$sent,'date'=>today()],JSON_UNESCAPED_UNICODE).PHP_EOL;
+ $campaigns=growthTasks();
+ echo json_encode(['ok'=>true,'sync_count'=>$syncCount,'emails_sent'=>$sent,'campaigns'=>$campaigns,'date'=>today()],JSON_UNESCAPED_UNICODE).PHP_EOL;
 }catch(Throwable $e){error_log($e->getMessage());exit(1);}
