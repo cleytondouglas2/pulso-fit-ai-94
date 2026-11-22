@@ -30,9 +30,11 @@ const percent=elxPercent();const checks=elxMyChecks();const count=checks.filter(
 return '<div class="home-steps"><div class="section-head"><div><div class="eyebrow">SEU COMEÇO</div><h3>Seu perfil, sua essência.</h3></div><span class="tag-rose">✦ '+percent+'% completo</span></div><div class="progress-bg" role="progressbar" aria-label="Progresso do seu perfil" aria-valuenow="'+percent+'" aria-valuemin="0" aria-valuemax="100"><div class="progress-fill" style="width:'+percent+'%"></div></div><p class="muted small">'+count+' de '+checks.length+' etapas completadas. '+(percent===100?'Tudo pronto para conhecer novas pessoas.':'Quanto mais você se apresenta, melhor será a experiência.')+'</p><div class="feature-list">'+checks.filter(x=>!x.done).slice(0,3).map(x=>'<div class="feature-row"><span class="feature-icon">✦</span><div><strong>'+esc(x.title)+'</strong><small>Personalize seu espaço ELNEX</small></div></div>').join('')+(percent===100?'<div class="welcome-signal"><span class="emoji">💜</span><div><strong>Perfil preparado!</strong><p>Experimente descobrir pessoas e explorar a IA Sense.</p></div></div>':'')+'</div><button class="btn" data-nav="profile" style="margin-top:18px">Editar meu perfil</button></div>';
 }
 async function loadHome(){
+ const route=elnexNavigationToken;
  const first=esc(elxFirst()),complete=elxPercent(),ready=Boolean(privateProfile?.birth_date&&privateProfile?.location_enabled);
  let people=[];
  if(ready){try{const r=await rpc('discover_people',{p_limit:8});if(Array.isArray(r))people=r}catch{}}
+ if(route!==elnexNavigationToken)return;
  const snippets=people.length?
   '<div class="tiny-list">'+people.slice(0,6).map(p=>'<button class="tiny-profile" data-nav="discover"><div class="tiny-photo">'+elxSafeProfilePhoto(p)+'</div><strong>'+esc(p.display_name||'Pessoa ELNEX')+', '+esc(p.age||'18+')+'</strong><small>'+esc(p.city||'')+' · '+esc(p.compatibility)+'% afinidade</small></button>').join('')+'</div>':
   '<div class="welcome-signal"><span class="emoji">🌷</span><div><strong>A comunidade ELNEX está começando</strong><p>Ainda não há pessoas disponíveis nos seus filtros. Não mostramos perfis fictícios: as conexões aparecerão quando usuários reais participarem.</p></div></div>';
@@ -48,6 +50,7 @@ function elxIntroCard({icon='♡',title,text,action='profile',label='Personaliza
  '<div class="start-cards"><button class="start-tile" data-nav="sense"><i>✨</i><strong>Sense</strong><small>Seu assistente</small></button><button class="start-tile" data-nav="events"><i>☕</i><strong>Experiências</strong><small>Conexões reais</small></button><button class="start-tile" data-nav="home"><i>🏡</i><strong>Início</strong><small>Seu ELNEX</small></button></div></div>';elxWireStandard($('#content'))
 }
 async function discover(){
+ const route=elnexNavigationToken;
  if(!privateProfile?.birth_date){
   elxIntroCard({icon:'♡',title:'O começo de uma boa história',text:'Complete seu perfil e informe sua data de nascimento para descobrir conexões reais. O ELNEX é para adultos de 18 anos ou mais.',label:'Completar perfil'});return;
  }
@@ -55,7 +58,9 @@ async function discover(){
   $('#content').innerHTML='<div class="home" style="max-width:930px;margin:auto"><section class="home-hero"><div class="hero-copy"><div class="tag">⌁ CONEXÕES POR PERTO</div><h2>O amor pode estar <span>a alguns quilômetros</span> de você.</h2><p>Autorize a localização apenas se desejar. O app apresenta distâncias aproximadas e nunca mostra suas coordenadas.</p><div class="hero-actions"><button id="elxLocate" class="btn">Ativar localização</button><button data-nav="profile" class="btn alt">Minhas preferências</button></div></div><div class="hero-art" aria-hidden="true"><div class="art-core"><span class="heart-art">⌁</span></div><div class="orbit-one"></div><div class="orbit-two"></div></div></section></div>';
   $('#elxLocate').onclick=()=>locate();elxWireStandard($('#content'));return;
  }
- candidateList=await rpc('discover_people',{p_limit:40});
+ const found=await rpc('discover_people',{p_limit:40});
+ if(route!==elnexNavigationToken)return;
+ candidateList=found;
  if(!Array.isArray(candidateList))candidateList=[];
  renderPerson();
 }
@@ -84,6 +89,7 @@ function renderPerson(){
  elxWireStandard($('#content'));
 }
 async function react(action){
+ const route=elnexNavigationToken;
  if(elnexPendingReaction||!currentCandidate)return;
  elnexPendingReaction=true;
  const selected=currentCandidate;
@@ -91,6 +97,7 @@ async function react(action){
  if(card){card.style.transform='translateX('+(action==='like'?60:-60)+'px) rotate('+(action==='like'?5:-5)+'deg)';card.style.opacity='.52'}
  try{
   const result=await rpc('react_to_profile',{p_target:selected.id,p_action:action});
+  if(route!==elnexNavigationToken)return;
   if(navigator.vibrate)try{navigator.vibrate(action==='like'?35:15)}catch{}
   if(result?.matched){
     $('#content').innerHTML='<div class="match-celebrate card" style="max-width:650px;margin:30px auto;padding:45px 24px"><div class="hearts">💗</div><div class="tag">A HISTÓRIA COMEÇA AQUI</div><h2>É um match!</h2><p class="muted">Vocês se curtiram. Uma conexão real acaba de começar.</p><div class="hero-actions" style="justify-content:center"><button class="btn" id="startChat">Começar conversa</button><button class="btn alt" id="keepExploring">Continuar explorando</button></div></div>';
@@ -115,7 +122,10 @@ function elxOpenFilters(){
  };
 }
 async function getMatches(){
- matches=await rpc('list_conversations');
+ const route=elnexNavigationToken;
+ const found=await rpc('list_conversations');
+ if(route!==elnexNavigationToken)return;
+ matches=found;
  if(!Array.isArray(matches))matches=[];
  if(!matches.length){
   $('#content').innerHTML='<div class="home">'+elxEmpty({icon:'💞',title:'Toda conexão começa por um oi.',description:'Quando duas pessoas se curtirem, elas aparecerão aqui para conversar. Enquanto isso, descubra perfis e deixe o Sense ajudar com novas ideias.',action:'discover',cta:'Conhecer pessoas'})+'<div class="start-cards"><button class="start-tile" data-nav="sense"><i>💬</i><strong>Coach IA</strong><small>Quebre o gelo</small></button><button class="start-tile" data-nav="profile"><i>♡</i><strong>Meu perfil</strong><small>Mostre sua essência</small></button><button class="start-tile" data-nav="events"><i>☕</i><strong>Encontros</strong><small>Experiências</small></button></div></div>';
@@ -127,7 +137,9 @@ async function getMatches(){
  elxWireStandard($('#content'));
 }
 async function getEvents(){
+ const route=elnexNavigationToken;
  const r=await request('/rest/v1/events?select=id,title,description,city,start_at,capacity,location_hint&published=eq.true&start_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order=start_at.asc&limit=100');
+ if(route!==elnexNavigationToken)return;
  const list=Array.isArray(r)?r:[];
  $('#content').innerHTML='<div class="home"><section class="home-hero" style="min-height:270px"><div class="hero-copy"><div class="tag">REAL DATE EXPERIENCE</div><h2>As melhores histórias acontecem <span>fora da tela</span>.</h2><p>Experiências em lugares públicos, encontros leves e atividades em comum. Segurança sempre em primeiro lugar.</p></div><div class="hero-art" aria-hidden="true"><div class="orbit-one"></div><div class="art-core"><span class="heart-art">☕</span></div></div></section>'+
  (list.length?'<div class="home-grid" style="display:block">'+list.map((e,i)=>'<article class="event-card"><div class="event-icon">✦</div><span class="event-meta">📅 '+esc(fmt(e.start_at))+' · '+esc(e.city)+'</span><h3>'+esc(e.title)+'</h3><p>'+esc(e.description||'Compartilhe experiências com pessoas reais.')+'</p><p class="muted small">📍 '+esc(e.location_hint||'Local divulgado pela organização')+'</p><button class="btn" data-event="'+i+'">Quero participar</button></article>').join('')+'</div>':
@@ -200,8 +212,9 @@ async function elxAskSense(){
 }
 const elxOriginalGetProfile=getProfile;
 getProfile=async function(){
+ const route=elnexNavigationToken;
  await elxOriginalGetProfile();
- if(!$('#profileForm'))return;
+ if(route!==elnexNavigationToken||!$('#profileForm'))return;
  const progress=elxPercent();
  const hero='<section class="profile-overview motion-in"><div><div class="tag">✦ SEU PERFIL ELNEX</div><strong>'+esc(profile?.display_name||'Sua história começa aqui')+'</strong><p class="muted small" style="margin:8px 0">Perfil '+progress+'% completo — personalize com autenticidade.</p><div class="progress-bg"><div class="progress-fill" style="width:'+progress+'%"></div></div></div><div class="profile-big-avatar">♡</div></section>';
  $('#content').insertAdjacentHTML('afterbegin',hero);
