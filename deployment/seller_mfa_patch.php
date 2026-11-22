@@ -59,7 +59,7 @@ $ui=file_get_contents($root.'public/static/portal.js');
 requireAnchor($ui,
   "try{const result=await request('/api/portal/keys',{method:'POST',body:{allow_withdrawal:payout}});",
   "const code=payout?window.prompt('Código de 6 dígitos do autenticador. Configure em Saldo e saques.'):'';
-  if(payout&&(code===null||!/^\\d{6}$/.test(code.trim()))){notice('Autenticador exigido para chaves de saque',true);return;}
+  if(payout&&(code===null||!/^\\d{6}$/.test(code.trim()))){notice('Autenticador exigido para chaves de saque',true);btn.disabled=false;return;}
   try{const result=await request('/api/portal/keys',{method:'POST',body:{allow_withdrawal:payout,mfa_code:code}});",
   'payout API key seller UI');
 file_put_contents($root.'public/static/portal.js',$ui);
