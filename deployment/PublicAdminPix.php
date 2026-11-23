@@ -98,40 +98,41 @@ final class PublicAdminPix {
             self::reject('Conta de recebimento administrativo indisponível',503);
         return $row['id'];
     }
+    /**
+     * Preflight never calls provider endpoints or creates a Pix. Only a generic
+     * available flag is exposed publicly; the exact reason is logged server-side
+     * so configuration failures can be diagnosed without leaking credentials.
+     */
+    private static function readiness(Database $db):string {
+        if(!in_array($db->driver(),['pgsql','mysql'],true))return 'persistent_storage_unavailable';
+        if(getenv('ARGUS_QUICK_PIX_PROVIDER')!=='traditional')return 'traditional_provider_disabled';
+        if(!TraditionalQuickPix::publicConfigured())return 'provider_credentials_missing_or_invalid_format';
+        $rateSecret=(string)(getenv('ARGUS_SECURITY_RATE_SECRET')?:
+            getenv('ARGUS_DOC_HMAC_KEY')?:getenv('ARGUS_PAYER_HMAC_KEY')?:'');
+        if(strlen($rateSecret)<32)return 'request_protection_unavailable';
+        try{
+            $owner=$db->one("SELECT id FROM admin_users
+                WHERE lower(email)=? AND role='superadmin' AND status='active' LIMIT 1",
+                [self::ADMIN_EMAIL]);
+            if(!$owner||empty($owner['id']))return 'superadmin_account_not_ready';
+        }catch(\Throwable $e){
+            error_log('ARGUS_PUBLIC_PIX_ACCOUNT_CHECK error_class='.get_class($e));
+            return 'superadmin_lookup_unavailable';
+        }
+        return 'locally_ready';
+    }
     private static function ready(Database $db):void {
-        if(!in_array($db->driver(),['pgsql','mysql'],true))
-            self::reject('Recebimento Pix público exige banco financeiro persistente',503);
-        if(getenv('ARGUS_QUICK_PIX_PROVIDER')!=='traditional')
-            self::reject('Pix público aguardando ativação da integração tradicional MisticPay',503);
-        if(!TraditionalQuickPix::publicConfigured())
-            self::reject('Pix público aguardando credenciais da adquirente',503);
+        $code=self::readiness($db);
+        if($code!=='locally_ready'){
+            error_log('ARGUS_PUBLIC_PIX_BLOCKED reason='.$code);
+            self::reject('A emissão de Pix está temporariamente indisponível. Entre em contato com o suporte ARGUS Pay.',503);
+        }
     }
     private static function throttle(Database $db):void {
-        $secret=(string)(getenv('ARGUS_SECURITY_RATE_SECRET')?:getenv('ARGUS_KYC_ENCRYPTION_KEY')?:'');
-        if(strlen($secret)<32)self::reject('Controle de segurança do Pix público indisponível',503);
-        $ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');
-        $key=hash_hmac('sha256',$ip,$secret);
-        $window=intdiv(time(),600);
-        $db->transaction(static function(Database $db)use($key,$window):void{
-            $sql='SELECT attempts,window_seconds FROM argus_public_pix_limits WHERE ip_hash=?';
-            if($db->driver()!=='sqlite')$sql.=' FOR UPDATE';
-            $row=$db->one($sql,[$key]);
-            if(!$row){
-                try{$db->run('INSERT INTO argus_public_pix_limits (ip_hash,window_seconds,attempts)
-                    VALUES(?,?,1)',[$key,$window]);}
-                catch(\PDOException){self::reject('Tente novamente em alguns minutos',429);}
-                return;
-            }
-            if((int)$row['window_seconds']!==$window){
-                $db->run('UPDATE argus_public_pix_limits SET window_seconds=?,attempts=1
-                    WHERE ip_hash=?',[$window,$key]);
-                return;
-            }
-            if((int)$row['attempts']>=5)
-                self::reject('Limite de geração de Pix atingido. Tente mais tarde.',429);
-            $db->run('UPDATE argus_public_pix_limits SET attempts=attempts+1
-                WHERE ip_hash=?',[$key]);
-        });
+        // Shares the established atomic HMAC guard and key fallback with the
+        // portal. REMOTE_ADDR may be the same local reverse proxy for all
+        // visitors, so avoid a global 5-attempt limit across all customers.
+        SecurityShield::rate($db,'public_pix_create',SecurityShield::remoteTag(),500,600);
     }
     private static function receipt(Database $db,string $id,string $token):array {
         if(!preg_match('/^qpx_[a-f0-9]{32}$/D',$id)||
@@ -166,7 +167,11 @@ final class PublicAdminPix {
         if($method==='GET'&&$path==='/pix/quote'){
             $amount=filter_var($_GET['amount_cents']??null,FILTER_VALIDATE_INT);
             if(!is_int($amount))self::reject('Valor inválido');
-            self::respond(['quote'=>self::quote($db,$amount)]);
+            $preflight=self::readiness($db);
+            if($preflight!=='locally_ready')
+                error_log('ARGUS_PUBLIC_PIX_READINESS reason='.$preflight);
+            self::respond(['quote'=>self::quote($db,$amount),
+                'can_generate'=>$preflight==='locally_ready']);
         }
         if($method==='POST'&&$path==='/pix/create'){
             self::origin();self::ready($db);self::install($db);

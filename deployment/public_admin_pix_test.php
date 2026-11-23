@@ -69,7 +69,10 @@ foreach([
   "'unknown'",
   "FeePolicy::current(\$db)",
   "'ARGUS_QUICK_PIX_PROVIDER'",
-  "self::origin()"
+  "self::origin()",
+  "ARGUS_PUBLIC_PIX_BLOCKED reason=",
+  "SecurityShield::rate(",
+  "'can_generate'=>"
  ],
  '/var/www/html/public/static/public-pix.html'=>[
   'id="pix-amount"','value="" placeholder="0,00"','id="payer-name"','id="payer-document"',
@@ -82,7 +85,7 @@ foreach([
   '/pix/quote','/pix/create','/pix/status',
   'crypto.randomUUID()','crypto.getRandomValues',
   'fee_version', // checked below as policy_version for this route
-  'navigator.clipboard','QRCode','maskCents(value)'
+  'navigator.clipboard','QRCode','maskCents(value)','canGenerate=data.can_generate===true'
  ],
  '/var/www/html/public/static/landing.html'=>[
   'href="/pix"'

@@ -2,7 +2,7 @@
 'use strict';
 const $=id=>document.getElementById(id);
 const money=c=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(c)||0)/100);
-let quote=null,sequence=0,busy=false,active=null,poll=null,polling=false;
+let quote=null,canGenerate=false,sequence=0,busy=false,active=null,poll=null,polling=false;
 const form=$('public-pix-form'),amount=$('pix-amount'),agree=$('pix-agree');
 const button=$('pix-generate'),alert=$('public-pix-error'),dialog=$('pix-dialog');
 function cents(value){
@@ -27,13 +27,20 @@ async function api(path,options={}){
  try{
   const response=await fetch(path,{credentials:'omit',cache:'no-store',headers:{'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{})},signal:controller.signal,...options});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data?.error||data?.message||'Não foi possível consultar o valor do Pix.');
+  if(!response.ok){
+   const raw=data?.message??data?.error?.message??(typeof data?.error==='string'?data.error:null);
+   const msg=typeof raw==='string'&&raw.length<250?raw:
+     (path.startsWith('/pix/create')?
+       'Não foi possível gerar o Pix. A integração de recebimento está indisponível.' :
+       'Não foi possível consultar o valor do Pix.');
+   throw new Error(msg);
+  }
   return data;
  }finally{clearTimeout(timeout)}
 }
 function updateButton(){
  const v=cents(amount.value);
- const enabled=!busy&&quote&&v===quote.base_amount_cents&&agree.checked;
+ const enabled=!busy&&canGenerate&&quote&&v===quote.base_amount_cents&&agree.checked;
  button.disabled=!enabled;
  button.firstElementChild.textContent=quote?'Gerar Pix de '+money(quote.total_amount_cents):'Digite o valor do Pix';
 }
@@ -46,7 +53,7 @@ function resetSummary(base=null){
 }
 async function price(){
  const seq=++sequence;
- quote=null;clearFailure();
+ quote=null;canGenerate=false;clearFailure();
  const v=cents(amount.value);
  const hint=$('limit-hint');
  if(v===null){
@@ -74,10 +81,12 @@ async function price(){
      !Number.isInteger(q.provider_fee_cents)||!Number.isInteger(q.total_amount_cents))
    throw new Error('Cotação incompleta.');
   quote=q;
+  canGenerate=data.can_generate===true;
   $('summary-fee').textContent=money(q.provider_fee_cents);
   $('summary-total').textContent=money(q.total_amount_cents);
   $('summary-net').textContent=money(q.admin_expected_net_cents);
-  hint.textContent=INITIAL_HINT;
+  hint.textContent=canGenerate?INITIAL_HINT:
+    'Recebimento Pix indisponível no momento. Confira mais tarde ou entre em contato com o suporte.';
  }catch(e){
   if(seq!==sequence||cents(amount.value)!==v)return;
   resetSummary(v);
@@ -149,7 +158,7 @@ form.addEventListener('submit',async e=>{
   if(!agree.checked)throw new Error('Confirme o total e a taxa antes de gerar seu Pix.');
   const {name,doc}=identity();
   const value=cents(amount.value);
-  if(!quote||quote.base_amount_cents!==value)throw new Error('Aguarde o cálculo da tarifa.');
+  if(!quote||quote.base_amount_cents!==value||!canGenerate)throw new Error('Emissão de Pix temporariamente indisponível.');
   // Keep the exact same idempotency and receipt token after uncertain outcomes.
   if(form.dataset.amount!==String(value)||form.dataset.person!==doc){
    delete form.dataset.idem;delete form.dataset.token;
@@ -170,7 +179,7 @@ form.addEventListener('submit',async e=>{
   openCharge(response.charge,token);
  }catch(error){
   failure((error?.message||'Falha de comunicação.')+
-    ' Se houve uma tentativa anterior, não gere uma segunda cobrança sem consultar o protocolo.');
+    ' Se o pedido tiver sido enviado, não gere outra cobrança sem verificar o protocolo.');
  }finally{busy=false;updateButton();}
 });
 let debounce;
@@ -178,7 +187,7 @@ amount.addEventListener('input',()=>{
  const masked=maskCents(amount.value);
  if(amount.value!==masked)amount.value=masked;
  clearTimeout(debounce);
- ++sequence;quote=null;clearFailure();updateButton();
+ ++sequence;quote=null;canGenerate=false;clearFailure();updateButton();
  debounce=setTimeout(price,230);
 });
 agree.addEventListener('change',updateButton);
