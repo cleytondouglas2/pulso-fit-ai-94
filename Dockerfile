@@ -1303,7 +1303,7 @@ RUN php -l /tmp/argus_ops_review_patch.php \
 # Existing Pix, withdrawals, notifications and PSP endpoints remain unchanged
 # until a separate MFA-approved credential rotation is validated.
 COPY deployment/AcquirerControl.php /var/www/html/src/AcquirerControl.php
-COPY deployment/acquirer-monitor.js deployment/acquirer-monitor.css /var/www/html/public/static/
+COPY deployment/acquirer-monitor.js deployment/acquirer-monitor.css deployment/acquirer-editor.js /var/www/html/public/static/
 COPY deployment/acquirer_monitor_patch.php /tmp/acquirer_monitor_patch.php
 COPY deployment/acquirer_monitor_test.php /var/www/html/tests/acquirer_monitor_test.php
 RUN php -l /var/www/html/src/AcquirerControl.php \\
