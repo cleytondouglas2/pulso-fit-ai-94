@@ -20,8 +20,13 @@ sellerSplitReplace($root.'/src/Gateway.php',
 // Policy defaults and historic manual settings remain versioned and immutable.
 // Only system-seeded version 1 receives the one-time 50c ARGUS migration.
 sellerSplitReplace($root.'/src/FeePolicy.php',
-    "        if($path!=='/api/admin/fees')self::fail('Rota de taxas não encontrada',404);",
-    "        if($path!=='/api/admin/fees')self::fail('Rota de taxas não encontrada',404);\n        SellerFeeSplit::bootstrapPolicy($db);",
+    <<<'PHP'
+        if($path!=='/api/admin/fees')self::fail('Rota de taxas não encontrada',404);
+PHP,
+    <<<'PHP'
+        if($path!=='/api/admin/fees')self::fail('Rota de taxas não encontrada',404);
+        SellerFeeSplit::bootstrapPolicy($db);
+PHP,
     'bootstrap intended tariff defaults on admin fee page');
 
 // Attribute only the ARGUS portion. An existing operation without an immutable
