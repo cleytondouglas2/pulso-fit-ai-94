@@ -1278,3 +1278,23 @@ RUN a2enmod remoteip \
  && php -l /var/www/html/tests/argus_nonmoney_security_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_nonmoney_security_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# ARGUS Pay Virginia startup compatibility.
+# The validated builder above is intentionally unchanged. Its ~356 filesystem
+# layers exceed the practical overlay2 lowerdir depth on some container hosts.
+# Flatten the COMPLETE TESTED builder filesystem into a single final image layer
+# rather than replaying or changing financial migrations or operational code.
+# Only the image packaging/metadata changes; no database or PSP calls.
+FROM scratch AS argus_flat_runtime
+COPY --from=0 / /
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PHP_INI_DIR=/usr/local/etc/php \
+    APACHE_CONFDIR=/etc/apache2 \
+    APACHE_ENVVARS=/etc/apache2/envvars \
+    LANG=C.UTF-8
+WORKDIR /var/www/html
+EXPOSE 10000
+STOPSIGNAL SIGWINCH
+ENTRYPOINT ["docker-php-entrypoint"]
+CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
