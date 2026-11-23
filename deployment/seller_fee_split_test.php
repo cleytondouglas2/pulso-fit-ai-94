@@ -77,7 +77,7 @@ $balance=$db->one('SELECT available_cents FROM argus_seller_wallets WHERE accoun
 if((int)$balance['available_cents']!==900)
  throw new RuntimeException('Seller wallet not debited exactly R$ 1.00');
 
-$acc=['id'=>$id,'merchant_id'=>$merchant,'status'=>'approved'];
+$acc=['id'=>$id,'merchant_id'=>$merchant,'status'=>'approved','account_type'=>'PJ'];
 $req=[
  'amount_cents'=>500,'pix_key_type'=>'email','pix_key'=>'receiver@example.invalid',
  'description'=>'Saque teste split','confirm'=>true,
