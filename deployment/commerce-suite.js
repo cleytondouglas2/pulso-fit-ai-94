@@ -6,6 +6,7 @@ const E=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=x=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(x)||0)/100);
 let pages=[],account='',activeId='',busy=false,loading=false,loadedAt=0;
+let booted=false;
 const logged=()=>typeof state!=='undefined'&&!!state?.account?.id&&!!E('dashboard')&&!E('dashboard').hidden;
 function say(msg,bad=false){const z=E('argus-commerce-feedback');if(z){z.textContent=msg;z.dataset.error=bad?'yes':'no';}}
 function formValues(){
@@ -116,7 +117,8 @@ async function sandbox(e){
  finally{button.disabled=false}
 }
 function setup(){
- const root=E('argus-commerce-root');if(!root)return;
+ const root=E('argus-commerce-root');if(!root||booted)return;
+ booted=true;
  E('argus-commerce-form').addEventListener('submit',submit);
  E('argus-commerce-form').addEventListener('input',preview);
  E('argus-commerce-cancel').addEventListener('click',newDraft);
@@ -151,4 +153,7 @@ function setup(){
  preview();list();
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
+// Reseller SPA shell is mounted AFTER login, not necessarily at DOMContentLoaded.
+// Recheck until its root exists; event listeners are installed exactly once.
+setInterval(()=>{if(!booted)setup()},1250);
 })();
