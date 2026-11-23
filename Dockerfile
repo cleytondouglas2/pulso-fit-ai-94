@@ -939,3 +939,20 @@ RUN php -l /var/www/html/src/SellerFeeSplit.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/seller_fee_split_test.php \
  && php /var/www/html/tests/hybrid_payout_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Public /pix self-service checkout to the verified ARGUS Super Admin only.
+# Uses the already configured MisticPay traditional cash-in credentials on
+# the SERVER, payer's own identity and admin-configured PSP deposit cost.
+# The new checkout never opens private admin APIs and cannot request a payout.
+COPY deployment/PublicAdminPix.php /var/www/html/src/PublicAdminPix.php
+COPY deployment/public-pix.html deployment/public-pix.css deployment/public-pix.js /var/www/html/public/static/
+COPY deployment/public_admin_pix_patch.php /tmp/public_admin_pix_patch.php
+COPY deployment/public_admin_pix_test.php /var/www/html/tests/public_admin_pix_test.php
+RUN php -l /var/www/html/src/PublicAdminPix.php \
+ && php -l /tmp/public_admin_pix_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/public_admin_pix_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/TraditionalQuickPix.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/public_admin_pix_test.php \
+ && php /var/www/html/tests/security_regression_test.php

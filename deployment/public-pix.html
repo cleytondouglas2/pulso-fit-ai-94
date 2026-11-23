@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+ <meta name="theme-color" content="#0c101a">
+ <meta name="description" content="Gere seu Pix de forma segura na ARGUS Pay, confira o valor e a taxa antes de pagar.">
+ <meta name="robots" content="index,follow">
+ <title>Gerar Pix | ARGUS Pay</title>
+ <link rel="icon" href="/static/assets/favicon.png">
+ <link rel="stylesheet" href="/static/public-pix.css?v=20261123-1">
+ <script src="/static/qrcode.min.js?v=1" defer></script>
+ <script src="/static/public-pix.js?v=20261123-1" defer></script>
+</head>
+<body>
+ <div class="ambient" aria-hidden="true"></div>
+ <div class="shell">
+  <header class="topbar">
+   <a class="brand" href="/" aria-label="ARGUS Pay - página inicial">
+    <img src="/static/assets/argus-payments-logo-transparent.webp" alt="ARGUS Pay" onerror="this.style.display='none'">
+    <span>ARGUS<span class="accent">PAY</span></span>
+   </a>
+   <span class="secure"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 118 0v3"/></svg> Checkout seguro</span>
+  </header>
+  <main class="stage">
+   <section class="intro">
+    <div class="eyebrow"><i></i> PAGAMENTO INSTANTÂNEO</div>
+    <h1>Seu Pix, do jeito <em>mais simples.</em></h1>
+    <p>Escolha o valor, confira a taxa e gere um QR Code Pix para pagar diretamente pelo aplicativo do seu banco.</p>
+    <div class="intro-chips">
+     <span><b>✓</b> Taxa antes de confirmar</span>
+     <span><b>✓</b> Pix Copia e Cola</span>
+     <span><b>✓</b> Confirmação de pagamento</span>
+    </div>
+    <div class="side-note"><strong>Importante</strong><p>O QR Code é emitido pela MisticPay para a conta administrativa da ARGUS Pay. A confirmação acontece somente após a resposta do provedor.</p></div>
+   </section>
+   <section class="checkout" aria-labelledby="checkout-title">
+    <div class="checkout-top">
+     <span class="step">01 / 02</span>
+     <div><h2 id="checkout-title">Gerar meu Pix</h2><p>Preencha o valor que deseja pagar.</p></div>
+     <span class="pix-logo" aria-label="Pix">✦ <small>pix</small></span>
+    </div>
+    <form id="public-pix-form" autocomplete="on" novalidate>
+     <label class="field-title" for="pix-amount">Valor do pagamento</label>
+     <div class="amount-wrap"><span>R$</span><input id="pix-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="10,00" maxlength="10" aria-describedby="limit-hint" required></div>
+     <p class="hint" id="limit-hint">Limite de R$ 100,00 incluindo a taxa da adquirente.</p>
+     <div class="summary">
+      <div><span>Valor informado</span><strong id="summary-base">R$ 10,00</strong></div>
+      <div><span>Taxa da adquirente</span><strong id="summary-fee">R$ 0,50</strong></div>
+      <div class="total"><span>Total do Pix <small>valor a pagar</small></span><strong id="summary-total">R$ 10,50</strong></div>
+      <div class="expected"><span>Valor-base após o custo estimado da adquirente</span><b id="summary-net">R$ 10,00</b></div>
+     </div>
+     <div class="personal-head"><span>Identificação do pagador</span><small>Solicitada pela MisticPay</small></div>
+     <label class="field-title" for="payer-name">Nome completo</label>
+     <input class="field" id="payer-name" name="payer_name" type="text" autocomplete="name" minlength="3" maxlength="120" placeholder="Nome do titular que vai pagar" required>
+     <label class="field-title" for="payer-document">CPF ou CNPJ</label>
+     <input class="field" id="payer-document" name="payer_document" type="text" inputmode="numeric" autocomplete="off" minlength="11" maxlength="18" placeholder="Somente números" required>
+     <div class="privacy"><span>🔒</span><p>Dados usados na solicitação do Pix; não incluímos nome ou CPF/CNPJ no histórico público da cobrança.</p></div>
+     <label class="confirm"><input type="checkbox" id="pix-agree" required><span>Conferi o total e concordo em pagar a taxa exibida junto com o valor do Pix.</span></label>
+     <div class="error" id="public-pix-error" role="alert" hidden></div>
+     <button class="submit" id="pix-generate" type="submit" disabled><span>Gerar Pix de R$ 10,50</span><span aria-hidden="true">→</span></button>
+     <p class="beneath">Nenhum débito acontece ao gerar o código. Você confirma o pagamento no aplicativo do seu banco.</p>
+    </form>
+   </section>
+  </main>
+  <footer><span>© ARGUS Pay · Checkout público</span><span>Transações com confirmação da adquirente</span></footer>
+ </div>
+ <dialog id="pix-dialog" class="payment-dialog" aria-labelledby="pix-dialog-title">
+  <div class="dialog-shell">
+   <header class="dialog-head"><div><span class="step">02 / 02</span><h2 id="pix-dialog-title">Pague seu Pix</h2><p>Escaneie o QR Code ou copie o código abaixo.</p></div><button class="close" type="button" id="pix-close" aria-label="Fechar">×</button></header>
+   <div class="pay-state" id="pix-status" role="status" aria-live="polite">Preparando pagamento…</div>
+   <div id="public-pix-qr" class="qr"></div>
+   <div class="pay-value"><span>Total do Pix</span><strong id="pix-dialog-amount">—</strong></div>
+   <label for="pix-code" class="field-title">Pix Copia e Cola</label>
+   <textarea id="pix-code" readonly rows="2" spellcheck="false" aria-label="Pix Copia e Cola"></textarea>
+   <button class="copy" id="pix-copy" type="button">Copiar código Pix</button>
+   <p class="dialog-footnote" id="pix-expiry">Verificando expiração...</p>
+   <div class="dialog-actions"><button id="pix-verify" type="button">Verificar pagamento</button><button id="pix-new" type="button">Criar outro Pix</button></div>
+  </div>
+ </dialog>
+</body>
+</html>
