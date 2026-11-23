@@ -74,3 +74,8 @@ $db->run('UPDATE argus_growth_records SET updated_at=? WHERE id=?',['2099-01-01 
 $next=G::inbox($db,$cursor);
 if(array_intersect(array_column($first['items'],'id'),array_column($next['items'],'id')))throw new RuntimeException('Unstable inbox pagination');
 echo "PASS: verification cap, message replay, sensitive text and immutable inbox cursor.\n";
+
+$batch=['title'=>'Identical order','note'=>'','amount_cents'=>100,'due'=>'2027-01-01'];
+$one=G::create($db,'admin',$b,'invoice',$batch+['nonce'=>bin2hex(random_bytes(16))]);$two=G::create($db,'admin',$b,'invoice',$batch+['nonce'=>bin2hex(random_bytes(16))]);
+if($one['id']===$two['id'])throw new RuntimeException('Distinct identical records collapsed');
+echo "PASS: identical legitimate records have independent idempotency identifiers.\n";
