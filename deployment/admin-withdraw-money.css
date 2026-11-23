@@ -1,0 +1,4 @@
+
+/* Numeric iPhone keypad and clear BRL formatting for admin payout ONLY */
+#payout-form input[data-admin-payout-money]{font-variant-numeric:tabular-nums;letter-spacing:.2px}
+#payout-form input[data-admin-payout-money]::placeholder{opacity:.65}

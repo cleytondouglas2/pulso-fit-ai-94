@@ -970,3 +970,18 @@ RUN php -l /tmp/public_pix_watch_patch.php \
  && php -l /var/www/html/src/PublicAdminPix.php \
  && php /var/www/html/tests/public_pix_premium_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/security_regression_test.php
+
+
+# Super Admin treasury /admin Pix withdrawal:
+# progressive BRL masking while typing, exact integer-cent payload, iPhone
+# keypad and cache bust. This only changes frontend presentation/parsing.
+# Keep existing quote, TOTP step-up, backend limits and idempotency untouched.
+COPY deployment/admin-withdraw-money.js deployment/admin-withdraw-money.css /var/www/html/public/static/
+COPY deployment/admin_withdraw_money_patch.php /tmp/admin_withdraw_money_patch.php
+COPY deployment/admin_withdraw_money_test.php /var/www/html/tests/admin_withdraw_money_test.php
+RUN php -l /tmp/admin_withdraw_money_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/admin_withdraw_money_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/admin_withdraw_money_test.php \
+ && php /var/www/html/tests/admin_withdraw_money_test.php \
+ && php /var/www/html/tests/security_regression_test.php
