@@ -629,7 +629,7 @@ RUN php -l /var/www/html/src/FinancialControl.php \
 
 ENV ARGUS_DB_DRIVER=sqlite ARGUS_COOKIE_SECURE=true ARGUS_MISTICPAY_MODE=disabled
 EXPOSE 10000
-CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 90; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
+CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
 
 # Original ARGUS logo uploaded by owner; serve unchanged for password reset emails.
 COPY deployment/86C80C78-3DA4-438C-9215-C0A0C3EAEF14.png /var/www/html/public/static/assets/argus-logo-email-original.png
@@ -955,4 +955,19 @@ RUN php -l /var/www/html/src/PublicAdminPix.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/src/TraditionalQuickPix.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/public_admin_pix_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
+
+# ARGUS public /pix premium receipt and accelerated independent verification.
+# Continue provider-verified reconciliation after the 30-minute QR presentation
+# window; keep existing money/idempotency boundaries and tenant separation.
+COPY deployment/public_pix_watch_patch.php /tmp/public_pix_watch_patch.php
+COPY deployment/public_pix_premium_test.php /var/www/html/tests/public_pix_premium_test.php
+COPY Dockerfile /tmp/argus_premium_Dockerfile
+RUN php -l /tmp/public_pix_watch_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/public_pix_watch_patch.php \
+ && php -l /var/www/html/src/TraditionalQuickPix.php \
+ && php -l /var/www/html/src/PublicAdminPix.php \
+ && php /var/www/html/tests/public_pix_premium_test.php \
+ && php /var/www/html/tests/financial_safety_test.php \
  && php /var/www/html/tests/security_regression_test.php

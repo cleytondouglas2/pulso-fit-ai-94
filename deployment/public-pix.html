@@ -8,9 +8,9 @@
  <meta name="robots" content="index,follow">
  <title>Gerar Pix | ARGUS Pay</title>
  <link rel="icon" href="/static/assets/favicon.png">
- <link rel="stylesheet" href="/static/public-pix.css?v=20261123-1">
+ <link rel="stylesheet" href="/static/public-pix.css?v=pix-premium-20261123-1">
  <script src="/static/qrcode.min.js?v=1" defer></script>
- <script src="/static/public-pix.js?v=20261123-3" defer></script>
+ <script src="/static/public-pix.js?v=pix-premium-20261123-1" defer></script>
 </head>
 <body>
  <div class="ambient" aria-hidden="true"></div>
@@ -68,12 +68,28 @@
  <dialog id="pix-dialog" class="payment-dialog" aria-labelledby="pix-dialog-title">
   <div class="dialog-shell">
    <header class="dialog-head"><div><span class="step">02 / 02</span><h2 id="pix-dialog-title">Pague seu Pix</h2><p>Escaneie o QR Code ou copie o código abaixo.</p></div><button class="close" type="button" id="pix-close" aria-label="Fechar">×</button></header>
-   <div class="pay-state" id="pix-status" role="status" aria-live="polite">Preparando pagamento…</div>
-   <div id="public-pix-qr" class="qr"></div>
-   <div class="pay-value"><span>Total do Pix</span><strong id="pix-dialog-amount">—</strong></div>
-   <label for="pix-code" class="field-title">Pix Copia e Cola</label>
-   <textarea id="pix-code" readonly rows="2" spellcheck="false" aria-label="Pix Copia e Cola"></textarea>
-   <button class="copy" id="pix-copy" type="button">Copiar código Pix</button>
+   <div class="pay-state" id="pix-status" role="status" aria-live="polite"><span class="payment-pulse" aria-hidden="true"></span> Aguardando pagamento</div>
+   <div class="qr-stage">
+    <div id="public-pix-qr" class="qr"></div>
+    <section id="pix-success" class="pix-success" hidden aria-label="Pagamento confirmado pela MisticPay">
+     <div class="pix-success-ring"><svg viewBox="0 0 80 80" fill="none" aria-hidden="true"><circle cx="40" cy="40" r="35" stroke="currentColor" stroke-opacity=".18" stroke-width="3"/><path d="M22 41.5L34 54 58 27" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+     <span class="pix-success-eyebrow">PAGAMENTO CONFIRMADO</span>
+     <strong>Pix recebido!</strong>
+     <p>O recebimento foi confirmado pela MisticPay. Você já pode fechar esta janela com segurança.</p>
+    </section>
+   </div>
+   <div class="pay-value"><span id="pix-amount-caption">Total do Pix</span><strong id="pix-dialog-amount">—</strong></div>
+   <section id="pix-copy-wrap" class="pix-copy-wrap">
+    <label for="pix-copy" class="field-title">Pix Copia e Cola</label>
+    <div class="pix-copy-row">
+     <div id="pix-code-preview" class="pix-code-preview" aria-label="Prévia abreviada do código Pix">—</div>
+     <button class="pix-copy-icon" id="pix-copy" type="button" aria-label="Copiar código Pix completo" title="Copiar código Pix completo">
+      <svg class="pix-copy-symbol" viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+     </button>
+    </div>
+    <textarea id="pix-code" class="pix-code-assist" readonly tabindex="-1" aria-hidden="true"></textarea>
+    <p id="pix-copy-feedback" class="pix-copy-feedback" aria-live="polite">O código inteiro será copiado, sem cortes.</p>
+   </section>
    <p class="dialog-footnote" id="pix-expiry">Verificando expiração...</p>
    <div class="dialog-actions"><button id="pix-verify" type="button">Verificar pagamento</button><button id="pix-new" type="button">Criar outro Pix</button></div>
   </div>

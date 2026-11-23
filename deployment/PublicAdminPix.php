@@ -163,6 +163,16 @@ final class PublicAdminPix {
             'receipt_is_provider_settled'=>$status==='paid'
         ];
     }
+    /**
+     * Active QR: quicker, bounded provider verification.
+     * After 30 minutes keep retrying more slowly to catch a late settlement;
+     * the displayed QR can expire without losing legitimate paid receipts.
+     */
+    public static function statusCheckWindow(array $row,?int $at=null):int {
+        $date=strtotime((string)($row['created_at']??'').' UTC');
+        if($date===false)return 180;
+        return (($at??time())-$date)<1800?10:180;
+    }
     public static function handle(Database $db,string $method,string $path):never {
         if($method==='GET'&&$path==='/pix/quote'){
             $amount=filter_var($_GET['amount_cents']??null,FILTER_VALIDATE_INT);
@@ -247,15 +257,27 @@ final class PublicAdminPix {
             $data=self::body();
             $row=self::receipt($db,(string)($data['id']??''),(string)($data['receipt_token']??''));
             if(in_array($row['status'],['pending','unknown'],true)&&
-               str_starts_with((string)($row['provider_id']??''),'tr_')&&
-               (time()-strtotime((string)($row['checked_at']??'1970-01-01 00:00:00').' UTC'))>=35){
-                // PSP authenticated status check. Failure cannot imply payment.
-                try{
-                    $charge=$db->one('SELECT * FROM admin_quick_pix WHERE id=?',[$row['charge_id']]);
-                    if($charge)TraditionalQuickPix::reconcileRow($db,$charge);
-                }catch(\Throwable $e){
-                    error_log('ARGUS_PUBLIC_PIX_STATUS_UNAVAILABLE id='.$row['charge_id'].
-                        ' class='.get_class($e));
+               str_starts_with((string)($row['provider_id']??''),'tr_')){
+                // Reserve the check timestamp atomically *before* contacting
+                // MisticPay so concurrent tabs and the existing worker cannot
+                // fan out duplicate status requests for one Pix.
+                $window=self::statusCheckWindow($row);
+                $checkedBefore=gmdate('Y-m-d H:i:s',time()-$window);
+                $claimed=$db->run(
+                    "UPDATE admin_quick_pix SET checked_at=? WHERE id=?
+                     AND status IN ('pending','unknown')
+                     AND (checked_at IS NULL OR checked_at<=?)",
+                    [Database::stamp(),$row['charge_id'],$checkedBefore]);
+                if($claimed->rowCount()===1){
+                    try{
+                        $charge=$db->one('SELECT * FROM admin_quick_pix WHERE id=?',[$row['charge_id']]);
+                        if($charge)TraditionalQuickPix::reconcileRow($db,$charge);
+                    }catch(\Throwable $e){
+                        // No settlement inference from network errors: next
+                        // check is throttled, and the CLI worker retries.
+                        error_log('ARGUS_PUBLIC_PIX_STATUS_UNAVAILABLE id='.$row['charge_id'].
+                            ' class='.get_class($e));
+                    }
                 }
                 $row=self::receipt($db,$row['charge_id'],(string)$data['receipt_token']);
             }

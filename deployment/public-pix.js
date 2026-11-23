@@ -108,49 +108,88 @@ function randomToken(){
  const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);
  return Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('');
 }
+const DONE=new Set(['paid','failed','refunded','cancelled','expired']);
+let qrRenderedFor='',currentCopy='';
+function chargeStatus(charge){return charge.display_status||charge.status||'unknown';}
+function stopWatch(){if(poll!==null){clearInterval(poll);poll=null;}}
+function pixPreview(code){
+ if(!code)return 'Código indisponível';
+ return code.length<=39?code:code.slice(0,20)+'…'+code.slice(-12);
+}
 function showStatus(charge){
- const status=charge.display_status||charge.status;
- const names={paid:'Pagamento confirmado pela MisticPay',pending:'Aguardando pagamento',creating:'Criando cobrança…',
-  unknown:'Emissão não confirmada. Consulte o status antes de tentar de novo.',
-  expired:'QR Code expirado. Não pague este código.',
-  failed:'Pagamento não aprovado',refunded:'Pagamento devolvido',cancelled:'Pagamento cancelado'};
- $('pix-status').textContent=names[status]||'Conferindo pagamento';
+ const status=chargeStatus(charge);
+ const names={
+  paid:'Pagamento confirmado pela MisticPay',pending:'Aguardando pagamento',
+  creating:'Preparando o Pix…',
+  unknown:'Pagamento em verificação pela adquirente',
+  expired:'Prazo do QR Code encerrado',
+  failed:'Cobrança não aprovada',refunded:'Pagamento devolvido',cancelled:'Cobrança cancelada'
+ };
+ $('pix-status').textContent=names[status]||'Consultando o pagamento';
  $('pix-status').dataset.kind=status==='paid'?'paid':(['failed','refunded','cancelled','expired'].includes(status)?'failed':'pending');
  $('pix-dialog-amount').textContent=money(charge.total_amount_cents);
- const copy=charge.pix_copy_paste||'';
- $('pix-code').value=copy;
- $('pix-copy').disabled=!copy;
- const qr=$('public-pix-qr');qr.replaceChildren();
- if(status==='paid'){
-  qr.textContent='✓';qr.style.fontSize='80px';qr.style.color='#16875f';
- }else if(copy&&typeof QRCode==='function'){
-  qr.style.fontSize='';qr.style.color='';
-  try{new QRCode(qr,{text:copy,width:188,height:188,colorDark:'#101822',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
-  catch(_){qr.textContent='Use o código Pix Copia e Cola.';}
- }else{qr.style.fontSize='14px';qr.textContent=status==='expired'?'QR Code expirado': 'Aguardando resposta da adquirente…';}
- const deadline=Number(charge.expires_at_epoch||0);
- $('pix-expiry').textContent=deadline>0&&status==='pending'?
-   'Este QR Code expira em '+new Date(deadline*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'.':
-   status==='paid'?'Este Pix foi confirmado.':'Acompanhe a situação antes de gerar outra cobrança.';
- const final=['paid','failed','refunded','cancelled','expired'].includes(status);
- if(final){clearInterval(poll);poll=null;}
+ $('pix-amount-caption').textContent=status==='paid'?'Total do Pix confirmado':'Total do Pix';
+ const success=$('pix-success'),qr=$('public-pix-qr'),copyWrap=$('pix-copy-wrap');
+ const paid=status==='paid',expired=status==='expired';
+ success.hidden=!paid;qr.hidden=paid;copyWrap.hidden=paid||expired||status==='failed'||status==='cancelled'||status==='refunded';
+ $('pix-verify').hidden=paid||status==='failed'||status==='cancelled'||status==='refunded';
+ currentCopy=(!paid&&!expired&&typeof charge.pix_copy_paste==='string')?charge.pix_copy_paste:'';
+ $('pix-code').value=currentCopy;
+ $('pix-code-preview').textContent=pixPreview(currentCopy);
+ $('pix-copy').disabled=!currentCopy;
+ if(!paid){
+  if(currentCopy&&qrRenderedFor!==currentCopy){
+   qr.replaceChildren();qrRenderedFor=currentCopy;
+   if(typeof QRCode==='function'){
+    try{new QRCode(qr,{text:currentCopy,width:188,height:188,
+     colorDark:'#101822',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+    catch(_){qr.textContent='Use o Pix Copia e Cola.';}
+   }else qr.textContent='Use o Pix Copia e Cola.';
+  }else if(!currentCopy){
+   qrRenderedFor='';qr.replaceChildren();qr.textContent=expired?'QR Code expirado':'Aguardando a adquirente…';
+  }
+ }
+ const expiry=Number(charge.expires_at_epoch||0);
+ $('pix-expiry').textContent=paid?
+  'Recebimento verificado pela adquirente. Nenhuma nova cobrança foi gerada.':
+  expired?'O QR Code expirou. A conciliação financeira continua no servidor para identificar pagamentos tardios.':
+  expiry>0&&status==='pending'?
+   'Válido até '+new Date(expiry*1000).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+'. Verificação automática ativada.':
+   'Aguardando consulta segura da adquirente. Não gere cobranças repetidas.';
+ if(active&&active.id===charge.id){
+  active.lastStatus=status;
+  if(Number.isFinite(expiry)&&expiry>0)active.expires=expiry;
+ }
+ if(DONE.has(status))stopWatch();
 }
-async function verify(){
- if(!active||polling)return;
- polling=true;const button=$('pix-verify');button.disabled=true;
+async function verify(manual=false){
+ if(!active||polling||(!manual&&document.hidden))return;
+ const reference=active;
+ if(!manual&&reference.expires&&Date.now()>=reference.expires*1000){stopWatch();return;}
+ polling=true;
+ const verifyButton=$('pix-verify');verifyButton.disabled=true;
  try{
-  const result=await api('/pix/status',{method:'POST',body:JSON.stringify({id:active.id,receipt_token:active.token})});
-  if(result.charge?.id===active.id)showStatus(result.charge);
- }catch(_){$('pix-status').textContent='Não foi possível consultar agora. O Pix continua aguardando confirmação.';}
- finally{polling=false;button.disabled=false;}
+  const result=await api('/pix/status',{method:'POST',
+   body:JSON.stringify({id:reference.id,receipt_token:reference.token})});
+  if(active===reference&&result.charge?.id===reference.id)showStatus(result.charge);
+ }catch(_){
+  // A temporary network failure must NEVER be treated as a paid/failed Pix.
+  if(active===reference&&dialog.open&&$('pix-status').dataset.kind!=='paid'){
+   $('pix-status').textContent='Sem resposta agora. Continuaremos verificando.';
+  }
+ }finally{polling=false;verifyButton.disabled=false;}
 }
 function openCharge(charge,token){
- active={id:charge.id,token};
+ stopWatch();qrRenderedFor='';
+ active={id:charge.id,token,expires:Number(charge.expires_at_epoch||0),lastStatus:chargeStatus(charge)};
  showStatus(charge);
  if(!dialog.open)dialog.showModal();
- clearInterval(poll);
- if(!['paid','failed','refunded','cancelled','expired'].includes(charge.display_status))
-  poll=setInterval(()=>{if(!document.hidden)verify()},12000);
+ // The browser follows the QR independently of whether the modal is open.
+ // If the tab is closed, the independent server-side worker owns reconciliation.
+ if(!DONE.has(chargeStatus(charge))){
+  poll=setInterval(()=>verify(false),5000);
+  verify(false);
+ }
 }
 form.addEventListener('submit',async e=>{
  e.preventDefault();if(busy)return;clearFailure();
@@ -195,18 +234,38 @@ $('payer-document').addEventListener('input',e=>{
  const field=e.target;field.value=field.value.replace(/\D/g,'').slice(0,14);
 });
 $('pix-copy').addEventListener('click',async()=>{
- try{await navigator.clipboard.writeText($('pix-code').value);$('pix-copy').textContent='Código copiado ✓';}
- catch(_){$('pix-code').focus();$('pix-code').select();$('pix-copy').textContent='Código selecionado';}
- setTimeout(()=>$('pix-copy').textContent='Copiar código Pix',2400);
+ if(!currentCopy)return;
+ const feedback=$('pix-copy-feedback');
+ feedback.className='pix-copy-feedback';
+ try{
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+   await navigator.clipboard.writeText(currentCopy);
+  else{
+   const field=$('pix-code');field.value=currentCopy;field.focus();field.select();
+   if(!document.execCommand('copy'))throw new Error('Clipboard unavailable');
+  }
+  feedback.textContent='Código Pix completo copiado!';
+  feedback.classList.add('is-success');
+ }catch(_){
+  feedback.textContent='Não foi possível copiar automaticamente. Tente novamente.';
+  feedback.classList.add('is-error');
+ }
 });
-$('pix-verify').addEventListener('click',verify);
+$('pix-verify').addEventListener('click',()=>verify(true));
 $('pix-close').addEventListener('click',()=>dialog.close());
 $('pix-new').addEventListener('click',()=>{
- dialog.close();active=null;delete form.dataset.idem;delete form.dataset.token;
- delete form.dataset.amount;delete form.dataset.person;clearInterval(poll);poll=null;
+ if(active&&!DONE.has(active.lastStatus)&&
+   !confirm('Este Pix ainda não foi confirmado. Deseja criar outra cobrança? Verifique o pagamento anterior para não pagar duas vezes.'))return;
+ dialog.close();stopWatch();active=null;currentCopy='';qrRenderedFor='';
+ delete form.dataset.idem;delete form.dataset.token;
+ delete form.dataset.amount;delete form.dataset.person;
+ $('pix-copy-feedback').textContent='O código inteiro será copiado, sem cortes.';
+ $('pix-copy-feedback').className='pix-copy-feedback';
  price();$('payer-name').focus();
 });
 dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
-dialog.addEventListener('close',()=>{clearInterval(poll);poll=null;});
+// Closing this dialog does not cancel the verification of the already-issued Pix.
+dialog.addEventListener('close',()=>{if(active&&!document.hidden)verify(false);});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active&&!DONE.has(active.lastStatus))verify(false);});
 price();
 })();
