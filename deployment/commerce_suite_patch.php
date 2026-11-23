@@ -134,10 +134,10 @@ comReplace($adminHtml,
 foreach(['client.html','admin.html'] as $page){
     $file="$root/public/static/$page";
     comReplace($file,'</head>',
-      '<link rel="stylesheet" href="/static/commerce-suite.css?v=20261123-1"></head>',
+      '<link rel="stylesheet" href="/static/commerce-suite.css?v=20261123-2"></head>',
       "commerce style ".$page);
     comReplace($file,'</body>',
-      '<script defer src="/static/commerce-suite.js?v=20261123-1"></script>'.
+      '<script defer src="/static/commerce-suite.js?v=20261123-2"></script>'.
       '<script defer src="/static/commerce-admin.js?v=20261123-1"></script></body>',
       "commerce UI script ".$page);
 }
