@@ -104,6 +104,24 @@ agfix($q,
  "            if(\$new==='paid'&&\$updated->rowCount()>0){",
  'audit new admin partial charge');
 
+agfix($w,
+ "                self::finishWithdraw(\$db,\$row,\$mapped);\n                if(\$mapped==='pending')",
+ <<<'CODE'
+                self::finishWithdraw($db,$row,$mapped);
+                if($mapped==='unknown'){
+                    // PSP status is uncertain or partially returned.
+                    // Preserve held funds; throttle checks; alert for review.
+                    $db->run("UPDATE argus_seller_withdrawals
+                        SET status='unknown',checked_at=?
+                        WHERE id=? AND status IN ('queued','pending','unknown')",
+                        [self::now(),$row['id']]);
+                    if(strtoupper((string)($status['state']??''))==='DEVOLVIDO_PARCIAL')
+                        error_log('ARGUS_SELLER_PARTIAL_PAYOUT_REVIEW operation_id='.$row['id']);
+                }
+                if($mapped==='pending')
+CODE,
+ 'retain held payout balance and record uncertain partial PSP status');
+
 agfix($q,
  "        if(in_array(\$status,['paid','failed','cancelled','refunded'],true))return \$status;",
  "        if(in_array(\$status,['paid','failed','cancelled','refunded','partial_review'],true))return \$status;",
