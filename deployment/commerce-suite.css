@@ -1,0 +1,50 @@
+/* ARGUS Pay Commerce Studio — scoped seller UI, adaptive cards and preview */
+#argus-commerce-root{--commerce-gold:#e8bf78;--commerce-border:#d9b87a52;color:#e9edf4;margin:0 auto;max-width:1260px}
+#argus-commerce-root *{box-sizing:border-box}
+#argus-commerce-root [hidden]{display:none!important}
+#argus-commerce-root .argus-commerce-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:22px;border:1px solid var(--commerce-border);border-radius:20px;background:radial-gradient(circle at 85% 15%,#ae833e33,transparent 55%),linear-gradient(130deg,#1e2735,#111a29)}
+#argus-commerce-root .argus-commerce-header small{color:var(--commerce-gold);font-size:10px;font-weight:850;letter-spacing:.16em}
+#argus-commerce-root .argus-commerce-header h3{color:#fff;font-size:clamp(23px,2.5vw,31px);margin:7px 0;font-weight:900}
+#argus-commerce-root p{font-size:12px;color:#b8c5d6;line-height:1.65}
+#argus-commerce-root button,#argus-commerce-root input,#argus-commerce-root textarea,#argus-commerce-root select{font-family:inherit}
+#argus-commerce-root button{cursor:pointer;min-height:40px;padding:9px 13px;border-radius:10px;font-size:12px;font-weight:850;border:1px solid #e0b477;color:#1e1d18;background:linear-gradient(125deg,#f1d39a,#c9954e)}
+#argus-commerce-root button:hover:not(:disabled){filter:brightness(1.12)}
+#argus-commerce-root button:disabled{opacity:.45;cursor:not-allowed}
+#argus-commerce-root .argus-commerce-grid{display:grid;grid-template-columns:minmax(300px,1.25fr) minmax(240px,.75fr);gap:14px;margin-top:16px}
+#argus-commerce-root .argus-commerce-panel{border-radius:17px;padding:20px;border:1px solid var(--commerce-border);background:linear-gradient(150deg,#1a2535,#101824);min-width:0}
+#argus-commerce-root .argus-commerce-panel h4{font-size:18px;font-weight:850;color:#fff;margin:0 0 9px}
+#argus-commerce-root form{display:grid;gap:12px}
+#argus-commerce-root label{display:grid;gap:6px;font-size:12px;font-weight:750;color:#e1e6ec}
+#argus-commerce-root input,#argus-commerce-root textarea,#argus-commerce-root select{width:100%;min-width:0;max-width:100%;font-size:13px;color:#faf6ee;background:#0d1625;border:1px solid #b19a725e;border-radius:10px;padding:12px;min-height:44px}
+#argus-commerce-root input[type=color]{height:46px;max-width:100px;padding:4px}
+#argus-commerce-root textarea{min-height:92px;resize:vertical}
+#argus-commerce-root input:focus,#argus-commerce-root textarea:focus,#argus-commerce-root select:focus{outline:2px solid #eac27d;outline-offset:2px}
+#argus-commerce-root .argus-commerce-form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+#argus-commerce-root .argus-commerce-btn-row{display:flex;flex-wrap:wrap;gap:9px}
+#argus-commerce-root button.muted{background:transparent;color:#e7c793;border-color:#9e895d80}
+#argus-commerce-root .argus-commerce-preview-card{border:1px solid var(--accent,#e8bf78);border-radius:18px;overflow:hidden;padding:17px;background:radial-gradient(circle at 60% -20%,#ffe5a522,transparent 70%),#0e1826;box-shadow:0 12px 30px #0005}
+#argus-commerce-root .argus-commerce-preview-card img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:11px;margin-bottom:12px}
+#argus-commerce-root .argus-commerce-preview-card h3{font-size:22px;color:#fff;margin:9px 0}
+#argus-commerce-root .argus-commerce-preview-card strong{display:block;font-size:19px;color:var(--accent);margin:14px 0}
+#argus-commerce-root .argus-commerce-demo-button{background:var(--accent);padding:12px;border-radius:11px;text-align:center;color:#1a1e25;font-weight:900;font-size:13px}
+#argus-commerce-root .argus-commerce-preview-card small{display:block;font-size:10px;color:#a3b3c2;line-height:1.5;margin-top:13px}
+#argus-commerce-root .argus-commerce-list-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center;margin:20px 0 12px}
+#argus-commerce-root .argus-commerce-list-head h4{font-size:19px;margin:0;color:#fff}
+#argus-commerce-root .argus-commerce-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+#argus-commerce-root .argus-commerce-list-card{min-width:0;background:#141f2d;padding:17px;border-radius:13px;border:1px solid #c5a3675a}
+#argus-commerce-root .argus-commerce-item-meta{display:flex;justify-content:space-between;gap:9px;align-items:center}
+#argus-commerce-root .argus-commerce-status{font-size:10px;border-radius:20px;padding:5px 9px;background:#73603a32;color:#f0d499;border:1px solid #d8b16e80;font-weight:850}
+#argus-commerce-root .argus-commerce-status.is-published{background:#226a4440;color:#a2e6c2;border-color:#53a27c}
+#argus-commerce-root .argus-commerce-item-meta small{font-size:10px;color:#a3b2c4}
+#argus-commerce-root .argus-commerce-list-card h4{color:#fff;font-size:15px;margin:13px 0 6px}
+#argus-commerce-root .argus-commerce-list-card strong{display:block;font-size:13px;color:#f4d397;margin:11px 0}
+#argus-commerce-root .argus-commerce-actions{display:flex;gap:7px;flex-wrap:wrap}
+#argus-commerce-root .argus-commerce-actions button,#argus-commerce-root .argus-commerce-actions a{font-size:10px;min-height:33px;padding:8px 10px;text-decoration:none;border-radius:8px;border:1px solid #d8b36b65;background:#b68d452a;color:#f8d59c;font-weight:800}
+#argus-commerce-root .argus-commerce-actions a{display:inline-flex;align-items:center}
+#argus-commerce-root .argus-commerce-empty{grid-column:1/-1;border:1px dashed #c8a26665;padding:26px;border-radius:12px}
+#argus-commerce-root .argus-commerce-sandbox{margin-top:17px}
+#argus-commerce-root .argus-commerce-sandbox-result{white-space:pre-wrap;overflow:auto;max-height:260px;border-radius:11px;padding:16px;background:#081320;color:#c9e8d8;font:11px/1.7 ui-monospace,monospace}
+#argus-commerce-root .argus-commerce-notice,#argus-commerce-root .argus-commerce-feedback{margin-top:14px;padding:13px 16px;line-height:1.65;font-size:12px;border:1px solid #d5b1746c;border-radius:12px;background:#be8d3027;color:#f1d09c}
+#argus-commerce-root .argus-commerce-feedback[data-error=yes]{border-color:#ce7584;background:#733f472b;color:#ffced1}
+@media(max-width:930px){#argus-commerce-root .argus-commerce-grid{grid-template-columns:1fr}}
+@media(max-width:620px){#argus-commerce-root .argus-commerce-panel{padding:15px}#argus-commerce-root .argus-commerce-list{grid-template-columns:1fr}#argus-commerce-root .argus-commerce-form-row{grid-template-columns:1fr}#argus-commerce-root .argus-commerce-header{padding:17px}}
