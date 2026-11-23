@@ -47,3 +47,16 @@ $row=G::listing($db,'admin',$a,'subscription')['items'][0];$edit=$row['data'];$e
 try{G::edit($db,'admin',$a,$x['id'],$edit);throw new RuntimeException('Stale revision accepted');}catch(ApiError $e){}
 if(G::localDay(strtotime('2026-11-23T01:00:00Z'))!=='2026-11-22')throw new RuntimeException('Brazil local day wrong');
 echo "PASS: original subscription anchor, immutable idempotency, optimistic editing and Brazilian calendar.\n";
+
+$clock=strtotime('2026-11-23T12:00:00Z');$many='growth-volume-'.bin2hex(random_bytes(8));
+for($i=0;$i<405;$i++){
+ $k='qpx_'.bin2hex(random_bytes(16));$db->run('INSERT INTO admin_quick_pix(id,actor_id,idempotency_hash,body_hash,amount_cents,description,provider_id,qr_copy,status,created_at,checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$k,$many,hash('sha256','idem'.$k),hash('sha256','body'.$k),100,'Synthetic','tr_test_'.$k,null,'paid','2026-11-23 01:00:00','2026-11-23 01:01:00']);
+}
+$k='qpx_'.bin2hex(random_bytes(16));$db->run('INSERT INTO admin_quick_pix(id,actor_id,idempotency_hash,body_hash,amount_cents,description,provider_id,qr_copy,status,created_at,checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$k,$many,hash('sha256','idem'.$k),hash('sha256','body'.$k),100,'Synthetic','tr_test_'.$k,null,'pending','2025-01-01 00:00:00','2025-01-01 00:00:00']);
+$report=G::metrics($db,'admin',$many,$clock);
+if($report['confirmed_count']!==405||$report['gross_cents']!==40500||$report['daily'][28]['gross_cents']!==40500||$report['pending_count']!==1)throw new RuntimeException('Complete local-date aggregate failed');
+G::saveCursor($db,'test','portal|abc');if(G::cursor($db,'test')!=='portal|abc')throw new RuntimeException('Cursor persistence failed');
+$due=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic overdue','note'=>'','amount_cents'=>1234,'due'=>'2020-01-01','nonce'=>bin2hex(random_bytes(16))]);
+if(G::metrics($db,'admin',$a)['due_count']!==1)throw new RuntimeException('Unmatched overdue missing');
+try{G::create($db,'portal',$b,'support',['title'=>'Private document','note'=>'123.456.789-00','category'=>'technical','nonce'=>bin2hex(random_bytes(16))]);throw new RuntimeException('Formatted CPF accepted');}catch(ApiError $e){}
+echo "PASS: complete 405-payment aggregate, local time boundary, historical pending, worker cursor and formatted-document guard.\n";

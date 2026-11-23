@@ -49,7 +49,7 @@ function render(r,scope='public'){
  const registerUrl='https://app.arguspay.com.br/conta#cadastro';
  // Prepare one real PDF before the user taps Share. iOS requires the native
  // share call to start within user activation, not after asynchronous canvas work.
- let prepared=null;
+ let prepared=null,verification=null,pdfGeneration=0;
  const download=button(controls,'Baixar PDF',()=>{if(!prepared)return;const url=URL.createObjectURL(prepared);const a=document.createElement('a');a.href=url;a.download=fileName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent='ArgusPay.pdf pronto para salvar.'});
  button(controls,'Imprimir / salvar PDF',()=>{
   const previous=document.title;
@@ -78,37 +78,80 @@ function render(r,scope='public'){
  if(r.confirmed&&['admin','seller'].includes(scope)){
   const prefix=scope==='admin'?'/api/admin/growth':'/api/portal/growth';
   const invoke=(path,body)=>scope==='admin'?post(prefix+path,body):request(prefix+path,{method:'POST',body});
-  button(controls,'Criar link de verificação',async()=>{if(!confirm('O link permite consultar valor e status por 30 dias. Criar link público?'))return;try{const v=await invoke('/verify',{kind:r.kind,id:r.id});if(!/^\/verify\/[a-f0-9]{64}$/.test(v.path||''))throw Error('Link indisponível');const url=location.origin+v.path;let qr=paper.querySelector('.argus-verify-qr');if(!qr){qr=add(paper,'div',undefined,'argus-verify-qr')}qr.replaceChildren();add(qr,'small','Verificação pública · válida por 30 dias');const link=add(qr,'a','Abrir verificação');link.href=url;link.target='_blank';link.rel='noopener noreferrer';if(typeof QRCode==='function'){const q=add(qr,'div');try{new QRCode(q,{text:url,width:120,height:120})}catch{q.remove()}}try{await navigator.clipboard.writeText(url);status.textContent='Link de verificação copiado.'}catch{status.textContent=url}}catch(e){status.textContent=e.message}});
-  button(controls,'Revogar links de verificação',async()=>{if(!confirm('Revogar todos os links de verificação deste registro?'))return;try{await invoke('/revoke-verification',{id:r.id});status.textContent='Links revogados.'}catch(e){status.textContent=e.message}});
+  const make=button(controls,'Criar link de verificação',async()=>{
+   if(!confirm('O link permite consultar valor e status por 30 dias. Criar link público?'))return;
+   make.disabled=true;revoke.disabled=true;
+   try{
+    const v=await invoke('/verify',{kind:r.kind,id:r.id});
+    if(!/^\/verify#[a-f0-9]{64}$/.test(v.path||''))throw Error('Link indisponível');
+    const url=location.origin+v.path;
+    let qr=paper.querySelector('.argus-verify-qr');if(!qr)qr=add(paper,'div',undefined,'argus-verify-qr');
+    qr.replaceChildren();add(qr,'small','Verificação pública · válida por 30 dias');
+    const link=add(qr,'a','Abrir verificação');link.href=url;link.target='_blank';link.rel='noopener noreferrer';
+    let qrImage=null;
+    if(typeof QRCode==='function'){
+     const q=add(qr,'div');try{new QRCode(q,{text:url,width:240,height:240,correctLevel:QRCode.CorrectLevel.M});qrImage=q.querySelector('canvas')||q.querySelector('img')}catch{q.remove()}
+    }
+    verification={url,image:qrImage};prepare();
+    try{await navigator.clipboard.writeText(url);status.textContent='Link copiado. Preparando PDF com verificação.'}catch{status.textContent=url}
+   }catch(e){status.textContent=e.message}finally{make.disabled=false;revoke.disabled=false}
+  });
+  const revoke=button(controls,'Revogar links de verificação',async()=>{
+   if(!confirm('Revogar todos os links de verificação deste registro?'))return;
+   make.disabled=true;revoke.disabled=true;
+   try{await invoke('/revoke-verification',{id:r.id});verification=null;paper.querySelector('.argus-verify-qr')?.remove();prepare()}catch(e){status.textContent=e.message}finally{make.disabled=false;revoke.disabled=false}
+  });
  }
- download.disabled=true;share.disabled=true;status.textContent='Preparando ArgusPay.pdf…';
- pdf(r).then(b=>{prepared=b;download.disabled=false;share.disabled=false;status.textContent=''}).catch(()=>{status.textContent='Não foi possível preparar o PDF. Use Imprimir / salvar PDF.'});
+ function prepare(){
+  const generation=++pdfGeneration;prepared=null;download.disabled=true;share.disabled=true;status.textContent='Preparando ArgusPay.pdf…';
+  pdf(r,verification).then(b=>{if(generation!==pdfGeneration)return;prepared=b;download.disabled=false;share.disabled=false;status.textContent=verification?'PDF com verificação pronto.':'PDF pronto.'}).catch(()=>{if(generation===pdfGeneration)status.textContent='Não foi possível preparar o PDF. Use Imprimir / salvar PDF.'});
+ }
+ prepare();
  d.addEventListener('close',()=>{if(currentDialog===d){currentDialog=null;d.remove()}});
  document.body.append(d);currentDialog=d;d.showModal();
 }
 // A single-page PDF generated from the same server-issued record, with brand
 // image and full values. Browser canvas keeps accented Portuguese text intact.
-async function pdf(r){
- const canvas=document.createElement('canvas');canvas.width=1240;canvas.height=1754;
+async function pdf(r,verification=null){
+ const canvas=document.createElement('canvas');canvas.width=1240;
  const c=canvas.getContext('2d');if(!c)throw Error('PDF unavailable');
- c.fillStyle='#fff';c.fillRect(0,0,1240,1754);
+ function lines(text,font,limit){
+  c.font=font;const out=[];let line='';
+  for(const word of String(text??'').split(/\s+/)){
+   if(!word)continue;
+   if(c.measureText((line?line+' ':'')+word).width<=limit){line+=(line?' ':'')+word;continue;}
+   if(line){out.push(line);line=''}
+   for(const ch of Array.from(word)){if(line&&c.measureText(line+ch).width>limit){out.push(line);line=''}line+=ch}
+  }
+  if(line)out.push(line);return out.length?out:[''];
+ }
+ const rows=fields(r).map(([key,value])=>({key,lines:lines(value,'29px sans-serif',1090)}));
+ const notice=lines(r.notice,'24px sans-serif',1090);
+ const verifyLines=verification?lines(verification.url,'20px sans-serif',780):[];
+ const required=493+rows.reduce((n,row)=>n+54+34*row.lines.length,0)+35+notice.length*30+(verification?Math.max(290,80+verifyLines.length*26):0)+100;
+ canvas.height=Math.max(1754,required);
+ c.fillStyle='#fff';c.fillRect(0,0,1240,canvas.height);
  c.fillStyle='#111b29';c.fillRect(0,0,1240,178);
- const im=new Image();im.src=logo;try{await im.decode();const w=Math.min(280,im.width),h=w*im.height/im.width;c.drawImage(im,72,Math.max(20,(178-h)/2),w,h)}catch{c.fillStyle='#ecc785';c.font='bold 48px sans-serif';c.fillText('ARGUS PAY',72,108)}
+ const im=new Image();im.src=logo;try{await im.decode();const scale=Math.min(280/im.width,132/im.height,1),w=im.width*scale,h=im.height*scale;c.drawImage(im,72,(178-h)/2,w,h)}catch{c.fillStyle='#ecc785';c.font='bold 48px sans-serif';c.fillText('ARGUS PAY',72,108)}
  c.fillStyle='#c39d62';c.font='bold 23px sans-serif';c.fillText('DOCUMENTO DA PLATAFORMA',74,228);
  c.fillStyle='#172336';c.font='bold 47px sans-serif';c.fillText(r.title,74,291);
  c.fillStyle=r.confirmed?'#16704a':'#946019';c.font='bold 30px sans-serif';c.fillText(r.status_label,74,349);
  c.fillStyle='#152135';c.font='bold 65px sans-serif';c.fillText(money(r.amount_cents),74,433);
  let y=493;
- function wrapped(t,x,start,limit,font,color,step){c.font=font;c.fillStyle=color;let line='',yy=start;for(const word of String(t).split(/\s+/)){if(c.measureText(line+' '+word).width>limit&&line){c.fillText(line,x,yy);yy+=step;line=word}else line+=(line?' ':'')+word}if(line)c.fillText(line,x,yy);return yy+step;}
- for(const [key,value] of fields(r)){
+ for(const row of rows){
   c.strokeStyle='#e1e5ea';c.beginPath();c.moveTo(74,y-19);c.lineTo(1166,y-19);c.stroke();
-  c.font='bold 22px sans-serif';c.fillStyle='#56657a';c.fillText(key,74,y+8);
-  y=wrapped(value,74,y+43,1090,'29px sans-serif','#172336',34)+11;
+  c.font='bold 22px sans-serif';c.fillStyle='#56657a';c.fillText(row.key,74,y+8);
+  c.font='29px sans-serif';c.fillStyle='#172336';row.lines.forEach((line,i)=>c.fillText(line,74,y+43+34*i));
+  y+=54+34*row.lines.length;
  }
- y=Math.min(y+15,1580);
- wrapped(r.notice,74,y,1090,'24px sans-serif','#536174',30);
- c.fillStyle='#e0b76f';c.fillRect(74,1677,1092,3);
- c.fillStyle='#516074';c.font='20px sans-serif';c.fillText('ARGUS PAY  •  Consulte o registro atualizado no painel',74,1715);
+ y+=20;c.font='24px sans-serif';c.fillStyle='#536174';notice.forEach((line,i)=>c.fillText(line,74,y+30*i));y+=30*notice.length+20;
+ if(verification){
+  c.fillStyle='#172336';c.font='bold 24px sans-serif';c.fillText('VERIFICAÇÃO PÚBLICA · VÁLIDA POR 30 DIAS',74,y+20);
+  c.font='20px sans-serif';verifyLines.forEach((line,i)=>c.fillText(line,74,y+60+26*i));
+  if(verification.image){try{if(verification.image instanceof HTMLImageElement&&!verification.image.complete)await verification.image.decode();c.imageSmoothingEnabled=false;c.fillStyle='#fff';c.fillRect(904,y+38,252,252);c.drawImage(verification.image,916,y+50,228,228);c.imageSmoothingEnabled=true}catch{}}
+ }
+ const footer=canvas.height-77;c.fillStyle='#e0b76f';c.fillRect(74,footer,1092,3);
+ c.fillStyle='#516074';c.font='20px sans-serif';c.fillText('ARGUS PAY  •  Consulte o registro atualizado no painel',74,footer+38);
  const jpg=new Uint8Array(await (await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(Error('PDF unavailable')),'image/jpeg',0.94))).arrayBuffer());
  const en=new TextEncoder(),parts=[],offsets=[0];let size=0;
  const push=v=>{const b=typeof v==='string'?en.encode(v):v;parts.push(b);size+=b.length};
@@ -116,8 +159,9 @@ async function pdf(r){
  push('%PDF-1.4\n');obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
  obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
  obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
- offsets[4]=size;push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1240 /Height 1754 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
- const commands='q 595 0 0 842 0 0 cm /Im0 Do Q\n';obj(5,'<< /Length '+en.encode(commands).length+' >>\nstream\n'+commands+'endstream');
+ offsets[4]=size;push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1240 /Height '+canvas.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
+ const scale=Math.min(595/1240,842/canvas.height),w=(1240*scale).toFixed(3),h=(canvas.height*scale).toFixed(3),x=((595-Number(w))/2).toFixed(3),yOffset=(842-Number(h)).toFixed(3);
+ const commands='q '+w+' 0 0 '+h+' '+x+' '+yOffset+' cm /Im0 Do Q\n';obj(5,'<< /Length '+en.encode(commands).length+' >>\nstream\n'+commands+'endstream');
  const xref=size;push('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)push(String(offsets[i]).padStart(10,'0')+' 00000 n \n');push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
  return new Blob(parts,{type:'application/pdf'});
 }

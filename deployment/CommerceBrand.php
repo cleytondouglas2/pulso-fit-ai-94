@@ -144,6 +144,7 @@ final class CommerceBrand {
         return self::resellerPixOwner($db,$code)!==null?'/e/'.$code.'/logo':null;
     }
     public static function resellerPixLogo(Database $db,string $code):never {
+        SecurityShield::rate($db,'public_logo_network',SecurityShield::remoteTag(),300,60);
         $owner=self::resellerPixOwner($db,$code);
         if($owner===null)self::fail('Logomarca não encontrada.',404);
         self::image($db,$owner);

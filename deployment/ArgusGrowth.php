@@ -183,7 +183,10 @@ final class ArgusGrowth {
         if($encoded===$r['payload'])return ['ok'=>true,'financial_effect'=>false];
         $pdo=$db->pdo();$pdo->beginTransaction();
         try{
-            if($r['kind']==='invoice'&&$db->one('SELECT record_id FROM argus_growth_invoice_matches WHERE record_id=?',[$id]))self::fail('Cobrança vinculada: preserve o registro original.',409);
+            if($r['kind']==='invoice'){
+                $db->run('UPDATE argus_growth_records SET updated_at=updated_at WHERE id=? AND audience=? AND owner_id=?',[$id,$scope,$owner]);
+                if($db->one('SELECT record_id FROM argus_growth_invoice_matches WHERE record_id=?',[$id]))self::fail('Cobrança vinculada: preserve o registro original.',409);
+            }
             $changed=$db->run('UPDATE argus_growth_records SET payload=?,updated_at=? WHERE id=? AND audience=? AND owner_id=? AND state=? AND payload=?',[$encoded,Database::stamp(),$id,$scope,$owner,$r['state'],$r['payload']]);
             if($changed->rowCount()!==1)self::fail('Registro alterado. Atualize a página.',409);
             self::event($db,$id,$scope,$owner,$owner,'edited');$pdo->commit();
@@ -226,6 +229,11 @@ final class ArgusGrowth {
         if($old){if($old['operation_id']!==$operation)self::fail('Já existe um Pix vinculado.',409);return ['ok'=>true];}
         $pdo=$db->pdo();$pdo->beginTransaction();
         try{
+            $db->run('UPDATE argus_growth_records SET updated_at=updated_at WHERE id=? AND audience=? AND owner_id=?',[$record,$scope,$owner]);
+            $fresh=$db->one("SELECT payload,state FROM argus_growth_records WHERE id=? AND audience=? AND owner_id=?",[$record,$scope,$owner]);
+            if(!$fresh||$fresh['state']!=='open'||!hash_equals((string)$row['payload'],(string)$fresh['payload']))self::fail('Rascunho alterado. Atualize e tente novamente.',409);
+            $same=$db->one('SELECT operation_id FROM argus_growth_invoice_matches WHERE record_id=? AND audience=? AND owner_id=?',[$record,$scope,$owner]);
+            if($same){if($same['operation_id']!==$operation)self::fail('Já existe um Pix vinculado.',409);$pdo->commit();return ['ok'=>true,'financial_effect'=>false];}
             $db->run('INSERT INTO argus_growth_invoice_matches(record_id,audience,owner_id,operation_id,created_at) VALUES (?,?,?,?,?)',[$record,$scope,$owner,$operation,Database::stamp()]);
             self::event($db,$record,$scope,$owner,$owner,'matched_existing_pix');$pdo->commit();
         }catch(\PDOException $e){if($pdo->inTransaction())$pdo->rollBack();if(in_array((string)$e->getCode(),['23000','23505'],true))self::fail('Pix já associado a outro registro.',409);throw $e;}
@@ -258,6 +266,11 @@ final class ArgusGrowth {
             if((int)$n['n']>=200)self::fail('Limite de mensagens atingido.',409);
             $pdo=$db->pdo();$pdo->beginTransaction();
             try{
+                $db->run('UPDATE argus_growth_records SET updated_at=updated_at WHERE id=? AND owner_id=?',[$id,$seller]);
+                $fresh=$db->one("SELECT state FROM argus_growth_records WHERE id=? AND owner_id=? AND audience='portal'",[$id,$seller]);
+                if(!$fresh||$fresh['state']!=='open')self::fail('Chamado arquivado.',409);
+                $count=$db->one('SELECT COUNT(*) AS n FROM argus_growth_messages WHERE record_id=? AND owner_id=?',[$id,$seller]);
+                if((int)$count['n']>=200)self::fail('Limite de mensagens atingido.',409);
                 $db->run('INSERT INTO argus_growth_messages(id,record_id,owner_id,sender,body,created_at) VALUES (?,?,?,?,?,?)',
                     ['agm_'.bin2hex(random_bytes(16)),$id,$seller,$scope,$message,Database::stamp()]);
                 $db->run("UPDATE argus_growth_records SET updated_at=? WHERE id=? AND audience='portal' AND owner_id=?",[Database::stamp(),$id,$seller]);
@@ -333,6 +346,10 @@ final class ArgusGrowth {
         $r=$scope==='admin'?TransactionReceipt::admin($db,$owner,$id,$kind):TransactionReceipt::seller($db,$owner,$id);
         if(!$r['confirmed']||$r['kind']!==$kind)self::fail('Somente comprovantes confirmados podem ser compartilhados.',409);
         $token=bin2hex(random_bytes(32));$now=Database::stamp();$expires=gmdate('Y-m-d H:i:s',time()+30*86400);
+        // Bound each operation's active public tokens and prune old tokens for this owner.
+        $db->run('DELETE FROM argus_growth_verify WHERE audience=? AND owner_id=? AND (revoked=1 OR expires_at<?)',[$scope,$owner,gmdate('Y-m-d H:i:s')]);
+        $active=$db->one('SELECT COUNT(*) AS n FROM argus_growth_verify WHERE audience=? AND owner_id=? AND operation_id=? AND revoked=0',[$scope,$owner,$id]);
+        if((int)$active['n']>=10)self::fail('Revogue links antigos antes de criar novos.',409);
         $db->run('INSERT INTO argus_growth_verify(token_hash,audience,owner_id,operation_id,kind,expires_at,revoked,created_at) VALUES (?,?,?,?,?,?,?,?)',
           [hash('sha256',$token),$scope,$owner,$id,$kind,$expires,0,$now]);
         return ['path'=>'/verify#'.$token,'expires_at'=>$expires,'financial_effect'=>false];
@@ -345,6 +362,7 @@ final class ArgusGrowth {
         if(!preg_match('/^[a-f0-9]{64}$/D',$token))self::fail('Verificação indisponível.',404);
         $row=$db->one('SELECT audience,owner_id,operation_id,kind,expires_at FROM argus_growth_verify WHERE token_hash=? AND revoked=0 AND expires_at>=?',[hash('sha256',$token),gmdate('Y-m-d H:i:s')]);
         if(!$row)self::fail('Verificação indisponível ou expirada.',404);
+        if($row['audience']==='portal'&&!$db->one("SELECT id FROM argus_portal_accounts WHERE id=? AND status NOT IN ('suspended','rejected')",[$row['owner_id']]))self::fail('Verificação indisponível.',404);
         $r=$row['audience']==='admin'?TransactionReceipt::admin($db,$row['owner_id'],$row['operation_id'],$row['kind']):TransactionReceipt::seller($db,$row['owner_id'],$row['operation_id']);
         return ['issuer'=>'ArgusPay','kind'=>$r['kind'],'confirmed'=>$r['confirmed'],'status_label'=>$r['status_label'],'amount_cents'=>$r['amount_cents'],'checked_at'=>gmdate('c'),'expires_at'=>$row['expires_at'],'notice'=>'Consulta ao registro atual da plataforma, sem dados pessoais. Não é um comprovante bancário.'];
     }

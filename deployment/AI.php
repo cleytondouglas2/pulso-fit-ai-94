@@ -41,7 +41,7 @@ final class ArgusAI
     }
     public static function analyze(array $rows,?int $now=null):array {
         $now??=time();
-        $today=gmdate('Y-m-d',$now);
+        $today=(new \DateTimeImmutable('@'.$now))->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d');
         $total=['received'=>0,'sent'=>0,'pending'=>0,'failed'=>0,'paid_count'=>0,'transactions'=>0,'today_received'=>0];
         $daily=[];$recent=[];$history=[];$high=[];
         foreach($rows as $r){
@@ -52,7 +52,7 @@ final class ArgusAI
             $total['transactions']++;
             if(in_array($status,['paid','settled','completed'],true)){
                 $total[$direction]+=$amount;$total['paid_count']++;
-                if($direction==='received' && gmdate('Y-m-d',$when)===$today)$total['today_received']+=$amount;
+                if($direction==='received' && (new \DateTimeImmutable('@'.$when))->setTimezone(new \DateTimeZone('America/Sao_Paulo'))->format('Y-m-d')===$today)$total['today_received']+=$amount;
                 if($direction==='received' && $when<$now-600)$history[]=$amount;
             } elseif(in_array($status,['pending','queued','unknown','review'],true)){$total['pending']++;}
             elseif(in_array($status,['failed','cancelled','canceled','expired','refused'],true)){$total['failed']++;}
