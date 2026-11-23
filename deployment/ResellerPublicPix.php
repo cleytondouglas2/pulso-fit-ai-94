@@ -298,6 +298,7 @@ final class ResellerPublicPix {
             }
             $dataForWallet=[
                 'amount_cents'=>(int)$q['total_amount_cents'],
+                'fee_version'=>(int)$q['policy_version'],
                 'payer_name'=>$name,'payer_document'=>$doc,
                 'payer_mode'=>'customer',
                 'description'=>'Pagamento público ARGUS Pay'

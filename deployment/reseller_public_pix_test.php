@@ -123,6 +123,9 @@ $php=(string)file_get_contents('/var/www/html/src/ResellerPublicPix.php');
 $gateway=(string)file_get_contents('/var/www/html/src/Gateway.php');
 $portal=(string)file_get_contents('/var/www/html/src/Portal.php');
 $worker=(string)file_get_contents('/var/www/html/src/MerchantWallet.php');
+if(!str_contains($worker,"array_key_exists('fee_version',\$data)")||
+   !str_contains($php,"'fee_version'=>(int)\$q['policy_version']"))
+ throw new RuntimeException('Seller Pix create must honor the exact fee version shown to the buyer');
 $html=(string)file_get_contents('/var/www/html/public/static/reseller-public-pix.html');
 $js=(string)file_get_contents('/var/www/html/public/static/reseller-public-pix.js');
 $card=(string)file_get_contents('/var/www/html/public/static/reseller-public-link.js');

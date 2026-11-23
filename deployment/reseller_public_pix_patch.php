@@ -44,6 +44,22 @@ resellerPublicReplace($portal,
     "            self::out(ResellerPublicPix::myLink(\$db,\$account));",
     'authenticated seller public link retrieval');
 
+// Charge creation must honor the exact Super Admin policy-version that the
+// buyer accepted. Existing external seller API clients remain compatible;
+// only clients supplying a version are checked here.
+resellerPublicReplace($root.'/src/MerchantWallet.php',
+    <<<'PHP'
+        $quote=SellerFeeSplit::quote($db,'deposit',$gross);
+PHP,
+    <<<'PHP'
+        $quote=SellerFeeSplit::quote($db,'deposit',$gross);
+        if(array_key_exists('fee_version',$data) &&
+           (!is_int($data['fee_version']) ||
+            $data['fee_version']!==$quote['policy_version']))
+            self::fail('A taxa do Pix foi atualizada. Confira novamente o valor total.',409);
+PHP,
+    'public buyer-approved policy version enforced inside merchant create');
+
 $src=$root.'/public/static/';
 $public=file_get_contents($src.'public-pix.html');
 $js=file_get_contents($src.'public-pix.js');
