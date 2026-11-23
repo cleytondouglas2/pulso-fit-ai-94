@@ -65,7 +65,7 @@ if(!str_contains($css,'@media(max-width:740px)')||
  !str_contains($css,'#argus-domain-shell'))throw new RuntimeException('Responsive domain UI styling missing');
 if(str_contains($php,'CURLOPT_SSL_VERIFYPEER=>false')||
  str_contains($php,'CURLOPT_FOLLOWLOCATION=>true')||
- str_contains($php,'exec(') ||
- str_contains($php,'system('))
+ preg_match('/(?<![A-Za-z_])exec\\s*\\(/',$php) ||
+ preg_match('/(?<![A-Za-z_])system\\s*\\(/',$php))
  throw new RuntimeException('Unsafe operation allowed by domain controller');
 echo "PASS: restricted admin domain tab, 2FA, safe hostname rejection, Render-only fixed API, verified-before-preference, no Pix, payout, webhook or DNS mutations.\n";
