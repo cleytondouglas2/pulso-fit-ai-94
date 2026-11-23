@@ -26,12 +26,16 @@ if(!str_contains($admin,'AcquirerControl::handle($db,$method,$path,$actor,$paylo
  !str_contains($gateway,"require_once __DIR__ . '/AcquirerControl.php';"))
  throw new RuntimeException('Super Admin authentication and MFA route unavailable');
 foreach(['data-nav="acquirer"','id="page-acquirer"','id="argus-acq-cards"',
- 'acquirer-monitor.js?v=1','acquirer-monitor.css?v=1'] as $needle)
+ 'acquirer-monitor.js?v=2','acquirer-editor.js?v=2','acquirer-monitor.css?v=1'] as $needle)
  if(!str_contains($html,$needle))throw new RuntimeException('Admin monitor missing '.$needle);
+$editor=(string)file_get_contents($root.'/public/static/acquirer-editor.js');
+if(!str_contains($editor,"/api/admin/acquirer/credentials")||
+ !str_contains($editor,"/api/admin/acquirer/activate"))
+ throw new RuntimeException('Authenticated credential edit workflow missing');
 if(!str_contains($script,"/api/admin/acquirer/status")||
  !str_contains($script,"/api/admin/acquirer/probe"))
  throw new RuntimeException('Read-only provider monitoring unconnected');
-if(!str_contains($html,'id="argus-acq-save" disabled')||
+if(!str_contains($html,'id="argus-acq-save"')||
  !str_contains($html,'id="argus-acq-activate" disabled'))
  throw new RuntimeException('Premature credential activation in browser');
 foreach(['TraditionalQuickPix.php','MerchantWallet.php','ResellerPublicPix.php'] as $file){
