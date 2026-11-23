@@ -1210,3 +1210,19 @@ RUN php -l /tmp/install_premium_patch.php \
  && php -l /var/www/html/tests/install_premium_test.php \
  && php /var/www/html/tests/install_premium_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Standalone installation landing page v4; Chromium-rendered at 320, 393 and
+# 1360px. Critical flex/layout styles are inline as an explicit Safari fallback.
+# Replaces previous install-premium markup only after all legacy page patches.
+# No payment, identity, notification transport, or ledger modifications.
+COPY deployment/argus-install-v4.html.gz /tmp/argus-install-v4.html.gz
+RUN gzip -t /tmp/argus-install-v4.html.gz \
+ && gzip -cd /tmp/argus-install-v4.html.gz > /var/www/html/public/static/argus-install-v4.html
+COPY deployment/argus_install_v4_patch.php /tmp/argus_install_v4_patch.php
+COPY deployment/argus_install_v4_test.php /var/www/html/tests/argus_install_v4_test.php
+RUN php -l /tmp/argus_install_v4_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_install_v4_patch.php \
+ && php -l /var/www/html/tests/argus_install_v4_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_install_v4_test.php \
+ && php /var/www/html/tests/security_regression_test.php
