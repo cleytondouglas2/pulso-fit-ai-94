@@ -1231,7 +1231,7 @@ RUN php -l /tmp/argus_install_v4_patch.php \
 # Operations preflight v2: only changes the authenticated Super Admin report.
 # No charge, transfer, merchant ledger or financial authorisation changes.
 COPY deployment/finance-operations.js /var/www/html/public/static/finance-operations.js
-COPY deployment/FinanceOperations.php /var/www/html/src/FinanceOperations.php
+# Preserve existing FinancialControl heartbeat in FinanceOperations.php.
 COPY deployment/finance-preflight.css /var/www/html/public/static/finance-preflight.css
 COPY deployment/finance_preflight_patch.php /tmp/finance_preflight_patch.php
 COPY deployment/finance_preflight_test.php /var/www/html/tests/finance_preflight_test.php

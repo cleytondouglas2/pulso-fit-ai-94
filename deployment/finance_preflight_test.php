@@ -17,6 +17,8 @@ foreach([
  'WITHDRAW_CREATE','setting.database_shared===true'
 ] as $needle)
  if(!str_contains($js,$needle))throw new RuntimeException('Preflight JS missing '.$needle);
+if(!str_contains($php,'FinancialControl::heartbeatStatus($db)'))
+ throw new RuntimeException('Financial reconciliation heartbeat patch must not be overwritten');
 if(!str_contains($php,"'database_shared'=>filter_var("))
  throw new RuntimeException('No safe shared-storage signal');
 if(!str_contains($css,'#argus-finance-preflight'))
