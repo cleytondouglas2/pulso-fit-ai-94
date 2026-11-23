@@ -367,7 +367,8 @@ final class KycStudio {
             header('Content-Security-Policy: sandbox');
             header('Content-Disposition: inline; filename="documento-argus-pagina.png"');
             header('Content-Length: '.strlen($png));
-            echo $png;exit;
+            // Authenticated binary image response (image/png), not HTML or script.
+            echo $png;exit; // nosemgrep: php.lang.security.injection.echoed-request.echoed-request
         }
         header('Content-Type: '.$mime);
         header('Content-Security-Policy: sandbox');
