@@ -156,7 +156,7 @@ try{
     throw new RuntimeException('Admin commerce overview not protected');
  foreach(["nav('commerce')","page('commerce'","commerce:'Checkout Studio'"] as $t)
   if(!str_contains($nav,$t))throw new RuntimeException('Reseller commerce SPA missing: '.$t);
- foreach(['commerce-suite.js?v=20261123-2','commerce-suite.css?v=20261123-2'] as $t)
+ foreach(['commerce-suite.js?v=20261123-3','commerce-suite.css?v=20261123-3'] as $t)
   if(!str_contains($ui,$t)||!str_contains($admin,$t))throw new RuntimeException('Commerce UI assets missing');
  if(!str_contains($merchantUi,'if(!booted)setup()')||
     !str_contains($merchantUi,'data-com-delete')||
