@@ -92,6 +92,9 @@ try{
  $ui=(string)file_get_contents('/var/www/html/public/static/client.html');
  $admin=(string)file_get_contents('/var/www/html/public/static/admin.html');
  $publicUi=(string)file_get_contents('/var/www/html/public/static/commerce-public.js');
+ $merchantUi=(string)file_get_contents('/var/www/html/public/static/commerce-suite.js');
+ $statusUi=(string)file_get_contents('/var/www/html/public/static/commerce-status.js');
+ $openApi=json_decode((string)file_get_contents('/var/www/html/public/static/commerce-openapi.json'),true,512,JSON_THROW_ON_ERROR);
  foreach([
   "require_once __DIR__ . '/CommerceSuite.php'",
   "self::htmlFile('commerce-public.html')",
@@ -106,6 +109,11 @@ try{
   if(!str_contains($nav,$t))throw new RuntimeException('Reseller commerce SPA missing: '.$t);
  foreach(['commerce-suite.js?v=20261123-1','commerce-suite.css?v=20261123-1'] as $t)
   if(!str_contains($ui,$t)||!str_contains($admin,$t))throw new RuntimeException('Commerce UI assets missing');
+ if(!str_contains($merchantUi,'if(!booted)setup()')||
+    !str_contains($statusUi,"fetch('/readyz'")||
+    !str_contains($g,"self::htmlFile('commerce-status.html')")||
+    ($openApi['openapi']??null)!=='3.1.0')
+    throw new RuntimeException('Post-login async shell, safe status or developer API docs missing');
  if(str_contains($publicUi,'innerHTML=')||str_contains($publicUi,'POST')||
     str_contains($publicUi,'pix_copy_paste'))
     throw new RuntimeException('Public product page must never issue money or inject HTML');
