@@ -3,31 +3,14 @@ declare(strict_types=1);
 /**
  * Seller public Pix exact readiness contract:
  * - Supports both audited PF and PJ wallets via PfFinancialApproval::authorized.
- * - Uses same PSP credential fallback as the verified administrative Pix and
- *   the same custody gating as the seller wallet.
+ * - Keeps merchant PSP credentials isolated from administrative Finance QR,
+ *   and uses the same custody gating as the seller wallet.
  * - The UI displays an actionable ARGUS-only availability status rather than
  *   a permanently disabled unexplained button.
  * - Does NOT turn on unhomologated custody, modify money or perform real Pix.
  */
 $dir='/var/www/html/public/static/';
-$wallet='/var/www/html/src/MerchantWallet.php';
-$source=file_get_contents($wallet);
-if(!is_string($source))throw new RuntimeException('Missing MerchantWallet');
-$old=<<<'PHP'
-        $id=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID'));
-        $secret=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET'));
-PHP;
-$new=<<<'PHP'
-        // Match the existing traditional/admin Pix credential precedence.
-        // Only server environment variables are read; no seller can supply
-        // provider credentials through any public API.
-        $id=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
-        $secret=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
-PHP;
-if(substr_count($source,$old)!==1)
- throw new RuntimeException('Merchant wallet PSP credential anchor changed');
-if(file_put_contents($wallet,str_replace($old,$new,$source))===false)
- throw new RuntimeException('Merchant wallet PSP credential fallback failed');
+// Keep MerchantWallet PSP keys unchanged and explicitly separate from Finance QR/admin.
 $jsPath=$dir.'reseller-public-pix.js';
 $js=file_get_contents($jsPath);
 if(!is_string($js))throw new RuntimeException('Missing generated reseller checkout JS');
@@ -89,4 +72,4 @@ $html=str_replace('reseller-public-pix.js?v=20261123-1',
  'reseller-public-pix.js?v=20261123-ready-pf-2',$html);
 if(file_put_contents($htmlPath,$html)===false)
  throw new RuntimeException('Failed to invalidate seller checkout JS cache');
-echo "PASS: seller public Pix reuses approved CPF and CNPJ wallet authorization, real custody/PSP guards, current quote availability and fresh Safari JS. No Pix created.\n";
+echo "PASS: seller public Pix reuses approved CPF and CNPJ wallet authorization, isolated custody/PSP guards, current quote availability and fresh Safari JS. No Pix created.\n";

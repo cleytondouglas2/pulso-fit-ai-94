@@ -24,10 +24,10 @@ foreach($keys as $k)$old[$k]=getenv($k);
 putenv('ARGUS_MERCHANT_UNIT_TEST=local-sqlite-only');
 putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=yes');
 putenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED=yes');
-putenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID');
-putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET');
-putenv('ARGUS_FINANCE_QR_CLIENT_ID=pk_'.str_repeat('a',15));
-putenv('ARGUS_FINANCE_QR_CLIENT_SECRET=sk_'.str_repeat('b',35));
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID=pk_'.str_repeat('a',15));
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET=sk_'.str_repeat('b',35));
+putenv('ARGUS_FINANCE_QR_CLIENT_ID=pk_'.str_repeat('c',15));
+putenv('ARGUS_FINANCE_QR_CLIENT_SECRET=sk_'.str_repeat('d',35));
 $check=new ReflectionMethod(PublicPix::class,'readiness');
 $now=DB::stamp();
 $accounts=[];
@@ -79,10 +79,14 @@ $bad=$check->invoke(null,$db,$pf);
 if($bad['can_generate']!==false||$bad['availability_code']!=='platform_not_ready')
  throw new RuntimeException('Unhomologated custody must remain blocked');
 putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=yes');
-putenv('ARGUS_FINANCE_QR_CLIENT_SECRET');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET');
 $bad=$check->invoke(null,$db,$pf);
 if($bad['can_generate']!==false||$bad['availability_code']!=='platform_not_ready')
- throw new RuntimeException('Missing PSP credentials must not enable customer Pix');
+ throw new RuntimeException('Admin Finance QR credentials must not enable reseller Pix when merchant PSP credentials are missing');
+putenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET=sk_'.str_repeat('b',35));
+$ok=$check->invoke(null,$db,$pf);
+if($ok['can_generate']!==true||$ok['availability_code']!=='ready')
+ throw new RuntimeException('Restoring seller-only PSP credentials must restore approved PF checkout');
 $backend=(string)file_get_contents('/var/www/html/src/MerchantWallet.php');
 $public=(string)file_get_contents('/var/www/html/src/ResellerPublicPix.php');
 $ui=(string)file_get_contents('/var/www/html/public/static/reseller-public-pix.js');
@@ -92,19 +96,18 @@ foreach([
  "KycStudio::identityApproved(\$db",
  "ARGUS_MERCHANT_CUSTODY_ENABLED",
  "ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED",
- "ARGUS_FINANCE_QR_CLIENT_ID",
- "ARGUS_FINANCE_QR_CLIENT_SECRET",
- "'availability_code'=>'ready'",
- "'can_generate'=>self::accountReady(\$db,\$account)"
+ "ARGUS_TRADITIONAL_PIX_CLIENT_ID",
+ "ARGUS_TRADITIONAL_PIX_CLIENT_SECRET",
+ "'availability_code'=>'ready'"
 ] as $token){
  if($token==="'can_generate'=>self::accountReady(\$db,\$account)")continue;
  if(!str_contains($public,$token))
   throw new RuntimeException('Public Pix readiness missing '.$token);
 }
-if(!str_contains($backend,"getenv('ARGUS_FINANCE_QR_CLIENT_ID')")||
-   !str_contains($backend,"getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')")||
+if(str_contains($backend,"getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')")||
+   str_contains($backend,"getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')")||
    !str_contains($backend,"PfFinancialApproval::authorized(\$db,\$account)"))
- throw new RuntimeException('Backend Pix PSP fallback or CPF wallet authorization diverges');
+ throw new RuntimeException('Admin PSP credential fallback leaked into seller wallet or CPF wallet authorization missing');
 foreach([
  'resellerReady=canGenerate',
  'data.availability_message',
@@ -119,4 +122,4 @@ if(preg_match('/Mistic[\s_-]*Pay/iu',$ui.$html))
 foreach($old as $key=>$value){
  if($value===false)putenv($key);else putenv($key.'='.$value);
 }
-echo "PASS: approved PF and PJ public Pix enabled, real custody KYC/PSP and anti-tamper guards remain, missing infra stays blocked with clear ARGUS message, current quote overrides stale state; no real Pix.\n";
+echo "PASS: approved PF and PJ public Pix enabled only with merchant credentials, real custody KYC/PSP isolation and anti-tamper guards remain, missing infra stays blocked with clear ARGUS message, current quote overrides stale state; no real Pix.\n";

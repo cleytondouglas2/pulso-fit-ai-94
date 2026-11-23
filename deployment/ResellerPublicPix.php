@@ -137,11 +137,11 @@ final class ResellerPublicPix {
            getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')!=='yes'||
            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')!=='yes')
             return $fail('platform_not_ready','Recebimentos Pix temporariamente indisponíveis na ARGUS Pay. O administrador precisa concluir a habilitação da operação.');
-        // Traditional admin Pix supports the FINANCE_QR pair as fallback; the
-        // seller wallet now follows that exact precedence too. No keys ever
-        // leave the server or appear in this endpoint.
-        $id=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
-        $secret=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
+        // Revendedor uses ONLY merchant-custody PSP credentials. Never
+        // inherit the Finance QR/admin pair, which has a separate scope.
+        // No keys leave the server or appear in these public responses.
+        $id=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID'));
+        $secret=trim((string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET'));
         if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$id)||
            !preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$secret)||
            !function_exists('curl_init')&&!$offline)
