@@ -192,6 +192,14 @@ async function sellerLoad(){
 function sellerHome(){
  if(!loggedSeller())return null;
  const page=E('argus-reseller-page-overview');if(!page)return null;
+ if(!E('argus-reseller-page-awards')){
+  const section=document.createElement('section');
+  section.id='argus-reseller-page-awards';section.className='argus-reseller-page';
+  section.dataset.resellerPage='awards';section.hidden=true;
+  section.innerHTML='<header class="argus-reseller-page-intro"><h2 tabindex="-1">Ranking e placas</h2><p>Conquistas com faturamento confirmado e metas reais.</p></header>'+ 
+  '<div id="argus-awards-seller" class="argus-awards"><p>Consultando conquistas reais…</p></div>';
+  page.insertAdjacentElement('afterend',section);
+ }
  let host=E('argus-awards-seller-home');
  if(!host){host=document.createElement('section');host.id='argus-awards-seller-home';
  host.className='argus-awards argus-aw-home';page.appendChild(host);}
