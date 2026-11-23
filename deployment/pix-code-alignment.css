@@ -1,0 +1,89 @@
+/* Argus Pay – compact one-line Pix code with aligned copy control.
+   Scoped to seller and superadmin receipts; never affects payment behavior. */
+#seller-pix-dialog #seller-active-pix .seller-pix-code-row{
+ display:flex!important;flex-direction:row!important;align-items:center!important;
+ justify-content:stretch!important;gap:10px!important;
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ margin:8px 0 0!important;text-align:left!important;
+}
+#seller-pix-dialog #seller-active-pix .seller-pix-code-label{
+ display:flex!important;flex:1 1 0!important;flex-direction:column!important;
+ min-width:0!important;max-width:100%!important;gap:8px!important;
+ color:#bec5d0!important;font-size:12px!important;text-align:left!important;
+}
+#seller-pix-dialog #seller-active-pix .seller-pix-code-single{
+ appearance:none!important;-webkit-appearance:none!important;
+ box-sizing:border-box!important;display:block!important;
+ flex:1 1 auto!important;width:100%!important;min-width:0!important;
+ max-width:100%!important;height:54px!important;min-height:54px!important;
+ max-height:54px!important;padding:0 14px!important;
+ border:1px solid #605c55!important;border-radius:13px!important;
+ background:#12161d!important;color:#f8f3e9!important;
+ font:500 16px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+ overflow-wrap:normal!important;word-break:normal!important;
+ box-shadow:none!important;
+}
+#seller-pix-dialog #seller-active-pix .seller-pix-copy-icon{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 54px!important;width:54px!important;min-width:54px!important;
+ height:54px!important;min-height:54px!important;max-height:54px!important;
+ margin:0!important;padding:0!important;border-radius:13px!important;
+ border:1px solid #f0c478!important;
+ background:linear-gradient(140deg,#f6d18e,#c89953)!important;
+ color:#1e1b16!important;cursor:pointer!important;
+ box-shadow:0 7px 15px rgba(0,0,0,.25)!important;
+}
+#seller-pix-dialog #seller-active-pix .seller-pix-copy-icon svg{
+ width:23px!important;height:23px!important;flex:none!important;
+}
+#seller-pix-dialog #seller-active-pix .seller-pix-code-helper{
+ display:block!important;text-align:left!important;width:100%!important;
+ color:#bac2cb!important;font-size:11px!important;line-height:1.5!important;
+ margin:0 0 5px!important;overflow-wrap:normal!important;
+}
+.charge-result #argus-pix-code-title{
+ display:block!important;color:#b8c0ca!important;font-size:12px!important;
+ font-weight:500!important;line-height:1.45!important;margin:8px 0 7px!important;
+ text-align:left!important;
+}
+.charge-result .argus-pix-receipt .argus-pix-code-row{
+ display:flex!important;flex-direction:row!important;align-items:center!important;
+ justify-content:stretch!important;gap:10px!important;
+ margin:0 0 6px!important;min-height:54px!important;
+ width:100%!important;max-width:100%!important;
+}
+.charge-result .argus-pix-receipt .argus-pix-code-row>.argus-pix-code-label{
+ flex:1 1 0!important;min-width:0!important;max-width:100%!important;
+ align-self:center!important;display:flex!important;gap:0!important;
+ margin:0!important;padding:0!important;
+}
+.charge-result .argus-pix-receipt .argus-pix-code-row .argus-pix-copy-icon{
+ align-self:center!important;margin:0!important;
+ flex:0 0 54px!important;width:54px!important;min-width:54px!important;
+ height:54px!important;min-height:54px!important;max-height:54px!important;
+}
+.charge-result .argus-pix-receipt #argus-pix-code-helper{
+ display:block!important;width:100%!important;text-align:left!important;
+ font-size:11px!important;line-height:1.5!important;margin:5px 0 10px!important;
+ color:#bac2ca!important;
+}
+@media(max-width:430px){
+ #seller-pix-dialog #seller-active-pix .seller-pix-code-row{gap:8px!important}
+ #seller-pix-dialog #seller-active-pix .seller-pix-copy-icon{
+  flex-basis:50px!important;min-width:50px!important;width:50px!important;
+  height:52px!important;min-height:52px!important;max-height:52px!important;
+ }
+ #seller-pix-dialog #seller-active-pix .seller-pix-code-single{
+  height:52px!important;min-height:52px!important;max-height:52px!important;
+  padding:0 12px!important;font-size:16px!important;
+ }
+ .charge-result .argus-pix-receipt .argus-pix-code-row{gap:8px!important;min-height:52px!important}
+ .charge-result .argus-pix-receipt .argus-pix-code-row .argus-pix-copy-icon{
+  flex-basis:50px!important;width:50px!important;min-width:50px!important;
+  height:52px!important;min-height:52px!important;max-height:52px!important;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ #seller-pix-dialog #seller-active-pix .seller-pix-copy-icon{transition:none!important}
+}
