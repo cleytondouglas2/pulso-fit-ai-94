@@ -80,7 +80,7 @@ final class ArgusAI
                 $alerts[]=['level'=>'attention','code'=>'amount','title'=>'Valor fora do padrão','message'=>'Um recebimento recente está acima do padrão histórico. Verifique os registros.'];break;
             }}
         }
-        return ['period'=>'30 dias (até 400 entradas e 200 saídas)','received_cents'=>$total['received'],
+        return ['period'=>'Amostra fornecida ao analisador local','received_cents'=>$total['received'],
             'sent_cents'=>$total['sent'],'pending_count'=>$total['pending'],'failed_count'=>$total['failed'],
             'paid_count'=>$total['paid_count'],'transaction_count'=>$total['transactions'],
             'today_received_cents'=>$total['today_received'],'last_7_days'=>$daily,'alerts'=>$alerts,
@@ -166,7 +166,7 @@ final class ArgusAI
         $start=microtime(true);
         foreach(['admin','portal'] as $type){
             $job='ai_'.$type;$cursor=ArgusGrowth::cursor($db,$job);
-            $sql=$type==='admin'?"SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' AND id>? ORDER BY id LIMIT 20":"SELECT id,merchant_id,status FROM argus_portal_accounts WHERE status='approved' AND merchant_id IS NOT NULL AND id>? ORDER BY id LIMIT 100";
+            $sql=$type==='admin'?"SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' AND id>? ORDER BY id LIMIT 20":"SELECT id,merchant_id,status FROM argus_portal_accounts WHERE status='approved' AND id>? ORDER BY id LIMIT 250";
             $actors=$db->all($sql,[$cursor]);if(!$actors){ArgusGrowth::saveCursor($db,$job,'');continue;}
             $slice=microtime(true);
             foreach($actors as $actor){

@@ -42,14 +42,21 @@ final class ArgusGrowth {
             revoked INTEGER NOT NULL DEFAULT 0, created_at VARCHAR(32) NOT NULL)");
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_idem(record_id VARCHAR(80) PRIMARY KEY,request_hash VARCHAR(64) NOT NULL)");
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_cursor(job VARCHAR(40) PRIMARY KEY,position VARCHAR(160) NOT NULL)");
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_mutex(lock_key VARCHAR(64) PRIMARY KEY)");
         self::index($db,'argus_growth_records','argus_growth_owner_kind_idx','audience,owner_id,kind,created_at,id');
-        self::index($db,'argus_growth_records','argus_growth_inbox_idx','audience,kind,updated_at,id');
+        self::index($db,'argus_growth_records','argus_growth_inbox_created_idx','audience,created_at,id,kind');
         self::index($db,'argus_growth_records','argus_growth_flow_idx','kind,state,audience,owner_id');
         self::index($db,'argus_growth_messages','argus_growth_message_idx','record_id,owner_id,created_at,id');
         self::index($db,'argus_growth_verify','argus_growth_verify_owner_idx','audience,owner_id,operation_id');
         self::index($db,'argus_growth_verify','argus_growth_verify_exp_idx','expires_at');
         self::index($db,'argus_growth_events','argus_growth_event_idx','record_id,created_at');
         self::$installed[$key]=$db->pdo();
+    }
+    /** Transactional mutex, independent of financial tables. */
+    private static function mutex(Database $db,string $key):void{
+        $key=hash('sha256',$key);
+        if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_mutex(lock_key) VALUES (?) ON DUPLICATE KEY UPDATE lock_key=VALUES(lock_key)',[$key]);
+        else $db->run('INSERT INTO argus_growth_mutex(lock_key) VALUES (?) ON CONFLICT(lock_key) DO UPDATE SET lock_key=excluded.lock_key',[$key]);
     }
     public static function cursor(Database $db,string $job):string{
         $r=$db->one('SELECT position FROM argus_growth_cursor WHERE job=?',[$job]);return (string)($r['position']??'');
@@ -65,7 +72,8 @@ final class ArgusGrowth {
         $v=$b[$k]??'';
         if(!is_string($v))self::fail('Campo inválido: '.$k);
         $v=trim($v);
-        if(($required&&$v==='')||mb_strlen($v)>$max)self::fail('Campo inválido: '.$k);
+        if(($required&&$v==='')||!mb_check_encoding($v,'UTF-8')||mb_strlen($v)>$max||preg_match('/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/',$v))self::fail('Campo inválido: '.$k);
+        if(in_array($k,['title','note','message'],true)&&preg_match('/(?:bearer\s+\S+|(?:senha|password|secret|token|api[_ ]?key|chave secreta|cvv|cvc|pin)\s*[:=]\s*\S+|(?:\d[\s.\-\/()+]*){11,19}|(?:\+?55[\s.-]*)?\(?\d{2}\)?[\s.-]*9?\d{4}[\s.-]*\d{4})/iu',$v))self::fail('Não envie senhas, cartões, documentos, telefones ou credenciais.');
         // Store references, labels and notes, not credentials or full sensitive identifiers.
         if(preg_match('/(?:ag[ps]_live_[a-f0-9]{12,}|gsk_[A-Za-z0-9_-]{10,}|(?:pk|sk)_[A-Za-z0-9_-]{12,}|\b\d{11,}\b|\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b|[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i',$v))
             self::fail('Não inclua documentos completos, senhas ou chaves.');
@@ -129,6 +137,14 @@ final class ArgusGrowth {
         if((int)$n['n']>=2000)self::fail('Limite de registros deste módulo atingido.',409);
         $pdo=$db->pdo();$pdo->beginTransaction();
         try{
+            self::mutex($db,'record-limit:'.$scope.':'.$owner.':'.$kind);
+            $again=$db->one('SELECT r.id,i.request_hash FROM argus_growth_records r LEFT JOIN argus_growth_idem i ON i.record_id=r.id WHERE r.id=? AND r.audience=? AND r.owner_id=?',[$id,$scope,$owner]);
+            if($again){
+                if(!$again['request_hash']||!hash_equals((string)$again['request_hash'],$hash))self::fail('Identificador já utilizado.',409);
+                $pdo->commit();return ['id'=>$id,'created'=>false];
+            }
+            $count=$db->one('SELECT COUNT(*) AS n FROM argus_growth_records WHERE audience=? AND owner_id=? AND kind=?',[$scope,$owner,$kind]);
+            if((int)$count['n']>=2000)self::fail('Limite de registros deste módulo atingido.',409);
             $now=Database::stamp();
             $db->run('INSERT INTO argus_growth_records(id,audience,owner_id,kind,payload,state,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',[$id,$scope,$owner,$kind,$payload,'open',$now,$now]);
             $db->run('INSERT INTO argus_growth_idem(record_id,request_hash) VALUES (?,?)',[$id,$hash]);
@@ -244,16 +260,16 @@ final class ArgusGrowth {
         $args=[];$filter='';
         if($cursor!==null&&$cursor!==''){
             if(!preg_match('/^agr_[a-f0-9]{32}$/D',$cursor))self::fail('Cursor inválido.');
-            $row=$db->one("SELECT updated_at,id FROM argus_growth_records WHERE id=? AND audience='portal' AND kind IN ('support','dispute')",[$cursor]);
+            $row=$db->one("SELECT created_at,id FROM argus_growth_records WHERE id=? AND audience='portal' AND kind IN ('support','dispute')",[$cursor]);
             if(!$row)self::fail('Página não encontrada.',404);
-            $filter=' AND (updated_at<? OR (updated_at=? AND id<?))';$args=[$row['updated_at'],$row['updated_at'],$row['id']];
+            $filter=' AND (created_at<? OR (created_at=? AND id<?))';$args=[$row['created_at'],$row['created_at'],$row['id']];
         }
-        $rows=$db->all("SELECT id,owner_id,kind,payload,state,updated_at FROM argus_growth_records WHERE audience='portal' AND kind IN ('support','dispute')".$filter." ORDER BY updated_at DESC,id DESC LIMIT 101",$args);
+        $rows=$db->all("SELECT id,owner_id,kind,payload,state,created_at,updated_at FROM argus_growth_records WHERE audience='portal' AND kind IN ('support','dispute')".$filter." ORDER BY created_at DESC,id DESC LIMIT 101",$args);
         $more=count($rows)>100;$rows=array_slice($rows,0,100);
         foreach($rows as &$r){$r['data']=json_decode($r['payload'],true,16,JSON_THROW_ON_ERROR);unset($r['payload'],$r['owner_id']);}unset($r);
         return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
-    public static function thread(Database $db,string $scope,string $owner,string $id,?string $message=null):array{
+    public static function thread(Database $db,string $scope,string $owner,string $id,?string $message=null,?string $nonce=null):array{
         $args=[$id];$filter='';
         if($scope==='portal'){$filter=' AND owner_id=?';$args[]=$owner;}
         $row=$db->one("SELECT id,owner_id,state FROM argus_growth_records WHERE id=? AND audience='portal' AND kind IN ('support','dispute')".$filter,$args);
@@ -262,6 +278,8 @@ final class ArgusGrowth {
         if($message!==null){
             if($row['state']!=='open')self::fail('Chamado arquivado.',409);
             $message=self::str(['message'=>$message],'message',1000);
+            if($nonce!==null&&!preg_match('/^[a-f0-9-]{32,36}$/Di',$nonce))self::fail('Identificador de mensagem inválido.');
+            $messageId='agm_'.($nonce===null?bin2hex(random_bytes(16)):substr(hash('sha256',$scope.':'.$owner.':'.$id.':'.$nonce),0,32));
             $n=$db->one('SELECT COUNT(*) AS n FROM argus_growth_messages WHERE record_id=? AND owner_id=?',[$id,$seller]);
             if((int)$n['n']>=200)self::fail('Limite de mensagens atingido.',409);
             $pdo=$db->pdo();$pdo->beginTransaction();
@@ -269,10 +287,15 @@ final class ArgusGrowth {
                 $db->run('UPDATE argus_growth_records SET updated_at=updated_at WHERE id=? AND owner_id=?',[$id,$seller]);
                 $fresh=$db->one("SELECT state FROM argus_growth_records WHERE id=? AND owner_id=? AND audience='portal'",[$id,$seller]);
                 if(!$fresh||$fresh['state']!=='open')self::fail('Chamado arquivado.',409);
+                $existing=$db->one('SELECT body FROM argus_growth_messages WHERE id=? AND record_id=? AND owner_id=?',[$messageId,$id,$seller]);
+                if($existing){
+                    if(!hash_equals((string)$existing['body'],$message))self::fail('Identificador de mensagem já utilizado.',409);
+                    $pdo->commit();return self::thread($db,$scope,$owner,$id);
+                }
                 $count=$db->one('SELECT COUNT(*) AS n FROM argus_growth_messages WHERE record_id=? AND owner_id=?',[$id,$seller]);
                 if((int)$count['n']>=200)self::fail('Limite de mensagens atingido.',409);
                 $db->run('INSERT INTO argus_growth_messages(id,record_id,owner_id,sender,body,created_at) VALUES (?,?,?,?,?,?)',
-                    ['agm_'.bin2hex(random_bytes(16)),$id,$seller,$scope,$message,Database::stamp()]);
+                    [$messageId,$id,$seller,$scope,$message,Database::stamp()]);
                 $db->run("UPDATE argus_growth_records SET updated_at=? WHERE id=? AND audience='portal' AND owner_id=?",[Database::stamp(),$id,$seller]);
                 self::event($db,$id,'portal',$seller,$owner,'message_'.$scope);$pdo->commit();
             }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
@@ -355,16 +378,27 @@ final class ArgusGrowth {
         $r=$scope==='admin'?TransactionReceipt::admin($db,$owner,$id,$kind):TransactionReceipt::seller($db,$owner,$id);
         if(!$r['confirmed']||$r['kind']!==$kind)self::fail('Somente comprovantes confirmados podem ser compartilhados.',409);
         $token=bin2hex(random_bytes(32));$now=Database::stamp();$expires=gmdate('Y-m-d H:i:s',time()+30*86400);
-        // Bound each operation's active public tokens and prune old tokens for this owner.
-        $db->run('DELETE FROM argus_growth_verify WHERE audience=? AND owner_id=? AND (revoked=1 OR expires_at<?)',[$scope,$owner,gmdate('Y-m-d H:i:s')]);
-        $active=$db->one('SELECT COUNT(*) AS n FROM argus_growth_verify WHERE audience=? AND owner_id=? AND operation_id=? AND revoked=0',[$scope,$owner,$id]);
-        if((int)$active['n']>=10)self::fail('Revogue links antigos antes de criar novos.',409);
-        $db->run('INSERT INTO argus_growth_verify(token_hash,audience,owner_id,operation_id,kind,expires_at,revoked,created_at) VALUES (?,?,?,?,?,?,?,?)',
-          [hash('sha256',$token),$scope,$owner,$id,$kind,$expires,0,$now]);
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'verify:'.$scope.':'.$owner.':'.$id);
+            $db->run('DELETE FROM argus_growth_verify WHERE audience=? AND owner_id=? AND operation_id=? AND (revoked=1 OR expires_at<?)',[$scope,$owner,$id,gmdate('Y-m-d H:i:s')]);
+            $active=$db->one('SELECT COUNT(*) AS n FROM argus_growth_verify WHERE audience=? AND owner_id=? AND operation_id=? AND revoked=0',[$scope,$owner,$id]);
+            if((int)$active['n']>=10)self::fail('Revogue links antigos antes de criar novos.',409);
+            $db->run('INSERT INTO argus_growth_verify(token_hash,audience,owner_id,operation_id,kind,expires_at,revoked,created_at) VALUES (?,?,?,?,?,?,?,?)',
+              [hash('sha256',$token),$scope,$owner,$id,$kind,$expires,0,$now]);
+            $pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         return ['path'=>'/verify#'.$token,'expires_at'=>$expires,'financial_effect'=>false];
     }
     public static function revokeVerification(Database $db,string $scope,string $owner,string $id):array{
-        $db->run('UPDATE argus_growth_verify SET revoked=1 WHERE audience=? AND owner_id=? AND operation_id=?',[$scope,$owner,$id]);
+        if(!preg_match('/^[a-zA-Z0-9_-]{1,80}$/D',$id))self::fail('Operação inválida.');
+        $r=$db->one('SELECT token_hash FROM argus_growth_verify WHERE audience=? AND owner_id=? AND operation_id=? LIMIT 1',[$scope,$owner,$id]);
+        if(!$r)return ['ok'=>true];
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'verify:'.$scope.':'.$owner.':'.$id);
+            $db->run('UPDATE argus_growth_verify SET revoked=1 WHERE audience=? AND owner_id=? AND operation_id=?',[$scope,$owner,$id]);$pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         return ['ok'=>true];
     }
     public static function verify(Database $db,string $token):array{
@@ -395,7 +429,7 @@ final class ArgusGrowth {
         }
         if(preg_match('~^'.preg_quote($base,'~').'/thread/(agr_[a-f0-9]{32})$~D',$path,$m)){
             if($method==='GET')self::out(self::thread($db,$scope,$owner,$m[1]));
-            if($method==='POST')self::out(self::thread($db,$scope,$owner,$m[1],self::str($body,'message',1000)));
+            if($method==='POST')self::out(self::thread($db,$scope,$owner,$m[1],self::str($body,'message',1000),self::str($body,'nonce',36)));
         }
         if($method==='POST'&&$path===$base.'/match-invoice')self::out(self::invoiceMatch($db,$scope,$owner,self::str($body,'id',80),self::str($body,'operation_id',80)));
         if($method==='POST'&&$path===$base.'/verify'){

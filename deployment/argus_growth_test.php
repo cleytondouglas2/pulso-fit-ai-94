@@ -60,3 +60,17 @@ $due=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic overdue','note'=>''
 if(G::metrics($db,'admin',$a,$clock)['due_count']!==1)throw new RuntimeException('Unmatched overdue missing');
 try{G::create($db,'portal',$b,'support',['title'=>'Private document','note'=>'123.456.789-00','category'=>'technical','nonce'=>bin2hex(random_bytes(16))]);throw new RuntimeException('Formatted CPF accepted');}catch(ApiError $e){}
 echo "PASS: complete 405-payment aggregate, local time boundary, historical pending, worker cursor and formatted-document guard.\n";
+
+for($i=0;$i<10;$i++)G::verification($db,'admin',$a,'deposit',$id);
+try{G::verification($db,'admin',$a,'deposit',$id);throw new RuntimeException('Token cap exceeded');}catch(ApiError $e){}
+G::revokeVerification($db,'admin',$a,$id);
+$nonce=bin2hex(random_bytes(16));
+G::thread($db,'portal',$a,$ticket['id'],'Retry-safe message',$nonce);G::thread($db,'portal',$a,$ticket['id'],'Retry-safe message',$nonce);
+if(count(G::thread($db,'portal',$a,$ticket['id'])['messages'])!==3)throw new RuntimeException('Duplicate support message');
+try{G::thread($db,'portal',$a,$ticket['id'],'senha: example-secret');throw new RuntimeException('Sensitive support data accepted');}catch(ApiError $e){}
+for($i=0;$i<105;$i++)G::create($db,'portal',$b,'support',['title'=>'Ticket '.$i,'note'=>'Synthetic','category'=>'technical','nonce'=>bin2hex(random_bytes(16))]);
+$first=G::inbox($db);$cursor=$first['next_cursor'];if(!$cursor)throw new RuntimeException('Missing support cursor');
+$db->run('UPDATE argus_growth_records SET updated_at=? WHERE id=?',['2099-01-01 00:00:00',$cursor]);
+$next=G::inbox($db,$cursor);
+if(array_intersect(array_column($first['items'],'id'),array_column($next['items'],'id')))throw new RuntimeException('Unstable inbox pagination');
+echo "PASS: verification cap, message replay, sensitive text and immutable inbox cursor.\n";
