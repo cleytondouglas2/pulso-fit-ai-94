@@ -1265,3 +1265,16 @@ RUN php -l /tmp/argus_partial_refund_guard_patch.php \
  && php -l /var/www/html/tests/argus_partial_refund_guard_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_partial_refund_guard_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Non-financial guardrails: signed merchant webhook dead-delivery replay,
+# hidden public acquirer, and loopback-only trusted Render proxy for IP limits.
+COPY deployment/argus_nonmoney_security_patch.php /tmp/argus_nonmoney_security_patch.php
+COPY deployment/argus_nonmoney_security_test.php /var/www/html/tests/argus_nonmoney_security_test.php
+RUN a2enmod remoteip \
+ && apache2ctl configtest \
+ && php -l /tmp/argus_nonmoney_security_patch.php \
+ && php /tmp/argus_nonmoney_security_patch.php \
+ && php -l /var/www/html/tests/argus_nonmoney_security_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_nonmoney_security_test.php \
+ && php /var/www/html/tests/security_regression_test.php
