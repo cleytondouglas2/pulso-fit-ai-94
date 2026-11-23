@@ -582,13 +582,5 @@ sellerSplitReplace($root.'/src/FeePolicy.php',
     'Tabela de custos e precificação. Ainda não altera o valor de QR Code, o saque, o saldo ou o ledger de clientes.',
     'Para novas operações dos revendedores, a taxa de serviço debitada soma o custo MisticPay previsto e a parcela comercial ARGUS; o PSP cobra seus custos conforme o contrato. Operações existentes não mudam.',
     'accurate admin fee API notice');
-sellerSplitReplace($admin,
-    'Modo configuração e simulação:',
-    'Tabela vinculada às novas operações dos revendedores:',
-    'admin fee banner reflects live merchant pricing');
-sellerSplitReplace($admin,
-    'os valores não alteram transações, QR Codes, saques ou saldos existentes. A cobrança efetiva depende da integração ao fluxo de liquidação e da divulgação prévia das tarifas aos clientes.',
-    'novas cobranças e saques consultam esta versão antes de reservar o valor. Os dados financeiros das operações antigas permanecem imutáveis; a MisticPay retém/cobra seu custo conforme o contrato, sem Pix extra originado pelo ARGUS.',
-    'current fee user disclosure');
 
 echo "PASS: fee schedule drives new merchant Pix and payouts, immutable 50/50 split, provider provision, ARGUS-only earned journal, seller OTP quote version, no second PSP transfer\n";
