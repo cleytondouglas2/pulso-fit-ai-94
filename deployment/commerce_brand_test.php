@@ -67,7 +67,7 @@ try {
     $otherOffer=CommerceSuite::create($db,$other,$offer);
     CommerceSuite::action($db,$other,$otherOffer['id'],'publish');
     $otherPublic=CommerceSuite::show($db,substr($otherOffer['public_path'],3));
-    if(($otherPublic['logo_url']??'absent')!==null)
+    if(!array_key_exists('logo_url',$otherPublic)||$otherPublic['logo_url']!==null)
         throw new RuntimeException('One seller logo was exposed to another seller');
     foreach([
         ['image_data_url'=>'data:image/svg+xml;base64,'.base64_encode('<svg><script>alert(1)</script></svg>')],
