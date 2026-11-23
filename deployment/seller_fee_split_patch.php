@@ -52,7 +52,7 @@ sellerSplitReplace($root.'/src/PlatformFeeTreasury.php',
 PHP,
     <<<'PHP'
         $provider=SellerFeeSplit::providerCostSummary($db);
-        $legacy=$db->one("SELECT COUNT(*) AS n FROM argus_platform_fee_journal j
+        $legacy=$db->one("SELECT COUNT(*) AS n,COALESCE(SUM(j.amount_cents),0) AS pending_cents FROM argus_platform_fee_journal j
           WHERE NOT EXISTS (SELECT 1 FROM argus_seller_fee_snapshots s
             WHERE s.operation_id=j.operation_id AND s.account_id=j.seller_account_id)");
         return [
@@ -60,9 +60,50 @@ PHP,
           'split_fee_operations'=>$provider['split_fee_operations'],
           'provider_cost_mode'=>$provider['provider_cost_mode'],
           'legacy_unsplit_journal_events'=>(int)($legacy['n']??0),
+          'legacy_unallocated_cents'=>(int)($legacy['pending_cents']??0),
           'owner_email'=>self::OWNER,
 PHP,
     'provider cost separate from platform revenue');
+
+// Historical flat R$1 journal entries do not record how much belonged to
+// the provider. Quarantine these legacy entries from ARGUS recognized revenue
+// until a documented one-time allocation is audited; never reprice them using
+// today's settings or pretend all R$1 belonged to ARGUS.
+sellerSplitReplace($root.'/src/PlatformFeeTreasury.php',
+    <<<'PHP'
+           FROM argus_platform_fee_journal WHERE owner_email=?", [self::OWNER]);
+PHP,
+    <<<'PHP'
+           FROM argus_platform_fee_journal j WHERE owner_email=?
+             AND EXISTS (SELECT 1 FROM argus_seller_fee_snapshots s
+                WHERE s.operation_id=j.operation_id AND s.account_id=j.seller_account_id)",
+             [self::OWNER]);
+PHP,
+    'exclude unsplit legacy balances from recognized revenue');
+sellerSplitReplace($root.'/src/PlatformFeeTreasury.php',
+    <<<'PHP'
+          WHERE f.owner_email=?
+          GROUP BY f.seller_account_id,a.display_name,a.email
+PHP,
+    <<<'PHP'
+          WHERE f.owner_email=? AND EXISTS
+            (SELECT 1 FROM argus_seller_fee_snapshots s
+              WHERE s.operation_id=f.operation_id AND s.account_id=f.seller_account_id)
+          GROUP BY f.seller_account_id,a.display_name,a.email
+PHP,
+    'exclude unallocated legacy from seller revenue ranking');
+sellerSplitReplace($root.'/src/PlatformFeeTreasury.php',
+    <<<'PHP'
+           FROM argus_platform_fee_journal WHERE owner_email=?
+           ORDER BY created_at DESC,id DESC LIMIT 40',[self::OWNER]);
+PHP,
+    <<<'PHP'
+           FROM argus_platform_fee_journal j WHERE owner_email=?
+             AND EXISTS (SELECT 1 FROM argus_seller_fee_snapshots s
+                WHERE s.operation_id=j.operation_id AND s.account_id=j.seller_account_id)
+           ORDER BY created_at DESC,id DESC LIMIT 40',[self::OWNER]);
+PHP,
+    'only allocated merchant fees in administrator timeline');
 
 // Existing isolated merchant wallet is the same custody ledger; only NEW
 // operations get new prices. Their historical amounts never change.
@@ -307,6 +348,80 @@ JS,
 JS,
     'tie payout to confirmed fee version');
 
+// Revendedores also see the exact CURRENT deposit service fee before creating
+// a QR. The backend rejects stale fee_version, preventing hidden price changes
+// between the displayed preview and the payment request.
+sellerSplitReplace($wallet,
+    <<<'PHP'
+        $quote=SellerFeeSplit::quote($db,'deposit',$gross);
+        $id=self::uid('mwc');
+PHP,
+    <<<'PHP'
+        $quote=SellerFeeSplit::quote($db,'deposit',$gross);
+        if(array_key_exists('fee_version',$data)&&
+           (!is_int($data['fee_version'])||$data['fee_version']!==$quote['policy_version']))
+            self::fail('A tarifa do Pix mudou. Atualize a cotação antes de gerar o QR Code.',409);
+        $id=self::uid('mwc');
+PHP,
+    'validate optional Pix fee quote version');
+sellerSplitReplace($js,
+    <<<'JS'
+ E('seller-deposit-form').onsubmit=deposit;
+JS,
+    <<<'JS'
+ E('seller-deposit-form').onsubmit=deposit;
+ const depositInput=E('seller-deposit-form').elements.amount;
+ const depositFeeNode=document.createElement('small');
+ depositFeeNode.id='seller-deposit-fee-preview';
+ depositFeeNode.textContent='A taxa de serviço será calculada antes de gerar o Pix.';
+ depositInput.closest('label')?.after(depositFeeNode);
+ depositInput.addEventListener('input',updateDepositFeePreview);
+JS,
+    'live seller deposit fee preview');
+sellerSplitReplace($js,
+    <<<'JS'
+async function deposit(event){
+JS,
+    <<<'JS'
+let depositQuoteSequence=0;
+async function updateDepositFeePreview(){
+ const input=E('seller-deposit-form')?.elements.amount;
+ const host=E('seller-deposit-fee-preview');if(!input||!host)return;
+ const amount=cents(input.value),seq=++depositQuoteSequence;
+ if(amount===null||amount<100||amount>10000){
+  host.textContent='Informe o valor da cobrança para conferir a tarifa.';return;
+ }
+ host.textContent='Consultando a tarifa atual...';
+ try{
+  const response=await request('/api/portal/wallet/fee-quote?direction=deposit&amount_cents='+amount);
+  if(seq!==depositQuoteSequence)return;
+  const fee=response?.fee;
+  if(!fee||fee.gross_cents!==amount)throw new Error('Cotação inválida');
+  host.textContent='Taxa de serviço '+BRL(fee.total_fee_cents)+
+   ' · Valor líquido para sua carteira '+BRL(fee.net_cents);
+ }catch(_){if(seq===depositQuoteSequence)host.textContent='Tarifa indisponível; confira a configuração antes de gerar Pix.';}
+}
+async function deposit(event){
+JS,
+    'seller deposit live quote with out-of-order response protection');
+sellerSplitReplace($js,
+    <<<'JS'
+ try{
+  const selfPayer=!!E('seller-self-payer')?.checked;
+  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),idempotency_key:idem};
+JS,
+    <<<'JS'
+ try{
+  const fresh=await request('/api/portal/wallet/fee-quote?direction=deposit&amount_cents='+amount);
+  const fee=fresh?.fee;
+  if(!fee||fee.gross_cents!==amount||!Number.isInteger(fee.policy_version))
+   throw new Error('Tarifa de depósito indisponível; nenhum QR Code foi solicitado');
+  const selfPayer=!!E('seller-self-payer')?.checked;
+  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),
+   idempotency_key:idem,fee_version:fee.policy_version};
+JS,
+    'fresh Pix fee version before requesting real QR Code');
+
 // The independent AI-assisted seller payout uses the SAME server quote and
 // mandatory second factor; model text can never choose or change the fee.
 $chat=$root.'/public/static/chat-payout.js';
@@ -398,6 +513,7 @@ JS,
    ['Taxas dos saques pagos',cash(fees.withdrawal_fees_cents)],
    ['Custo MisticPay previsto',cash(fees.provider_cost_estimate_cents)],
    ['Operações com tarifa dividida',String(fees.split_fee_operations||0)],
+   ['Histórico antigo aguardando revisão',cash(fees.legacy_unallocated_cents)],
 JS,
     'admin distinct provider cost and platform revenue');
 sellerSplitReplace($panel,
@@ -450,8 +566,14 @@ foreach(['merchant-portal.js','chat-payout.js'] as $asset){
 if(file_put_contents($client,$clientHtml)===false)
     throw new RuntimeException('Client fee cache update failed');
 
+
 // Existing Fee Studio is the central source for merchant tariffs and PSP cost.
 $studio=$root.'/public/static/fee-studio.js';
+sellerSplitReplace($studio,
+    'Isso altera a configuração e o histórico, mas não desconta valores nem modifica transações.',
+    'Novos Pix e saques de revendedores usarão as tarifas atualizadas. Operações já criadas serão preservadas.',
+    'fee save consent accurately describes live merchant effects');
+
 sellerSplitReplace($studio,
     <<<'JS'
        '<div class="argus-fee-result-row emphasized"><span>Receita ARGUS estimada</span><strong>'+fmt(q.revenue)+'</strong></div>'+
