@@ -399,7 +399,7 @@ sellerSplitReplace($js,
     <<<'JS'
  try{
   const selfPayer=!!E('seller-self-payer')?.checked;
-  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),idempotency_key:idem};
+  const payment={amount_cents:amount,description,idempotency_key:idem};
 JS,
     <<<'JS'
  try{
@@ -408,8 +408,7 @@ JS,
   if(!fee||fee.gross_cents!==amount||!Number.isInteger(fee.policy_version))
    throw new Error('Tarifa de depósito indisponível; nenhum QR Code foi solicitado');
   const selfPayer=!!E('seller-self-payer')?.checked;
-  const payment={amount_cents:amount,description:String(v.get('description')||'').trim(),
-   idempotency_key:idem,fee_version:fee.policy_version};
+  const payment={amount_cents:amount,description,idempotency_key:idem,fee_version:fee.policy_version};
 JS,
     'fresh Pix fee version before requesting real QR Code');
 
