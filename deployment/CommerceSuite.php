@@ -148,13 +148,8 @@ final class CommerceSuite {
             self::fail('Essa página não está disponível.',404);
         $payment=['available'=>false,'public_path'=>null];
         try{
-            $link=ResellerPublicPix::myLink($db,['id'=>$row['owner'],
-                'display_name'=>$row['seller_name'],
-                'status'=>$row['account_status'],
-                'merchant_id'=>null]);
-            // We deliberately require downstream PSP readiness and account KYC.
-            // Never create a Pix here, and never expose the merchant/account identifier.
-            $payment=['available'=>false,'public_path'=>null];
+            // Use the existing seller checkout's *real* custody/KYC readiness.
+            // Never create a Pix or expose merchant/account identifiers here.
             $full=$db->one('SELECT * FROM argus_portal_accounts WHERE id=?',[$row['owner']]);
             if($full){
                 $live=ResellerPublicPix::myLink($db,$full);
