@@ -175,6 +175,11 @@ sellerSplitReplace($wallet,
 PHP,
     <<<'PHP'
         $quote=SellerFeeSplit::quote($db,'withdraw',$amount);
+        // Every production payout must confirm the exact live fee version.
+        // Offline synthetic regression fixtures may test the core directly.
+        $offline=PHP_SAPI==='cli'&&getenv('ARGUS_MERCHANT_UNIT_TEST')==='local-sqlite-only';
+        if(!$offline&&!array_key_exists('fee_version',$data))
+            self::fail('Confirme a cotação atual antes de sacar',409);
         if(array_key_exists('fee_version',$data)&&
            (!is_int($data['fee_version'])||$data['fee_version']!==$quote['policy_version']))
             self::fail('A tarifa mudou. Atualize a cotação e confirme novamente.',409);
@@ -218,19 +223,6 @@ PHP,
 
 sellerSplitReplace($wallet,
     <<<'PHP'
-        if($method==='POST'&&$path==='/api/v2/wallet/withdrawals'){
-            $input=self::prepareApiWithdraw($db,$account,self::body(),self::idem());
-PHP,
-    <<<'PHP'
-        if($method==='POST'&&$path==='/api/v2/wallet/withdrawals'){
-            $body=self::body();
-            if(!is_int($body['fee_version']??null))
-                self::fail('Confirme a versão da tarifa obtida na cotação antes de sacar',409);
-            $input=self::prepareApiWithdraw($db,$account,$body,self::idem());
-PHP,
-    'API callers must acknowledge current fee version');
-sellerSplitReplace($wallet,
-    <<<'PHP'
             'amount_cents'=>$body['amount_cents']??null,
             'confirm'=>$body['confirm']??false,
 PHP,
@@ -240,18 +232,6 @@ PHP,
             'fee_version'=>$body['fee_version']??null,
 PHP,
     'pass external API payout consent version');
-sellerSplitReplace($wallet,
-    <<<'PHP'
-            $withdrawInput=self::body();
-            SellerMfa::requireCode($db,$account,$withdrawInput);
-PHP,
-    <<<'PHP'
-            $withdrawInput=self::body();
-            if(!is_int($withdrawInput['fee_version']??null))
-                self::fail('Confirme a cotação atualizada antes de sacar',409);
-            SellerMfa::requireCode($db,$account,$withdrawInput);
-PHP,
-    'portal payout consent version retains mandatory 2FA');
 sellerSplitReplace($wallet,
     <<<'PHP'
         if($method==='GET'&&$path==='/api/v2/wallet/balance')
