@@ -49,9 +49,13 @@ final class CommerceSuite {
         $title=self::str($body,'title',3,100);
         $description=self::str($body,'description',5,600);
         $button=self::str($body,'call_to_action',3,70);
+        // Empty/omitted/null value means the payer chooses the Pix amount later.
+        // Persist as zero for backward-compatible NOT NULL SQLite/PGSQL schemas;
+        // never expose zero as a suggested sale price.
         $amount=$body['suggested_amount_cents']??null;
-        if(!is_int($amount)||$amount<100||$amount>9000)
-            self::fail('Valor sugerido de R$ 1,00 a R$ 90,00, em centavos.');
+        if($amount===null||$amount==='')$amount=0;
+        if(!is_int($amount)||($amount!==0&&($amount<100||$amount>9000)))
+            self::fail('O valor sugerido é opcional. Quando preenchido, use R$ 1,00 a R$ 90,00.');
         $image=$body['image_url']??'';
         if(!is_string($image)||strlen($image)>600)self::fail('Imagem inválida.');
         if($image!==''&&
@@ -77,11 +81,17 @@ final class CommerceSuite {
     }
     public static function mine(Database $db,string $owner):array {
         self::install($db);
-        return ['pages'=>$db->all('SELECT id,public_code,title,description,suggested_amount_cents,
+        $pages=$db->all("SELECT id,public_code,title,description,suggested_amount_cents,
             image_url,accent_color,call_to_action,status,expires_at,created_at,updated_at
-            FROM argus_commerce_pages WHERE account_id=?
-            ORDER BY created_at DESC LIMIT 40',[$owner]),
-            'note'=>'O valor da página é apenas uma sugestão comercial; o pagador confirma o valor e as taxas no checkout Pix existente.',
+            FROM argus_commerce_pages WHERE account_id=? AND status<>'deleted'
+            ORDER BY created_at DESC LIMIT 40",[$owner]);
+        foreach($pages as &$page){
+            $cents=(int)$page['suggested_amount_cents'];
+            $page['suggested_amount_cents']=$cents>0?$cents:null;
+        }
+        unset($page);
+        return ['pages'=>$pages,
+            'note'=>'O valor da página é opcional e apenas sugestivo. O pagador escolhe ou confirma o valor e as taxas no checkout Pix.',
             'pix_flow_unchanged'=>true];
     }
     public static function create(Database $db,string $owner,array $input):array {
@@ -124,19 +134,29 @@ final class CommerceSuite {
     }
     public static function action(Database $db,string $owner,string $id,string $action):array {
         $row=self::own($db,$owner,$id);
-        if(!in_array($action,['publish','archive'],true))self::fail('Ação inválida.',404);
+        if(!in_array($action,['publish','archive','delete'],true))
+            self::fail('Ação inválida.',404);
+        if($row['status']==='deleted')
+            self::fail('A página já foi excluída.',404);
         if($action==='publish'){
-            $account=$db->one('SELECT status,merchant_id FROM argus_portal_accounts WHERE id=?',[$owner]);
-            if(!$account||$account['status']!=='approved'||empty($account['merchant_id']))
-                self::fail('Sua conta precisa de aprovação antes de publicar ofertas financeiras.',403);
+            // Publishing a MARKETING page is independent of PSP/KYC activation.
+            // Public renderer only exposes checkout if merchant PSP readiness passes.
             if($row['expires_at']!==null&&$row['expires_at']<gmdate('Y-m-d'))
                 self::fail('A página está expirada. Ajuste a validade antes de publicar.',409);
+            $account=$db->one('SELECT status FROM argus_portal_accounts WHERE id=?',[$owner]);
+            if(!$account||in_array($account['status'],['suspended','rejected'],true))
+                self::fail('Sua conta está bloqueada para publicações.',403);
         }
-        $state=$action==='publish'?'published':'archived';
+        $state=match($action){'publish'=>'published','archive'=>'archived','delete'=>'deleted'};
+        // Soft deletion keeps a security/audit trace and invalidates the public URL.
+        // No financial objects, receipts, wallet balances or PSP charge rows change.
         $db->run('UPDATE argus_commerce_pages SET status=?,updated_at=? WHERE id=? AND account_id=?',
             [$state,Database::stamp(),$id,$owner]);
-        return ['ok'=>true,'status'=>$state,'message'=>$state==='published'?
-            'Página comercial publicada. A cobrança Pix continua protegida pelas verificações existentes.':'Página arquivada. O link público foi desativado.'];
+        return ['ok'=>true,'status'=>$state,'message'=>match($state){
+            'published'=>'Página comercial publicada. O Pix só estará disponível após liberação financeira.',
+            'archived'=>'Página arquivada. O link público foi desativado.',
+            'deleted'=>'Página excluída da sua lista e desativada. Histórico técnico preservado para auditoria.'
+        }];
     }
     public static function show(Database $db,string $code):array {
         if(!preg_match('/^[a-f0-9]{32}$/D',$code))self::fail('Página não encontrada.',404);
@@ -146,7 +166,8 @@ final class CommerceSuite {
             p.status,a.id AS owner,a.display_name AS seller_name,a.status AS account_status
             FROM argus_commerce_pages p JOIN argus_portal_accounts a ON a.id=p.account_id
             WHERE p.public_code=?",[$code]);
-        if(!$row||$row['status']!=='published'||$row['account_status']!=='approved'||
+        if(!$row||$row['status']!=='published'||
+           in_array($row['account_status'],['suspended','rejected'],true)||
            $row['expires_at']!==null&&$row['expires_at']<gmdate('Y-m-d'))
             self::fail('Essa página não está disponível.',404);
         $payment=['available'=>false,'public_path'=>null];
@@ -163,12 +184,14 @@ final class CommerceSuite {
         }catch(\Throwable){/* Fail closed if seller readiness cannot be proved. */}
         return [
             'title'=>$row['title'],'description'=>$row['description'],
-            'suggested_amount_cents'=>(int)$row['suggested_amount_cents'],
+            'suggested_amount_cents'=>(int)$row['suggested_amount_cents']>0?(int)$row['suggested_amount_cents']:null,
             'seller_name'=>$row['seller_name'],
             'image_url'=>$row['image_url'],'accent_color'=>$row['accent_color'],
             'call_to_action'=>$row['call_to_action'],'expires_at'=>$row['expires_at'],
             'checkout'=>$payment,
-            'price_note'=>'Valor sugerido. O valor real e as taxas são confirmados pelo pagador no checkout Pix da ARGUS Pay.',
+            'price_note'=>(int)$row['suggested_amount_cents']>0?
+                'Valor sugerido. O valor real e as taxas são confirmados pelo pagador no checkout Pix da ARGUS Pay.':
+                'Valor aberto: o pagador escolhe o valor e confirma as taxas no checkout Pix da ARGUS Pay.',
             'not_a_receipt'=>true
         ];
     }
@@ -197,7 +220,7 @@ final class CommerceSuite {
             SecurityShield::rate($db,'commerce_sandbox',$owner,24,60);
             self::out(self::sandbox($input));
         }
-        if(preg_match('~^/api/portal/commerce/pages/(cmp_[a-f0-9]{32})(?:/(publish|archive))?$~D',$path,$m)&&$method==='POST'){
+        if(preg_match('~^/api/portal/commerce/pages/(cmp_[a-f0-9]{32})(?:/(publish|archive|delete))?$~D',$path,$m)&&$method==='POST'){
             SecurityShield::rate($db,'commerce_edit',$owner,30,3600);
             self::out(!empty($m[2])?self::action($db,$owner,$m[1],$m[2]):self::edit($db,$owner,$m[1],$input));
         }
