@@ -1361,6 +1361,22 @@ RUN php -l /var/www/html/src/RevenueReport.php \
  && php /var/www/html/tests/argus_hardening_regression_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+
+# ARGUS Super Admin custom domains. Changes are additive and MFA protected.
+# No automatic redirects, DNS changes or Pix/webhook/callback replacements.
+COPY deployment/DomainControl.php /var/www/html/src/DomainControl.php
+COPY deployment/domain-admin.js deployment/domain-admin.css /var/www/html/public/static/
+COPY deployment/domain_admin_patch.php /tmp/domain_admin_patch.php
+COPY deployment/domain_admin_test.php /var/www/html/tests/domain_admin_test.php
+RUN php -l /var/www/html/src/DomainControl.php \
+ && php -l /tmp/domain_admin_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/domain_admin_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/domain_admin_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/domain_admin_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
