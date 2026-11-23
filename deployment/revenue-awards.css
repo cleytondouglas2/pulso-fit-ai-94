@@ -1,0 +1,117 @@
+/* ARGUS PAY: gold edition ranking and six revenue achievement plaques.
+   Scoped to .argus-awards; does not alter checkout, money or login components. */
+.argus-awards{--aw-gold:#edc36c;--aw-dark:#0b1422;--aw-panel:#111b2c;--aw-line:rgba(241,191,109,.24);color:#f9f5ec;font-family:inherit;padding:16px 4px 28px;max-width:100%;min-width:0}
+.argus-awards *{box-sizing:border-box}
+.argus-awards[hidden]{display:none!important}
+.argus-awards .argus-aw-heading{display:flex;align-items:end;justify-content:space-between;gap:15px;flex-wrap:wrap;margin:6px 0 24px;padding:0 4px}
+.argus-awards .argus-aw-heading h2{font-size:clamp(24px,3vw,36px);line-height:1.15;margin:7px 0;color:#fff;font-weight:850;letter-spacing:-.035em}
+.argus-awards .argus-aw-heading p{font-size:13px;color:#b9c5d7;line-height:1.6;margin:4px 0;max-width:680px}
+.argus-aw-eyebrow{letter-spacing:.18em;font-weight:800;font-size:10px;color:#f0c877}
+.argus-aw-updated,.argus-aw-period{color:#edc985;letter-spacing:.07em;font-weight:700;font-size:10px;background:#e2b26812;border:1px solid #e2b26834;border-radius:999px;padding:8px 12px}
+.argus-aw-rank{padding:24px;overflow:hidden;border-radius:23px;background:radial-gradient(circle at 50% 0,#dba14d20,transparent 48%),linear-gradient(145deg,#151f31,#0c1423);border:1px solid #ddb2763a;box-shadow:0 18px 58px #0004;margin-bottom:23px}
+.argus-aw-rank>header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.argus-aw-rank>header small,.argus-aw-gallery-section header small{font-size:10px;font-weight:850;letter-spacing:.15em;color:#eac181}
+.argus-aw-rank h3,.argus-aw-gallery-section h3,.argus-aw-graph h3{font-size:clamp(18px,2.3vw,25px);margin:6px 0;color:#fff;font-weight:800}
+.argus-aw-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:15px;max-width:1040px;margin:29px auto 12px}
+.argus-aw-podium-card{--medal:#dca76b;position:relative;text-align:center;border-radius:21px 21px 13px 13px;padding:40px 15px 30px;min-height:195px;min-width:0;border:1px solid color-mix(in srgb,var(--medal),transparent 40%);background:linear-gradient(150deg,color-mix(in srgb,var(--medal),transparent 80%),#111a29 51%);box-shadow:0 8px 28px #0004,0 0 32px color-mix(in srgb,var(--medal),transparent 87%);isolation:isolate}
+.argus-aw-podium-card.is-gold{--medal:#f7c45e;padding-top:45px;min-height:221px;background:radial-gradient(circle at 50% -10%,#f4b64250,transparent 55%),linear-gradient(155deg,#45331d,#131a29 68%);z-index:1;box-shadow:0 10px 42px #e9b74a28}
+.argus-aw-podium-card.is-silver{--medal:#b8c4d4}
+.argus-aw-podium-card.is-bronze{--medal:#d39267}
+.argus-aw-rank-medal{position:absolute;top:-20px;left:50%;transform:translateX(-50%);display:grid;place-items:center;width:74px;height:55px;white-space:nowrap;border-radius:50%;font-size:25px;font-weight:950;color:#171b24;text-shadow:0 1px #fff4;background:linear-gradient(155deg,#fff7d5,var(--medal) 53%,#7e592a);border:3px solid color-mix(in srgb,var(--medal),#fff 26%);box-shadow:0 0 22px color-mix(in srgb,var(--medal),transparent 35%)}
+.argus-aw-rank-name{font-size:clamp(13px,1.5vw,18px);font-weight:800;overflow-wrap:anywhere;margin:0 0 14px;color:#faf8f4}
+.argus-aw-podium-card small{display:block;font-size:10px;color:#c8c3ba;font-weight:800;letter-spacing:.08em}
+.argus-aw-podium-card strong{font-size:clamp(17px,1.9vw,25px);display:block;color:#f8d282;margin:8px 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.argus-aw-mini{display:flex;justify-content:space-between;gap:5px;flex-wrap:wrap;font-size:11px;color:#e1e5eb}
+.argus-aw-podium-floor{position:absolute;bottom:-8px;left:8%;width:84%;height:13px;border-radius:50%;background:linear-gradient(180deg,var(--medal),#423a32);box-shadow:0 0 16px color-mix(in srgb,var(--medal),transparent 45%);z-index:-1}
+.argus-aw-other-places{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:23px 0 0}
+.argus-aw-place{display:flex;align-items:center;gap:12px;min-width:0;padding:15px 18px;background:#1b2434;border:1px solid #ffffff1f;border-radius:14px}
+.argus-aw-place-n{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;flex:0 0 42px;border:2px solid #e9bb6b;color:#f8d78c;font-size:18px;font-weight:900}
+.argus-aw-place>div{min-width:0;flex:1}.argus-aw-place b{display:block;overflow-wrap:anywhere;font-size:13px}.argus-aw-place small{display:block;color:#b9bfcb;font-size:10px;margin-top:4px}
+.argus-aw-place>strong{color:#f2c576;font-size:14px;text-align:right;font-variant-numeric:tabular-nums}
+.argus-aw-empty{padding:28px;text-align:center;border:1px dashed #bfb09a50;color:#bac2d0;border-radius:16px;margin-top:14px;line-height:1.7}
+.argus-aw-gallery-section{overflow:hidden;margin:18px 0 25px;padding:20px 17px 19px;background:radial-gradient(ellipse at 55% 5%,#bc853224,transparent 50%),linear-gradient(130deg,#151d2a,#0d1524);border:1px solid #c29b5b40;border-radius:22px}
+.argus-aw-gallery-section>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 4px 18px}
+.argus-aw-gallery-section>header h3{margin:2px 0}.argus-aw-gallery-section>header p{font-size:12px;color:#adb9ca;margin:0}
+.argus-aw-arrows{display:flex;gap:8px}
+.argus-aw-arrows button{height:39px;width:39px;border:1px solid #e7ba714f;background:#29231b;border-radius:50%;color:#f5c877;font-size:26px;line-height:1;cursor:pointer;transition:background .2s,transform .2s}
+.argus-aw-arrows button:hover{background:#5d4323;transform:scale(1.08)}
+.argus-aw-plaque-rail{display:flex;gap:17px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding:12px;padding:10px 8px 9px;scrollbar-color:#b88d4a #111725;-webkit-overflow-scrolling:touch}
+.argus-aw-plaque-item{flex:0 0 clamp(175px,18vw,210px);scroll-snap-align:start;min-width:0}
+.argus-aw-plaque{--metal:#c48b52;position:relative;overflow:hidden;height:266px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;padding:16px 11px 17px;border:7px ridge var(--metal);border-radius:6px;background:radial-gradient(circle at 52% 47%,#70553133,transparent 57%),linear-gradient(140deg,#0b111a,#30313b 42%,#090e18);box-shadow:0 10px 24px #0008,inset 0 0 0 2px #d7b16a55,0 0 20px color-mix(in srgb,var(--metal),transparent 85%);transition:transform .3s,box-shadow .3s}
+.argus-aw-plaque:hover{transform:translateY(-5px);box-shadow:0 15px 30px #000a,0 0 30px color-mix(in srgb,var(--metal),transparent 65%)}
+.argus-aw-plaque.tier-0{--metal:#a77951}.argus-aw-plaque.tier-1{--metal:#c08163}.argus-aw-plaque.tier-2{--metal:#c3c6ce}.argus-aw-plaque.tier-3{--metal:#f3be55}.argus-aw-plaque.tier-4{--metal:#ad8a4e}.argus-aw-plaque.tier-5{--metal:#dfe7ec}
+.argus-aw-plaque-shine{position:absolute;inset:-50%;pointer-events:none;transform:rotate(38deg);background:linear-gradient(90deg,transparent 45%,#ffffff13 49%,#ffffff2b 50%,transparent 55%);animation:argus-aw-shine 7s ease-in-out infinite}
+@keyframes argus-aw-shine{0%,55%{translate:-70% 0}100%{translate:85% 0}}
+.argus-aw-logo{width:104px!important;height:auto!important;max-height:35px;object-fit:contain;position:relative;z-index:1}
+.argus-aw-medallion{display:flex;align-items:center;justify-content:center;flex-direction:column;width:130px;height:130px;flex:0 0 130px;border-radius:50%;border:8px double var(--metal);background:radial-gradient(circle at 50% 30%,#5b4b357a,#111925 70%);box-shadow:inset 0 3px 15px #0008,0 0 21px color-mix(in srgb,var(--metal),transparent 46%);position:relative;z-index:1}
+.argus-aw-medallion span{font-size:38px;font-weight:950;color:#f8dfa5;line-height:1;letter-spacing:-.07em;text-shadow:0 2px 9px #0009}
+.argus-aw-medallion small{font-size:10px;letter-spacing:.08em;color:#f9deab;font-weight:850;margin-top:6px}
+.argus-aw-person{font-size:11px;font-weight:850;line-height:1.2;color:#f7f2e9;overflow-wrap:anywhere;position:relative;z-index:1}
+.argus-aw-tier{font-size:9px;color:var(--metal);letter-spacing:.21em;font-weight:900}
+.argus-aw-progress-track{height:8px;overflow:hidden;border:1px solid #c5a87466;background:#0a101c;border-radius:99px;margin:12px 2px 6px}
+.argus-aw-progress-track>div{height:100%;background:linear-gradient(90deg,#a8772c,#ffdc7d);border-radius:inherit;box-shadow:0 0 9px #eac67f99}
+.argus-aw-plaque-caption{text-align:center;margin:5px 0 0;min-height:31px;font-size:11px;color:#e7decf;font-weight:700}
+.argus-aw-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.argus-aw-metric{padding:20px 17px;min-width:0;background:linear-gradient(140deg,#1d2838,#111925);border:1px solid #d5ae6952;border-radius:16px;box-shadow:0 12px 25px #0003}
+.argus-aw-metric small{display:block;font-size:12px;color:#b8c4d0;font-weight:700}
+.argus-aw-metric strong{display:block;margin:9px 0;color:#f9d18a;font-size:clamp(19px,2.4vw,27px);line-height:1.2;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.argus-aw-metric span{font-size:11px;color:#adbac6}
+.argus-aw-next{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px 22px;border:1px solid #ffd5898a;border-radius:18px;margin:16px 0 24px;background:linear-gradient(105deg,#3d301d,#151d2a 72%);box-shadow:0 0 18px #d5a45724}
+.argus-aw-next small{display:block;color:#f7cf83;letter-spacing:.14em;font-weight:800}
+.argus-aw-next strong{display:block;color:#fff;font-size:clamp(17px,2.5vw,23px);margin:6px 0}
+.argus-aw-next p{margin:5px 0;font-size:12px;color:#c0c7ce}
+.argus-aw-next-badge{display:grid;place-items:center;flex:0 0 70px;width:70px;height:70px;border:4px double #efc477;border-radius:50%;color:#ffd987;font-weight:950;font-size:20px;box-shadow:0 0 24px #f3c56c3d}
+.argus-aw-selector{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:17px 0 9px;padding:14px 18px;border-radius:15px;background:#162031;border:1px solid #c49a5c44}
+.argus-aw-selector label{font-weight:800;color:#eee7da}
+.argus-aw-selector select{border:1px solid #bfa47370;border-radius:10px;padding:11px 16px;background:#101727;color:#fff;width:min(100%,360px);min-width:120px}
+.argus-aw-graphs{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:12px;margin:17px 0}
+.argus-aw-graph{padding:19px;min-width:0;background:linear-gradient(145deg,#1a2535,#0e1626);border:1px solid #c5a36b33;border-radius:17px}
+.argus-aw-graph h3{font-size:16px;margin:0 0 7px}.argus-aw-graph p{font-size:11px;color:#b4c0cc;margin:0 0 14px}
+.argus-aw-lineplot svg{width:100%;height:190px;display:block;overflow:visible}
+.argus-aw-chart-axis{display:flex;justify-content:space-between;gap:2px;color:#b9c1c7;font-size:9px}
+.argus-aw-barplot{height:194px;display:flex;align-items:end;justify-content:space-between;gap:3px;border-bottom:1px solid #7f88994d;padding-top:8px}
+.argus-aw-countbar{height:100%;width:100%;min-width:0;display:flex;flex-direction:column;justify-content:end;gap:5px}
+.argus-aw-countbar>div{min-height:2px;background:linear-gradient(180deg,#ffe097,#be7c26);border-radius:4px 4px 0 0}
+.argus-aw-countbar small{text-align:center;font-size:8px;color:#aebccc}
+.argus-aw-ring{display:grid;place-items:center;width:178px;height:178px;border-radius:50%;margin:10px auto;background:conic-gradient(#f4c66a var(--percent),#394454 0);box-shadow:0 0 15px #d7a03b2b}
+.argus-aw-ring>div{width:138px;height:138px;display:flex;align-items:center;justify-content:center;flex-direction:column;border-radius:50%;background:#121b2c}
+.argus-aw-ring strong{color:#fff;font-size:28px}.argus-aw-ring small{color:#bfcada}
+.argus-aw-ring-caption{text-align:center!important;line-height:1.7!important}
+.argus-aw-position{font-weight:700;padding:14px;color:#ecdeb7;border:1px solid #c4a16e5e;border-radius:12px;background:#181f29}
+.argus-aw-position strong{color:#f9cd75}
+.argus-aw-consent{background:#162234;border:1px solid #c59c5e55;border-radius:17px;padding:20px;margin:20px 0}
+.argus-aw-consent h3{margin:0 0 7px;font-size:19px}.argus-aw-consent p{font-size:13px;color:#bec9d6;margin:7px 0}
+.argus-aw-switch{display:flex;align-items:center;gap:12px;font-weight:750;cursor:pointer;margin:15px 0}
+.argus-aw-switch input{width:22px;height:22px;accent-color:#e9b455}
+.argus-aw-public-note{text-align:center;font-size:12px;color:#c3c8ce}
+.argus-aw-public-cta{text-align:center;margin:22px 0 8px}.argus-aw-public-cta a{display:inline-flex;padding:13px 23px;color:#151920;background:linear-gradient(120deg,#f9de9d,#d7a950);font-weight:900;border-radius:11px}
+.argus-public-awards{padding-top:55px;padding-bottom:55px}
+.argus-aw-home{margin:22px 0 26px}.argus-aw-home .argus-aw-gallery-section{margin-bottom:0}
+#argus-awards-public .argus-aw-metric,#argus-awards-public .argus-aw-consent{display:none}
+@media(max-width:1100px){.argus-aw-graphs{grid-template-columns:1fr 1fr}.argus-aw-graph.is-wide{grid-column:1/-1}.argus-aw-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){
+ .argus-awards{padding:12px 0}
+ .argus-aw-rank{padding:18px 11px;border-radius:17px}
+ .argus-aw-podium{gap:7px;margin-top:26px}
+ .argus-aw-podium-card{padding:33px 7px 22px;min-height:178px;border-radius:13px}
+ .argus-aw-podium-card.is-gold{padding-top:37px;min-height:188px}
+ .argus-aw-rank-medal{width:53px;height:43px;font-size:20px;top:-17px}
+ .argus-aw-podium-card .argus-aw-rank-name{font-size:12px;line-height:1.3}
+ .argus-aw-podium-card small{font-size:8px}.argus-aw-podium-card strong{font-size:clamp(11px,3.1vw,18px)}
+ .argus-aw-mini{font-size:9px;display:block}
+ .argus-aw-mini span{display:block;padding-top:5px}
+ .argus-aw-other-places{grid-template-columns:1fr}
+ .argus-aw-place{padding:11px}
+ .argus-aw-metrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .argus-aw-metric{padding:14px 11px}
+ .argus-aw-metric strong{font-size:clamp(17px,4.1vw,22px)}
+ .argus-aw-selector{display:block}.argus-aw-selector select{margin-top:12px;width:100%}
+ .argus-aw-graphs{grid-template-columns:1fr}
+ .argus-aw-graph.is-wide{grid-column:auto}
+ .argus-aw-gallery-section{padding:16px 10px}
+ .argus-aw-plaque-item{flex-basis:175px}
+ .argus-aw-next{padding:13px}.argus-aw-next-badge{flex-basis:57px;width:57px;height:57px;font-size:16px}
+ .argus-aw-updated{display:none}
+ .argus-aw-rank h3{font-size:21px}
+}
+@media(prefers-reduced-motion:reduce){.argus-aw-plaque-shine{animation:none}.argus-aw-plaque{transition:none}}
