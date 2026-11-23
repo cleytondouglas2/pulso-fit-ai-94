@@ -81,3 +81,19 @@
 #argus-commerce-root .argus-commerce-actions .argus-commerce-delete{color:#ffcbca;border-color:#bb6e75;background:#943f4126}
 #argus-commerce-root .argus-commerce-actions .argus-commerce-delete:hover{background:#b44d4d50}
 #argus-commerce-root .argus-commerce-field-hint{font-size:11px;color:#d1bd98;line-height:1.6;margin-top:4px}
+
+
+/* Brand upload is storefront-only; financial checkout keeps provider identity. */
+#argus-commerce-root .argus-commerce-brand{display:flex;align-items:center;gap:20px;padding:20px;margin-top:15px;border-radius:18px;border:1px solid #d9b87a62;background:radial-gradient(circle at 10% 15%,#d6a75d30,transparent 58%),linear-gradient(140deg,#1c2a3b,#111a29)}
+#argus-commerce-root .argus-commerce-brand-preview{flex:0 0 175px;min-height:130px;display:flex;align-items:center;justify-content:center;padding:20px;border-radius:15px;border:1px solid #d6b57a60;background:#0b1221}
+#argus-commerce-root .argus-commerce-brand-preview img{max-width:100%;max-height:115px;width:100%;object-fit:contain}
+#argus-commerce-root .argus-commerce-brand-options{min-width:0;flex:1}
+#argus-commerce-root .argus-commerce-brand-options>small{font-size:10px;letter-spacing:.15em;font-weight:850;color:#e9c17f}
+#argus-commerce-root .argus-commerce-brand-options h4{font-size:20px;color:#fff;margin:7px 0}
+#argus-commerce-root .argus-commerce-brand-options p{margin:7px 0 12px;font-size:12px;color:#c2cad5;line-height:1.6}
+#argus-commerce-root .argus-commerce-brand-options label{font-weight:750;margin:9px 0 5px;color:#f0d39a}
+#argus-commerce-root .argus-commerce-brand-options input[type=file]{width:100%;min-height:45px;font-size:12px;display:block;color:#e6e3dc;background:#131e2d;border-radius:10px;border:1px dashed #d1a96771;padding:10px}
+#argus-commerce-root .argus-commerce-brand-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}
+#argus-commerce-root #argus-commerce-logo-status[data-error=yes]{color:#ffbbbb}
+#argus-commerce-root .argus-commerce-preview-card img.argus-commerce-preview-logo{display:block;max-width:175px;width:auto;max-height:70px;aspect-ratio:auto;object-fit:contain;border-radius:0;margin:0 0 12px 0}
+@media(max-width:590px){#argus-commerce-root .argus-commerce-brand{flex-direction:column;align-items:stretch;padding:16px}#argus-commerce-root .argus-commerce-brand-preview{flex:auto;width:100%;max-height:140px}#argus-commerce-root .argus-commerce-brand-options h4{font-size:19px}}
