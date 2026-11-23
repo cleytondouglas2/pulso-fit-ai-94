@@ -162,7 +162,7 @@ final class ArgusAI
         // Optional account tables may not exist on a freshly migrated environment.
         Portal::install($db);
         Notifications::install($db);
-        ArgusGrowth::install($db);
+        ArgusGrowth::ready($db);
         $start=microtime(true);
         foreach(['admin','portal'] as $type){
             $job='ai_'.$type;$cursor=ArgusGrowth::cursor($db,$job);
@@ -170,7 +170,7 @@ final class ArgusAI
             $actors=$db->all($sql,[$cursor]);if(!$actors){ArgusGrowth::saveCursor($db,$job,'');continue;}
             $slice=microtime(true);
             foreach($actors as $actor){
-                if(microtime(true)-$slice>4||microtime(true)-$start>9)break;
+                if(microtime(true)-$slice>12||microtime(true)-$start>25)break;
                 ArgusGrowth::saveCursor($db,$job,(string)$actor['id']);
                 try{self::notifyAlerts($db,$type,$actor['id'],self::summary($db,$type,$actor));}
                 catch(\Throwable $e){error_log('ARGUS AI advisory unavailable: '.get_class($e));}

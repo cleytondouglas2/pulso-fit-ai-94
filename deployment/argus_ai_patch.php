@@ -64,11 +64,4 @@ foreach([$admin,$portal] as $html){
     argusAIReplace($html,'</head>','<link rel="stylesheet" href="/static/ai-ui.css?v=1"></head>','AI stylesheet '.basename($html));
     argusAIReplace($html,'</body>','<script src="/static/ai-ui.js?v=1" defer></script></body>','AI script '.basename($html));
 }
-$worker='/usr/local/share/argus/notify_worker.php';
-$raw=file_get_contents($worker);
-if(!is_string($raw)||!str_contains($raw,"error_log('ARGUS notification reconciliation cycle complete:"))
-    throw new RuntimeException('ARGUS IA worker missing reconciliation anchor');
-$raw .= "\n// Advisory checks only. No transfers, Pix generation or status transitions.\n";
-$raw .= "try { \\ArgusPayments\\ArgusAI::worker(\$db); } catch (\\Throwable \$e) { error_log('ARGUS IA advisory worker unavailable: '.get_class(\$e)); }\n";
-file_put_contents($worker,$raw);
-echo "ARGUS IA routes, menus, tenant controls and advisory worker wired.\n";
+echo "ARGUS IA routes, menus, tenant controls wired; advisory worker installed separately.\n";

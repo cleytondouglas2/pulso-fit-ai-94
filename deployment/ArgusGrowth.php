@@ -50,6 +50,7 @@ final class ArgusGrowth {
         self::index($db,'argus_growth_verify','argus_growth_verify_owner_idx','audience,owner_id,operation_id');
         self::index($db,'argus_growth_verify','argus_growth_verify_exp_idx','expires_at');
         self::index($db,'argus_growth_events','argus_growth_event_idx','record_id,created_at');
+        self::saveCursor($db,'schema_version','3');
         self::$installed[$key]=$db->pdo();
     }
     /** Transactional mutex, independent of financial tables. */
@@ -57,6 +58,13 @@ final class ArgusGrowth {
         $key=hash('sha256',$key);
         if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_mutex(lock_key) VALUES (?) ON DUPLICATE KEY UPDATE lock_key=VALUES(lock_key)',[$key]);
         else $db->run('INSERT INTO argus_growth_mutex(lock_key) VALUES (?) ON CONFLICT(lock_key) DO UPDATE SET lock_key=excluded.lock_key',[$key]);
+    }
+    private static array $ready=[];
+    public static function ready(Database $db):void{
+        $key=spl_object_id($db->pdo());if(isset(self::$ready[$key]))return;
+        try{$v=self::cursor($db,'schema_version');}catch(\Throwable $e){self::fail('Módulos de gestão aguardando migração.',503);}
+        if($v!=='3')self::fail('Módulos de gestão aguardando migração.',503);
+        self::$ready[$key]=$db->pdo();
     }
     public static function cursor(Database $db,string $job):string{
         $r=$db->one('SELECT position FROM argus_growth_cursor WHERE job=?',[$job]);return (string)($r['position']??'');
@@ -305,13 +313,13 @@ final class ArgusGrowth {
     /** Optional existing notification worker; informational and consent-aware. */
     public static function worker(Database $db):void{
         if(getenv('ARGUS_GROWTH_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
-        self::install($db);
+        self::ready($db);
         $cursor=self::cursor($db,'flow');$parts=explode('|',$cursor,2);$a=$parts[0]??'';$b=$parts[1]??'';
-        $owners=$db->all("SELECT DISTINCT audience,owner_id FROM argus_growth_records WHERE kind='flow' AND state='open' AND (audience>? OR (audience=? AND owner_id>?)) ORDER BY audience,owner_id LIMIT 100",[$a,$a,$b]);
+        $owners=$db->all("SELECT DISTINCT audience,owner_id FROM argus_growth_records WHERE kind='flow' AND state='open' AND (audience>? OR (audience=? AND owner_id>?)) ORDER BY audience,owner_id LIMIT 250",[$a,$a,$b]);
         if(!$owners){self::saveCursor($db,'flow','');return;}
         $start=microtime(true);
         foreach($owners as $o){
-            if(microtime(true)-$start>8)break;
+            if(microtime(true)-$start>15)break;
             self::saveCursor($db,'flow',$o['audience'].'|'.$o['owner_id']);
             try{
                 $scope=$o['audience'];$owner=$o['owner_id'];
@@ -328,7 +336,7 @@ final class ArgusGrowth {
         }
     }
     private static array $financialIndexed=[];
-    private static function financialIndexes(Database $db,bool $seller):void{
+    public static function financialIndexes(Database $db,bool $seller):void{
         $key=spl_object_id($db->pdo()).':'.($seller?'seller':'admin');
         if(isset(self::$financialIndexed[$key]))return;
         $tables=$seller?['argus_seller_charges','argus_seller_withdrawals']:['admin_quick_pix','admin_payouts'];
@@ -338,11 +346,11 @@ final class ArgusGrowth {
     }
     /** Exact aggregates, 30 local calendar days, creation-date basis. */
     public static function metrics(Database $db,string $scope,string $owner,?int $clock=null):array{
-        self::install($db);
+        self::ready($db);
         $now=$clock??time();$tz=new \DateTimeZone('America/Sao_Paulo');
         $today=(new \DateTimeImmutable('@'.$now))->setTimezone($tz)->setTime(0,0);
         $first=$today->modify('-29 days');$start=$first->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');$end=gmdate('Y-m-d H:i:s',$now+1);
-        $seller=$scope==='portal';self::financialIndexes($db,$seller);$table=$seller?'argus_seller_charges':'admin_quick_pix';$outTable=$seller?'argus_seller_withdrawals':'admin_payouts';$field=$seller?'account_id':'actor_id';
+        $seller=$scope==='portal';$table=$seller?'argus_seller_charges':'admin_quick_pix';$outTable=$seller?'argus_seller_withdrawals':'admin_payouts';$field=$seller?'account_id':'actor_id';
         $proof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='deposit_paid')":"";
         $withdrawProof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='withdraw_paid')":"";
         $ts="REPLACE(SUBSTR(q.created_at,1,19),'T',' ')";$valid="q.status='paid' AND q.provider_id IS NOT NULL AND q.provider_id<>''".$proof;
@@ -415,12 +423,12 @@ final class ArgusGrowth {
         if(!is_string($raw)||strlen($raw)>256)self::fail('Solicitação inválida.',400);
         try{$data=json_decode($raw,true,8,JSON_THROW_ON_ERROR);}catch(\JsonException){self::fail('Solicitação inválida.',400);}
         $token=$data['token']??null;if(!is_string($token)||!preg_match('/^[a-f0-9]{64}$/D',$token))self::fail('Verificação indisponível.',404);
-        self::install($db);$result=self::verify($db,$token);
+        self::ready($db);$result=self::verify($db,$token);
         SecurityShield::rate($db,'growth_verify_token',hash('sha256',$token),60,60);self::out($result);
     }
     public static function handle(Database $db,string $scope,string $method,string $path,array $actor,array $body=[]):never{
         if(empty($actor['id'])||($scope==='admin'&&($actor['role']??'')!=='superadmin'))self::fail('Acesso restrito.',403);
-        $owner=(string)$actor['id'];self::install($db);
+        $owner=(string)$actor['id'];self::ready($db);
         $base='/api/'.$scope.'/growth';
         if($method==='GET'&&$path===$base.'/metrics')self::out(self::metrics($db,$scope,$owner));
         if($method==='POST')SecurityShield::rate($db,'growth_write_'.$scope,$owner,90,3600);

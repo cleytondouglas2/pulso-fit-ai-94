@@ -30,7 +30,7 @@ growthReplace($root.'/src/Admin.php',"        if(\$method==='GET'&&\$path==='/ap
 $d=$root.'/public/static/';
 foreach(['admin.html','client.html'] as $f){
  growthReplace($d.$f,'</head>','<link rel="stylesheet" href="/static/argus-growth.css?v=1"></head>');
- growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=3"></script></body>');
+ growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=4"></script></body>');
 }
 // A suggested amount is only a prefill; the normal quote and buyer confirmation are mandatory.
 $prefill=<<<'JS'
@@ -42,6 +42,4 @@ loadReseller().then(()=>price());
 JS;
 growthReplace($d.'reseller-public-pix.js','loadReseller().then(()=>price());',$prefill);
 growthReplace($d.'reseller-public-pix.html','reseller-public-pix.js?v=seller-brand-20261123-1','reseller-public-pix.js?v=growth-20261123-1');
-$worker='/usr/local/share/argus/notify_worker.php';
-if(file_put_contents($worker,"\ntry{ \\ArgusPayments\\ArgusGrowth::worker(\$db); }catch(\\Throwable \$e){error_log('ARGUS growth worker unavailable: '.get_class(\$e));}\n",FILE_APPEND)===false)throw new RuntimeException('Growth worker install failed');
 echo "PASS: tenant-protected growth routes, real receipt verification and management UI mounted. No payment handler modified.\n";
