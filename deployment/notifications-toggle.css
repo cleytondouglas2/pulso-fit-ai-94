@@ -1,0 +1,8 @@
+/* ARGUS Push 2026-11-23: single stateful action for this device. */
+#an-device-status{font-size:13px!important;font-weight:700!important;margin:2px 0 0!important;color:#b4c1cc!important;}
+#an-device-status[data-state="active"]{color:#9ce9bc!important;}
+#an-device-status[data-state="inactive"]{color:#eccb8d!important;}
+#an-device-status[data-state="error"]{color:#ffb2b2!important;}
+#an-activate.an-toggle-active{background:linear-gradient(120deg,#3d2225,#6f3539)!important;border:1px solid #a56a69!important;color:#fff0e8!important;font-weight:800!important;}
+#an-activate:disabled{cursor:wait;opacity:.75;}
+#an-activate.an-toggle-active:focus-visible{outline:2px solid #ffe4ae;outline-offset:3px;}

@@ -110,6 +110,18 @@ final class Notifications
             });
             self::out(['ok'=>true,'message'=>'Notificações ativadas neste aparelho']);
         }
+        // Verify an exact local device subscription belongs to this signed-in
+        // admin/reseller. Do not expose endpoints, secrets or other devices.
+        if($method==='POST'&&$path===$prefix.'/status'){
+            $data=self::input();
+            $endpoint=$data['endpoint']??null;
+            if(!is_string($endpoint)||!self::validEndpoint($endpoint))
+                self::fail('Inscrição do dispositivo inválida',422);
+            $linked=$db->one(
+                'SELECT endpoint_hash FROM argus_notice_subscriptions WHERE endpoint_hash=? AND audience_type=? AND audience_id=?',
+                [hash('sha256',$endpoint),$type,$id]);
+            self::out(['active'=>$linked!==null,'push_available'=>self::pushConfigured()]);
+        }
         if($method==='POST'&&$path===$prefix.'/unsubscribe'){
             $data=self::input();$url=$data['endpoint']??'';
             if(!is_string($url)||!self::validEndpoint($url))self::fail('Inscrição inválida',422);

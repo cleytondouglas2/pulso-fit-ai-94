@@ -1179,3 +1179,17 @@ RUN php -l /var/www/html/src/Notifications.php \
  && php /var/www/html/tests/argus_push_delivery_test.php \
  && php /var/www/html/tests/notifications_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Device-specific notification toggle for both installed PWA panels.
+# Checks real browser permission, exact local subscription, and its ownership
+# on the server before showing "Ativas". No money flows or test Push sent.
+COPY deployment/notifications-toggle.css /var/www/html/public/static/notifications-toggle.css
+COPY deployment/argus_push_toggle_patch.php /tmp/argus_push_toggle_patch.php
+COPY deployment/argus_push_toggle_test.php /var/www/html/tests/argus_push_toggle_test.php
+RUN php -l /var/www/html/src/Notifications.php \
+ && php -l /tmp/argus_push_toggle_patch.php \
+ && php /tmp/argus_push_toggle_patch.php \
+ && php -l /var/www/html/tests/argus_push_toggle_test.php \
+ && php /var/www/html/tests/argus_push_toggle_test.php \
+ && php /var/www/html/tests/security_regression_test.php
