@@ -33,6 +33,7 @@ foreach([
  'seller input CSS'=>'#seller-pix-dialog #seller-active-pix .seller-pix-code-single',
  'seller no wrapping'=>'white-space:nowrap!important',
  'seller icon dimension'=>'flex:0 0 54px!important',
+ 'seller icon aligned to input baseline'=>'align-self:flex-end!important',
  'admin aligned button'=>'.argus-pix-code-row .argus-pix-copy-icon',
  'admin title detached'=>'#argus-pix-code-title',
  'admin helper detached'=>'#argus-pix-code-helper'
