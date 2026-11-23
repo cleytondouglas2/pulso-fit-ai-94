@@ -6,6 +6,7 @@ use ArgusPayments\Database;
 use ArgusPayments\ApiError;
 $db=new Database(require '/var/www/html/config.php');
 if($db->driver()!=='sqlite')throw new RuntimeException('Synthetic tests only');
+putenv('ARGUS_SECURITY_RATE_SECRET='.bin2hex(random_bytes(32))); // ephemeral test-only secret
 $db->installAndSeed();\ArgusPayments\Admin::install($db);\ArgusPayments\FeeExecution::install($db);G::install($db);
 $a='growth-a-'.bin2hex(random_bytes(8));$b='growth-b-'.bin2hex(random_bytes(8));
 $v=['title'=>'Test subscription','note'=>'Synthetic','amount_cents'=>5000,'due'=>'2028-01-31','cycle'=>'monthly','nonce'=>bin2hex(random_bytes(16))];
