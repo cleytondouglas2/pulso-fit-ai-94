@@ -1108,3 +1108,16 @@ RUN php -l /tmp/pix_dialog_safe_area_patch.php \
  && php -l /var/www/html/tests/pix_dialog_safe_area_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/pix_dialog_safe_area_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Super Admin initial overview: the same premium public Pix link card as the
+# reseller screenshot, pointing ONLY to the existing /pix checkout on this host.
+# UI-only: no new Pix, PSP requests, wallet movements, fee updates or payout.
+COPY deployment/admin-public-link.js /var/www/html/public/static/admin-public-link.js
+COPY deployment/admin_public_link_patch.php /tmp/admin_public_link_patch.php
+COPY deployment/admin_public_link_test.php /var/www/html/tests/admin_public_link_test.php
+RUN php -l /tmp/admin_public_link_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/admin_public_link_patch.php \
+ && php -l /var/www/html/tests/admin_public_link_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/admin_public_link_test.php \
+ && php /var/www/html/tests/security_regression_test.php
