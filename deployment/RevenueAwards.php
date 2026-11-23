@@ -88,9 +88,28 @@ final class RevenueAwards {
           'public_opt_in'=>$consent
         ];
     }
+    // The monthly report and aggregate can be expensive at high volume.
+    // Cache ONLY financial aggregates briefly when APCu exists; consent is
+    // always fetched separately so opting out takes effect immediately.
+    private static function financialSnapshot(Database $db):array {
+        static $local=null;
+        if(is_array($local))return $local;
+        $cacheEnabled=PHP_SAPI!=='cli'&&function_exists('apcu_fetch')&&function_exists('apcu_store')
+            &&(!function_exists('apcu_enabled')||apcu_enabled());
+        if($cacheEnabled){
+            $found=false;
+            $cached=apcu_fetch('argus_awards_settlement_snapshot_v2',$found);
+            if($found&&is_array($cached)&&isset($cached['report'],$cached['lifetime']))
+                return $local=$cached;
+        }
+        $local=['report'=>RevenueReport::build($db),'lifetime'=>self::lifetime($db)];
+        if($cacheEnabled)apcu_store('argus_awards_settlement_snapshot_v2',$local,12);
+        return $local;
+    }
     private static function ranked(Database $db):array {
-        $data=RevenueReport::build($db);
-        $all=self::lifetime($db);
+        $snapshot=self::financialSnapshot($db);
+        $data=$snapshot['report'];
+        $all=$snapshot['lifetime'];
         $consent=self::consents($db);
         $rows=[];
         foreach($data['sellers'] as $row){
