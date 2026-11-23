@@ -1,0 +1,20 @@
+.argus-tx-receipt-button{border:1px solid #bb965f;border-radius:10px;padding:10px 14px;background:#e9c88a;color:#172130;font:700 13px system-ui;cursor:pointer;white-space:normal;margin:4px}
+.argus-tx-receipt-dialog{border:1px solid #b79a6a;border-radius:20px;width:min(94vw,590px);max-height:92dvh;overflow:auto;background:#131d2b;color:#fff;padding:16px;box-sizing:border-box;z-index:2147483646}
+.argus-tx-receipt-dialog::backdrop{background:#080f1bd9}
+.argus-tx-receipt-toolbar,.argus-tx-receipt-controls{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.argus-tx-receipt-paper{background:#fff;color:#172336;border-radius:15px;margin:12px 0;padding:22px;overflow-wrap:anywhere;text-align:left}
+.argus-tx-receipt-brand{background:#172336;border-radius:10px;padding:15px;margin-bottom:20px;display:flex;align-items:center;justify-content:flex-start}
+.argus-tx-receipt-brand img{width:145px;max-width:100%;max-height:70px;object-fit:contain}
+.argus-tx-receipt-kicker{color:#98713c;font-weight:800;letter-spacing:.12em;font-size:10px}
+.argus-tx-receipt-paper h2{margin:10px 0;font-size:24px;color:#142133}
+.argus-tx-receipt-status{display:inline-block;padding:8px 12px;border:1px solid #dec399;border-radius:20px;color:#885c1c;background:#fff4de;font-size:12px;font-weight:800}
+.argus-tx-receipt-status.is-confirmed{color:#15653f;background:#e5f7ee;border-color:#9bd5b9}
+.argus-tx-receipt-amount{font-size:35px;font-weight:850;margin:14px 0;color:#162235}
+.argus-tx-receipt-paper dl{margin:0;display:block}
+.argus-tx-receipt-paper dt{font-size:11px;font-weight:800;color:#526176;border-top:1px solid #e0e4ea;padding-top:10px;margin-top:8px}
+.argus-tx-receipt-paper dd{font-size:13px;color:#172336;margin:4px 0 9px;line-height:1.45}
+.argus-tx-receipt-note{font-size:12px;line-height:1.6;color:#4f5e72;border-top:1px solid #d5ae72;padding-top:14px}
+.argus-tx-receipt-feedback{font-size:12px;color:#e8d6b2}
+.argus-tx-receipt-list{margin-top:16px;border:1px solid #c5a36b66;background:#172232;color:#e7edf5;border-radius:15px;padding:16px}
+.argus-tx-receipt-list p{font-size:12px;line-height:1.6}.argus-tx-receipt-row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #b89d6b44;padding:12px 0}.argus-tx-receipt-row small{display:block;font-size:11px;color:#bfccdb;margin-top:4px}
+@media print{body>*:not(#argus-tx-receipt-dialog){display:none!important}#argus-tx-receipt-dialog{position:static!important;display:block!important;margin:0!important;width:100%!important;max-width:none!important;max-height:none!important;overflow:visible!important;border:0!important;background:#fff!important;color:#000!important;padding:0!important}#argus-tx-receipt-dialog::backdrop{display:none!important}.argus-tx-receipt-toolbar,.argus-tx-receipt-controls,.argus-tx-receipt-feedback{display:none!important}.argus-tx-receipt-paper{padding:12px!important;margin:0!important;print-color-adjust:exact;-webkit-print-color-adjust:exact}}

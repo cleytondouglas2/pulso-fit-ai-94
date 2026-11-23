@@ -1440,6 +1440,22 @@ RUN php -l /var/www/html/src/CommerceBrand.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/commerce_brand_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+# Read-only transaction receipts. Never initiate or confirm financial operations.
+COPY deployment/TransactionReceipt.php /var/www/html/src/TransactionReceipt.php
+COPY deployment/transaction-receipts.js deployment/transaction-receipts.css /var/www/html/public/static/
+COPY deployment/transaction_receipt_patch.php /tmp/transaction_receipt_patch.php
+COPY deployment/transaction_receipt_test.php /var/www/html/tests/transaction_receipt_test.php
+RUN php -d display_errors=1 -l /var/www/html/src/TransactionReceipt.php \
+ && php -d display_errors=1 -l /tmp/transaction_receipt_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/transaction_receipt_patch.php \
+ && php -d display_errors=1 -l /var/www/html/src/Gateway.php \
+ && php -d display_errors=1 -l /var/www/html/src/Portal.php \
+ && php -d display_errors=1 -l /var/www/html/src/Admin.php \
+ && php -d display_errors=1 -l /var/www/html/src/PublicAdminPix.php \
+ && php -d display_errors=1 -l /var/www/html/src/ResellerPublicPix.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/transaction_receipt_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
