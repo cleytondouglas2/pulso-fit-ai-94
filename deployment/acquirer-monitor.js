@@ -1,0 +1,2 @@
+/* Super Admin: painel privado de monitoramento da adquirente. */
+(()=>{ 'use strict'; const el=id=>document.getElementById(id); async function load(){ if(!el('argus-acq-status'))return; try{const data=await api('/api/admin/acquirer/status');el('argus-acq-status').textContent=(data.slots||[]).map(s=>s.label+': '+s.provider+' / '+s.key_masked).join(' | ')}catch(e){el('argus-acq-status').textContent='Falha ao carregar diagnóstico: '+e.message}};if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load);else load();})();
