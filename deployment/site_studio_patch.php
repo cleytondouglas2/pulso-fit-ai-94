@@ -112,8 +112,8 @@ $view=<<<'HTML'
        autocomplete="one-time-code">
      </label>
      <div class="argus-studio-approval-actions">
-      <button class="argus-studio-btn secondary" type="button" onclick="document.getElementById('argus-studio-save').click()">Salvar rascunho</button>
-      <button class="argus-studio-btn" type="button" onclick="document.getElementById('argus-studio-publish').click()">Publicar alterações</button>
+      <button class="argus-studio-btn secondary" type="button" id="argus-studio-save-bottom">Salvar rascunho</button>
+      <button class="argus-studio-btn" type="button" id="argus-studio-publish-bottom">Publicar alterações</button>
      </div>
      <p class="argus-studio-feedback" id="argus-studio-feedback" role="status" aria-live="polite">Selecione uma categoria para começar.</p>
     </section>
