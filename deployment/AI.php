@@ -147,8 +147,8 @@ final class ArgusAI
     private static function notifyAlerts(Database $db,string $type,string $id,array $summary):void {
         if(getenv('ARGUS_AI_ALERTS_ENABLED')!=='yes')return;
         foreach($summary['alerts'] as $alert){
-            // One notification per anomaly type per ten-minute interval.
-            $bucket=(string)floor(time()/600);
+            // At most one notification per anomaly type per Brazilian calendar day.
+            $bucket=ArgusGrowth::localDay(time());
             $event=Notifications::record($db,$type,$id,'announcement',
                 'argus-ai:'.$alert['code'].':'.$id.':'.$bucket,
                 '🔎 ARGUS IA · '.$alert['title'],

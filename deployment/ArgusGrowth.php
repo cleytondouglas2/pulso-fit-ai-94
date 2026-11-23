@@ -167,6 +167,31 @@ final class ArgusGrowth {
         }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         return ['id'=>$id,'created'=>true];
     }
+    public static function batch(Database $db,string $scope,string $owner,array $body):array{
+        $nonce=$body['nonce']??null;$items=$body['items']??null;
+        if(!is_string($nonce)||!preg_match('/^[a-f0-9-]{32,36}$/Di',$nonce)||!is_array($items)||!array_is_list($items)||count($items)<1||count($items)>50)self::fail('Lote inválido.');
+        $validated=[];foreach($items as $item){if(!is_array($item))self::fail('Linha inválida.');$validated[]=self::validated('invoice',$item);}
+        $batchId='agb_'.substr(hash('sha256',$scope.':'.$owner.':'.$nonce),0,32);
+        $hash=hash('sha256',json_encode($validated,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE));
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'record-limit:'.$scope.':'.$owner.':invoice');
+            $old=$db->one('SELECT request_hash FROM argus_growth_idem WHERE record_id=?',[$batchId]);
+            if($old){if(!hash_equals((string)$old['request_hash'],$hash))self::fail('Lote já utilizado com outros dados.',409);$pdo->commit();return ['count'=>count($validated),'created'=>false];}
+            $n=$db->one("SELECT COUNT(*) AS n FROM argus_growth_records WHERE audience=? AND owner_id=? AND kind='invoice'",[$scope,$owner]);
+            if((int)$n['n']+count($validated)>2000)self::fail('Limite de cobranças atingido.',409);
+            $now=Database::stamp();
+            foreach($validated as $i=>$item){
+                $id='agr_'.substr(hash('sha256',$batchId.':'.$i),0,32);
+                $payload=json_encode($item,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+                $db->run('INSERT INTO argus_growth_records(id,audience,owner_id,kind,payload,state,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',[$id,$scope,$owner,'invoice',$payload,'open',$now,$now]);
+                $db->run('INSERT INTO argus_growth_idem(record_id,request_hash) VALUES (?,?)',[$id,hash('sha256',$payload)]);
+                self::event($db,$id,$scope,$owner,$owner,'batch_created');
+            }
+            $db->run('INSERT INTO argus_growth_idem(record_id,request_hash) VALUES (?,?)',[$batchId,$hash]);
+            $pdo->commit();return ['count'=>count($validated),'created'=>true];
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
     public static function listing(Database $db,string $scope,string $owner,string $kind,?string $cursor=null):array{
         if(!self::allowed($scope,$kind))self::fail('Módulo indisponível.',403);
         $args=[$scope,$owner,$kind];$where='';
@@ -277,7 +302,7 @@ final class ArgusGrowth {
         foreach($rows as &$r){$r['data']=json_decode($r['payload'],true,16,JSON_THROW_ON_ERROR);unset($r['payload'],$r['owner_id']);}unset($r);
         return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
-    public static function thread(Database $db,string $scope,string $owner,string $id,?string $message=null,?string $nonce=null):array{
+    public static function thread(Database $db,string $scope,string $owner,string $id,?string $message=null,?string $nonce=null,?string $cursor=null):array{
         $args=[$id];$filter='';
         if($scope==='portal'){$filter=' AND owner_id=?';$args[]=$owner;}
         $row=$db->one("SELECT id,owner_id,state FROM argus_growth_records WHERE id=? AND audience='portal' AND kind IN ('support','dispute')".$filter,$args);
@@ -288,8 +313,6 @@ final class ArgusGrowth {
             $message=self::str(['message'=>$message],'message',1000);
             if($nonce!==null&&!preg_match('/^[a-f0-9-]{32,36}$/Di',$nonce))self::fail('Identificador de mensagem inválido.');
             $messageId='agm_'.($nonce===null?bin2hex(random_bytes(16)):substr(hash('sha256',$scope.':'.$owner.':'.$id.':'.$nonce),0,32));
-            $n=$db->one('SELECT COUNT(*) AS n FROM argus_growth_messages WHERE record_id=? AND owner_id=?',[$id,$seller]);
-            if((int)$n['n']>=200)self::fail('Limite de mensagens atingido.',409);
             $pdo=$db->pdo();$pdo->beginTransaction();
             try{
                 $db->run('UPDATE argus_growth_records SET updated_at=updated_at WHERE id=? AND owner_id=?',[$id,$seller]);
@@ -301,14 +324,23 @@ final class ArgusGrowth {
                     $pdo->commit();return self::thread($db,$scope,$owner,$id);
                 }
                 $count=$db->one('SELECT COUNT(*) AS n FROM argus_growth_messages WHERE record_id=? AND owner_id=?',[$id,$seller]);
-                if((int)$count['n']>=200)self::fail('Limite de mensagens atingido.',409);
+                if((int)$count['n']>=10000)self::fail('Limite de segurança atingido. Abra um chamado de continuação referenciando este protocolo.',409);
                 $db->run('INSERT INTO argus_growth_messages(id,record_id,owner_id,sender,body,created_at) VALUES (?,?,?,?,?,?)',
                     [$messageId,$id,$seller,$scope,$message,Database::stamp()]);
                 $db->run("UPDATE argus_growth_records SET updated_at=? WHERE id=? AND audience='portal' AND owner_id=?",[Database::stamp(),$id,$seller]);
                 self::event($db,$id,'portal',$seller,$owner,'message_'.$scope);$pdo->commit();
             }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
         }
-        return ['messages'=>$db->all('SELECT sender,body,created_at FROM argus_growth_messages WHERE record_id=? AND owner_id=? ORDER BY created_at ASC,id ASC LIMIT 200',[$id,$seller])];
+        $args=[$id,$seller];$filter='';
+        if($cursor!==null&&$cursor!==''){
+            if(!preg_match('/^agm_[a-f0-9]{32}$/D',$cursor))self::fail('Cursor inválido.');
+            $anchor=$db->one('SELECT created_at,id FROM argus_growth_messages WHERE id=? AND record_id=? AND owner_id=?',[$cursor,$id,$seller]);
+            if(!$anchor)self::fail('Mensagem não encontrada.',404);
+            $filter=' AND (created_at<? OR (created_at=? AND id<?))';array_push($args,$anchor['created_at'],$anchor['created_at'],$anchor['id']);
+        }
+        $rows=$db->all('SELECT id,sender,body,created_at FROM argus_growth_messages WHERE record_id=? AND owner_id=?'.$filter.' ORDER BY created_at DESC,id DESC LIMIT 101',$args);
+        $more=count($rows)>100;$rows=array_slice($rows,0,100);
+        return ['messages'=>array_reverse($rows),'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
     /** Optional existing notification worker; informational and consent-aware. */
     public static function worker(Database $db):void{
@@ -353,18 +385,20 @@ final class ArgusGrowth {
         $seller=$scope==='portal';$table=$seller?'argus_seller_charges':'admin_quick_pix';$outTable=$seller?'argus_seller_withdrawals':'admin_payouts';$field=$seller?'account_id':'actor_id';
         $proof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='deposit_paid')":"";
         $withdrawProof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='withdraw_paid')":"";
-        $ts="REPLACE(SUBSTR(q.created_at,1,19),'T',' ')";$valid="q.status='paid' AND q.provider_id IS NOT NULL AND q.provider_id<>''".$proof;
-        $rows=$db->all("SELECT SUBSTR($ts,1,13) AS hour_key,COUNT(*) AS n,COALESCE(SUM(q.amount_cents),0) AS gross FROM $table q WHERE q.$field=? AND $valid AND $ts>=? AND $ts<? GROUP BY SUBSTR($ts,1,13)",[$owner,$start,$end]);
+        $ts="REPLACE(SUBSTR(q.created_at,1,19),'T',' ')";
+        $range="((q.created_at>=? AND q.created_at<? AND SUBSTR(q.created_at,11,1)=' ') OR (q.created_at>=? AND q.created_at<? AND SUBSTR(q.created_at,11,1)='T'))";
+        $bounds=static fn(string $a,string $b):array=>[$a,$b,str_replace(' ','T',$a),str_replace(' ','T',$b)];$valid="q.status='paid' AND q.provider_id IS NOT NULL AND q.provider_id<>''".$proof;
+        $rows=$db->all("SELECT SUBSTR($ts,1,13) AS hour_key,COUNT(*) AS n,COALESCE(SUM(q.amount_cents),0) AS gross FROM $table q WHERE q.$field=? AND $valid AND $range GROUP BY SUBSTR($ts,1,13)",[$owner,...$bounds($start,$end)]);
         $by=[];foreach($rows as $r){$day=self::localDay(self::timestamp($r['hour_key'].':00:00'));if(!isset($by[$day]))$by[$day]=['day'=>$day,'count'=>0,'gross_cents'=>0];$by[$day]['count']+=(int)$r['n'];$by[$day]['gross_cents']+=(int)$r['gross'];}
         $daily=[];for($i=0;$i<30;$i++){$day=$first->modify("+$i days")->format('Y-m-d');$daily[]=$by[$day]??['day'=>$day,'count'=>0,'gross_cents'=>0];}
         $sum=array_sum(array_column($daily,'gross_cents'));$count=array_sum(array_column($daily,'count'));
-        $out=$db->one("SELECT COUNT(*) AS n,COALESCE(SUM(q.amount_cents),0) AS amount FROM $outTable q WHERE q.$field=? AND q.status='paid' AND q.provider_tx_id IS NOT NULL AND q.provider_tx_id<>''".$withdrawProof." AND $ts>=? AND $ts<?",[$owner,$start,$end]);
+        $out=$db->one("SELECT COUNT(*) AS n,COALESCE(SUM(q.amount_cents),0) AS amount FROM $outTable q WHERE q.$field=? AND q.status='paid' AND q.provider_tx_id IS NOT NULL AND q.provider_tx_id<>''".$withdrawProof." AND $range",[$owner,...$bounds($start,$end)]);
         $pending=0;$failed=0;$transactions=0;$recentCount=0;
         foreach([$table,$outTable] as $tableName){
             $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND q.status IN ('pending','unknown','creating','requested','queued','review','processing')",[$owner]);$pending+=(int)$n['n'];
-            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND q.status IN ('failed','cancelled','canceled','expired','refunded','partially_refunded','partial_review','rejected','refused') AND $ts>=? AND $ts<?",[$owner,$start,$end]);$failed+=(int)$n['n'];
-            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND $ts>=? AND $ts<?",[$owner,$start,$end]);$transactions+=(int)$n['n'];
-            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND $ts>=? AND $ts<?",[$owner,gmdate('Y-m-d H:i:s',$now-600),$end]);$recentCount+=(int)$n['n'];
+            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND q.status IN ('failed','cancelled','canceled','expired','refunded','partially_refunded','partial_review','rejected','refused') AND $range",[$owner,...$bounds($start,$end)]);$failed+=(int)$n['n'];
+            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND $range",[$owner,...$bounds($start,$end)]);$transactions+=(int)$n['n'];
+            $n=$db->one("SELECT COUNT(*) AS n FROM $tableName q WHERE q.$field=? AND $range",[$owner,...$bounds(gmdate('Y-m-d H:i:s',$now-600),$end)]);$recentCount+=(int)$n['n'];
         }
         $open=$db->all("SELECT id,kind,payload FROM argus_growth_records WHERE audience=? AND owner_id=? AND state='open' AND kind IN ('subscription','invoice','flow')",[$scope,$owner]);$matches=self::invoiceStates($db,$scope,$owner);
         $due=0;$flows=[];$todayKey=$today->format('Y-m-d');
@@ -373,8 +407,8 @@ final class ArgusGrowth {
         $alerts=[];$signals=['pending'=>$pending,'failed'=>$failed,'due'=>$due];foreach($flows as $f){$trigger=$f['trigger']??'';if(isset($signals[$trigger])&&$signals[$trigger]>=($f['threshold']??PHP_INT_MAX))$alerts[]=['id'=>$f['id'],'title'=>$f['title'],'trigger'=>$trigger,'observed'=>$signals[$trigger]];}
         $previous=array_sum(array_column(array_slice($daily,16,7),'gross_cents'));$recent=array_sum(array_column(array_slice($daily,23,7),'gross_cents'));$recentPaid=array_sum(array_column(array_slice($daily,23,7),'count'));
         $risk=[];if($pending>=5)$risk[]='Cobranças ou saques pendentes, inclusive antigos, exigem revisão.';if($failed>=3)$risk[]='Falhas ou reversões recentes: conferir conciliação.';if($previous>0&&$recent>3*$previous)$risk[]='Volume semanal superior a três vezes a semana anterior.';if($recentCount>=8)$risk[]='Volume incomum nos últimos 10 minutos.';
-        $history=$db->one("SELECT COUNT(*) AS n,COALESCE(AVG(q.amount_cents),0) AS avg_amount FROM $table q WHERE q.$field=? AND $valid AND $ts>=? AND $ts<?",[$owner,$start,gmdate('Y-m-d H:i:s',$now-600)]);
-        $peak=$db->one("SELECT COALESCE(MAX(q.amount_cents),0) AS peak FROM $table q WHERE q.$field=? AND $valid AND $ts>=? AND $ts<?",[$owner,gmdate('Y-m-d H:i:s',$now-600),$end]);
+        $history=$db->one("SELECT COUNT(*) AS n,COALESCE(AVG(q.amount_cents),0) AS avg_amount FROM $table q WHERE q.$field=? AND $valid AND $range",[$owner,...$bounds($start,gmdate('Y-m-d H:i:s',$now-600))]);
+        $peak=$db->one("SELECT COALESCE(MAX(q.amount_cents),0) AS peak FROM $table q WHERE q.$field=? AND $valid AND $range",[$owner,...$bounds(gmdate('Y-m-d H:i:s',$now-600),$end)]);
         if((int)$history['n']>=5&&(int)$peak['peak']>=max(100,3*(float)$history['avg_amount']))$risk[]='Recebimento recente acima de três vezes a média histórica. Não comprova fraude.';
         return ['daily'=>$daily,'gross_cents'=>$sum,'confirmed_count'=>$count,'average_ticket_cents'=>$count?(int)round($sum/$count):null,'sent_cents'=>(int)$out['amount'],'sent_count'=>(int)$out['n'],'transaction_count'=>$transactions,
           'forecast_30d_cents'=>$recentPaid>=5?(int)round($recent/7*30):null,'prior_7d_cents'=>$previous,'last_7d_cents'=>$recent,
@@ -423,8 +457,8 @@ final class ArgusGrowth {
         if(!is_string($raw)||strlen($raw)>256)self::fail('Solicitação inválida.',400);
         try{$data=json_decode($raw,true,8,JSON_THROW_ON_ERROR);}catch(\JsonException){self::fail('Solicitação inválida.',400);}
         $token=$data['token']??null;if(!is_string($token)||!preg_match('/^[a-f0-9]{64}$/D',$token))self::fail('Verificação indisponível.',404);
-        self::ready($db);$result=self::verify($db,$token);
-        SecurityShield::rate($db,'growth_verify_token',hash('sha256',$token),60,60);self::out($result);
+        SecurityShield::rate($db,'growth_verify_token',hash('sha256',$token),60,60);
+        self::ready($db);self::out(self::verify($db,$token));
     }
     public static function handle(Database $db,string $scope,string $method,string $path,array $actor,array $body=[]):never{
         if(empty($actor['id'])||($scope==='admin'&&($actor['role']??'')!=='superadmin'))self::fail('Acesso restrito.',403);
@@ -436,7 +470,7 @@ final class ArgusGrowth {
             $cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::inbox($db,$cursor));
         }
         if(preg_match('~^'.preg_quote($base,'~').'/thread/(agr_[a-f0-9]{32})$~D',$path,$m)){
-            if($method==='GET')self::out(self::thread($db,$scope,$owner,$m[1]));
+            if($method==='GET'){$cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::thread($db,$scope,$owner,$m[1],null,null,$cursor));}
             if($method==='POST')self::out(self::thread($db,$scope,$owner,$m[1],self::str($body,'message',1000),self::str($body,'nonce',36)));
         }
         if($method==='POST'&&$path===$base.'/match-invoice')self::out(self::invoiceMatch($db,$scope,$owner,self::str($body,'id',80),self::str($body,'operation_id',80)));
@@ -448,6 +482,7 @@ final class ArgusGrowth {
             if($method==='GET'){ $cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::listing($db,$scope,$owner,$m[1],$cursor));}
             if($method==='POST')self::out(self::create($db,$scope,$owner,$m[1],$body));
         }
+        if($method==='POST'&&$path===$base.'/batch')self::out(self::batch($db,$scope,$owner,$body));
         if($method==='POST'&&$path===$base.'/edit')self::out(self::edit($db,$scope,$owner,self::str($body,'id',80),$body));
         if($method==='POST'&&$path===$base.'/action')self::out(self::transition($db,$scope,$owner,self::str($body,'id',80),self::str($body,'action',30),self::str($body,'revision',64)));
         self::fail('Rota não encontrada.',404);

@@ -79,3 +79,16 @@ $batch=['title'=>'Identical order','note'=>'','amount_cents'=>100,'due'=>'2027-0
 $one=G::create($db,'admin',$b,'invoice',$batch+['nonce'=>bin2hex(random_bytes(16))]);$two=G::create($db,'admin',$b,'invoice',$batch+['nonce'=>bin2hex(random_bytes(16))]);
 if($one['id']===$two['id'])throw new RuntimeException('Distinct identical records collapsed');
 echo "PASS: identical legitimate records have independent idempotency identifiers.\n";
+
+$batchNonce=bin2hex(random_bytes(16));$row=['title'=>'Batch fixture','note'=>'','amount_cents'=>100,'due'=>'2027-01-01'];$before=count(G::listing($db,'admin',$b,'invoice')['items']);
+try{G::batch($db,'admin',$b,['nonce'=>$batchNonce,'items'=>[$row,array_replace($row,['due'=>'2027-02-31'])]]);throw new RuntimeException('Invalid batch accepted');}catch(ApiError $e){}
+if(count(G::listing($db,'admin',$b,'invoice')['items'])!==$before)throw new RuntimeException('Partial batch persisted');
+$result=G::batch($db,'admin',$b,['nonce'=>$batchNonce,'items'=>[$row,$row]]);
+if(!$result['created']||G::batch($db,'admin',$b,['nonce'=>$batchNonce,'items'=>[$row,$row]])['created'])throw new RuntimeException('Batch replay failed');
+try{G::batch($db,'admin',$b,['nonce'=>$batchNonce,'items'=>[$row]]);throw new RuntimeException('Changed batch replay accepted');}catch(ApiError $e){}
+if(count(G::listing($db,'admin',$b,'invoice')['items'])!==$before+2)throw new RuntimeException('Distinct rows lost');
+for($i=0;$i<205;$i++)G::thread($db,'portal',$a,$ticket['id'],'Synthetic message '.$i);
+$history=G::thread($db,'portal',$a,$ticket['id']);$ids=[];
+while(true){array_push($ids,...array_column($history['messages'],'id'));if(!$history['next_cursor'])break;$history=G::thread($db,'portal',$a,$ticket['id'],null,null,$history['next_cursor']);}
+if(count($ids)!==208||count(array_unique($ids))!==208)throw new RuntimeException('Support history pagination failed');
+echo "PASS: atomic batch, changed replay rejection, identical distinct rows, paginated 208-message history.\n";

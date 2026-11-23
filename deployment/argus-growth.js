@@ -29,12 +29,21 @@ const valid=id=>/^agr_[a-f0-9]{32}$/.test(id||'');
 const nonce=()=>globalThis.crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
 const retryMemory=new Map();
 async function retryKey(scope,identity,kind,payload){
- const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(payload)));
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(kind==='batch'?'pending-batch':JSON.stringify(payload)));
  const fingerprint=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
  const key='argus-growth-retry:'+scope+':'+identity+':'+kind+':'+fingerprint;
  let value=retryMemory.get(key);try{value=sessionStorage.getItem(key)||value}catch{}
  if(!value){value=nonce();retryMemory.set(key,value);try{sessionStorage.setItem(key,value)}catch{}}
  return {nonce:value,done(){retryMemory.delete(key);try{sessionStorage.removeItem(key)}catch{}}};
+}
+async function messageHistory(id,host,call,tell){
+ const first=await call('/thread/'+id);host.replaceChildren();
+ let cursor=first.next_cursor,loading=false;const list=add(host,'div');const seen=new Set();
+ const render=m=>{if(seen.has(m.id))return null;seen.add(m.id);const p=document.createElement('p');p.textContent=(m.sender==='admin'?'Admin: ':'Revendedor: ')+m.body;return p};
+ for(const m of first.messages||[]){const p=render(m);if(p)list.append(p)}
+ if(!first.messages?.length)add(list,'p','Nenhuma mensagem ainda.');
+ const more=btn(host,'Carregar mensagens anteriores',async()=>{if(loading||!cursor)return;loading=true;more.disabled=true;try{const r=await call('/thread/'+id+'?cursor='+encodeURIComponent(cursor));const fragment=document.createDocumentFragment();for(const m of r.messages||[]){const p=render(m);if(p)fragment.append(p)}list.prepend(fragment);cursor=r.next_cursor;more.hidden=!cursor}catch(e){tell(e.message)}finally{loading=false;more.disabled=false}});
+ more.hidden=!cursor;host.prepend(more);
 }
 function setup(host,scope,identity){
  const panel=add(host,'section',undefined,'argus-growth');panel.dataset.growthOwner=identity;
@@ -76,7 +85,7 @@ function setup(host,scope,identity){
   const thread=async(id,host)=>{
    host.replaceChildren();const log=add(host,'div','Consultando mensagens…');const form=add(host,'form',undefined,'ag-form');
    const field=add(form,'textarea');field.required=true;field.maxLength=1000;field.placeholder='Mensagem sem dados sensíveis';const send=add(form,'button','Enviar mensagem');send.type='submit';
-   const load=async()=>{const r=await call('/thread/'+id);log.replaceChildren();for(const m of r.messages||[])add(log,'p',(m.sender==='admin'?'Admin: ':'Revendedor: ')+m.body);if(!r.messages?.length)add(log,'p','Nenhuma mensagem ainda.')};
+   const load=async()=>{await messageHistory(id,log,call,tell)};
    form.onsubmit=async e=>{e.preventDefault();send.disabled=true;try{const body={message:field.value};const retry=await retryKey(scope,identity,'thread:'+id,body);await call('/thread/'+id,{...body,nonce:retry.nonce});retry.done();field.value='';await load()}catch(e){tell(e.message)}finally{send.disabled=false}};
    try{await load()}catch(e){tell(e.message)}
   };
@@ -88,15 +97,15 @@ function setup(host,scope,identity){
   form.onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;submit.disabled=true;try{const body={};for(const [k,i] of Object.entries(inputs)){let v=i.value;if(k==='amount_cents'){const n=v.trim().replace(',','.');if(!/^\d+(?:\.\d{1,2})?$/.test(n))throw Error('Valor inválido');v=Math.round(Number(n)*100)}else if(['discount_percent','threshold','basis_points'].includes(k))v=Number(v);body[k]=v}if(editing)await call('/edit',{...body,id:editing.id,revision:editing.revision});else {const retry=await retryKey(scope,identity,kind,body);await call('/records/'+kind,{...body,nonce:retry.nonce});retry.done()}editing=null;cancel.hidden=true;submit.textContent='Salvar registro';tell('Registro salvo. Sem efeito financeiro.');form.reset();await load()}catch(e){tell(e.message)}finally{busy=false;submit.disabled=false}};
   if(kind==='invoice'){
    const bulk=add(content,'details');add(bulk,'summary','Importar lote de rascunhos (até 50)');
-   add(bulk,'p','Uma linha por cobrança: referência;valor em reais;AAAA-MM-DD. Linhas iguais são cobranças distintas. Em caso de falha, reenvie o mesmo lote sem alterações. Nenhum Pix será criado.');
+   add(bulk,'p','Uma linha por cobrança: referência;valor em reais;AAAA-MM-DD. Linhas iguais são cobranças distintas. O lote é salvo integralmente ou cancelado. Se a resposta falhar, reenvie o mesmo lote sem alterações. Nenhum Pix será criado.');
    const text=add(bulk,'textarea');text.rows=5;text.placeholder='Pedido 001;25,00;2026-12-01';
-   btn(bulk,'Salvar lote de rascunhos',async()=>{if(busy)return;busy=true;let done=0;try{const lines=text.value.trim().split(/\r?\n/).filter(Boolean);if(lines.length>50)throw Error('Limite de 50 linhas');const items=lines.map(line=>{const [title,amount,due,...extra]=line.split(';');const v=(amount||'').trim().replace(',','.');if(extra.length||!title||!/^\d+(?:\.\d{1,2})?$/.test(v)||!/^\d{4}-\d{2}-\d{2}$/.test(due||''))throw Error('Linha inválida: '+line.slice(0,60));return {title,amount_cents:Math.round(Number(v)*100),due,note:'Importação de rascunho'}});const batch=await retryKey(scope,identity,'batch',items);for(const [index,item] of items.entries()){const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(batch.nonce+':'+index));item.nonce=Array.from(new Uint8Array(hash).slice(0,16),x=>x.toString(16).padStart(2,'0')).join('');await call('/records/invoice',item);done++}batch.done();text.value='';tell(done+' rascunho(s) processado(s).');await load()}catch(e){tell(done+' processado(s): '+e.message);await load()}finally{busy=false}});
+   btn(bulk,'Salvar lote de rascunhos',async()=>{if(busy)return;busy=true;let done=0;try{const lines=text.value.trim().split(/\r?\n/).filter(Boolean);if(lines.length>50)throw Error('Limite de 50 linhas');const items=lines.map(line=>{const [title,amount,due,...extra]=line.split(';');const v=(amount||'').trim().replace(',','.');if(extra.length||!title||!/^\d+(?:\.\d{1,2})?$/.test(v)||!/^\d{4}-\d{2}-\d{2}$/.test(due||''))throw Error('Linha inválida: '+line.slice(0,60));return {title,amount_cents:Math.round(Number(v)*100),due,note:'Importação de rascunho'}});const batch=await retryKey(scope,identity,'batch',items);const result=await call('/batch',{nonce:batch.nonce,items});done=result.count;batch.done();text.value='';tell(done+' rascunho(s) processado(s).');await load()}catch(e){tell(done+' processado(s): '+e.message);await load()}finally{busy=false}});
   }
   load();
  }
  async function inbox(){
   const g=++generation;content.replaceChildren();add(content,'h3','Chamados e contestações dos revendedores');add(content,'p','Ordem de abertura. Atualize para consultar novos chamados.');const list=add(content,'div',undefined,'ag-list');
-  let cursor=null,loading=false;const seen=new Set();const more=btn(content,'Carregar mais chamados',()=>load(false));const refreshList=btn(content,'Atualizar chamados',()=>load(true));more.hidden=true;async function load(reset=true){if(loading)return;loading=true;more.disabled=true;refreshList.disabled=true;try{const r=await call('/inbox'+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(g!==generation)return;if(reset){list.replaceChildren();seen.clear()}for(const item of r.items||[]){if(!valid(item.id)||seen.has(item.id))continue;seen.add(item.id);const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'p',item.data.note);add(c,'small','Última movimentação: '+(item.updated_at||'Não informada'));add(c,'small',item.kind+' · '+item.state);const log=add(c,'div');const refresh=async()=>{const x=await call('/thread/'+item.id);log.replaceChildren();for(const m of x.messages||[])add(log,'p',(m.sender==='admin'?'Admin: ':'Revendedor: ')+m.body)};
+  let cursor=null,loading=false;const seen=new Set();const more=btn(content,'Carregar mais chamados',()=>load(false));const refreshList=btn(content,'Atualizar chamados',()=>load(true));more.hidden=true;async function load(reset=true){if(loading)return;loading=true;more.disabled=true;refreshList.disabled=true;try{const r=await call('/inbox'+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(g!==generation)return;if(reset){list.replaceChildren();seen.clear()}for(const item of r.items||[]){if(!valid(item.id)||seen.has(item.id))continue;seen.add(item.id);const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'p',item.data.note);add(c,'small','Última movimentação: '+(item.updated_at||'Não informada'));add(c,'small',item.kind+' · '+item.state);const log=add(c,'div');const refresh=async()=>messageHistory(item.id,log,call,tell);
    btn(c,'Ler conversa',()=>refresh().catch(e=>tell(e.message)));if(item.state==='open'){const f=add(c,'form',undefined,'ag-form');const t=add(f,'textarea');t.maxLength=1000;t.required=true;const b=add(f,'button','Responder');b.type='submit';f.onsubmit=async e=>{e.preventDefault();b.disabled=true;try{const body={message:t.value};const retry=await retryKey(scope,identity,'thread:'+item.id,body);await call('/thread/'+item.id,{...body,nonce:retry.nonce});retry.done();t.value='';await refresh()}catch(e){tell(e.message)}finally{b.disabled=false}}}}
    cursor=valid(r.next_cursor)?r.next_cursor:null;more.hidden=!cursor;if(reset&&!r.items?.length)add(list,'p','Nenhum chamado registrado.');
   }catch(e){tell(e.message)}finally{loading=false;more.disabled=false;refreshList.disabled=false}}load();

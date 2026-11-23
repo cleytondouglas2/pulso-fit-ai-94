@@ -6,11 +6,18 @@ require_once '/var/www/html/src/Gateway.php';
 use ArgusPayments\Database;
 use ArgusPayments\ArgusGrowth as G;
 use ArgusPayments\ApiError;
+function fixtureConfig(string $file):array{
+ $config=require '/var/www/html/config.php';
+ $config['driver']='sqlite';
+ foreach($config as $key=>$value)if(is_string($value)&&preg_match('/(?:\.sqlite3?|\.db)$/i',$value))$config[$key]=$file;
+ foreach(['sqlite_path','sqlite_file','db_path','database_path','database','db_file','path'] as $key)$config[$key]=$file;
+ return $config;
+}
 if(($argv[1]??'')==='child'){
  $file=$argv[2]??'';
  if(!preg_match('~^/tmp/argus_growth_fixture_[a-f0-9]{24}\.sqlite$~D',$file)||!is_file($file))exit(2);
  $mode=$argv[3]??'';
- $db=new Database(array_merge(require '/var/www/html/config.php',['driver'=>'sqlite','sqlite_path'=>$file]));
+ $db=new Database(fixtureConfig($file));
  if($db->driver()!=='sqlite')exit(2);
  $db->pdo()->exec('PRAGMA busy_timeout=10000');
  // Refuse accidental use of another SQLite path.
@@ -20,20 +27,20 @@ if(($argv[1]??'')==='child'){
   if($mode==='verify'){G::verification($db,'admin','load-fixture','deposit','qpx_load_fixture');echo 'created';}
   elseif($mode==='record'){G::create($db,'admin','load-fixture','invoice',['title'=>'Retry fixture','note'=>'','amount_cents'=>100,'due'=>'2027-01-01','nonce'=>str_repeat('a',32)]);echo 'ok';}
   else exit(2);
- }catch(ApiError $e){if($mode==='verify'){echo 'limited';}else{fwrite(STDERR,get_class($e));exit(3);}}
+ }catch(ApiError $e){if($mode==='verify'&&str_contains($e->getMessage(),'Revogue links antigos')){echo 'limited';}else{fwrite(STDERR,get_class($e));exit(3);}}
  exit(0);
 }
 if(getenv('ARGUS_DB_DRIVER')!=='sqlite')exit(2);
 $file='/tmp/argus_growth_fixture_'.bin2hex(random_bytes(12)).'.sqlite';
 touch($file);
 try{
- $config=array_merge(require '/var/www/html/config.php',['driver'=>'sqlite','sqlite_path'=>$file]);
+ $config=fixtureConfig($file);
  $db=new Database($config);
  $actual=$db->pdo()->query('PRAGMA database_list')->fetchAll(\PDO::FETCH_ASSOC);
  if($db->driver()!=='sqlite'||($actual[0]['file']??'')!==$file)throw new RuntimeException('Unsafe fixture configuration');
  $db->pdo()->exec('PRAGMA busy_timeout=10000');
  $db->pdo()->exec('PRAGMA journal_mode=WAL');
- $db->installAndSeed();\ArgusPayments\Admin::install($db);\ArgusPayments\FeeExecution::install($db);G::install($db);
+ $db->installAndSeed();\ArgusPayments\Admin::install($db);\ArgusPayments\FeeExecution::install($db);G::financialIndexes($db,false);G::install($db);
  $now=gmdate('Y-m-d H:i:s');
  $insert='INSERT INTO admin_quick_pix(id,actor_id,idempotency_hash,body_hash,amount_cents,description,provider_id,qr_copy,status,created_at,checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)';
  $db->pdo()->beginTransaction();

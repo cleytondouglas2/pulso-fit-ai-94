@@ -1471,7 +1471,7 @@ RUN php -l /tmp/reseller_pix_brand_patch.php \
 COPY deployment/ArgusGrowth.php /var/www/html/src/ArgusGrowth.php
 COPY deployment/argus-growth.js deployment/argus-growth.css deployment/argus-verify.html deployment/argus-verify.js /var/www/html/public/static/
 COPY deployment/argus_growth_patch.php /tmp/argus_growth_patch.php
-COPY deployment/argus_growth_test.php /var/www/html/tests/argus_growth_test.php
+COPY deployment/argus_growth_test.php deployment/argus_growth_concurrency_test.php /var/www/html/tests/
 COPY deployment/argus_growth_migrate.php deployment/argus_growth_worker.php /usr/local/share/argus/
 RUN php -l /usr/local/share/argus/argus_growth_migrate.php && php -l /usr/local/share/argus/argus_growth_worker.php
 RUN php -l /var/www/html/src/ArgusGrowth.php \
@@ -1481,6 +1481,7 @@ RUN php -l /var/www/html/src/ArgusGrowth.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/src/Portal.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_growth_test.php \
+ && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/argus_growth_concurrency_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
 FROM scratch AS argus_flat_runtime
@@ -1497,4 +1498,4 @@ WORKDIR /var/www/html
 EXPOSE 10000
 STOPSIGNAL SIGWINCH
 ENTRYPOINT ["docker-php-entrypoint"]
-CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; timeout 60 php /usr/local/share/argus/argus_growth_migrate.php || true; if [ \"${ARGUS_GROWTH_ALERTS_ENABLED:-no}\" = \"yes\" ] || [ \"${ARGUS_AI_ALERTS_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 60 php /usr/local/share/argus/argus_growth_worker.php || true; sleep 10; done) & fi; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
+CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; (until timeout 60 php /usr/local/share/argus/argus_growth_migrate.php; do sleep 30; done) & if [ \"${ARGUS_GROWTH_ALERTS_ENABLED:-no}\" = \"yes\" ] || [ \"${ARGUS_AI_ALERTS_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 60 php /usr/local/share/argus/argus_growth_worker.php || true; sleep 10; done) & fi; if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
