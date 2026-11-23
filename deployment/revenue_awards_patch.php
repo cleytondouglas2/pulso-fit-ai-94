@@ -68,7 +68,14 @@ awardsReplace($dashboard,
  "nav('overview'),nav('charges'),nav('history'),",
  "nav('overview'),nav('awards'),nav('charges'),nav('history'),",
  'reseller awards navigation');
-// The reseller page is mounted by the deferred awards JS when its SPA shell is ready.
+// Mount the page at the same time as the seller sidebar (deep links must never
+// select a page that does not exist yet). The awards JS renders inside this shell.
+awardsReplace($dashboard,
+ " page('history','Localize cobranças recentes pelo status, pelo ID ou pelo valor.',",
+ " page('awards','Seu ranking, faturamento confirmado, gráficos e placas de conquistas.',".
+ "\n  '<div id=\"argus-awards-seller\" class=\"argus-awards\"><p>Consultando conquistas reais…</p></div>'),\n".
+ " page('history','Localize cobranças recentes pelo status, pelo ID ou pelo valor.',",
+ 'reseller awards page created atomically with sidebar');
 
 $landing="$root/public/static/landing.html";
 $public=<<<'HTML'
@@ -90,10 +97,10 @@ awardsReplace($landing,
 foreach(['admin.html','client.html','landing.html'] as $name){
  $path="$root/public/static/$name";
  awardsReplace($path,'</head>',
-  '<link rel="stylesheet" href="/static/revenue-awards.css?v=awards-20261123-1"></head>',
+  '<link rel="stylesheet" href="/static/revenue-awards.css?v=awards-20261123-2"></head>',
   $name.' styling');
  awardsReplace($path,'</body>',
-  '<script defer src="/static/revenue-awards.js?v=awards-20261123-1"></script></body>',
+  '<script defer src="/static/revenue-awards.js?v=awards-20261123-2"></script></body>',
   $name.' script');
 }
 echo "PASS: authenticated admin and seller rankings, public opt-in, new menu and landing presentation linked.\n";
