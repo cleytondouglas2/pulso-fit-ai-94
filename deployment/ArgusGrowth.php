@@ -1,0 +1,205 @@
+<?php
+declare(strict_types=1);
+namespace ArgusPayments;
+/** Operational management only. No provider dispatch, wallet writes or settlement. */
+final class ArgusGrowth {
+    private const SHARED=['subscription','invoice','product','coupon','flow','support','dispute','integration','team'];
+    private const ADMIN=['limit_request','fee_request','contract','incident','approval','routing','marketplace'];
+    private static function fail(string $s,int $status=422):never{throw new ApiError($s,$status);}
+    private static function out(array $v):never{
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store, max-age=0');
+        header('X-Content-Type-Options: nosniff');
+        header('Referrer-Policy: no-referrer');
+        echo json_encode($v,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES);exit;
+    }
+    public static function install(Database $db):void{
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_records(
+            id VARCHAR(80) PRIMARY KEY, audience VARCHAR(12) NOT NULL, owner_id VARCHAR(80) NOT NULL,
+            kind VARCHAR(30) NOT NULL, payload TEXT NOT NULL, state VARCHAR(24) NOT NULL,
+            created_at VARCHAR(32) NOT NULL, updated_at VARCHAR(32) NOT NULL)");
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_events(
+            id VARCHAR(80) PRIMARY KEY, record_id VARCHAR(80) NOT NULL, audience VARCHAR(12) NOT NULL,
+            owner_id VARCHAR(80) NOT NULL, actor_id VARCHAR(80) NOT NULL, action VARCHAR(40) NOT NULL,
+            created_at VARCHAR(32) NOT NULL)");
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_verify(
+            token_hash VARCHAR(64) PRIMARY KEY, audience VARCHAR(12) NOT NULL, owner_id VARCHAR(80) NOT NULL,
+            operation_id VARCHAR(80) NOT NULL, kind VARCHAR(20) NOT NULL, expires_at VARCHAR(32) NOT NULL,
+            revoked INTEGER NOT NULL DEFAULT 0, created_at VARCHAR(32) NOT NULL)");
+    }
+    private static function str(array $b,string $k,int $max,bool $required=true):string{
+        $v=$b[$k]??'';
+        if(!is_string($v))self::fail('Campo inválido: '.$k);
+        $v=trim($v);
+        if(($required&&$v==='')||mb_strlen($v)>$max)self::fail('Campo inválido: '.$k);
+        // Store references, labels and notes, not credentials or full sensitive identifiers.
+        if(preg_match('/(?:ag[ps]_live_[a-f0-9]{12,}|gsk_[A-Za-z0-9_-]{10,}|(?:pk|sk)_[A-Za-z0-9_-]{12,}|\b\d{11,}\b)/i',$v))
+            self::fail('Não inclua documentos completos, senhas ou chaves.');
+        return $v;
+    }
+    private static function num(array $b,string $k,int $min,int $max):int{
+        $v=$b[$k]??null;if(!is_int($v)||$v<$min||$v>$max)self::fail('Valor inválido: '.$k);return $v;
+    }
+    private static function choice(array $b,string $k,array $choices):string{
+        $v=$b[$k]??null;if(!is_string($v)||!in_array($v,$choices,true))self::fail('Opção inválida: '.$k);return $v;
+    }
+    private static function date(array $b,string $key):string{
+        $s=self::str($b,$key,10);
+        if(!preg_match('/^\d{4}-\d{2}-\d{2}$/D',$s)||!checkdate((int)substr($s,5,2),(int)substr($s,8,2),(int)substr($s,0,4)))self::fail('Data inválida.');
+        return $s;
+    }
+    private static function allowed(string $scope,string $kind):bool{
+        return in_array($kind,self::SHARED,true)||($scope==='admin'&&in_array($kind,self::ADMIN,true));
+    }
+    private static function validated(string $kind,array $b):array{
+        $p=['title'=>self::str($b,'title',100),'note'=>self::str($b,'note',500,false)];
+        return $p+match($kind){
+            'subscription'=>['amount_cents'=>self::num($b,'amount_cents',100,100000000),'due'=>self::date($b,'due'),'cycle'=>self::choice($b,'cycle',['weekly','monthly','yearly'])],
+            'invoice'=>['amount_cents'=>self::num($b,'amount_cents',100,100000000),'due'=>self::date($b,'due')],
+            'product'=>['amount_cents'=>self::num($b,'amount_cents',100,100000000)],
+            'coupon'=>['code'=>strtoupper(self::str($b,'code',32)),'discount_percent'=>self::num($b,'discount_percent',1,90),'due'=>self::date($b,'due')],
+            'flow'=>['trigger'=>self::choice($b,'trigger',['pending','failed','due']),'threshold'=>self::num($b,'threshold',1,10000)],
+            'support'=>['category'=>self::choice($b,'category',['payments','account','technical','other'])],
+            'dispute'=>['reference'=>self::str($b,'reference',80),'category'=>self::choice($b,'category',['refund','partial_refund','med','other'])],
+            'integration'=>['category'=>self::choice($b,'category',['woocommerce','shopify','telegram','api','other'])],
+            'team'=>['role_requested'=>self::choice($b,'role_requested',['finance','support','developer','viewer'])],
+            'limit_request'=>['amount_cents'=>self::num($b,'amount_cents',100,100000000)],
+            'fee_request'=>['basis_points'=>self::num($b,'basis_points',0,10000)],
+            'contract'=>['due'=>self::date($b,'due')],
+            'incident'=>['severity'=>self::choice($b,'severity',['low','medium','high','critical'])],
+            'approval'=>['reference'=>self::str($b,'reference',80)],
+            'routing'=>['category'=>self::choice($b,'category',['pix','card','boleto','payout'])],
+            'marketplace'=>['basis_points'=>self::num($b,'basis_points',0,10000)],
+            default=>self::fail('Módulo inválido.')
+        };
+    }
+    private static function event(Database $db,string $id,string $scope,string $owner,string $actor,string $action):void{
+        $db->run('INSERT INTO argus_growth_events(id,record_id,audience,owner_id,actor_id,action,created_at) VALUES (?,?,?,?,?,?,?)',
+            ['age_'.bin2hex(random_bytes(16)),$id,$scope,$owner,$actor,$action,Database::stamp()]);
+    }
+    public static function create(Database $db,string $scope,string $owner,string $kind,array $b):array{
+        if(!self::allowed($scope,$kind))self::fail('Módulo indisponível.',403);
+        $p=self::validated($kind,$b);
+        $nonce=$b['nonce']??null;
+        if(!is_string($nonce)||!preg_match('/^[a-f0-9-]{32,36}$/Di',$nonce))self::fail('Identificador inválido.');
+        $id='agr_'.substr(hash('sha256',$scope.':'.$owner.':'.$kind.':'.$nonce),0,32);
+        $old=$db->one('SELECT id,payload FROM argus_growth_records WHERE id=? AND audience=? AND owner_id=?',[$id,$scope,$owner]);
+        $payload=json_encode($p,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
+        if($old){if(!hash_equals((string)$old['payload'],$payload))self::fail('Identificador já utilizado.',409);return ['id'=>$id,'created'=>false];}
+        $n=$db->one('SELECT COUNT(*) AS n FROM argus_growth_records WHERE audience=? AND owner_id=? AND kind=?',[$scope,$owner,$kind]);
+        if((int)$n['n']>=2000)self::fail('Limite de registros deste módulo atingido.',409);
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            $now=Database::stamp();
+            $db->run('INSERT INTO argus_growth_records(id,audience,owner_id,kind,payload,state,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?)',[$id,$scope,$owner,$kind,$payload,'open',$now,$now]);
+            self::event($db,$id,$scope,$owner,$owner,'created');$pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['id'=>$id,'created'=>true];
+    }
+    public static function listing(Database $db,string $scope,string $owner,string $kind,?string $cursor=null):array{
+        if(!self::allowed($scope,$kind))self::fail('Módulo indisponível.',403);
+        $args=[$scope,$owner,$kind];$where='';
+        if($cursor!==null&&$cursor!==''){
+            if(!preg_match('/^agr_[a-f0-9]{32}$/D',$cursor))self::fail('Cursor inválido.');
+            $r=$db->one('SELECT id,created_at FROM argus_growth_records WHERE id=? AND audience=? AND owner_id=? AND kind=?',[$cursor,$scope,$owner,$kind]);
+            if(!$r)self::fail('Página não encontrada.',404);
+            $where=' AND (created_at<? OR (created_at=? AND id<?))';array_push($args,$r['created_at'],$r['created_at'],$r['id']);
+        }
+        $rows=$db->all('SELECT id,kind,payload,state,created_at,updated_at FROM argus_growth_records WHERE audience=? AND owner_id=? AND kind=?'.$where.' ORDER BY created_at DESC,id DESC LIMIT 101',$args);
+        $more=count($rows)>100;$rows=array_slice($rows,0,100);
+        foreach($rows as &$r){$r['data']=json_decode($r['payload'],true,16,JSON_THROW_ON_ERROR);unset($r['payload']);}unset($r);
+        return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
+    }
+    public static function transition(Database $db,string $scope,string $owner,string $id,string $action):array{
+        $r=$db->one('SELECT * FROM argus_growth_records WHERE id=? AND audience=? AND owner_id=?',[$id,$scope,$owner]);
+        if(!$r)self::fail('Registro não encontrado.',404);
+        if(!in_array($action,['archive','reopen','advance'],true))self::fail('Ação inválida.');
+        $p=json_decode($r['payload'],true,16,JSON_THROW_ON_ERROR);
+        $state=$action==='archive'?'archived':'open';
+        if($action==='advance'){
+            if($r['kind']!=='subscription'||$r['state']!=='open')self::fail('Ciclo indisponível.',409);
+            $dt=new \DateTimeImmutable($p['due'],new \DateTimeZone('UTC'));
+            $next=match($p['cycle']){'weekly'=>$dt->modify('+7 days'),'monthly'=>$dt->modify('first day of next month'),'yearly'=>$dt->modify('first day of this month')->modify('+1 year')};
+            if($p['cycle']!=='weekly')$next=$next->setDate((int)$next->format('Y'),(int)$next->format('m'),min((int)$dt->format('d'),(int)$next->format('t')));
+            $p['due']=$next->format('Y-m-d');
+        }
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            $changed=$db->run('UPDATE argus_growth_records SET payload=?,state=?,updated_at=? WHERE id=? AND audience=? AND owner_id=? AND state=? AND payload=?',
+                [json_encode($p,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE),$state,Database::stamp(),$id,$scope,$owner,$r['state'],$r['payload']]);
+            if($changed->rowCount()!==1)self::fail('Registro alterado. Atualize a página.',409);
+            self::event($db,$id,$scope,$owner,$owner,$action);$pdo->commit();
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        return ['ok'=>true,'financial_effect'=>false];
+    }
+    /** Daily aggregates of verified, currently paid operations; created-date basis, not settlement forecast. */
+    public static function metrics(Database $db,string $scope,string $owner,?int $clock=null):array{
+        $now=$clock??time();$since=gmdate('Y-m-d',$now-29*86400);$until=gmdate('Y-m-d',$now+86400);
+        $seller=$scope==='portal';
+        $table=$seller?'argus_seller_charges':'admin_quick_pix';$field=$seller?'account_id':'actor_id';
+        $verified=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='deposit_paid')":"";
+        $rows=$db->all("SELECT substr(q.created_at,1,10) AS day, COUNT(*) AS n, COALESCE(SUM(q.amount_cents),0) AS gross
+            FROM {$table} q WHERE q.{$field}=? AND q.status='paid' AND q.provider_id IS NOT NULL AND q.provider_id<>'' AND substr(q.created_at,1,10)>=? AND substr(q.created_at,1,10)<?".$verified.
+            ' GROUP BY substr(q.created_at,1,10) ORDER BY day',[$owner,$since,$until]);
+        $by=[];foreach($rows as $r)$by[$r['day']]=['day'=>$r['day'],'count'=>(int)$r['n'],'gross_cents'=>(int)$r['gross']];
+        $daily=[];for($i=29;$i>=0;$i--){$day=gmdate('Y-m-d',$now-$i*86400);$daily[]=$by[$day]??['day'=>$day,'count'=>0,'gross_cents'=>0];}
+        $sum=array_sum(array_column($daily,'gross_cents'));$count=array_sum(array_column($daily,'count'));
+        $states=$db->all("SELECT status,COUNT(*) AS n FROM {$table} WHERE {$field}=? AND substr(created_at,1,10)>=? AND substr(created_at,1,10)<? GROUP BY status",[$owner,$since,$until]);
+        $s=[];foreach($states as $r)$s[$r['status']]=(int)$r['n'];
+        $pending=($s['pending']??0)+($s['unknown']??0)+($s['creating']??0);
+        $failed=($s['failed']??0)+($s['cancelled']??0)+($s['expired']??0)+($s['refunded']??0)+($s['partial_review']??0);
+        $open=$db->all("SELECT kind,payload FROM argus_growth_records WHERE audience=? AND owner_id=? AND state='open' AND kind IN ('subscription','invoice','flow') LIMIT 6001",[$scope,$owner]);
+        $due=0;$flows=[];$today=gmdate('Y-m-d',$now);
+        foreach($open as $r){$p=json_decode($r['payload'],true);if($r['kind']==='flow')$flows[]=$p;elseif(($p['due']??'9999')<=$today)$due++;}
+        $alerts=[];$signals=['pending'=>$pending,'failed'=>$failed,'due'=>$due];
+        foreach($flows as $f){$trigger=$f['trigger']??'';if(isset($signals[$trigger])&&$signals[$trigger]>=($f['threshold']??PHP_INT_MAX))$alerts[]=['title'=>$f['title'],'trigger'=>$trigger,'observed'=>$signals[$trigger]];}
+        $previous=array_sum(array_column(array_slice($daily,16,7),'gross_cents'));
+        $recent=array_sum(array_column(array_slice($daily,23,7),'gross_cents'));
+        $risk=[];if($pending>=5)$risk[]='Volume de cobranças pendentes exige revisão.';
+        if($failed>=3)$risk[]='Falhas ou reversões recentes: conferir conciliação.';
+        if($previous>0&&$recent>3*$previous)$risk[]='Volume semanal superior a três vezes a semana anterior.';
+        return ['daily'=>$daily,'gross_cents'=>$sum,'confirmed_count'=>$count,'average_ticket_cents'=>$count?(int)round($sum/$count):null,
+          'forecast_30d_cents'=>$count>=5?(int)round($recent/7*30):null,'prior_7d_cents'=>$previous,'last_7d_cents'=>$recent,
+          'pending_count'=>$pending,'failed_count'=>$failed,'due_count'=>$due,'risk_signals'=>$risk,'flow_alerts'=>$alerts,
+          'model'=>'Heurística local: projeção linear dos últimos sete dias; histórico por criação, status atual confirmado. Não é garantia de receita.',
+          'financial_effect'=>false];
+    }
+    public static function verification(Database $db,string $scope,string $owner,string $kind,string $id):array{
+        if(!in_array($kind,['deposit','withdrawal'],true)||!preg_match('/^[a-zA-Z0-9_-]{1,80}$/D',$id))self::fail('Operação inválida.');
+        $r=$scope==='admin'?TransactionReceipt::admin($db,$owner,$id,$kind):TransactionReceipt::seller($db,$owner,$id);
+        if(!$r['confirmed']||$r['kind']!==$kind)self::fail('Somente comprovantes confirmados podem ser compartilhados.',409);
+        $token=bin2hex(random_bytes(32));$now=Database::stamp();$expires=gmdate('Y-m-d H:i:s',time()+30*86400);
+        $db->run('INSERT INTO argus_growth_verify(token_hash,audience,owner_id,operation_id,kind,expires_at,revoked,created_at) VALUES (?,?,?,?,?,?,?,?)',
+          [hash('sha256',$token),$scope,$owner,$id,$kind,$expires,0,$now]);
+        return ['path'=>'/verify/'.$token,'expires_at'=>$expires,'financial_effect'=>false];
+    }
+    public static function revokeVerification(Database $db,string $scope,string $owner,string $id):array{
+        $db->run('UPDATE argus_growth_verify SET revoked=1 WHERE audience=? AND owner_id=? AND operation_id=?',[$scope,$owner,$id]);
+        return ['ok'=>true];
+    }
+    public static function verify(Database $db,string $token):array{
+        if(!preg_match('/^[a-f0-9]{64}$/D',$token))self::fail('Verificação indisponível.',404);
+        $row=$db->one('SELECT audience,owner_id,operation_id,kind,expires_at FROM argus_growth_verify WHERE token_hash=? AND revoked=0 AND expires_at>=?',[hash('sha256',$token),gmdate('Y-m-d H:i:s')]);
+        if(!$row)self::fail('Verificação indisponível ou expirada.',404);
+        $r=$row['audience']==='admin'?TransactionReceipt::admin($db,$row['owner_id'],$row['operation_id'],$row['kind']):TransactionReceipt::seller($db,$row['owner_id'],$row['operation_id']);
+        return ['issuer'=>'ArgusPay','kind'=>$r['kind'],'confirmed'=>$r['confirmed'],'status_label'=>$r['status_label'],'amount_cents'=>$r['amount_cents'],'checked_at'=>gmdate('c'),'expires_at'=>$row['expires_at'],'notice'=>'Consulta ao registro atual da plataforma, sem dados pessoais. Não é um comprovante bancário.'];
+    }
+    public static function publicRoute(Database $db,string $token):never{self::install($db);self::out(self::verify($db,$token));}
+    public static function handle(Database $db,string $scope,string $method,string $path,array $actor,array $body=[]):never{
+        if(empty($actor['id'])||($scope==='admin'&&($actor['role']??'')!=='superadmin'))self::fail('Acesso restrito.',403);
+        $owner=(string)$actor['id'];self::install($db);
+        $base='/api/'.$scope.'/growth';
+        if($method==='GET'&&$path===$base.'/metrics')self::out(self::metrics($db,$scope,$owner));
+        if($method==='POST')SecurityShield::rate($db,'growth_write_'.$scope,$owner,90,3600);
+        if($method==='POST'&&$path===$base.'/verify'){
+            self::out(self::verification($db,$scope,$owner,self::str($body,'kind',20),self::str($body,'id',80)));
+        }
+        if($method==='POST'&&$path===$base.'/revoke-verification')self::out(self::revokeVerification($db,$scope,$owner,self::str($body,'id',80)));
+        if(preg_match('~^'.preg_quote($base,'~').'/records/([a-z_]+)$~D',$path,$m)){
+            if($method==='GET'){ $cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::listing($db,$scope,$owner,$m[1],$cursor));}
+            if($method==='POST')self::out(self::create($db,$scope,$owner,$m[1],$body));
+        }
+        if($method==='POST'&&$path===$base.'/action')self::out(self::transition($db,$scope,$owner,self::str($body,'id',80),self::str($body,'action',30)));
+        self::fail('Rota não encontrada.',404);
+    }
+}

@@ -28,7 +28,7 @@ function fields(r){
  x.push(['Emitido em',dt(r.issued_at)||'Não informado']);
  return x;
 }
-function render(r){
+function render(r,scope='public'){
  if(!allowed(r))throw Error('Registro não disponível.');
  close();const d=document.createElement('dialog');d.id='argus-tx-receipt-dialog';d.className='argus-tx-receipt-dialog';
  const head=add(d,'div',undefined,'argus-tx-receipt-toolbar');
@@ -75,6 +75,12 @@ function render(r){
   try{await navigator.clipboard.writeText(registerUrl);status.textContent='Link de cadastro copiado.'}
   catch(e){status.textContent=registerUrl}
  });
+ if(r.confirmed&&['admin','seller'].includes(scope)){
+  const prefix=scope==='admin'?'/api/admin/growth':'/api/portal/growth';
+  const invoke=(path,body)=>scope==='admin'?post(prefix+path,body):request(prefix+path,{method:'POST',body});
+  button(controls,'Criar link de verificação',async()=>{if(!confirm('O link permite consultar valor e status por 30 dias. Criar link público?'))return;try{const v=await invoke('/verify',{kind:r.kind,id:r.id});if(!/^\/verify\/[a-f0-9]{64}$/.test(v.path||''))throw Error('Link indisponível');const url=location.origin+v.path;try{await navigator.clipboard.writeText(url);status.textContent='Link de verificação copiado.'}catch{status.textContent=url}}catch(e){status.textContent=e.message}});
+  button(controls,'Revogar links de verificação',async()=>{if(!confirm('Revogar todos os links de verificação deste registro?'))return;try{await invoke('/revoke-verification',{id:r.id});status.textContent='Links revogados.'}catch(e){status.textContent=e.message}});
+ }
  download.disabled=true;share.disabled=true;status.textContent='Preparando ArgusPay.pdf…';
  pdf(r).then(b=>{prepared=b;download.disabled=false;share.disabled=false;status.textContent=''}).catch(()=>{status.textContent='Não foi possível preparar o PDF. Use Imprimir / salvar PDF.'});
  d.addEventListener('close',()=>{if(currentDialog===d){currentDialog=null;d.remove()}});
@@ -119,7 +125,7 @@ async function fetchJson(path){if(path.startsWith('/api/admin/')&&typeof api==='
 async function open(scope,kind,id){
  if(!valid(id))return;
  try{const path=scope==='admin'?'/api/admin/receipts/'+kind+'/'+encodeURIComponent(id):'/api/portal/receipts/'+encodeURIComponent(id);
- const data=await fetchJson(path);if(data.receipt?.id!==id)throw Error('Registro indisponível.');render(data.receipt)}
+ const data=await fetchJson(path);if(data.receipt?.id!==id)throw Error('Registro indisponível.');render(data.receipt,scope)}
  catch(e){alert(e.message)}
 }
 function attach(host,scope,kind,id,label='Ver comprovante'){

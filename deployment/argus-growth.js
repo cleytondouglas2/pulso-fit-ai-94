@@ -1,0 +1,91 @@
+/* Scoped management tools. Never execute or confirm financial operations. */
+(()=>{'use strict';
+const E=id=>document.getElementById(id);
+const add=(p,t,v,c)=>{const e=document.createElement(t);if(v!==undefined)e.textContent=v;if(c)e.className=c;p.append(e);return e};
+const btn=(p,t,f)=>{const b=add(p,'button',t);b.type='button';b.onclick=f;return b};
+const money=c=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(c)/100);
+const choices={
+ subscription:['Argus Subscription · agenda de mensalidades','Gestão de ciclos e vencimentos, sem débito automático.',[['amount_cents','Valor (R$)','money'],['due','Próximo vencimento','date'],['cycle','Periodicidade',['weekly:Semanal','monthly:Mensal','yearly:Anual']]]],
+ invoice:['Cobranças em lote · rascunhos','Registros e links manuais; não são Pix emitidos nem pagamentos confirmados.',[['amount_cents','Valor (R$)','money'],['due','Vencimento','date']]],
+ product:['Catálogo de produtos','Cadastre e organize ofertas. O checkout atual confirma o valor efetivo.',[['amount_cents','Preço sugerido (R$)','money']]],
+ coupon:['Cupons · planejamento','Registre descontos para campanhas. Ainda não altera o valor no checkout.',[['code','Código','text'],['discount_percent','Desconto (%)','number'],['due','Validade','date']]],
+ flow:['Argus Flow','Regras de alerta avaliadas ao consultar indicadores. Não movimentam dinheiro.',[['trigger','Gatilho',['pending:Pix pendentes','failed:Falhas e reversões','due:Vencimentos']],['threshold','Quantidade mínima','number']]],
+ support:['Central de suporte · registros','Organize solicitações internas. O envio para atendimento externo depende da integração.',[['category','Categoria',['payments:Pagamento','account:Conta','technical:Técnico','other:Outros']]]],
+ dispute:['Contestações e MED · registro','Organize evidências e referências; não abre MED na adquirente nem devolve valores.',[['reference','ID de operação','text'],['category','Tipo',['refund:Devolução','partial_refund:Devolução parcial','med:MED','other:Outros']]]],
+ integration:['Integrações · configuração planejada','Cadastre necessidades de integração. Use as APIs e webhooks existentes para conexão real.',[['category','Canal',['woocommerce:WooCommerce','shopify:Shopify','telegram:Telegram','api:API','other:Outros']]]],
+ team:['Equipe · propostas de acesso','Registre funções desejadas. Não cria credenciais nem concede permissões.',[['role_requested','Perfil solicitado',['finance:Financeiro','support:Suporte','developer:Desenvolvedor','viewer:Consulta']]]],
+ limit_request:['Limites · propostas','Não altera limites financeiros efetivos.',[['amount_cents','Limite sugerido (R$)','money']]],
+ fee_request:['Taxas · propostas','Não altera tarifas vigentes.',[['basis_points','Taxa em pontos-base (100 = 1%)','number']]],
+ contract:['Contratos · controle de prazos','Não substitui assinatura digital.',[['due','Data de revisão','date']]],
+ incident:['Incidentes · registro','Controle operacional e trilha de alterações.',[['severity','Gravidade',['low:Baixa','medium:Média','high:Alta','critical:Crítica']]]],
+ approval:['Aprovações · solicitações','Registre propostas; não autoriza saque nem operação financeira.',[['reference','Referência interna','text']]],
+ routing:['Smart Routing · homologação','Registre candidatos e testes necessários. Nenhuma troca automática de adquirente.',[['category','Meio',['pix:Pix','card:Cartão','boleto:Boleto','payout:Saque']]]],
+ marketplace:['Marketplace · comissões propostas','Planejamento de comissões. Split real exige integração homologada.',[['basis_points','Comissão em pontos-base','number']]]
+};
+const shared=['subscription','invoice','product','coupon','flow','support','dispute','integration','team'];
+const adminExtra=['limit_request','fee_request','contract','incident','approval','routing','marketplace'];
+const fieldsLabels={amount_cents:'Valor',due:'Vencimento',cycle:'Ciclo',code:'Código',discount_percent:'Desconto (%)',trigger:'Gatilho',threshold:'Limite',category:'Categoria',reference:'Referência',role_requested:'Perfil',basis_points:'Pontos-base',severity:'Gravidade'};
+const valid=id=>/^agr_[a-f0-9]{32}$/.test(id||'');
+const nonce=()=>globalThis.crypto.randomUUID?crypto.randomUUID():Array.from(crypto.getRandomValues(new Uint8Array(16)),x=>x.toString(16).padStart(2,'0')).join('');
+function setup(host,scope,identity){
+ const panel=add(host,'section',undefined,'argus-growth');panel.dataset.growthOwner=identity;
+ const title=add(panel,'div',undefined,'ag-head');add(title,'small','ARGUS PAY · INTELIGÊNCIA E GESTÃO');add(title,'h2','Argus Intelligence & Growth');add(title,'p','Indicadores reais, gestão operacional e módulos em evolução. As propostas não alteram operações financeiras.');
+ const nav=add(panel,'div',undefined,'ag-tabs');const content=add(panel,'div',undefined,'ag-content');const msg=add(panel,'p','', 'ag-message');msg.setAttribute('role','status');
+ const root='/api/'+scope+'/growth';
+ const call=(path,body)=>scope==='admin'?(body?post(root+path,body):api(root+path)):(body?request(root+path,{method:'POST',body}):request(root+path));
+ let generation=0,view='metrics',busy=false,report=null;
+ const tell=t=>{msg.textContent=t};
+ const download=()=>{if(!report)return;const csv='\uFEFFData;Pix confirmados;Valor bruto em reais\n'+report.daily.map(r=>r.day+';'+r.count+';'+(r.gross_cents/100).toFixed(2).replace('.',',')).join('\n');const u=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download='ArgusPay-analise.csv';a.click();setTimeout(()=>URL.revokeObjectURL(u),15000)};
+ async function metrics(){
+  const g=++generation;content.replaceChildren();add(content,'h3','Argus Intelligence · análise financeira');const area=add(content,'div','Consultando…','ag-metrics');
+  try{const r=await call('/metrics');if(g!==generation)return;report=r;area.replaceChildren();
+   for(const [k,v] of [['Recebimentos confirmados (30 dias)',money(r.gross_cents)],['Pix confirmados',r.confirmed_count],['Ticket médio',r.average_ticket_cents===null?'—':money(r.average_ticket_cents)],['Projeção de 30 dias',r.forecast_30d_cents===null?'Dados insuficientes':money(r.forecast_30d_cents)],['Pendências',r.pending_count],['Vencimentos',r.due_count]]){
+    const c=add(area,'article');add(c,'small',k);add(c,'strong',String(v));
+   }
+   const bars=add(content,'div',undefined,'ag-bars');const max=Math.max(1,...r.daily.map(x=>x.gross_cents));for(const x of r.daily){const b=add(bars,'span');b.style.height=Math.max(2,100*x.gross_cents/max)+'%';b.title=x.day+' · '+money(x.gross_cents)}
+   add(content,'p',r.model);
+   const risk=add(content,'section',undefined,'ag-card');add(risk,'h3','Argus Shield · sinais de atenção');for(const s of r.risk_signals||[])add(risk,'p',s);if(!r.risk_signals?.length)add(risk,'p','Nenhum sinal pelas regras atuais. Isso não comprova ausência de fraude.');
+   const flow=add(content,'section',undefined,'ag-card');add(flow,'h3','Argus Flow · alertas atuais');for(const f of r.flow_alerts||[])add(flow,'p',f.title+' · '+f.observed+' ocorrência(s)');if(!r.flow_alerts?.length)add(flow,'p','Nenhuma regra disparada na consulta.');
+   const a=add(content,'div',undefined,'ag-tabs');btn(a,'Atualizar análise',metrics);btn(a,'Exportar CSV (Excel)',download);btn(a,'Imprimir relatório / PDF',()=>window.print());
+  }catch(e){if(g===generation)area.textContent=e.message}
+ }
+ function blocked(){
+  generation++;content.replaceChildren();add(content,'h3','Integrações financeiras · homologação');
+  for(const [name,desc] of [['Cartão e parcelamento','Adquirente, tokenização e PCI DSS'],['Boleto e débito','Contrato e API bancária habilitada'],['Pix Automático','Consentimento e integração autorizada'],['Devoluções e MED','Escopo PSP, conciliação e fluxo auditado'],['Smart Routing / split / antecipação','Adaptadores homologados, idempotência e liquidação'],['Subcontas e RBAC','Abertura PSP ou autorização real de identidade e permissões'],['Mensageria e recuperação de carrinho','Consentimento, evento de checkout e provedor de entrega'],['Emissão fiscal','Integração fiscal e configuração legal']]){
+   const c=add(content,'article',undefined,'ag-card');add(c,'strong',name);add(c,'p','Bloqueado para operação: '+desc);
+  }
+ }
+ async function records(kind){
+  const g=++generation;view=kind;content.replaceChildren();const spec=choices[kind];add(content,'h3',spec[0]);add(content,'p',spec[1]);
+  const form=add(content,'form',undefined,'ag-form');
+  const inputs={};
+  function input(key,label,type){const l=add(form,'label',label);let i;if(Array.isArray(type)){i=add(l,'select');for(const pair of type){const [v,t]=pair.split(':');const o=add(i,'option',t);o.value=v}}else{i=add(l,'input');i.type=type==='money'?'text':type;i.required=key!=='note';if(type==='money'){i.inputMode='decimal';i.placeholder='10,00'}if(type==='number'){i.min='0';i.step='1'}i.maxLength=key==='note'?500:100;}inputs[key]=i}
+  input('title','Nome ou referência','text');input('note','Observação (sem dados sensíveis)','text');for(const [key,label,type] of spec[2])input(key,label,type);
+  const submit=add(form,'button','Salvar registro');submit.type='submit';
+  const list=add(content,'div',undefined,'ag-list');let cursor=null;
+  const more=btn(content,'Carregar mais',()=>load(false));more.hidden=true;
+  const copy=async t=>{try{await navigator.clipboard.writeText(t);tell('Copiado.')}catch{tell(t)}};
+  async function load(reset=true){try{const r=await call('/records/'+kind+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(g!==generation)return;if(reset)list.replaceChildren();for(const item of r.items||[]){if(!valid(item.id))continue;const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'small',item.state==='open'?'Ativo · registro interno':'Arquivado');for(const [k,v] of Object.entries(item.data))if(k!=='title'&&v!=='')add(c,'p',(fieldsLabels[k]||k)+': '+(k==='amount_cents'?money(v):String(v)));const a=add(c,'div',undefined,'ag-tabs');btn(a,item.state==='open'?'Arquivar':'Reabrir',()=>action(item.id,item.state==='open'?'archive':'reopen'));if(kind==='subscription'&&item.state==='open')btn(a,'Avançar vencimento',()=>{if(confirm('Avançar somente a data, sem confirmar pagamento?'))action(item.id,'advance')});if(['subscription','invoice'].includes(kind)&&scope==='portal')btn(a,'Copiar link Pix público',async()=>{try{const r=await request('/api/portal/public-pix-link');if(!/^\/e\/[a-f0-9]{32}$/.test(r.public_path||''))throw Error('Link indisponível');copy(location.origin+r.public_path+'?amount_cents='+item.data.amount_cents)}catch(e){tell(e.message)}})}
+   cursor=valid(r.next_cursor)?r.next_cursor:null;more.hidden=!cursor;if(reset&&!r.items?.length)add(list,'p','Nenhum registro cadastrado.');
+  }catch(e){if(g===generation)tell(e.message)}}
+  async function action(id,action){if(busy)return;busy=true;try{await call('/action',{id,action});tell('Registro atualizado. Nenhum pagamento alterado.');await load()}catch(e){tell(e.message)}finally{busy=false}}
+  form.onsubmit=async e=>{e.preventDefault();if(busy)return;busy=true;submit.disabled=true;try{const body={nonce:nonce()};for(const [k,i] of Object.entries(inputs)){let v=i.value;if(k==='amount_cents'){const n=v.trim().replace(',','.');if(!/^\d+(?:\.\d{1,2})?$/.test(n))throw Error('Valor inválido');v=Math.round(Number(n)*100)}else if(['discount_percent','threshold','basis_points'].includes(k))v=Number(v);body[k]=v}await call('/records/'+kind,body);tell('Registro salvo. Sem efeito financeiro.');form.reset();await load()}catch(e){tell(e.message)}finally{busy=false;submit.disabled=false}};
+  if(kind==='invoice'){
+   const bulk=add(content,'details');add(bulk,'summary','Importar lote de rascunhos (até 50)');
+   add(bulk,'p','Uma linha por cobrança: referência;valor em reais;AAAA-MM-DD. Nenhum Pix será criado.');
+   const text=add(bulk,'textarea');text.rows=5;text.placeholder='Pedido 001;25,00;2026-12-01';
+   btn(bulk,'Salvar lote de rascunhos',async()=>{if(busy)return;busy=true;let done=0;try{const lines=text.value.trim().split(/\r?\n/).filter(Boolean);if(lines.length>50)throw Error('Limite de 50 linhas');const items=lines.map(line=>{const [title,amount,due,...extra]=line.split(';');const v=(amount||'').trim().replace(',','.');if(extra.length||!title||!/^\d+(?:\.\d{1,2})?$/.test(v)||!/^\d{4}-\d{2}-\d{2}$/.test(due||''))throw Error('Linha inválida: '+line.slice(0,60));return {title,amount_cents:Math.round(Number(v)*100),due,note:'Importação de rascunho'}});for(const item of items){const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(item)));item.nonce=Array.from(new Uint8Array(hash).slice(0,16),x=>x.toString(16).padStart(2,'0')).join('');await call('/records/invoice',item);done++}tell(done+' rascunho(s) processado(s).');await load()}catch(e){tell(done+' processado(s): '+e.message);await load()}finally{busy=false}});
+  }
+  load();
+ }
+ btn(nav,'Intelligence',()=>{view='metrics';metrics()});for(const k of [...shared,...(scope==='admin'?adminExtra:[])])btn(nav,choices[k][0].split(' · ')[0],()=>records(k));btn(nav,'Homologações',blocked);btn(content,'Carregar indicadores',metrics);
+}
+function init(){
+ if(typeof state==='undefined')return;
+ const admin=E('argus-innovation-shell');const seller=E('argus-commerce-root');
+ const mount=(host,scope,id)=>{if(!host)return;const old=host.querySelector('.argus-growth');if(old&&old.dataset.growthOwner!==id)old.remove();if(id&&!host.querySelector('.argus-growth'))setup(host,scope,id)};
+ if(admin)mount(admin,'admin',state?.user?.role==='superadmin'?String(state.user.id||'admin'):'');
+ if(seller)mount(seller,'portal',state?.account?.id?String(state.account.id):'');
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();setInterval(init,1500);
+})();

@@ -41,12 +41,15 @@ final class ArgusAI
         if(random_int(1,120)===1)$db->run('DELETE FROM argus_ai_usage WHERE created_at<?',[gmdate('Y-m-d\TH:i:s\Z',time()-86400)]);
     }
     private static function rows(Database $db,string $type,array $actor):array {
-        $since=gmdate('Y-m-d\TH:i:s\Z',time()-30*86400);
+        $since=gmdate('Y-m-d',time()-30*86400);
         if($type==='portal'){
-            if(empty($actor['merchant_id'])||$actor['status']!=='approved')return [];
-            $x=$db->all('SELECT status,amount_cents,created_at FROM b2b_live_pix WHERE merchant_id=? AND created_at>=? ORDER BY created_at DESC LIMIT 400',
-                [$actor['merchant_id'],$since]);
-            return array_map(static fn($r)=>['direction'=>'received','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']],$x);
+            if(empty($actor['id'])||$actor['status']!=='approved')return [];
+            $x=$db->all("SELECT status,amount_cents,created_at FROM argus_seller_charges WHERE account_id=? AND substr(created_at,1,10)>=? ORDER BY created_at DESC LIMIT 400",[$actor['id'],$since]);
+            $y=$db->all("SELECT status,amount_cents,created_at FROM argus_seller_withdrawals WHERE account_id=? AND substr(created_at,1,10)>=? ORDER BY created_at DESC LIMIT 200",[$actor['id'],$since]);
+            $rows=[];
+            foreach($x as $r)$rows[]=['direction'=>'received','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
+            foreach($y as $r)$rows[]=['direction'=>'sent','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
+            return $rows;
         }
         // Only the fully authenticated superadmin can query global operations.
         $in=$db->all('SELECT status,amount_cents,created_at FROM admin_quick_pix WHERE created_at>=? ORDER BY created_at DESC LIMIT 400',[$since]);
