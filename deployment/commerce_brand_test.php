@@ -47,6 +47,21 @@ try {
     $stored=$db->one('SELECT mime,encoded_image,content_sha256 FROM argus_commerce_brand_logos WHERE account_id=?',[$owner]);
     if(!$stored||$stored['mime']!=='image/png'||$stored['content_sha256']!==hash('sha256',$bytes))
         throw new RuntimeException('Persistent brand data corrupted');
+    // Exercise the full 10 MiB boundary using a valid PNG tEXt metadata chunk.
+    $metaLen=10*1024*1024-strlen($bytes)-12;
+    $metadata='Comment'.chr(0).str_repeat('x',$metaLen-8);
+    $tag='tEXt'.$metadata;
+    $maxPng=substr($bytes,0,-12).pack('N',strlen($metadata)).$tag.pack('N',crc32($tag)).substr($bytes,-12);
+    if(strlen($maxPng)!==10485760||getimagesizefromstring($maxPng)===false)
+        throw new RuntimeException('10 MiB PNG test image invalid');
+    $limitSave=CommerceBrand::save($db,$owner,['image_data_url'=>'data:image/png;base64,'.base64_encode($maxPng)]);
+    if(($limitSave['ok']??false)!==true)
+        throw new RuntimeException('10 MiB PNG rejected unexpectedly');
+    try {
+        CommerceBrand::save($db,$owner,['image_data_url'=>'data:image/png;base64,'.base64_encode($maxPng.'x')]);
+        throw new RuntimeException('Oversized PNG accepted');
+    } catch(ApiError $e){if($e->status!==422)throw $e;}
+    unset($metadata,$tag,$maxPng);
     $offer=[
         'title'=>'Page with Seller Logo',
         'description'=>'Check marketing storefront branding without moving money.',
@@ -73,7 +88,7 @@ try {
         ['image_data_url'=>'data:image/svg+xml;base64,'.base64_encode('<svg><script>alert(1)</script></svg>')],
         ['image_data_url'=>'data:image/png;base64,'.base64_encode('<svg>not a png</svg>')],
         ['image_data_url'=>'data:image/png;base64,%%%'],
-        ['image_data_url'=>'data:image/png;base64,'.str_repeat('A',725100)],
+        ['image_data_url'=>'data:image/png;base64,'.str_repeat('A',13981200)],
         ['image_data_url'=>'https://example.invalid/logo.png']
     ] as $invalid){
         try{
@@ -104,14 +119,14 @@ try {
         "CommerceBrand::publicLogo(\$comLogoDb,\$logoMatch[1])"
     ] as $required)
         if(!str_contains($gateway,$required))throw new RuntimeException('Guarded public logo route absent');
-    foreach(['CommerceBrand::portal($db,$method,$path,$account,','self::body(900000)',
+    foreach(['CommerceBrand::portal($db,$method,$path,$account,','self::body(15000000)',
         "if(\$method!=='GET')self::csrf(\$account)"] as $required)
         if(!str_contains($portal,$required))throw new RuntimeException('Authenticated brand upload route absent');
     foreach(['data:(image/png|image/jpeg|image/webp)','getimagesizefromstring',
         'content_sha256','a.status NOT IN',"p.status='published'"] as $required)
         if(!str_contains($brandSource,$required))throw new RuntimeException('Brand validation/tenant policy absent: '.$required);
     foreach(['argus-commerce-logo-input','argus-commerce-logo-upload','argus-commerce-logo-remove',
-        'commerce-brand.js?v=20261123-1'] as $required)
+        'commerce-brand.js?v=20261123-2'] as $required)
         if(!str_contains($sellerShell,$required)&&!str_contains($client,$required))
             throw new RuntimeException('Reseller brand UI missing: '.$required);
     foreach(['id="argus-cp-merchant-logo"','commerce-public.js?v=3'] as $required)
@@ -123,7 +138,7 @@ try {
         if(!str_contains($sellerJs,$required))throw new RuntimeException('Reseller upload UX missing');
     if(preg_match('/file_put_contents|move_uploaded_file|unlink\\(/',$brandSource))
         throw new RuntimeException('Logo should be in persistent DB, not ephemeral filesystem');
-    echo "PASS: seller PNG upload, persistent owner isolation, public header replacement, removed-logo fallback, SVG rejection, no Pix or wallet mutation.\n";
+    echo "PASS: 10 MiB PNG boundary and above-limit rejection, isolated seller brand, public fallback, SVG rejection, no money movement.\n";
 } finally {
     if($pdo->inTransaction())$pdo->rollBack();
 }

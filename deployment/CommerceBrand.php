@@ -8,7 +8,8 @@ namespace ArgusPayments;
  * Marketing page branding does not modify the regulated Pix checkout or receipts.
  */
 final class CommerceBrand {
-    private const MAX_BYTES=524288; // 512 KiB, ~699 KiB encoded
+    private const MAX_BYTES=10485760; // 10 MiB per logo
+    private const MAX_DATA_URL_BYTES=4 * intdiv(self::MAX_BYTES+2,3)+64;
     private const ALLOWED=['image/png'=>IMAGETYPE_PNG,'image/jpeg'=>IMAGETYPE_JPEG,'image/webp'=>IMAGETYPE_WEBP];
 
     private static function fail(string $message,int $status=422):never {
@@ -22,13 +23,20 @@ final class CommerceBrand {
         exit;
     }
     public static function install(Database $db):void {
+        // MySQL TEXT cannot hold a 10 MiB image encoded in base64.
+        $storageType=$db->driver()==='mysql'?'LONGTEXT':'TEXT';
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_commerce_brand_logos(
             account_id VARCHAR(64) PRIMARY KEY,
             mime VARCHAR(32) NOT NULL,
-            encoded_image TEXT NOT NULL,
+            encoded_image {$storageType} NOT NULL,
             content_sha256 VARCHAR(64) NOT NULL,
             updated_at VARCHAR(32) NOT NULL
         )");
+        if($db->driver()==='mysql'){
+            $column=$db->pdo()->query("SHOW COLUMNS FROM argus_commerce_brand_logos LIKE 'encoded_image'")->fetch(\PDO::FETCH_ASSOC);
+            if($column && strtolower((string)($column['Type']??''))==='text')
+                $db->pdo()->exec('ALTER TABLE argus_commerce_brand_logos MODIFY encoded_image LONGTEXT NOT NULL');
+        }
     }
     public static function info(Database $db,string $owner):array {
         self::install($db);
@@ -46,12 +54,12 @@ final class CommerceBrand {
     public static function save(Database $db,string $owner,array $body):array {
         self::install($db);
         $dataUrl=$body['image_data_url']??null;
-        if(!is_string($dataUrl)||strlen($dataUrl)>725000||
+        if(!is_string($dataUrl)||strlen($dataUrl)>self::MAX_DATA_URL_BYTES||
            !preg_match('~^data:(image/png|image/jpeg|image/webp);base64,([A-Za-z0-9+/]+={0,2})$~D',$dataUrl,$m))
-            self::fail('Envie uma logomarca PNG, JPG ou WEBP válida, de até 512 KB.');
+            self::fail('Envie uma logomarca PNG, JPG ou WEBP válida, de até 10 MB.');
         $bytes=base64_decode($m[2],true);
         if(!is_string($bytes)||strlen($bytes)<40||strlen($bytes)>self::MAX_BYTES)
-            self::fail('A imagem deve ter até 512 KB.');
+            self::fail('A imagem deve ter até 10 MB.');
         $detected=(new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes);
         if($detected!==$m[1]||!isset(self::ALLOWED[$detected]))
             self::fail('Formato real da imagem não corresponde ao arquivo enviado.');

@@ -49,9 +49,9 @@ async function loadLogo(force=false){
 }
 function choose(file){
  if(!file){pending=null;display();return}
- if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<40||file.size>524288){
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)||file.size<40||file.size>10*1024*1024){
   pending=null;const i=$('argus-commerce-logo-input');if(i)i.value='';
-  inform('Use PNG, JPG ou WEBP de até 512 KB.',true);return;
+  inform('Use PNG, JPG ou WEBP de até 10 MB.',true);return;
  }
  const reader=new FileReader();
  const accountId=owner;

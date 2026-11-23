@@ -50,7 +50,7 @@ $portal=<<<'PHP'
             // Only this upload route permits a larger JSON body.
             CommerceBrand::portal($db,$method,$path,$account,
                 $method==='POST'&&$path==='/api/portal/commerce/logo'?
-                    self::body(900000):[]);
+                    self::body(15000000):[]);
         }
         if(str_starts_with($path,'/api/portal/commerce/')){
             // Action endpoints carry their action in the path, not the body.
@@ -97,7 +97,7 @@ comReplace($dashboard,
 $screen=<<<'HTML'
  page('commerce','Monte páginas comerciais, compartilhe ofertas e teste integrações sem dinheiro real.',
   '<div id="argus-commerce-root"><div class="argus-commerce-header"><div><small>ARGUS PAY · COMMERCE SUITE</small><h3>Checkout Studio</h3><p>Crie páginas com sua marca e direcione o cliente ao checkout Pix autorizado. Você controla o conteúdo; os valores e taxas são confirmados no checkout existente.</p></div><button id="argus-commerce-refresh" type="button">↻ Atualizar</button></div>'+
-  '<section class="argus-commerce-brand" aria-label="Logomarca da sua loja"><div class="argus-commerce-brand-preview"><img id="argus-commerce-brand-image" src="/static/assets/argus-payments-logo-transparent.webp" alt="Logomarca atual da loja"></div><div class="argus-commerce-brand-options"><small>IDENTIDADE VISUAL DA SUA LOJA</small><h4>Minha logomarca</h4><p>Envie uma imagem para substituir o logotipo Argus Pay no topo de todas as suas páginas comerciais. A marca Argus Pay continua identificada nas etapas financeiras.</p><label for="argus-commerce-logo-input">Escolher imagem PNG, JPG ou WEBP (até 512 KB)</label><input id="argus-commerce-logo-input" type="file" accept="image/png,image/jpeg,image/webp"><div class="argus-commerce-brand-actions"><button type="button" id="argus-commerce-logo-upload">Salvar logomarca</button><button type="button" class="muted" id="argus-commerce-logo-remove" hidden>Remover logomarca</button></div><p id="argus-commerce-logo-status" role="status" aria-live="polite">Logomarca padrão Argus Pay em uso.</p></div></section>'+
+  '<section class="argus-commerce-brand" aria-label="Logomarca da sua loja"><div class="argus-commerce-brand-preview"><img id="argus-commerce-brand-image" src="/static/assets/argus-payments-logo-transparent.webp" alt="Logomarca atual da loja"></div><div class="argus-commerce-brand-options"><small>IDENTIDADE VISUAL DA SUA LOJA</small><h4>Minha logomarca</h4><p>Envie uma imagem para substituir o logotipo Argus Pay no topo de todas as suas páginas comerciais. A marca Argus Pay continua identificada nas etapas financeiras.</p><label for="argus-commerce-logo-input">Escolher imagem PNG, JPG ou WEBP (até 10 MB)</label><input id="argus-commerce-logo-input" type="file" accept="image/png,image/jpeg,image/webp"><div class="argus-commerce-brand-actions"><button type="button" id="argus-commerce-logo-upload">Salvar logomarca</button><button type="button" class="muted" id="argus-commerce-logo-remove" hidden>Remover logomarca</button></div><p id="argus-commerce-logo-status" role="status" aria-live="polite">Logomarca padrão Argus Pay em uso.</p></div></section>'+
   '<div class="argus-commerce-grid"><section class="argus-commerce-panel"><h4>Criar ou editar oferta</h4><form id="argus-commerce-form" autocomplete="off">'+
    '<label>Título da oferta<input name="title" maxlength="100" placeholder="Produto ou serviço" required></label>'+
    '<label>Descrição comercial<textarea name="description" maxlength="600" placeholder="O que seu cliente recebe?" required></textarea></label>'+
@@ -151,7 +151,7 @@ foreach(['client.html','admin.html'] as $page){
       "commerce style ".$page);
     comReplace($file,'</body>',
       '<script defer src="/static/commerce-suite.js?v=20261123-3"></script>'.
-      '<script defer src="/static/commerce-brand.js?v=20261123-1"></script>'.
+      '<script defer src="/static/commerce-brand.js?v=20261123-2"></script>'.
       '<script defer src="/static/commerce-admin.js?v=20261123-1"></script></body>',
       "commerce UI script ".$page);
 }

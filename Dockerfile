@@ -10,7 +10,7 @@ RUN unzip -q /tmp/argus-source.zip -d /tmp \
  && rm -rf /tmp/argus_payments_php /tmp/argus-source.zip \
  && mkdir -p /var/www/html/storage \
  && chown -R www-data:www-data /var/www/html/storage \
- && printf 'auto_prepend_file=/var/www/html/demo_guard.php\ndisplay_errors=Off\nexpose_php=Off\n' > /usr/local/etc/php/conf.d/zz-argus.ini \
+ && printf 'auto_prepend_file=/var/www/html/demo_guard.php\ndisplay_errors=Off\nexpose_php=Off\npost_max_size=20M\nupload_max_filesize=12M\nmemory_limit=256M\n' > /usr/local/etc/php/conf.d/zz-argus.ini \
  && printf 'SetEnvIfNoCase Authorization "^(.*)$" HTTP_AUTHORIZATION=$1\n' > /etc/apache2/conf-available/argus-auth.conf \
  && a2enconf argus-auth \
  && sed -i 's#DocumentRoot /var/www/html#DocumentRoot /var/www/html/public#g' /etc/apache2/sites-available/000-default.conf \
