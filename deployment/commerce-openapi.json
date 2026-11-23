@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "ARGUS Pay Commerce Suite — API de desenvolvimento",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Superfície de marketing e sandbox local. Estes endpoints não criam Pix válido, não creditam carteiras e não autorizam saques. A documentação financeira oficial do gateway continua separada."
   },
   "servers": [
@@ -222,6 +222,94 @@
           },
           "404": {
             "description": "Página inexistente ou de outra conta"
+          }
+        }
+      }
+    },
+    "/api/portal/commerce/logo": {
+      "get": {
+        "summary": "Consultar identidade visual comercial do revendedor",
+        "description": "Sessão autenticada. Retorna disponibilidade, URL relativa de prévia e última atualização, nunca bytes da imagem.",
+        "responses": {
+          "200": {
+            "description": "Identidade visual da conta"
+          }
+        }
+      },
+      "post": {
+        "summary": "Enviar ou substituir logomarca (PNG/JPEG/WEBP, máximo 512 KiB)",
+        "description": "Sessão autenticada e X-CSRF-Token. Apenas lojas comerciais: não modifica comprovantes, Pix ou adquirente.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "image_data_url"
+                ],
+                "properties": {
+                  "image_data_url": {
+                    "type": "string",
+                    "description": "Imagem data URI: data:image/png;base64,... ou JPEG/WEBP; até 512 KiB decodificados"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Marca salva e aplicada às páginas comerciais"
+          },
+          "422": {
+            "description": "Imagem excede o limite ou tem formato inválido"
+          }
+        }
+      }
+    },
+    "/api/portal/commerce/logo/remove": {
+      "post": {
+        "summary": "Remover logo comercial do revendedor",
+        "description": "Restaura o logo Argus Pay nas páginas comerciais, sem afetar dinheiro.",
+        "responses": {
+          "200": {
+            "description": "Logo removida"
+          }
+        }
+      }
+    },
+    "/api/portal/commerce/logo/image": {
+      "get": {
+        "summary": "Imagem da marca da conta autenticada",
+        "responses": {
+          "200": {
+            "description": "PNG, JPEG ou WEBP do revendedor"
+          }
+        }
+      }
+    },
+    "/api/public/commerce/logo/{code}": {
+      "get": {
+        "summary": "Logo em página comercial publicada",
+        "description": "Somente retorna a marca se a oferta estiver publicada, dentro da validade, com vendedor não bloqueado.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{32}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PNG, JPEG ou WEBP"
+          },
+          "404": {
+            "description": "Oferta não publicada, expirada, excluída ou sem logo"
           }
         }
       }
