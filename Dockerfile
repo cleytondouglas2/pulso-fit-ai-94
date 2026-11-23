@@ -1397,6 +1397,23 @@ RUN php -l /var/www/html/src/SiteStudio.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/site_studio_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+
+# B2B readiness is a read-only owner diagnostic, never a live money activation.
+# Only B2B can see this tab with ARGUS_B2B_PREFLIGHT_UI=yes set on that service.
+COPY deployment/B2BActivationPreflight.php /var/www/html/src/B2BActivationPreflight.php
+COPY deployment/b2b-activation.js deployment/b2b-activation.css /var/www/html/public/static/
+COPY deployment/b2b_activation_patch.php /tmp/b2b_activation_patch.php
+COPY deployment/b2b_activation_test.php /var/www/html/tests/b2b_activation_test.php
+COPY deployment/B2B_FINANCIAL_ACTIVATION.md /usr/local/share/argus/B2B_FINANCIAL_ACTIVATION.md
+RUN php -l /var/www/html/src/B2BActivationPreflight.php \
+ && php -l /tmp/b2b_activation_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/b2b_activation_patch.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/b2b_activation_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/b2b_activation_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
