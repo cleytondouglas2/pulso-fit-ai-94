@@ -49,7 +49,9 @@ try{
 foreach([
  '/var/www/html/src/Gateway.php'=>[
   "self::htmlFile('public-pix.html')",
-  "PublicAdminPix::handle(\$db,\$method,\$path)",
+  "PublicAdminPix::handle(\$publicPixDb,\$method,\$path)",
+  '$publicPixDb=new Database(self::$config);',
+  '$publicPixDb->installAndSeed();',
   "require_once __DIR__ . '/PublicAdminPix.php'"
  ],
  '/var/www/html/src/TraditionalQuickPix.php'=>[
@@ -70,7 +72,7 @@ foreach([
   "self::origin()"
  ],
  '/var/www/html/public/static/public-pix.html'=>[
-  'id="pix-amount"','id="payer-name"','id="payer-document"',
+  'id="pix-amount"','value="" placeholder="0,00"','id="payer-name"','id="payer-document"',
   'id="summary-total"','id="summary-net"',
   'id="pix-dialog"','id="public-pix-qr"',
   'id="pix-code"','id="pix-verify"',
@@ -80,7 +82,7 @@ foreach([
   '/pix/quote','/pix/create','/pix/status',
   'crypto.randomUUID()','crypto.getRandomValues',
   'fee_version', // checked below as policy_version for this route
-  'navigator.clipboard','QRCode'
+  'navigator.clipboard','QRCode','maskCents(value)'
  ],
  '/var/www/html/public/static/landing.html'=>[
   'href="/pix"'
@@ -104,4 +106,8 @@ $backend=(string)file_get_contents('/var/www/html/src/PublicAdminPix.php');
 if(str_contains($backend,"'/transactions/withdraw'")||
    str_contains($backend,'MisticPayPayout('))
  throw new RuntimeException('Anonymous public checkout must not create payout');
+if(str_contains((string)file_get_contents('/var/www/html/public/static/public-pix.html'),'value="10,00"'))
+ throw new RuntimeException('Public checkout cannot prefill customer amount');
+if(str_contains((string)file_get_contents('/var/www/html/public/static/public-pix.js'),"failure('Informe um valor válido"))
+ throw new RuntimeException('Empty value cannot show a red error on initial load');
 echo "PASS: R$ 10.00 + R$ 0.50 = R$ 10.50 Pix, no reseller markup, admin policy live changes, immutable QR status and anti-replay controls; NO PSP network request.\n";

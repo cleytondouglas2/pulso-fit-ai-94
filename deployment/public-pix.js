@@ -6,12 +6,16 @@ let quote=null,sequence=0,busy=false,active=null,poll=null,polling=false;
 const form=$('public-pix-form'),amount=$('pix-amount'),agree=$('pix-agree');
 const button=$('pix-generate'),alert=$('public-pix-error'),dialog=$('pix-dialog');
 function cents(value){
- const str=String(value||'').trim().replace(/\s/g,'');
- if(!/^\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?$|^\d{1,5}(?:[.,]\d{1,2})?$/.test(str))return null;
-  let n=str.includes(',')?str.replace(/\./g,'').replace(',','.'):str;
- if(!str.includes(',')&&/^\d{1,3}(?:\.\d{3})+$/.test(str))n=str.replace(/\./g,'');
- const valueNumber=Number(n);
- return Number.isSafeInteger(Math.round(valueNumber*100))?Math.round(valueNumber*100):null;
+ const digits=String(value??'').replace(/\D/g,'');
+ if(!digits)return null;
+ const n=Number(digits);
+ return Number.isSafeInteger(n)?n:null;
+}
+function maskCents(value){
+ const digits=String(value??'').replace(/\D/g,'').slice(0,7);
+ if(!digits)return '';
+ const whole=Math.floor(Number(digits)/100).toLocaleString('pt-BR');
+ return whole+','+digits.padStart(2,'0').slice(-2);
 }
 function failure(message){
  alert.hidden=false;alert.textContent=message;
@@ -23,7 +27,7 @@ async function api(path,options={}){
  try{
   const response=await fetch(path,{credentials:'omit',cache:'no-store',headers:{'Accept':'application/json',...(options.body?{'Content-Type':'application/json'}:{})},signal:controller.signal,...options});
   const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data?.error||data?.message||'Não foi possível consultar a adquirente.');
+  if(!response.ok)throw new Error(data?.error||data?.message||'Não foi possível consultar o valor do Pix.');
   return data;
  }finally{clearTimeout(timeout)}
 }
@@ -31,32 +35,58 @@ function updateButton(){
  const v=cents(amount.value);
  const enabled=!busy&&quote&&v===quote.base_amount_cents&&agree.checked;
  button.disabled=!enabled;
- button.firstElementChild.textContent=quote?'Gerar Pix de '+money(quote.total_amount_cents):'Consulte o valor do Pix';
+ button.firstElementChild.textContent=quote?'Gerar Pix de '+money(quote.total_amount_cents):'Digite o valor do Pix';
+}
+const INITIAL_HINT='Limite de R$ 100,00 incluindo a taxa da adquirente.';
+function resetSummary(base=null){
+ $('summary-base').textContent=base===null?'—':money(base);
+ $('summary-fee').textContent='—';
+ $('summary-total').textContent='—';
+ $('summary-net').textContent='—';
 }
 async function price(){
- const seq=++sequence;quote=null;clearFailure();
+ const seq=++sequence;
+ quote=null;clearFailure();
  const v=cents(amount.value);
- if(v===null||v<100||v>10000){
-  $('summary-base').textContent='—';$('summary-fee').textContent='—';
-  $('summary-total').textContent='—';$('summary-net').textContent='—';
-  failure('Informe um valor válido a partir de R$ 1,00.');
-  updateButton();return;
+ const hint=$('limit-hint');
+ if(v===null){
+  resetSummary();
+  hint.textContent=INITIAL_HINT;
+  updateButton();
+  return;
  }
- $('summary-base').textContent=money(v);
+ if(v<100||v>10000){
+  resetSummary(v);
+  hint.textContent=v<100?'O valor mínimo é R$ 1,00.':INITIAL_HINT;
+  updateButton();
+  return;
+ }
+ resetSummary(v);
  $('summary-fee').textContent='Calculando…';
- $('summary-total').textContent='Calculando…';$('summary-net').textContent=money(v);
+ $('summary-total').textContent='Calculando…';
+ hint.textContent=INITIAL_HINT;
  updateButton();
  try{
   const data=await api('/pix/quote?amount_cents='+encodeURIComponent(v));
-  if(seq!==sequence)return;
+  if(seq!==sequence||cents(amount.value)!==v)return;
   const q=data?.quote;
-  if(!q||q.base_amount_cents!==v||!Number.isInteger(q.policy_version))throw new Error('Cotação indisponível');
+  if(!q||q.base_amount_cents!==v||!Number.isInteger(q.policy_version)||
+     !Number.isInteger(q.provider_fee_cents)||!Number.isInteger(q.total_amount_cents))
+   throw new Error('Cotação incompleta.');
   quote=q;
   $('summary-fee').textContent=money(q.provider_fee_cents);
   $('summary-total').textContent=money(q.total_amount_cents);
   $('summary-net').textContent=money(q.admin_expected_net_cents);
- }catch(e){if(seq===sequence)failure(e.message||'Não foi possível calcular a taxa.');}
- finally{if(seq===sequence)updateButton();}
+  hint.textContent=INITIAL_HINT;
+ }catch(e){
+  if(seq!==sequence||cents(amount.value)!==v)return;
+  resetSummary(v);
+  hint.textContent='Cotação indisponível no momento. Edite o valor para tentar novamente.';
+  // Only show an error after an explicit submit, not on first load or typing.
+  clearFailure();
+ }finally{
+  if(seq===sequence)updateButton();
+ }
 }
 function identity(){
  const name=$('payer-name').value.trim().replace(/\s+/g,' ');
@@ -144,7 +174,13 @@ form.addEventListener('submit',async e=>{
  }finally{busy=false;updateButton();}
 });
 let debounce;
-amount.addEventListener('input',()=>{clearTimeout(debounce);debounce=setTimeout(price,210);});
+amount.addEventListener('input',()=>{
+ const masked=maskCents(amount.value);
+ if(amount.value!==masked)amount.value=masked;
+ clearTimeout(debounce);
+ ++sequence;quote=null;clearFailure();updateButton();
+ debounce=setTimeout(price,230);
+});
 agree.addEventListener('change',updateButton);
 $('payer-document').addEventListener('input',e=>{
  const field=e.target;field.value=field.value.replace(/\D/g,'').slice(0,14);

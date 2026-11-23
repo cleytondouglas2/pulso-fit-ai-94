@@ -26,7 +26,9 @@ $routes=<<<'PHP'
                 return;
             }
             if(in_array($path,['/pix/quote','/pix/create','/pix/status'],true)){
-                PublicAdminPix::handle($db,$method,$path);
+                $publicPixDb=new Database(self::$config);
+                $publicPixDb->installAndSeed();
+                PublicAdminPix::handle($publicPixDb,$method,$path);
                 return;
             }
 PHP;

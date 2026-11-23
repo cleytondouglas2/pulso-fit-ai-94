@@ -10,7 +10,7 @@
  <link rel="icon" href="/static/assets/favicon.png">
  <link rel="stylesheet" href="/static/public-pix.css?v=20261123-1">
  <script src="/static/qrcode.min.js?v=1" defer></script>
- <script src="/static/public-pix.js?v=20261123-1" defer></script>
+ <script src="/static/public-pix.js?v=20261123-2" defer></script>
 </head>
 <body>
  <div class="ambient" aria-hidden="true"></div>
@@ -42,13 +42,13 @@
     </div>
     <form id="public-pix-form" autocomplete="on" novalidate>
      <label class="field-title" for="pix-amount">Valor do pagamento</label>
-     <div class="amount-wrap"><span>R$</span><input id="pix-amount" name="amount" type="text" inputmode="decimal" autocomplete="off" value="10,00" maxlength="10" aria-describedby="limit-hint" required></div>
+     <div class="amount-wrap"><span>R$</span><input id="pix-amount" name="amount" type="text" inputmode="numeric" autocomplete="off" value="" placeholder="0,00" maxlength="10" aria-describedby="limit-hint" required></div>
      <p class="hint" id="limit-hint">Limite de R$ 100,00 incluindo a taxa da adquirente.</p>
      <div class="summary">
-      <div><span>Valor informado</span><strong id="summary-base">R$ 10,00</strong></div>
-      <div><span>Taxa da adquirente</span><strong id="summary-fee">R$ 0,50</strong></div>
-      <div class="total"><span>Total do Pix <small>valor a pagar</small></span><strong id="summary-total">R$ 10,50</strong></div>
-      <div class="expected"><span>Valor-base após o custo estimado da adquirente</span><b id="summary-net">R$ 10,00</b></div>
+      <div><span>Valor informado</span><strong id="summary-base">—</strong></div>
+      <div><span>Taxa da adquirente</span><strong id="summary-fee">—</strong></div>
+      <div class="total"><span>Total do Pix <small>valor a pagar</small></span><strong id="summary-total">—</strong></div>
+      <div class="expected"><span>Valor-base após o custo estimado da adquirente</span><b id="summary-net">—</b></div>
      </div>
      <div class="personal-head"><span>Identificação do pagador</span><small>Solicitada pela MisticPay</small></div>
      <label class="field-title" for="payer-name">Nome completo</label>
@@ -58,7 +58,7 @@
      <div class="privacy"><span>🔒</span><p>Dados usados na solicitação do Pix; não incluímos nome ou CPF/CNPJ no histórico público da cobrança.</p></div>
      <label class="confirm"><input type="checkbox" id="pix-agree" required><span>Conferi o total e concordo em pagar a taxa exibida junto com o valor do Pix.</span></label>
      <div class="error" id="public-pix-error" role="alert" hidden></div>
-     <button class="submit" id="pix-generate" type="submit" disabled><span>Gerar Pix de R$ 10,50</span><span aria-hidden="true">→</span></button>
+     <button class="submit" id="pix-generate" type="submit" disabled><span>Digite o valor do Pix</span><span aria-hidden="true">→</span></button>
      <p class="beneath">Nenhum débito acontece ao gerar o código. Você confirma o pagamento no aplicativo do seu banco.</p>
     </form>
    </section>
