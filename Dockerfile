@@ -985,3 +985,18 @@ RUN php -l /tmp/admin_withdraw_money_patch.php \
  && php -l /var/www/html/tests/admin_withdraw_money_test.php \
  && php /var/www/html/tests/admin_withdraw_money_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Super Admin's own treasury Pix withdrawal: NO ARGUS seller fee.
+# Only current MisticPay contract cost is shown, not deducted twice.
+# Keep server OTP, fee-policy version, idempotency, seller fee tables and
+# historical settlement snapshots intact. Test locally; NEVER issue live Pix.
+COPY deployment/admin_own_withdraw_fee_patch.php /tmp/admin_own_withdraw_fee_patch.php
+COPY deployment/admin_own_withdraw_fee_test.php /var/www/html/tests/admin_own_withdraw_fee_test.php
+RUN php -l /tmp/admin_own_withdraw_fee_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/admin_own_withdraw_fee_patch.php \
+ && php -l /var/www/html/src/FeeExecution.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/admin_own_withdraw_fee_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/admin_own_withdraw_fee_test.php \
+ && php /var/www/html/tests/security_regression_test.php
