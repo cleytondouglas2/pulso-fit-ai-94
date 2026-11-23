@@ -9,7 +9,7 @@ namespace ArgusPayments;
  */
 final class CommerceBrand {
     private const MAX_BYTES=10485760; // 10 MiB per logo
-    private const MAX_DATA_URL_BYTES=4 * intdiv(self::MAX_BYTES+2,3)+64;
+    private const MAX_DATA_URL_BYTES=13981100; // base64 of 10 MiB plus data URL header
     private const ALLOWED=['image/png'=>IMAGETYPE_PNG,'image/jpeg'=>IMAGETYPE_JPEG,'image/webp'=>IMAGETYPE_WEBP];
 
     private static function fail(string $message,int $status=422):never {
