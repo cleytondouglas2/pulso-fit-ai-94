@@ -107,7 +107,7 @@ try {
     foreach(['CommerceBrand::portal($db,$method,$path,$account,','self::body(900000)',
         "if(\$method!=='GET')self::csrf(\$account)"] as $required)
         if(!str_contains($portal,$required))throw new RuntimeException('Authenticated brand upload route absent');
-    foreach(['data:image/png','image/jpeg','image/webp','getimagesizefromstring',
+    foreach(['data:(image/png|image/jpeg|image/webp)','getimagesizefromstring',
         'content_sha256','a.status NOT IN',"p.status='published'"] as $required)
         if(!str_contains($brandSource,$required))throw new RuntimeException('Brand validation/tenant policy absent: '.$required);
     foreach(['argus-commerce-logo-input','argus-commerce-logo-upload','argus-commerce-logo-remove',
