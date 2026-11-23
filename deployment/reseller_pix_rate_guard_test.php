@@ -26,7 +26,10 @@ try{
  if($e->status!==429)throw $e;
 }
 $guard->invoke(null,$db,$linkB);
-$rows=$db->all('SELECT bucket_key,category,hits FROM argus_security_request_buckets');
+// Earlier security regressions use the same local SQLite database.
+ // Restrict this assertion to the NEW seller public Pix categories.
+$rows=$db->all("SELECT bucket_key,category,hits FROM argus_security_request_buckets
+ WHERE category IN ('seller_pix_burst','seller_pix_sustained')");
 if(count($rows)!==4)throw new RuntimeException('Expected two scoped buckets per reseller link');
 $categories=[];
 foreach($rows as $row){
