@@ -77,17 +77,14 @@ if(!is_string($clientNew)||$clientNew===$clientHtml||
    file_put_contents($client,$clientNew)===false)
     throw new RuntimeException('Could not invalidate seller webhook JS cache');
 
-$adminPix=$root.'src/PublicAdminPix.php';
-agNonMoneyReplace($adminPix,"'provider'=>'MisticPay',","'provider'=>'ARGUS Pay',",'public quote never advertises acquiring PSP');
-$public=$root.'public/static/public-pix.html';
-$pjs=$root.'public/static/public-pix.js';
-foreach([$public,$pjs] as $file){
- $s=file_get_contents($file);
- if(!is_string($s)||!str_contains($s,'MisticPay'))
-     throw new RuntimeException('ARGUS public brand anchor changed');
- $s=str_replace('MisticPay','ARGUS Pay',$s);
- if(file_put_contents($file,$s)===false)throw new RuntimeException('ARGUS public branding write');
-}
-agNonMoneyReplace($public,'public-pix.js?v=pix-premium-20261123-1',
- 'public-pix.js?v=argus-only-20261123-v1','invalidate public Pix JS cache');
+// Revalidate the previously deployed ARGUS white-label patch. Do not
+// introduce or alter acquiring metadata; the public API already emits
+// payment_platform=ARGUS Pay, not the PSP identity.
+$adminPix=(string)file_get_contents($root.'src/PublicAdminPix.php');
+$public=(string)file_get_contents($root.'public/static/public-pix.html');
+$pjs=(string)file_get_contents($root.'public/static/public-pix.js');
+if(!str_contains($adminPix,"'payment_platform'=>'ARGUS Pay',")||
+ !str_contains($public,'public-pix.js?v=argus-white-label-20261123-1')||
+ preg_match('/Mistic[\\s_-]*Pay/i',$public.$pjs))
+ throw new RuntimeException('Public checkout acquirer white-label regression');
 echo "PASS: seller dead webhook requeue guarded by ownership, status, rate limit and CSRF; public Pix does not disclose acquiring PSP.\n";
