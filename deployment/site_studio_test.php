@@ -89,7 +89,7 @@ foreach(['site-studio-public.js?v=20261123-1',
  if(!str_contains($landing,$term))throw new RuntimeException('Landing published config mount missing '.$term);
 foreach([
  'node.nodeValue=start+changed+end',
- "event", "pendingPreview",
+ "addEventListener", "pendingPreview",
  "e.origin!==location.origin",
  "location.search",
  "api/public/site-studio"
