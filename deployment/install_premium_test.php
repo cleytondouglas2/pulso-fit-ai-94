@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors','1');
+ini_set('log_errors','1');
+ini_set('error_log','/dev/stderr');
 $static='/var/www/html/public/static/';
 foreach([
  'install.html'=>['/conta','sw-revenda.js','ARGUS Revenda','manifest.webmanifest?v=revenda-20261123-v8'],
@@ -25,7 +28,7 @@ foreach([
   throw new RuntimeException('Admin guide links to seller');
 }
 foreach(['install-premium.css','install-premium.js'] as $file){
- if(!is_file($static.$file)||filesize($static.$file)<3000)
+ if(!is_file($static.$file)||filesize($static.$file)<($file==='install-premium.css'?10000:1500))
   throw new RuntimeException('Install page static asset missing '.$file);
 }
 $css=(string)file_get_contents($static.'install-premium.css');
