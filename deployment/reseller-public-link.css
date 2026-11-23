@@ -1,0 +1,24 @@
+
+/* ARGUS Pay | seller public Pix CTA — scoped to reseller dashboard */
+#argus-reseller-public-link{--rpl-accent:#efcd89}
+.argus-rpl-card{position:relative;display:flex;gap:22px;overflow:hidden;padding:25px 26px;border-radius:20px;border:1px solid rgba(232,191,117,.45);background:radial-gradient(ellipse at 15% -25%,rgba(240,190,101,.16),transparent 65%),linear-gradient(128deg,#1b2533,#141b28 77%);box-shadow:0 17px 38px rgba(0,0,0,.22);margin:18px 0 24px;color:#f7f4ed}
+.argus-rpl-card:after{content:'';position:absolute;pointer-events:none;right:-90px;top:-120px;width:245px;height:245px;border:1px solid rgba(240,195,121,.13);border-radius:50%}
+.argus-rpl-symbol{width:54px;height:54px;flex:none;display:grid;place-items:center;color:#ffe4af;background:rgba(240,190,101,.13);border:1px solid rgba(240,190,101,.29);border-radius:17px}
+.argus-rpl-body{position:relative;flex:1;min-width:0;z-index:1}
+.argus-rpl-eyebrow{font:800 10px/1.4 system-ui,-apple-system,sans-serif;letter-spacing:1.9px;color:#f2cd86}
+.argus-rpl-body h2{color:#fff4df;font:800 clamp(19px,2.4vw,24px)/1.22 system-ui,-apple-system,sans-serif;letter-spacing:-.6px;margin:6px 0 7px}
+.argus-rpl-body p{margin:0 0 17px;color:#abb7ca;font-size:13px;line-height:1.6;max-width:690px}
+.argus-rpl-url{display:flex;align-items:center;gap:8px;min-width:0;max-width:740px;background:#0c1320;border:1px solid rgba(213,213,228,.18);padding:5px;border-radius:12px}
+.argus-rpl-url input{min-width:0;flex:1;background:transparent;border:0;outline:0;color:#e9eefa;font:500 12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;padding:10px 10px;text-overflow:ellipsis}
+.argus-rpl-url button{border:0;background:rgba(236,190,118,.15);color:#ffdc9c;border-radius:9px;padding:9px 13px;font-weight:800;font-size:12px}
+.argus-rpl-url button:hover{background:rgba(236,190,118,.23)}
+.argus-rpl-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:16px 0 12px}
+.argus-rpl-primary,.argus-rpl-secondary{min-height:42px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border-radius:10px;padding:10px 16px;font:750 13px/1.2 system-ui,-apple-system,sans-serif;text-decoration:none;cursor:pointer}
+.argus-rpl-primary{color:#1e1a15!important;background:linear-gradient(110deg,#b48b52,#e1b97a,#ffe4a6);border:0}
+.argus-rpl-secondary{background:rgba(229,224,238,.06);border:1px solid rgba(205,205,217,.25);color:#f0e4cc}
+.argus-rpl-primary:hover,.argus-rpl-secondary:hover{filter:brightness(1.08)}
+.argus-rpl-primary[aria-disabled="true"]{opacity:.48;pointer-events:none}
+.argus-rpl-message{font-size:12px;color:#8ee0b4;line-height:1.5}
+.argus-rpl-message[data-kind="error"]{color:#ffaaa9}
+@media(max-width:630px){.argus-rpl-card{padding:21px 16px;gap:12px;flex-direction:column;margin:13px 0 18px}.argus-rpl-symbol{width:43px;height:43px;border-radius:13px}.argus-rpl-body p{font-size:12px}.argus-rpl-actions>*{flex:1;min-width:128px}.argus-rpl-url input{font-size:11px}.argus-rpl-url button{font-size:11px;padding:9px 10px}}
+@media(prefers-reduced-motion:reduce){.argus-rpl-card *{animation:none!important;transition:none!important}}

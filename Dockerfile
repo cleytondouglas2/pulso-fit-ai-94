@@ -1014,3 +1014,25 @@ RUN php -l /tmp/argus_public_brand_patch.php \
  && php -l /var/www/html/tests/argus_public_brand_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_public_brand_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Every seller: permanent non-enumerable /e/<unique-code> public ARGUS Pay Pix
+# checkout, merchant-only wallet settlement and the admin-configured combined
+# PSP+ARGUS service fee. Newly registered and preexisting sellers get links.
+# No payout endpoint is accessible through /e or its receipt token.
+COPY deployment/ResellerPublicPix.php /var/www/html/src/ResellerPublicPix.php
+COPY deployment/reseller-public-pix.css deployment/reseller-public-link.css deployment/reseller-public-link.js /var/www/html/public/static/
+COPY deployment/reseller_public_pix_patch.php /tmp/reseller_public_pix_patch.php
+COPY deployment/reseller_public_pix_worker_patch.php /tmp/reseller_public_pix_worker_patch.php
+COPY deployment/reseller_public_pix_test.php /var/www/html/tests/reseller_public_pix_test.php
+RUN php -l /var/www/html/src/ResellerPublicPix.php \
+ && php -l /tmp/reseller_public_pix_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_public_pix_patch.php \
+ && php -l /tmp/reseller_public_pix_worker_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_public_pix_worker_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Portal.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/reseller_public_pix_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_pix_test.php \
+ && php /var/www/html/tests/security_regression_test.php
