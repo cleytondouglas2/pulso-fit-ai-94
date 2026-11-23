@@ -77,14 +77,35 @@ if(!is_string($clientNew)||$clientNew===$clientHtml||
    file_put_contents($client,$clientNew)===false)
     throw new RuntimeException('Could not invalidate seller webhook JS cache');
 
-// Revalidate the previously deployed ARGUS white-label patch. Do not
-// introduce or alter acquiring metadata; the public API already emits
-// payment_platform=ARGUS Pay, not the PSP identity.
-$adminPix=(string)file_get_contents($root.'src/PublicAdminPix.php');
-$public=(string)file_get_contents($root.'public/static/public-pix.html');
-$pjs=(string)file_get_contents($root.'public/static/public-pix.js');
-if(!str_contains($adminPix,"'payment_platform'=>'ARGUS Pay',")||
- !str_contains($public,'public-pix.js?v=argus-white-label-20261123-1')||
- preg_match('/Mistic[\\s_-]*Pay/i',$public.$pjs))
- throw new RuntimeException('Public checkout acquirer white-label regression');
+// Final safety pass for the *public* checkout only. PSP internal APIs and
+// private Super Admin diagnostics are intentionally never modified.
+$apiFile=$root.'src/PublicAdminPix.php';
+$adminPix=file_get_contents($apiFile);
+if(!is_string($adminPix))throw new RuntimeException('Missing public Pix API');
+if(str_contains($adminPix,"'provider'=>'MisticPay',")){
+    $adminPix=str_replace("'provider'=>'MisticPay',",
+        "'payment_platform'=>'ARGUS Pay',",$adminPix);
+    if(file_put_contents($apiFile,$adminPix)===false)
+        throw new RuntimeException('Could not remove public PSP quote field');
+}
+$publicFile=$root.'public/static/public-pix.html';
+$publicJsFile=$root.'public/static/public-pix.js';
+$public=file_get_contents($publicFile);
+$pjs=file_get_contents($publicJsFile);
+if(!is_string($public)||!is_string($pjs))
+ throw new RuntimeException('Missing public checkout asset');
+$public=preg_replace('/Mistic[\s_-]*Pay/iu','ARGUS Pay',$public);
+$pjs=preg_replace('/Mistic[\s_-]*Pay/iu','ARGUS Pay',$pjs);
+if(!is_string($public)||!is_string($pjs))
+ throw new RuntimeException('Public checkout brand normalization error');
+$count=0;
+$public=preg_replace(
+ '~public-pix\.js\?v=[A-Za-z0-9._-]+~',
+ 'public-pix.js?v=privacy-20261123-v3',$public,-1,$count);
+if(!is_string($public)||$count<1||
+ file_put_contents($publicFile,$public)===false||
+ file_put_contents($publicJsFile,$pjs)===false)
+ throw new RuntimeException('Public privacy cache update failed');
+if(preg_match('/Mistic[\s_-]*Pay/iu',$public.$pjs))
+ throw new RuntimeException('Public acquirer name still exposed');
 echo "PASS: seller dead webhook requeue guarded by ownership, status, rate limit and CSRF; public Pix does not disclose acquiring PSP.\n";
