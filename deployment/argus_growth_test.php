@@ -28,7 +28,7 @@ G::revokeVerification($db,'admin',$a,$id);
 try{G::verify($db,$token);throw new RuntimeException('Revoked link accepted');}catch(ApiError $e){}
 echo "PASS: growth scope, idempotent records, monthly calendar, actual paid metrics, privacy and revocable current-status verification. No PSP calls.\n";
 
-$invoice=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic invoice','note'=>'','amount_cents'=>1234,'due'=>'2027-01-01','nonce'=>bin2hex(random_bytes(16))]);
+$invoice=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic invoice','note'=>'','amount_cents'=>1234,'due'=>'2020-01-01','nonce'=>bin2hex(random_bytes(16))]);
 try{G::invoiceMatch($db,'admin',$a,$invoice['id'],$id);throw new RuntimeException('Refunded matched');}catch(ApiError $e){}
 $db->run("UPDATE admin_quick_pix SET status='paid' WHERE id=?",[$id]);
 G::invoiceMatch($db,'admin',$a,$invoice['id'],$id);
@@ -57,6 +57,6 @@ $report=G::metrics($db,'admin',$many,$clock);
 if($report['confirmed_count']!==405||$report['gross_cents']!==40500||$report['daily'][28]['gross_cents']!==40500||$report['pending_count']!==1)throw new RuntimeException('Complete local-date aggregate failed');
 G::saveCursor($db,'test','portal|abc');if(G::cursor($db,'test')!=='portal|abc')throw new RuntimeException('Cursor persistence failed');
 $due=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic overdue','note'=>'','amount_cents'=>1234,'due'=>'2020-01-01','nonce'=>bin2hex(random_bytes(16))]);
-if(G::metrics($db,'admin',$a)['due_count']!==1)throw new RuntimeException('Unmatched overdue missing');
+if(G::metrics($db,'admin',$a,$clock)['due_count']!==1)throw new RuntimeException('Unmatched overdue missing');
 try{G::create($db,'portal',$b,'support',['title'=>'Private document','note'=>'123.456.789-00','category'=>'technical','nonce'=>bin2hex(random_bytes(16))]);throw new RuntimeException('Formatted CPF accepted');}catch(ApiError $e){}
 echo "PASS: complete 405-payment aggregate, local time boundary, historical pending, worker cursor and formatted-document guard.\n";

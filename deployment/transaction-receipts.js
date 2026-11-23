@@ -128,7 +128,7 @@ async function pdf(r,verification=null){
  const rows=fields(r).map(([key,value])=>({key,lines:lines(value,'29px sans-serif',1090)}));
  const notice=lines(r.notice,'24px sans-serif',1090);
  const verifyLines=verification?lines(verification.url,'20px sans-serif',780):[];
- const required=493+rows.reduce((n,row)=>n+54+34*row.lines.length,0)+35+notice.length*30+(verification?Math.max(290,80+verifyLines.length*26):0)+100;
+ const required=493+rows.reduce((n,row)=>n+54+34*row.lines.length,0)+35+notice.length*30+(verification?Math.max(320,80+verifyLines.length*26):0)+100;
  canvas.height=Math.max(1754,required);
  c.fillStyle='#fff';c.fillRect(0,0,1240,canvas.height);
  c.fillStyle='#111b29';c.fillRect(0,0,1240,178);
@@ -148,7 +148,7 @@ async function pdf(r,verification=null){
  if(verification){
   c.fillStyle='#172336';c.font='bold 24px sans-serif';c.fillText('VERIFICAÇÃO PÚBLICA · VÁLIDA POR 30 DIAS',74,y+20);
   c.font='20px sans-serif';verifyLines.forEach((line,i)=>c.fillText(line,74,y+60+26*i));
-  if(verification.image){try{if(verification.image instanceof HTMLImageElement&&!verification.image.complete)await verification.image.decode();c.imageSmoothingEnabled=false;c.fillStyle='#fff';c.fillRect(904,y+38,252,252);c.drawImage(verification.image,916,y+50,228,228);c.imageSmoothingEnabled=true}catch{}}
+  if(verification.image){try{if(verification.image instanceof HTMLImageElement&&!verification.image.complete)await verification.image.decode();c.imageSmoothingEnabled=false;c.fillStyle='#fff';c.fillRect(896,y+38,268,268);c.drawImage(verification.image,926,y+68,208,208);c.imageSmoothingEnabled=true}catch{}}
  }
  const footer=canvas.height-77;c.fillStyle='#e0b76f';c.fillRect(74,footer,1092,3);
  c.fillStyle='#516074';c.font='20px sans-serif';c.fillText('ARGUS PAY  •  Consulte o registro atualizado no painel',74,footer+38);

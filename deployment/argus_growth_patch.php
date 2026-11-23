@@ -8,6 +8,8 @@ function growthReplace(string $path,string $from,string $to):void{
 growthReplace($root.'/src/Gateway.php',"require_once __DIR__ . '/TransactionReceipt.php';","require_once __DIR__ . '/TransactionReceipt.php';\nrequire_once __DIR__ . '/ArgusGrowth.php';");
 $routes=<<<'PHP'
             if($method==='GET'&&$path==='/verify'){
+                header('Cache-Control: no-store, private');
+                header('Referrer-Policy: no-referrer');
                 self::htmlFile('argus-verify.html');return;
             }
             if($method==='POST'&&$path==='/api/public/verify'){

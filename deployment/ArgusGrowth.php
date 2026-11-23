@@ -304,13 +304,22 @@ final class ArgusGrowth {
             }catch(\Throwable $e){error_log('ARGUS_GROWTH_ALERT unavailable class='.get_class($e));}
         }
     }
+    private static array $financialIndexed=[];
+    private static function financialIndexes(Database $db,bool $seller):void{
+        $key=spl_object_id($db->pdo()).':'.($seller?'seller':'admin');
+        if(isset(self::$financialIndexed[$key]))return;
+        $tables=$seller?['argus_seller_charges','argus_seller_withdrawals']:['admin_quick_pix','admin_payouts'];
+        $owner=$seller?'account_id':'actor_id';
+        foreach($tables as $table)self::index($db,$table,$table.'_growth_owner_status_date_idx',$owner.',status,created_at');
+        self::$financialIndexed[$key]=true;
+    }
     /** Exact aggregates, 30 local calendar days, creation-date basis. */
     public static function metrics(Database $db,string $scope,string $owner,?int $clock=null):array{
         self::install($db);
         $now=$clock??time();$tz=new \DateTimeZone('America/Sao_Paulo');
         $today=(new \DateTimeImmutable('@'.$now))->setTimezone($tz)->setTime(0,0);
         $first=$today->modify('-29 days');$start=$first->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');$end=gmdate('Y-m-d H:i:s',$now+1);
-        $seller=$scope==='portal';$table=$seller?'argus_seller_charges':'admin_quick_pix';$outTable=$seller?'argus_seller_withdrawals':'admin_payouts';$field=$seller?'account_id':'actor_id';
+        $seller=$scope==='portal';self::financialIndexes($db,$seller);$table=$seller?'argus_seller_charges':'admin_quick_pix';$outTable=$seller?'argus_seller_withdrawals':'admin_payouts';$field=$seller?'account_id':'actor_id';
         $proof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='deposit_paid')":"";
         $withdrawProof=$seller?" AND EXISTS(SELECT 1 FROM argus_seller_ledger l WHERE l.account_id=q.account_id AND l.operation_id=q.id AND l.operation_kind='withdraw_paid')":"";
         $ts="REPLACE(SUBSTR(q.created_at,1,19),'T',' ')";$valid="q.status='paid' AND q.provider_id IS NOT NULL AND q.provider_id<>''".$proof;
