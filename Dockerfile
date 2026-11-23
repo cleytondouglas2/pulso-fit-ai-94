@@ -1329,7 +1329,7 @@ RUN php -l /var/www/html/src/RevenueAwards.php \
  && php -l /var/www/html/src/MerchantWallet.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/tests/revenue_awards_test.php \
- && php /var/www/html/tests/revenue_awards_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/revenue_awards_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
 
@@ -1356,7 +1356,7 @@ RUN php -l /var/www/html/src/RevenueReport.php \
  && php /tmp/argus_readiness_patch.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/tests/revenue_awards_test.php \
- && php /var/www/html/tests/revenue_awards_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/revenue_awards_test.php \
  && php -l /var/www/html/tests/argus_hardening_regression_test.php \
  && php /var/www/html/tests/argus_hardening_regression_test.php \
  && php /var/www/html/tests/security_regression_test.php
