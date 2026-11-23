@@ -1,0 +1,86 @@
+/* ARGUS Pay: mobile-first, resilient layout. Embedded into the HTML after the
+   main stylesheet so the page is fully styled even when a CDN/cache blocks CSS.
+   IMPORTANT: no financial APIs, form state or personal details. */
+#argus-install-root {width:100%;min-height:100dvh;position:relative;isolation:isolate;overflow:hidden;padding-inline:clamp(14px,3.7vw,36px);background:radial-gradient(ellipse 75% 36% at 89% -5%,rgba(178,112,42,.13),transparent 80%),radial-gradient(ellipse 85% 26% at -25% 47%,rgba(22,77,117,.16),transparent 75%),#080d16;}
+#argus-install-root .page-shell{width:100%;max-width:1160px;margin-inline:auto;position:relative;}
+#argus-install-root .topbar{min-height:88px;display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px;padding:13px 0;border-bottom:1px solid rgba(235,196,138,.12);}
+#argus-install-root .topbar .brand{display:inline-flex!important;align-items:center;gap:12px;text-decoration:none!important;min-width:0;flex:0 1 auto;}
+#argus-install-root .topbar .brand-mark{width:52px!important;height:52px!important;flex:0 0 52px;border-radius:14px!important;overflow:hidden;border:1px solid rgba(245,199,117,.35);box-shadow:0 5px 20px #0008;display:block;}
+#argus-install-root .topbar .brand-mark img{display:block;width:100%;height:100%;object-fit:cover;}
+#argus-install-root .topbar .brand-name{display:flex;flex-direction:column;gap:2px;min-width:0;}
+#argus-install-root .topbar .brand-name b{font-size:17px;font-weight:850;line-height:1.1;white-space:nowrap;letter-spacing:.09em;color:#fff;}
+#argus-install-root .topbar .brand-name small{font-size:10px;letter-spacing:.12em;line-height:1.4;text-transform:uppercase;color:#b5c1d2;white-space:normal;}
+#argus-install-root .topbar .top-actions{display:flex;align-items:center;gap:16px;min-width:0;flex:0 0 auto;}
+#argus-install-root .topbar .security-label{display:flex;align-items:center;gap:6px;font-size:11px;color:#b2bdce;}
+#argus-install-root .topbar .nav-link{display:inline-flex;align-items:center;gap:5px;min-height:44px;border:1px solid rgba(242,201,134,.35);border-radius:12px;padding:10px 15px;color:#f4d49b!important;background:rgba(242,201,134,.065);font-weight:700;text-decoration:none!important;white-space:nowrap;}
+#argus-install-root .hero{display:grid!important;grid-template-columns:minmax(0,1.08fr) minmax(300px,.92fr)!important;align-items:center!important;gap:clamp(26px,5vw,85px)!important;min-height:0!important;padding:60px 0 54px!important;}
+#argus-install-root .hero-copy{max-width:620px;min-width:0;}
+#argus-install-root .hero .eyebrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:10px;letter-spacing:.12em;line-height:1.5;}
+#argus-install-root .hero h1{font-weight:850;font-size:clamp(42px,5.1vw,72px);line-height:1.1;letter-spacing:-.058em;margin:20px 0 22px;overflow-wrap:normal;}
+#argus-install-root .hero-copy>p{font-size:clamp(14px,1.4vw,17px);max-width:600px;line-height:1.75;color:#bec6d4;}
+#argus-install-root .hero-actions{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:29px;}
+#argus-install-root .hero-actions .primary-btn,#argus-install-root .hero-actions .ghost-btn{display:inline-flex!important;min-height:53px!important;align-items:center!important;justify-content:center!important;gap:10px!important;text-decoration:none!important;position:relative;overflow:hidden;border-radius:13px!important;padding:12px 19px!important;line-height:1.2;font-weight:790;}
+#argus-install-root .hero-actions .primary-btn{color:#1c170f!important;border:1px solid #f5d192!important;background:linear-gradient(115deg,#ffe6ae,#d69d56)!important;box-shadow:0 8px 28px rgba(218,153,77,.22);}
+#argus-install-root .hero-actions .ghost-btn{color:#e8e9ee!important;border:1px solid rgba(210,220,240,.25)!important;background:#182332!important;}
+#argus-install-root .hero-benefits{display:flex!important;gap:9px;align-items:center;flex-wrap:wrap;margin-top:22px;}
+#argus-install-root .hero-benefits>span{display:inline-flex;align-items:center;gap:6px;min-height:29px;font-size:11px;line-height:1.4;white-space:nowrap;padding:5px 9px;color:#d3d9e2;background:rgba(226,185,127,.06);border:1px solid rgba(228,185,127,.13);border-radius:99px;}
+#argus-install-root .visual{position:relative!important;display:grid!important;place-items:center!important;height:470px!important;width:100%;min-width:0;margin:0!important;}
+#argus-install-root .visual-halo{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse closest-side,rgba(216,141,60,.12),transparent 79%);}
+#argus-install-root .phone{position:relative!important;width:256px!important;height:463px!important;max-width:256px;border:4px solid #343b46!important;border-radius:42px!important;overflow:hidden!important;transform:rotate(4deg)!important;background:#050910;box-shadow:0 20px 60px #000b,0 0 0 1px rgba(227,196,140,.35);}
+#argus-install-root .phone-head{display:flex!important;justify-content:space-between;align-items:center;font-size:10px;color:#e6e2dc;padding:18px 21px 10px;}
+#argus-install-root .phone-surface{height:calc(100% - 43px)!important;display:flex!important;flex-direction:column!important;align-items:center!important;gap:0;padding:55px 12px 18px!important;border-radius:24px;background:radial-gradient(ellipse at 50% 20%,rgba(224,165,82,.2),transparent 60%),#0d1726;}
+#argus-install-root .app-icon{width:136px!important;height:136px!important;min-height:136px;border-radius:26px!important;overflow:hidden;box-shadow:0 10px 32px #000a;}
+#argus-install-root .app-icon img{display:block;width:100%;height:100%;object-fit:cover;}
+#argus-install-root .phone-internal-card{width:100%;padding:15px;min-width:0;}
+#argus-install-root .float-label{display:flex;position:absolute;right:0;bottom:28px;align-items:center;gap:10px;max-width:200px;background:#192433;border:1px solid rgba(236,194,126,.35);border-radius:13px;padding:12px;box-shadow:0 12px 28px #0007;}
+#argus-install-root .guide-shell{max-width:100%;overflow:hidden;}
+#argus-install-root .device-tab{cursor:pointer;}
+#argus-install-root .steps li{list-style:none;}
+#argus-install-root .guide-panel[hidden]{display:none!important;}
+#argus-install-root .feature-grid{width:100%;}
+#argus-install-root .last-cta{overflow:hidden;}
+#argus-install-root .footer{min-width:0;}
+@media(max-width:850px){
+  #argus-install-root .topbar{min-height:76px;padding:9px 0;}
+  #argus-install-root .topbar .security-label{display:none!important;}
+  #argus-install-root .hero{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important;min-height:0!important;padding:38px 0 26px!important;}
+  #argus-install-root .hero-copy{order:0!important;max-width:100%!important;}
+  #argus-install-root .visual{order:1!important;min-height:0!important;height:335px!important;margin:10px 0 0!important;overflow:hidden;}
+  #argus-install-root .phone{transform:rotate(5deg) scale(.67)!important;transform-origin:center center;}
+  #argus-install-root .float-label{right:6%;bottom:34px;transform:scale(.85);transform-origin:100% 100%;}
+  #argus-install-root .hero h1{font-size:clamp(36px,7.9vw,56px);margin:13px 0 19px;}
+  #argus-install-root .hero-copy>p{max-width:670px;}
+  #argus-install-root .hero-actions{margin-top:22px;}
+}
+@media(max-width:560px){
+  #argus-install-root{padding-inline:15px;}
+  #argus-install-root .topbar .brand-mark{width:44px!important;height:44px!important;flex-basis:44px;border-radius:12px!important;}
+  #argus-install-root .topbar .brand-name b{font-size:14px;letter-spacing:.07em;}
+  #argus-install-root .topbar .brand-name small{font-size:8px;letter-spacing:.065em;}
+  #argus-install-root .topbar .nav-link{font-size:11px;min-height:38px;padding:8px 11px;max-width:117px;}
+  #argus-install-root .hero{padding:32px 0 15px!important;}
+  #argus-install-root .hero .eyebrow{font-size:9px;letter-spacing:.07em;}
+  #argus-install-root .hero h1{font-size:clamp(35px,10vw,50px)!important;line-height:1.1;margin:15px 0 16px;}
+  #argus-install-root .hero-copy>p{font-size:14px;line-height:1.7;}
+  #argus-install-root .hero-actions{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;}
+  #argus-install-root .hero-actions .primary-btn,#argus-install-root .hero-actions .ghost-btn{width:100%!important;min-height:51px!important;margin:0!important;}
+  #argus-install-root .hero-benefits{gap:7px;margin-top:18px!important;}
+  #argus-install-root .hero-benefits>span{font-size:10px;padding:5px 8px;}
+  #argus-install-root .visual{height:286px!important;margin:3px 0 4px!important;}
+  #argus-install-root .phone{transform:rotate(5deg) scale(.58)!important;animation:none!important;}
+  #argus-install-root .float-label{right:0;bottom:19px;transform:scale(.78);}
+  #argus-install-root .section-top{display:block!important;}
+  #argus-install-root .guide-shell{padding:10px!important;}
+  #argus-install-root .device-picker{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+  #argus-install-root .device-tab{min-width:0!important;padding:11px 8px!important;gap:7px!important;max-width:none!important;}
+  #argus-install-root .guide-body{padding:15px 12px!important;}
+  #argus-install-root .guide-title{gap:8px;}
+  #argus-install-root .guide-title h3{font-size:16px;}
+  #argus-install-root .steps li{padding:14px 0;}
+  #argus-install-root .feature-grid{display:grid!important;grid-template-columns:minmax(0,1fr)!important;}
+  #argus-install-root .last-cta{display:flex!important;flex-wrap:wrap;gap:13px;padding:20px!important;}
+  #argus-install-root .last-cta .inline-link{width:100%;}
+}
+@media(prefers-reduced-motion:reduce){
+ #argus-install-root *,#argus-install-root *::before,#argus-install-root *::after{animation:none!important;transition:none!important;}
+}

@@ -7,6 +7,16 @@ declare(strict_types=1);
  */
 $static='/var/www/html/public/static/';
 $template=file_get_contents($static.'install-premium.html');
+$baseCss=file_get_contents($static.'install-premium.css');
+$rescueCss=file_get_contents($static.'install-premium-rescue.css');
+$installJs=file_get_contents($static.'install-premium.js');
+if(!is_string($baseCss)||strlen($baseCss)<15000||
+   !is_string($rescueCss)||strlen($rescueCss)<4000||
+   !is_string($installJs)||strlen($installJs)<1800||
+   str_contains($baseCss,'</style')||str_contains($rescueCss,'</style')||
+   str_contains($installJs,'</script'))
+ throw new RuntimeException('Premium installation: invalid self-contained assets');
+
 if(!is_string($template)||strlen($template)<7000||
    substr_count($template,'</html>')!==1)
  throw new RuntimeException('Premium install page template unavailable');
@@ -46,12 +56,31 @@ $variants=[
 ];
 foreach($variants as $file=>$vars){
  $result=strtr($template,$vars);
+ // The previous external CSS could be missing in the installed iOS web app,
+ // leaving a tall, unstyled hero. Embed the full stylesheet as a failsafe.
+ $result=str_replace(
+  '<link rel="stylesheet" href="/static/install-premium.css?v=20261123-1">',
+  '<link rel="stylesheet" href="/static/install-premium.css?v=20261123-2">'.
+  '<style id="argus-install-embedded-css">'.PHP_EOL.$baseCss.PHP_EOL.$rescueCss.PHP_EOL.'</style>',
+  $result
+ );
+ // Run exactly once, without depending on script caching / service workers.
+ $result=str_replace('<script src="/static/install-premium.js?v=20261123-1" defer></script>','',$result);
+ $result=str_replace('</body>',
+  '<script id="argus-install-embedded-js">'.PHP_EOL.$installJs.PHP_EOL.'</script></body>',$result);
+ // Decorative empty DOM elements could reserve large vertical space when
+ // only part of the CSS was applied. The background is now drawn on the root.
+ $result=str_replace(
+  '<div class="atmosphere" aria-hidden="true"><div class="glow g1"></div><div class="glow g2"></div><div class="orbits"></div></div>',
+  '',$result
+ );
  if(str_contains($result,'%%')||substr_count($result,'rel="manifest"')!==1||
-  !str_contains($result,'install-premium.css?v=20261123-1')||
-  !str_contains($result,'install-premium.js?v=20261123-1'))
+  !str_contains($result,'install-premium.css?v=20261123-2')||
+  !str_contains($result,'id="argus-install-embedded-css"')||
+  !str_contains($result,'id="argus-install-embedded-js"'))
   throw new RuntimeException('Premium install result has invalid metadata: '.$file);
  $path=$static.$file;
  if(file_put_contents($path,$result)===false)
   throw new RuntimeException('Premium install cannot write '.$file);
 }
-echo "PASS: premium installation pages rebuilt for Admin and reseller with scoped manifests, accessible responsive layout and external assets.\n";
+echo "PASS: premium installation pages are self-contained with full responsive CSS and scripts, safe-area iOS layouts and role-scoped manifests.\n";

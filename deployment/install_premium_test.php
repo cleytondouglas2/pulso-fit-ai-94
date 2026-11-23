@@ -9,11 +9,11 @@ foreach([
  'install-admin.html'=>['/admin','sw-admin.js','ARGUS Admin','manifest-admin.webmanifest?v=admin-20261123-v8']
 ] as $file=>[$target,$worker,$name,$manifest]){
  $html=(string)file_get_contents($static.$file);
- if(strlen($html)<9000||substr_count($html,'</html>')!==1)
+ if(strlen($html)<30000||substr_count($html,'</html>')!==1)
   throw new RuntimeException('Install page missing '.$file);
  foreach(['id="argus-install-root"','id="guide-ios"','id="guide-android"',
   'id="tab-ios"','id="tab-android"','id="install-cta"',
-  'install-premium.css?v=20261123-1','install-premium.js?v=20261123-1',
+  'install-premium.css?v=20261123-2','id="argus-install-embedded-css"','id="argus-install-embedded-js"',
   'apple-touch-icon-argus-brand-20261123.png','argus-brand-home-512-v7.png',
   'href="'.$target.'"','data-worker="'.$worker.'"','data-worker-scope="'.$target.'"',
   'content="'.$name.'"','href="/static/'.$manifest.'"'] as $needle)
@@ -21,14 +21,17 @@ foreach([
    throw new RuntimeException('Missing installation component '.$file.': '.$needle);
  if(substr_count($html,'rel="manifest"')!==1||
     substr_count($html,'name="viewport"')!==1||
-    str_contains($html,'<style>')||
-    str_contains($html,'<script>'))
+    substr_count($html,'id="argus-install-embedded-css"')!==1||
+    substr_count($html,'id="argus-install-embedded-js"')!==1||
+    str_contains($html,'class="atmosphere"')||
+    !str_contains($html,'#argus-install-root .hero')||
+    !str_contains($html,'#argus-install-root .topbar'))
   throw new RuntimeException('Inline styles, scripts, duplicate manifest or viewport in '.$file);
  if($target==='/admin'&&str_contains($html,'href="/conta"'))
   throw new RuntimeException('Admin guide links to seller');
 }
-foreach(['install-premium.css','install-premium.js'] as $file){
- if(!is_file($static.$file)||filesize($static.$file)<($file==='install-premium.css'?10000:1500))
+foreach(['install-premium.css','install-premium.js','install-premium-rescue.css'] as $file){
+ if(!is_file($static.$file)||filesize($static.$file)<(str_ends_with($file,'.css')?4000:1500))
   throw new RuntimeException('Install page static asset missing '.$file);
 }
 $css=(string)file_get_contents($static.'install-premium.css');
@@ -46,4 +49,4 @@ $gateway=(string)file_get_contents('/var/www/html/src/Gateway.php');
 if(!str_contains($gateway,"'/conta/instalar'")||
    !str_contains($gateway,"'/admin/instalar'"))
  throw new RuntimeException('Install routes lost');
-echo "PASS: premium install layout is structured, mobile responsive, platform-specific, and preserves Admin/revenda PWA separation.\n";
+echo "PASS: premium install fully embedded CSS/JS, iPhone header and hero layout, responsive guides, no spacing regression, distinct PWA scopes.\n";

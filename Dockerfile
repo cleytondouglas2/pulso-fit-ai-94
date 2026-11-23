@@ -1201,6 +1201,7 @@ RUN php -l /var/www/html/src/Notifications.php \
 # Read-only presentation; payments, wallets, fees and sessions remain unchanged.
 COPY deployment/install-premium.html /var/www/html/public/static/install-premium.html
 COPY deployment/install-premium.css /var/www/html/public/static/install-premium.css
+COPY deployment/install-premium-rescue.css /var/www/html/public/static/install-premium-rescue.css
 COPY deployment/install-premium.js /var/www/html/public/static/install-premium.js
 COPY deployment/install_premium_patch.php /tmp/install_premium_patch.php
 COPY deployment/install_premium_test.php /var/www/html/tests/install_premium_test.php
