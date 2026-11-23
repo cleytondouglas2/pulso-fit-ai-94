@@ -1000,3 +1000,17 @@ RUN php -l /tmp/admin_own_withdraw_fee_patch.php \
  && php -l /var/www/html/tests/admin_own_withdraw_fee_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/admin_own_withdraw_fee_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# White-label the external ARGUS Pay checkout and reseller-facing messaging.
+# Only customer-facing presentation/metadata; all PSP connections, fees,
+# confirmation, private admin provider disclosures, and audit trails unchanged.
+COPY deployment/argus_public_brand_patch.php /tmp/argus_public_brand_patch.php
+COPY deployment/argus_public_brand_test.php /var/www/html/tests/argus_public_brand_test.php
+RUN php -l /tmp/argus_public_brand_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_public_brand_patch.php \
+ && php -l /var/www/html/src/PublicAdminPix.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/argus_public_brand_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_public_brand_test.php \
+ && php /var/www/html/tests/security_regression_test.php
