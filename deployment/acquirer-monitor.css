@@ -1,0 +1,30 @@
+.argus-acq-shell{color:#f4f5fa;min-width:0}
+.argus-acq-hero{padding:26px;border:1px solid #44415c;border-radius:22px;background:linear-gradient(125deg,#1d1c34,#131620);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.argus-acq-hero h1{font-size:clamp(24px,3vw,34px);margin:7px 0}
+.argus-acq-eyebrow{color:#bda5fc;font-size:11px;letter-spacing:.17em;font-weight:750}
+.argus-acq-hero p,.argus-acq-note{color:#b7bdce;font-size:13px;line-height:1.5}
+.argus-acq-note{margin:15px 0;padding:14px 17px;border-radius:12px;background:#202034}
+.argus-acq-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px}
+.argus-acq-card{min-width:0;display:flex;flex-direction:column;gap:13px;padding:19px;border:1px solid #363747;border-radius:18px;background:linear-gradient(145deg,#212337,#141623)}
+.argus-acq-card h3{font-size:16px;margin:0;color:#fff}.argus-acq-card p{font-size:12px;color:#acb2c3;margin:0;line-height:1.5}
+.argus-acq-state{padding:10px;border-radius:9px;background:#302c3c;color:#dcd4f0;font-size:12px;font-weight:750}
+.argus-acq-state.is-good{background:#123e36;color:#8df2c4}.argus-acq-state.is-bad{background:#40242c;color:#ffacaf}
+.argus-acq-state.is-warning{background:#453b25;color:#ffe1a1}
+.argus-acq-state small{opacity:.8;margin-left:8px}
+.argus-acq-card dl{margin:0}.argus-acq-card dl>div{display:flex;gap:10px;justify-content:space-between;border-bottom:1px solid #353647;padding:11px 0}
+.argus-acq-card dt{font-size:12px;color:#a4abc1}.argus-acq-card dd{font-size:12px;font-weight:700;margin:0;max-width:65%;text-align:right;overflow-wrap:anywhere}
+.argus-acq-card-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:auto}.argus-acq-card-actions button{min-width:120px;flex:1}
+.argus-acq-draft{color:#e1baff!important}.argus-acq-last{color:#929ab2;font-size:11px}
+.argus-acq-editor{margin-top:20px;padding:25px;border:1px solid #49405e;border-radius:18px;background:#1b1e2d}
+.argus-acq-editor[hidden],.argus-acq-editor [hidden]{display:none!important}
+.argus-acq-editor h2{font-size:20px;margin:0 0 7px}.argus-acq-editor p{font-size:13px;color:#b5bbcf}
+.argus-acq-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.argus-acq-editor label{display:grid;gap:7px;font-size:12px;color:#e1e2f2;font-weight:700;min-width:0}
+.argus-acq-editor input,.argus-acq-editor select{width:100%;height:42px;min-width:0;max-width:100%;border:1px solid #4f5268;border-radius:10px;background:#131525;color:#fff;padding:10px 12px;font:inherit}
+.argus-acq-editor input:focus-visible,.argus-acq-editor select:focus-visible{outline:2px solid #c6a1ff}
+.argus-acq-form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.argus-acq-feedback{padding:12px;margin-top:15px;border-radius:9px;background:#2d2744;color:#ebdfff;font-size:13px}
+.argus-acq-feedback.is-error{background:#412632;color:#ffb9b9}
+.argus-acq-warn{color:#edce8c!important;margin-top:16px}
+@media(max-width:1050px){.argus-acq-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.argus-acq-cards,.argus-acq-form-grid{grid-template-columns:1fr}.argus-acq-card{padding:15px}.argus-acq-hero{padding:18px}.argus-acq-editor{padding:17px}}
