@@ -12,6 +12,7 @@ const labels=['10K','20K','50K','100K','500K','1M'];
 const authenticatedAdmin=()=>typeof state!=='undefined'&&state?.user?.role==='superadmin';
 const loggedSeller=()=>!!(E('dashboard')&&!E('dashboard').hidden);
 let adminCache=null,sellerCache=null,refreshingAdmin=false,refreshingSeller=false,lastAdmin=0,lastSeller=0;
+let adminSelected='',activeSellerId='',activeAdminId='';
 function heading(title,subtitle){
  return '<div class="argus-aw-heading"><div><div class="argus-aw-eyebrow">✦ PROGRAMA ARGUS PAY</div>'+
  '<h2>'+esc(title)+'</h2><p>'+esc(subtitle)+'</p></div>'+
@@ -25,14 +26,14 @@ function podium(rows){
    const rank=Number(r.rank),metal=rank===1?'gold':rank===2?'silver':'bronze';
    return '<article class="argus-aw-podium-card is-'+metal+'"><div class="argus-aw-rank-medal">'+
    (rank===1?'♛ ':'')+rank+'º</div><div class="argus-aw-rank-name">'+esc(r.display_name)+'</div>'+
-   '<small>FATURAMENTO DO MÊS</small><strong>'+brl(r.monthly_gross_cents)+'</strong>'+
-   '<div class="argus-aw-mini"><span>'+num(r.monthly_count)+' vendas</span><span>Ticket '+brl(r.ticket_cents)+'</span></div>'+
+   '<small>FATURAMENTO DO MÊS</small><strong>'+(r.private?'Privado':brl(r.monthly_gross_cents))+'</strong>'+
+   '<div class="argus-aw-mini">'+(r.private?'<span>Dados não divulgados</span>':'<span>'+num(r.monthly_count)+' vendas</span><span>Ticket '+brl(r.ticket_cents)+'</span>')+'</div>'+
    '<div class="argus-aw-podium-floor" aria-hidden="true"></div></article>';
  }).join('')+'</div>'+
  (data.length>3?'<div class="argus-aw-other-places">'+data.slice(3,5).map(r=>
  '<div class="argus-aw-place"><span class="argus-aw-place-n">'+esc(r.rank)+'º</span><div><b>'+esc(r.display_name)+'</b>'+
- '<small>'+num(r.monthly_count)+' vendas · Ticket '+brl(r.ticket_cents)+'</small></div>'+
- '<strong>'+brl(r.monthly_gross_cents)+'</strong></div>').join('')+'</div>':'');
+ '<small>'+(r.private?'Dados privados':num(r.monthly_count)+' vendas · Ticket '+brl(r.ticket_cents))+'</small></div>'+
+ '<strong>'+(r.private?'Privado':brl(r.monthly_gross_cents))+'</strong></div>').join('')+'</div>':'');
 }
 function plaque(goal,i,profile,illustration=false){
  const earned=profile?Number(profile.lifetime_gross_cents)>=goal:false;
@@ -115,12 +116,13 @@ function cardsTop(rows,title,subtitle,profile){
  podium(rows)+'</section>'+gallery(profile);
 }
 async function adminLoad(id=''){
+ if(id)adminSelected=id;
  if(!authenticatedAdmin()||refreshingAdmin)return;
  refreshingAdmin=true;
  try{
-  const data=await api('/api/admin/merchant-wallet/awards'+(id?'?seller='+encodeURIComponent(id):''));
+  const data=await api('/api/admin/merchant-wallet/awards'+(adminSelected?'?seller='+encodeURIComponent(adminSelected):''));
   if(data?.basis!=='confirmed_pix_ledger')throw Error('Relatório financeiro não confirmado');
-  adminCache=data;lastAdmin=Date.now();
+  adminCache=data;lastAdmin=Date.now();adminSelected=data.selected_id||'';
   const home=adminHome();
   if(home)home.innerHTML=cardsTop(data.ranking,'Destaques de faturamento',
    'Os cinco revendedores com mais vendas confirmadas neste mês.',data.sellers.find(x=>x.account_id===data.selected_id));
@@ -192,14 +194,8 @@ async function sellerLoad(){
 function sellerHome(){
  if(!loggedSeller())return null;
  const page=E('argus-reseller-page-overview');if(!page)return null;
- if(!E('argus-reseller-page-awards')){
-  const section=document.createElement('section');
-  section.id='argus-reseller-page-awards';section.className='argus-reseller-page';
-  section.dataset.resellerPage='awards';section.hidden=true;
-  section.innerHTML='<header class="argus-reseller-page-intro"><h2 tabindex="-1">Ranking e placas</h2><p>Conquistas com faturamento confirmado e metas reais.</p></header>'+ 
-  '<div id="argus-awards-seller" class="argus-awards"><p>Consultando conquistas reais…</p></div>';
-  page.insertAdjacentElement('afterend',section);
- }
+ // The awards page now ships in the initial SPA shell, preventing deep-link races.
+ if(!E('argus-reseller-page-awards'))return null;
  let host=E('argus-awards-seller-home');
  if(!host){host=document.createElement('section');host.id='argus-awards-seller-home';
  host.className='argus-awards argus-aw-home';page.appendChild(host);}
@@ -236,13 +232,30 @@ function initialize(){
  if(E('argus-awards-public'))publicLoad();
  // Both authenticated apps create their dashboards after login.
  let lastProbe=0;
+ const resetSeller=()=>{
+  sellerCache=null;lastSeller=0;
+  const home=E('argus-awards-seller-home'),page=E('argus-awards-seller');
+  if(home)home.replaceChildren();
+  if(page)page.textContent='Consultando conquistas reais…';
+ };
  const probe=()=>{
-  if(authenticatedAdmin()&&adminHome()&&Date.now()-lastAdmin>45000)adminLoad();
-  if(loggedSeller()&&sellerHome()&&Date.now()-lastSeller>45000)sellerLoad();
-  lastProbe=Date.now();
+  const seller=loggedSeller();
+  const sellerId=seller&&typeof state!=='undefined'?String(state?.account?.id||''):'';
+  if((!seller&&activeSellerId)||(sellerId&&sellerId!==activeSellerId)){
+   resetSeller();activeSellerId=sellerId;
+  }
+  const admin=authenticatedAdmin();
+  const adminId=admin?String(state?.user?.id||''):'';
+  if((!admin&&activeAdminId)||(adminId&&adminId!==activeAdminId)){
+   adminCache=null;lastAdmin=0;adminSelected='';activeAdminId=adminId;
+   E('argus-awards-admin-home')?.replaceChildren();
+   if(E('argus-awards-admin'))E('argus-awards-admin').textContent='Consultando ranking…';
+  }
+  if(admin&&adminHome()&&Date.now()-lastAdmin>90000)adminLoad();
+  if(seller&&sellerHome()&&Date.now()-lastSeller>90000)sellerLoad();
  };
  probe();
- setInterval(()=>{if(!document.hidden)probe()},3500);
+ setInterval(()=>{if(!document.hidden)probe()},5000);
  document.addEventListener('click',ev=>{
   if(ev.target.closest('[data-nav="awards"],[data-nav="overview"]')){
    setTimeout(()=>{if(authenticatedAdmin())adminLoad()},100);
