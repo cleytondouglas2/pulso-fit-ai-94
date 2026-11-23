@@ -1,6 +1,9 @@
 name: ARGUS Hybrid Payout Safety
 
 on:
+  push:
+    branches:
+      - argus-payments-deploy
   pull_request:
     branches:
       - argus-payments-deploy

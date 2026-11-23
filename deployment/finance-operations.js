@@ -29,7 +29,7 @@ function show(data,preflight){
  if(!setting.database_persistent)blocked.push("Banco financeiro persistente indisponível nesta instância.");
  else if(setting.database_shared===true)blocked.push("Banco PostgreSQL compartilhado: backup/restauração independente ainda precisa ser comprovado.");
  if(!setting.custody_configuration_confirmed)blocked.push("Custódia do PSP sem confirmação operacional nesta instância.");
- if(finance.provider==="credentials_rejected"||finance.provider==="legacy_misticpay_keys")blocked.push("Finance QR Codes: credenciais rejeitadas ou incompatíveis. Não reutilize o par de outra API.");
+ if(finance.provider==="credentials_rejected"||finance.provider==="legacy_misticpay_keys")blocked.push("Integração Finance QR Codes opcional: credenciais rejeitadas; preserve a API Pix tradicional que está funcionando.");
  else if(finance.ready_to_attempt!==true)blocked.push("Finance QR Codes: autorização não comprovada por consulta autenticada.");
  if(traditional.transaction_read_scope!=="verified")blocked.push("API Pix tradicional: permissão de consulta TRANSACTION_READ ainda não confirmada.");
  if(payout.ready_to_request!==true)blocked.push("Saques: requisitos locais incompletos; nenhum saque foi realizado nesta verificação.");
@@ -57,6 +57,8 @@ function show(data,preflight){
   row('Saques incertos',data.uncertain_withdrawals?.length,!!data.uncertain_withdrawals?.length)+
   row('Cobranças antigas',data.old_pending_charges?.length,!!data.old_pending_charges?.length)+
   row('Pix com status incerto',data.unknown_charges?.length,!!data.unknown_charges?.length)+
+  row('Devoluções parciais a conferir',(data.partial_refund_reviews?.length||0)+(data.admin_partial_refund_reviews?.length||0),!!((data.partial_refund_reviews?.length||0)+(data.admin_partial_refund_reviews?.length||0)))+
+  row('Operações sem ID do PSP',(data.unknown_charges_without_provider_id?.length||0)+(data.untraceable_withdrawals?.length||0)+(data.admin_unknown_without_provider_id?.length||0),!!((data.unknown_charges_without_provider_id?.length||0)+(data.untraceable_withdrawals?.length||0)+(data.admin_unknown_without_provider_id?.length||0)))+
   '</div><section class="argus-op-panel"><h2>Condições locais de operação</h2>'+
   '<div class="argus-op-settings">'+settings.map(([name,ok])=>
   '<div><span>'+esc(name)+'</span><strong class="'+(ok?'good':'warning')+'">'+
@@ -74,9 +76,17 @@ function show(data,preflight){
   details('Saques com resultado incerto',data.uncertain_withdrawals||[],item)+
   details('Saques aguardando conclusão',data.stale_withdrawals||[],item)+
   details('Cobranças pendentes há mais de 30 minutos',data.old_pending_charges||[],item)+
-  details('Cobranças com resultado incerto',data.unknown_charges||[],item)+'</section>';
+  details('Cobranças com resultado incerto',data.unknown_charges||[],item)+
+  details('Revendedores: devoluções parciais em análise',data.partial_refund_reviews||[],item)+
+  details('Admin: devoluções parciais em análise',data.admin_partial_refund_reviews||[],item)+
+  details('Revendedores: Pix sem identificador do PSP',data.unknown_charges_without_provider_id||[],item)+
+  details('Admin: Pix sem identificador do PSP',data.admin_unknown_without_provider_id||[],item)+
+  details('Saques sem identificador do PSP',data.untraceable_withdrawals||[],item)+
+  '<p class="argus-op-disclaimer">Análise somente leitura. Não reenviar Pix ou saques, não liberar reservas nem encerrar devoluções parciais sem extrato autenticado, valor exato, conferência do livro-razão e aprovação administrativa documentada.</p></section>';
  const exceptions=(data.ledger_mismatches||[]).length+(data.negative_wallets||[]).length+
-  (data.uncertain_withdrawals||[]).length;
+  (data.uncertain_withdrawals||[]).length+(data.partial_refund_reviews||[]).length+
+  (data.admin_partial_refund_reviews||[]).length+(data.unknown_charges_without_provider_id||[]).length+
+  (data.admin_unknown_without_provider_id||[]).length+(data.untraceable_withdrawals||[]).length;
  stateEl.textContent=!setting.background_reconciliation_configured?
  'Conciliação em segundo plano não configurada. Status podem ficar desatualizados.':
  cycle.fresh!==true?

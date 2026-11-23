@@ -1286,13 +1286,29 @@ RUN a2enmod remoteip \
 # Flatten the COMPLETE TESTED builder filesystem into a single final image layer
 # rather than replaying or changing financial migrations or operational code.
 # Only the image packaging/metadata changes; no database or PSP calls.
+
+# Read-only Admin investigation queue and static GET/HEAD readiness endpoint.
+COPY deployment/finance-operations.js /var/www/html/public/static/finance-operations.js
+COPY deployment/argus_ops_review_patch.php /tmp/argus_ops_review_patch.php
+COPY deployment/argus_ops_review_test.php /var/www/html/tests/argus_ops_review_test.php
+COPY deployment/argus_healthz.txt /var/www/html/public/healthz
+COPY deployment/ARGUS_PENDING_OPERATIONS_2026-11-23.txt /usr/local/share/argus/ARGUS_PENDING_OPERATIONS_2026-11-23.txt
+RUN php -l /tmp/argus_ops_review_patch.php \
+ && php /tmp/argus_ops_review_patch.php \
+ && php -l /var/www/html/tests/argus_ops_review_test.php \
+ && php /var/www/html/tests/argus_ops_review_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     PHP_INI_DIR=/usr/local/etc/php \
     APACHE_CONFDIR=/etc/apache2 \
     APACHE_ENVVARS=/etc/apache2/envvars \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    ARGUS_DB_DRIVER=sqlite \
+    ARGUS_COOKIE_SECURE=true \
+    ARGUS_MISTICPAY_MODE=disabled
 WORKDIR /var/www/html
 EXPOSE 10000
 STOPSIGNAL SIGWINCH

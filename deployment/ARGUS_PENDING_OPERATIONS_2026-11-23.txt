@@ -1,0 +1,30 @@
+ARGUS Pay — pendências financeiras e infraestrutura, 23/11/2026
+
+Devoluções parciais: A tela de Saúde Financeira mostra IDs de cobranças
+e saques sem ID do PSP, incluindo devoluções parciais em revisão. Mantém a
+trava de carteira afetada até conferência dos valores na adquirente.
+Para resolver, obter extratos autenticados indicando valor original,
+valor devolvido e saldo liquidado, conciliar com o livro-razão, registrar
+decisão e revisão independente. Não marcar manualmente como paid/refunded,
+não reemitir saques incertos nem liberar saldo sem cálculo comprovado.
+
+Rotina independente: o worker atual exige PostgreSQL/MySQL persistente,
+chaves privadas protegidas e ARGUS_NOTIFICATIONS_WORKER_ENABLED=yes.
+Uma instância cron/worker Render precisa receber credenciais próprias,
+monitoramento e banco dedicado, possivelmente com custo. Não criar uma
+instância simulada ou configurar rotinas inseguras no plano gratuito.
+
+Banco: o PostgreSQL atual é compartilhado com outro projeto e expira em
+18/12/2026. Antes de migrar, exigir backup verificado fora do Render,
+restauração em banco isolado, conferência de saldos/ledger/IDs e corte
+sem dois escritores ativos. Nenhum banco é alterado nesta atualização.
+
+Finance QR Codes: o 401 ocorre na API opcional; a API tradicional autentica.
+Preservar credenciais atuais de Pix e saque. Obter credenciais Finance
+específicas do provedor antes de habilitar essa integração.
+
+Disponibilidade: /healthz é estático e aceita GET/HEAD, sem acessar contas.
+Monitores devem utilizar /healthz, não HEAD /.
+
+GitHub: scanner atual não examina commits antigos; a mudança para privado
+requer acesso administrativo ao repositório e revisão da configuração Render.
