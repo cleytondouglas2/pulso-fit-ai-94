@@ -45,8 +45,8 @@ if(!str_contains($src,"status='dead'")||!str_contains($src,"SecurityShield::rate
  !str_contains($src,"/api/portal/webhooks/deliveries/")||
  !str_contains($ui,"data-webhook-retry")||!str_contains($ui,"d.status==='dead'")||
  !str_contains($client,'merchant-webhooks.js?v=retry-safe-20261123-v1')||
- !str_contains($php,"'provider'=>'ARGUS Pay',")||
- !str_contains($html,'public-pix.js?v=argus-only-20261123-v1')||
+ !str_contains($php,"'payment_platform'=>'ARGUS Pay',")||
+ !str_contains($html,'public-pix.js?v=argus-white-label-20261123-1')||
  preg_match('/Mistic[\s_-]*Pay/i',$html.$j))
  throw new RuntimeException('Webhook or public-brand audit contract failed');
 echo "PASS: dead webhook replay only for own account and only once; public Pix acquirer name absent.\n";
