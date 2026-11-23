@@ -151,6 +151,7 @@ foreach(['client.html','admin.html'] as $page){
       "commerce style ".$page);
     comReplace($file,'</body>',
       '<script defer src="/static/commerce-suite.js?v=20261123-3"></script>'.
+      '<script defer src="/static/commerce-brand.js?v=20261123-1"></script>'.
       '<script defer src="/static/commerce-admin.js?v=20261123-1"></script></body>',
       "commerce UI script ".$page);
 }
