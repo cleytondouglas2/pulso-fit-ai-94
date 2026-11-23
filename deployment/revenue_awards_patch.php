@@ -88,8 +88,8 @@ awardsReplace($landing,'      <section class="trust-ribbon"',
  $public.'      <section class="trust-ribbon"',
  'public recognition section without fictional sales');
 awardsReplace($landing,
- '<a href="#plataforma">Plataforma</a>',
- '<a href="#ranking">Ranking</a><a href="#plataforma">Plataforma</a>',
+ '<nav class="desktop-nav" aria-label="Navegação principal">',
+ '<nav class="desktop-nav" aria-label="Navegação principal"><a href="#ranking">Ranking</a>',
  'public navigation ranking link');
 foreach(['admin.html','client.html','landing.html'] as $name){
  $path="$root/public/static/$name";
