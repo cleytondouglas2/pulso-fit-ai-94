@@ -241,7 +241,7 @@ final class Notifications
         $public=self::vapidPublic();$private=(string)getenv('ARGUS_PUSH_VAPID_PRIVATE');
         try{
             $sender=new WebPush(['VAPID'=>[
-                'subject'=>'mailto:suporte@arguspay.com.br',
+                'subject'=>'https://app.arguspay.com.br',
                 'publicKey'=>$public,'privateKey'=>$private
             ]],['TTL'=>3600,'urgency'=>'high','contentType'=>'application/json']);
         }catch(\Throwable $ex){
