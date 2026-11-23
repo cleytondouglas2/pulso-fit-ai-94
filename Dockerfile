@@ -1377,6 +1377,26 @@ RUN php -l /var/www/html/src/DomainControl.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/domain_admin_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+
+# Site Studio: complete public marketing website editable from Super Admin.
+# The published-only API and visual preview never change financial controls.
+COPY deployment/SiteStudio.php /var/www/html/src/SiteStudio.php
+COPY deployment/site-studio-public.js deployment/site-studio-public.css /var/www/html/public/static/
+COPY deployment/site-studio-admin.js deployment/site-studio-admin.css /var/www/html/public/static/
+COPY deployment/site_studio_patch.php /tmp/site_studio_patch.php
+COPY deployment/site_studio_manifest.php /tmp/site_studio_manifest.php
+COPY deployment/site_studio_test.php /var/www/html/tests/site_studio_test.php
+RUN php -l /var/www/html/src/SiteStudio.php \
+ && php -l /tmp/site_studio_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/site_studio_patch.php \
+ && php -l /tmp/site_studio_manifest.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/site_studio_manifest.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/site_studio_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/site_studio_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
