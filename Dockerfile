@@ -1161,3 +1161,21 @@ RUN php -l /tmp/argus_pwa_split_patch.php \
  && php -l /var/www/html/tests/argus_pwa_split_test.php \
  && php /var/www/html/tests/argus_pwa_split_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Push delivery fix: Minishlink WebPush requires an installed PSR-18 HTTP
+# adapter; previous test endpoint returned 200 despite HTTP discovery failure.
+# Guzzle is now an explicit Composer dependency. Separate service worker scopes
+# let admin and reseller coexist on the same device without replacing a Push
+# subscription from the other panel. No payments, balances or PSP calls in build.
+COPY deployment/sw-admin.js /var/www/html/public/sw-admin.js
+COPY deployment/sw-revenda.js /var/www/html/public/sw-revenda.js
+COPY deployment/argus_push_delivery_patch.php /tmp/argus_push_delivery_patch.php
+COPY deployment/argus_push_delivery_test.php /var/www/html/tests/argus_push_delivery_test.php
+RUN php -l /var/www/html/src/Notifications.php \
+ && php -l /tmp/argus_push_delivery_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_push_delivery_patch.php \
+ && php -l /var/www/html/tests/argus_push_delivery_test.php \
+ && php /var/www/html/tests/argus_push_delivery_test.php \
+ && php /var/www/html/tests/notifications_test.php \
+ && php /var/www/html/tests/security_regression_test.php

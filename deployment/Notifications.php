@@ -69,7 +69,7 @@ final class Notifications
     private static function pushConfigured():bool {
         return self::vapidPublic()!=='' &&
             preg_match('/^[A-Za-z0-9_-]{40,48}$/D',(string)getenv('ARGUS_PUSH_VAPID_PRIVATE'))===1 &&
-            class_exists(WebPush::class);
+            class_exists(WebPush::class) && class_exists(\GuzzleHttp\Client::class);
     }
     private static function validEndpoint(string $url):bool {
         if(strlen($url)<30||strlen($url)>2048) return false;
@@ -129,10 +129,26 @@ final class Notifications
             });self::out(['ok'=>true,'preferences'=>self::settings($db,$type,$id)]);
         }
         if($method==='POST'&&$path===$prefix.'/test'){
+            // An inbox event is NOT proof of delivery to Apple/Google. The old
+            // endpoint always returned "enviada", even with no HTTP client.
+            if(!self::pushConfigured())
+                self::fail('Envio Push indisponível no servidor. Tente novamente mais tarde.',503);
+            $subCount=$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=?',[$type,$id]);
+            if((int)($subCount['n']??0)<1)
+                self::fail('Nenhum dispositivo habilitado neste painel. Toque em Ativar notificações primeiro.',409);
             $n=self::record($db,$type,$id,'announcement','argus-push-test-'.$id.'-'.bin2hex(random_bytes(5)),
-                '🔔 ARGUS Pay conectado','Você ativou as notificações deste aparelho com sucesso.',null,$type==='admin'?'/admin':'/conta');
-            if($n)self::dispatch($db,$n);
-            self::out(['ok'=>true,'message'=>'Notificação de teste enviada ao seu dispositivo, se o serviço Push estiver acessível']);
+                '🔔 ARGUS Pay conectado','Seu dispositivo recebeu um teste de notificações ARGUS Pay.',null,$type==='admin'?'/admin':'/conta');
+            if(!$n)self::fail('Ative Avisos e novidades em Preferências antes de testar.',409);
+            $report=self::dispatch($db,$n);
+            if($report['accepted']===0){
+                self::out(['ok'=>false,'delivery'=>'failed','accepted'=>0,'failed'=>$report['failed'],
+                    'message'=>'Teste registrado nos Avisos, mas o serviço Push não aceitou o envio. Reative as notificações no aparelho e tente novamente.'],502);
+            }
+            self::out(['ok'=>true,'delivery'=>$report['failed']>0?'partial':'accepted',
+                'accepted'=>$report['accepted'],'failed'=>$report['failed'],
+                'message'=>$report['failed']>0?
+                    'O serviço Push aceitou alguns dispositivos, mas outros falharam. Confira as permissões e reative os dispositivos afetados.':
+                    'Serviço Push aceitou o aviso para '.(int)$report['accepted'].' dispositivo(s). O recebimento na tela depende das permissões do sistema.']);
         }
         if($method==='POST'&&preg_match('~^'.preg_quote($prefix,'~').'/([a-zA-Z0-9_-]+)/read$~D',$path,$m)){
             $db->run('UPDATE argus_notice_events SET read_at=? WHERE id=? AND audience_type=? AND audience_id=? AND read_at IS NULL',
@@ -205,36 +221,69 @@ final class Notifications
             $titles[$status]??'Atualização da sua conta ARGUS','Seu cadastro foi atualizado. Consulte os detalhes na sua conta.',null,'/conta');
         if($event)self::dispatch($db,$event);
     }
-    public static function dispatch(Database $db,string $eventId):void {
-        if(!self::pushConfigured())return;
-        $event=$db->one('SELECT * FROM argus_notice_events WHERE id=?',[$eventId]);if(!$event)return;
+    /** Gateway acceptance is not proof of display on the phone. */
+    public static function dispatch(Database $db,string $eventId):array {
+        $result=['attempted'=>0,'accepted'=>0,'failed'=>0,'expired'=>0];
+        if(!self::pushConfigured())return $result;
+        $event=$db->one('SELECT * FROM argus_notice_events WHERE id=?',[$eventId]);
+        if(!$event)return $result;
         $pref=self::settings($db,$event['audience_type'],$event['audience_id']);
-        if(!self::enabled($pref,$event['category']))return;
-        $list=$db->all('SELECT * FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=? LIMIT 8',[$event['audience_type'],$event['audience_id']]);
-        if(!$list)return;
+        if(!self::enabled($pref,$event['category']))return $result;
+        $list=$db->all('SELECT * FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=? LIMIT 8',
+            [$event['audience_type'],$event['audience_id']]);
+        if(!$list)return $result;
         $body=$event['body'];$amount=$event['amount_cents'];
         if($pref['show_amount']&&$amount!==null)$body='R$ '.number_format(((int)$amount)/100,2,',','.').' · '.$body;
         $image=$event['category']==='pix.received'?'/static/assets/pix-cachorro.png':null;
         $payload=json_encode(['title'=>$event['title'],'body'=>$body,'url'=>$event['link'],
-            'tag'=>$event['id'],'image'=>$image,'category'=>$event['category']],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+            'tag'=>$event['id'],'image'=>$image,'category'=>$event['category']],
+            JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
         $public=self::vapidPublic();$private=(string)getenv('ARGUS_PUSH_VAPID_PRIVATE');
-        try{$sender=new WebPush(['VAPID'=>['subject'=>'https://'.(string)($_SERVER['HTTP_HOST']??'argus-payments-oregon-testes.onrender.com'),
-            'publicKey'=>$public,'privateKey'=>$private]],['TTL'=>3600,'urgency'=>'high','contentType'=>'application/json']);}
-        catch(\Throwable $ex){error_log('ARGUS push service init failed: '.get_class($ex));return;}
-        foreach($list as $sub){
-            if(!self::validEndpoint($sub['endpoint']))continue;
-            $existing=$db->one('SELECT delivered_at FROM argus_notice_deliveries WHERE event_id=? AND endpoint_hash=?',[$eventId,$sub['endpoint_hash']]);
-            if($existing&&$existing['delivered_at'])continue;
-            try{
-                $report=$sender->sendOneNotification(Subscription::create(['endpoint'=>$sub['endpoint'],
-                    'keys'=>['p256dh'=>$sub['p256dh'],'auth'=>$sub['auth']]]),$payload);
-                if(!$existing)$db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?)',
-                    [$eventId,$sub['endpoint_hash'],Database::stamp(),$report->isSuccess()?Database::stamp():null]);
-                else $db->run('UPDATE argus_notice_deliveries SET attempt_at=?,delivered_at=? WHERE event_id=? AND endpoint_hash=?',
-                    [Database::stamp(),$report->isSuccess()?Database::stamp():null,$eventId,$sub['endpoint_hash']]);
-                if($report->isSubscriptionExpired())$db->run('DELETE FROM argus_notice_subscriptions WHERE endpoint_hash=?',[$sub['endpoint_hash']]);
-                if(!$report->isSuccess())error_log('ARGUS push transport failed: '.(int)$report->getResponse()?->getStatusCode());
-            } catch(\Throwable $ex){error_log('ARGUS push delivery exception: '.get_class($ex));}
+        try{
+            $sender=new WebPush(['VAPID'=>[
+                'subject'=>'mailto:suporte@arguspay.com.br',
+                'publicKey'=>$public,'privateKey'=>$private
+            ]],['TTL'=>3600,'urgency'=>'high','contentType'=>'application/json']);
+        }catch(\Throwable $ex){
+            error_log('ARGUS push service init failed: '.get_class($ex));
+            $result['failed']=count($list);
+            return $result;
         }
+        foreach($list as $sub){
+            if(!self::validEndpoint($sub['endpoint'])){
+                $result['failed']++;
+                continue;
+            }
+            $existing=$db->one('SELECT delivered_at FROM argus_notice_deliveries WHERE event_id=? AND endpoint_hash=?',
+                [$eventId,$sub['endpoint_hash']]);
+            if($existing&&$existing['delivered_at'])continue;
+            $result['attempted']++;
+            try{
+                $report=$sender->sendOneNotification(Subscription::create([
+                    'endpoint'=>$sub['endpoint'],
+                    'keys'=>['p256dh'=>$sub['p256dh'],'auth'=>$sub['auth']]
+                ]),$payload);
+                $accepted=$report->isSuccess();
+                if($accepted)$result['accepted']++;
+                else $result['failed']++;
+                if(!$existing)
+                    $db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?)',
+                        [$eventId,$sub['endpoint_hash'],Database::stamp(),$accepted?Database::stamp():null]);
+                else
+                    $db->run('UPDATE argus_notice_deliveries SET attempt_at=?,delivered_at=? WHERE event_id=? AND endpoint_hash=?',
+                        [Database::stamp(),$accepted?Database::stamp():null,$eventId,$sub['endpoint_hash']]);
+                if($report->isSubscriptionExpired()){
+                    $result['expired']++;
+                    $db->run('DELETE FROM argus_notice_subscriptions WHERE endpoint_hash=?',[$sub['endpoint_hash']]);
+                }
+                if(!$accepted)
+                    error_log('ARGUS push transport failed: status='.(int)$report->getResponse()?->getStatusCode());
+            }catch(\Throwable $ex){
+                $result['failed']++;
+                error_log('ARGUS push delivery exception: '.get_class($ex));
+            }
+        }
+        return $result;
     }
+
 }

@@ -5,6 +5,8 @@ const isAdmin=/^\/(?:admin|operacao)?\/?$/.test(location.pathname), apiBase=isAd
 const sessionUrl=isAdmin?"/api/admin/session":"/api/portal/session";
 const ios=/iPad|iPhone|iPod/.test(navigator.userAgent)||navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1;
 const installed=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const swPath=isAdmin?"/sw-admin.js":"/sw-revenda.js";
+const swScope=isAdmin?"/admin":"/conta";
 let root,registration,loaded=false,lastCheck=0,info=null,installPrompt=null,platform=ios?"ios":"android",open=false;
 const $=x=>document.getElementById(x);
 const escapeHTML=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -52,7 +54,22 @@ function build(){
  $("an-install-button").onclick=async()=>{if(!installPrompt)return;const p=installPrompt;installPrompt=null;await p.prompt();await p.userChoice;guide();};
  $("an-activate").onclick=enable;
  $("an-deactivate").onclick=disable;
- $("an-test").onclick=async()=>{try{const x=await api("/test","POST",{});feedback(x.message);await refresh();}catch(e){feedback(e.message,true);}};
+ $("an-test").onclick=async()=>{
+   const button=$("an-test");
+   if(button.disabled)return;
+   button.disabled=true;
+   try{
+     if(!("Notification" in window)||Notification.permission!=="granted")
+       throw Error("Permita notificações neste aparelho usando Ativar notificações antes de testar.");
+     const reg=registration||await navigator.serviceWorker.getRegistration(swScope);
+     const sub=reg?await reg.pushManager.getSubscription():null;
+     if(!sub)throw Error("Este painel não tem uma inscrição Push ativa neste aparelho. Toque em Ativar notificações novamente.");
+     const x=await api("/test","POST",{});
+     feedback(x.message,x.delivery!=="accepted");
+     await refresh();
+   }catch(e){feedback(e.message,true);}
+   finally{button.disabled=false;}
+ };
  $("an-save").onclick=async()=>{
   const prefs={pix_received:$("an-received").checked,pix_sent:$("an-sent").checked,announcements:$("an-announcements").checked,show_amount:$("an-amount").checked};
   try{await api("/preferences","POST",prefs);feedback("Preferências salvas!");await refresh();}catch(e){feedback(e.message,true);}
@@ -75,7 +92,10 @@ async function refresh(){
   $("an-badge").hidden=!info.unread;$("an-badge").textContent=info.unread>99?"99+":String(info.unread);
   const pref=info.preferences||{};
   $("an-received").checked=!!pref.pix_received;$("an-sent").checked=!!pref.pix_sent;$("an-announcements").checked=!!pref.announcements;$("an-amount").checked=!!pref.show_amount;
-  $("an-server-status").textContent=info.push_available?"Servidor Push configurado.":"Avisos internos disponíveis; notificações do sistema dependem de ativação no servidor.";
+  const count=Number(info.subscriptions)||0;
+  $("an-server-status").textContent=info.push_available?
+    ("Servidor Push operacional. "+count+" inscrição(ões) vinculada(s) a esta conta. Para este aparelho, toque em Ativar notificações antes de enviar teste.") :
+    "Push indisponível no servidor. Avisos internos permanecem acessíveis.";
   if(isAdmin){const r=await fetch("/api/admin/session",{credentials:"same-origin",cache:"no-store"}).then(x=>x.json()).catch(()=>null);$("an-broadcast-block").hidden=r?.user?.role!=="superadmin";}
  }catch(e){feedback(e.message,true);}
 }
@@ -88,7 +108,7 @@ async function enable(){
   // Safari requires the permission request to originate from a user click.
   const permission=Notification.permission==="granted"?"granted":await Notification.requestPermission();
   if(permission!=="granted"){feedback("Permissão negada. Abra as configurações de notificações do aparelho.",true);return;}
-  registration=registration||await navigator.serviceWorker.register("/sw.js",{scope:"/"});
+  registration=await navigator.serviceWorker.register(swPath,{scope:swScope});
   const existing=await registration.pushManager.getSubscription();
   const subscription=existing||await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:keyBytes(info.vapid_public)});
   try{await api("/subscribe","POST",{subscription:subscription.toJSON()});}
@@ -98,7 +118,7 @@ async function enable(){
 }
 async function disable(){
  try{
-  const reg=registration||await navigator.serviceWorker.getRegistration("/");
+  const reg=registration||await navigator.serviceWorker.getRegistration(swScope);
   const sub=reg?await reg.pushManager.getSubscription():null;
   if(sub){await api("/unsubscribe","POST",{endpoint:sub.endpoint});await sub.unsubscribe();}
   feedback("Notificações desativadas neste aparelho.");
@@ -111,7 +131,7 @@ async function checkSession(){
 }
 async function init(){
  if(!isSecureContext)return;
- if("serviceWorker" in navigator)try{registration=await navigator.serviceWorker.register("/sw.js",{scope:"/"});}catch{}
+ if("serviceWorker" in navigator)try{registration=await navigator.serviceWorker.register(swPath,{scope:swScope});}catch{}
  await checkSession();setInterval(checkSession,12000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkSession();});
 }
