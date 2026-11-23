@@ -200,6 +200,9 @@ final class CommerceSuite {
         }
         self::fail('Rota de comércio indisponível.',404);
     }
+    public static function respondAdmin(Database $db,array $actor):never {
+        self::out(self::admin($db,$actor));
+    }
     public static function public(Database $db,string $method,string $path):never {
         if($method!=='GET'||!preg_match('~^/api/public/commerce/([a-f0-9]{32})$~D',$path,$m))
             self::fail('Página não encontrada.',404);
