@@ -7,12 +7,12 @@ function growthReplace(string $path,string $from,string $to):void{
 }
 growthReplace($root.'/src/Gateway.php',"require_once __DIR__ . '/TransactionReceipt.php';","require_once __DIR__ . '/TransactionReceipt.php';\nrequire_once __DIR__ . '/ArgusGrowth.php';");
 $routes=<<<'PHP'
-            if($method==='GET'&&preg_match('~^/verify/[a-f0-9]{64}/?$~D',$path)){
+            if($method==='GET'&&$path==='/verify'){
                 self::htmlFile('argus-verify.html');return;
             }
-            if($method==='GET'&&preg_match('~^/api/public/verify/([a-f0-9]{64})$~D',$path,$verify)){
+            if($method==='POST'&&$path==='/api/public/verify'){
                 $verifyDb=new Database(self::$config);
-                ArgusGrowth::publicRoute($verifyDb,$verify[1]);return;
+                ArgusGrowth::publicRoute($verifyDb);return;
             }
 PHP;
 growthReplace($root.'/src/Gateway.php','// Real-operation console: legacy demo pages, test checkout and demo login are removed.',$routes."\n".'// Real-operation console: legacy demo pages, test checkout and demo login are removed.');
@@ -28,7 +28,7 @@ growthReplace($root.'/src/Admin.php',"        if(\$method==='GET'&&\$path==='/ap
 $d=$root.'/public/static/';
 foreach(['admin.html','client.html'] as $f){
  growthReplace($d.$f,'</head>','<link rel="stylesheet" href="/static/argus-growth.css?v=1"></head>');
- growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=1"></script></body>');
+ growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=2"></script></body>');
 }
 // A suggested amount is only a prefill; the normal quote and buyer confirmation are mandatory.
 $prefill=<<<'JS'

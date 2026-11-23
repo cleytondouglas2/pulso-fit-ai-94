@@ -39,3 +39,11 @@ G::thread($db,'admin',$b,$ticket['id'],'Test answer');
 if(count(G::thread($db,'portal',$a,$ticket['id'])['messages'])!==2)throw new RuntimeException('Support conversation missing');
 try{G::thread($db,'portal',$b,$ticket['id']);throw new RuntimeException('Thread scope leak');}catch(ApiError $e){}
 echo "PASS: existing confirmed Pix matched to invoice, refunded exclusion, admin support replies and seller thread isolation.\n";
+
+G::transition($db,'admin',$a,$x['id'],'advance');
+if(G::listing($db,'admin',$a,'subscription')['items'][0]['data']['due']!=='2028-03-31')throw new RuntimeException('Anchor day lost');
+if(G::create($db,'admin',$a,'subscription',$v)['created'])throw new RuntimeException('Idempotency lost after change');
+$row=G::listing($db,'admin',$a,'subscription')['items'][0];$edit=$row['data'];$edit['title']='Edited test';$edit['revision']=$row['revision'];G::edit($db,'admin',$a,$x['id'],$edit);
+try{G::edit($db,'admin',$a,$x['id'],$edit);throw new RuntimeException('Stale revision accepted');}catch(ApiError $e){}
+if(G::localDay(strtotime('2026-11-23T01:00:00Z'))!=='2026-11-22')throw new RuntimeException('Brazil local day wrong');
+echo "PASS: original subscription anchor, immutable idempotency, optimistic editing and Brazilian calendar.\n";

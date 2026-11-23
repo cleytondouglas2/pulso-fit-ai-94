@@ -30,34 +30,14 @@ final class ArgusAI
             id VARCHAR(32) PRIMARY KEY, audience VARCHAR(12) NOT NULL,
             actor_id VARCHAR(64) NOT NULL, created_at VARCHAR(32) NOT NULL)');
     }
-    private static function limit(Database $db,string $type,string $id):void {
-        self::install($db);
-        $hour=gmdate('Y-m-d\TH:i:s\Z',time()-3600);
-        $row=$db->one('SELECT COUNT(*) AS n FROM argus_ai_usage WHERE audience=? AND actor_id=? AND created_at>=?',[$type,$id,$hour]);
-        if((int)($row['n']??0)>=12)self::fail('Limite gratuito de 12 perguntas por hora atingido. Tente mais tarde.',429);
-        $db->run('INSERT INTO argus_ai_usage(id,audience,actor_id,created_at) VALUES (?,?,?,?)',
-            [bin2hex(random_bytes(16)),$type,$id,Database::stamp()]);
-        // Retention: only anonymous usage counters; no chat messages or PII stored.
-        if(random_int(1,120)===1)$db->run('DELETE FROM argus_ai_usage WHERE created_at<?',[gmdate('Y-m-d\TH:i:s\Z',time()-86400)]);
+    private static function limit(Database $db,string $type,string $id):void{
+        SecurityShield::rate($db,'ai_chat_'.$type,$id,12,3600);
     }
-    private static function rows(Database $db,string $type,array $actor):array {
-        $since=gmdate('Y-m-d',time()-30*86400);
-        if($type==='portal'){
-            if(empty($actor['id'])||$actor['status']!=='approved')return [];
-            $x=$db->all("SELECT status,amount_cents,created_at FROM argus_seller_charges WHERE account_id=? AND substr(created_at,1,10)>=? ORDER BY created_at DESC LIMIT 400",[$actor['id'],$since]);
-            $y=$db->all("SELECT status,amount_cents,created_at FROM argus_seller_withdrawals WHERE account_id=? AND substr(created_at,1,10)>=? ORDER BY created_at DESC LIMIT 200",[$actor['id'],$since]);
-            $rows=[];
-            foreach($x as $r)$rows[]=['direction'=>'received','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
-            foreach($y as $r)$rows[]=['direction'=>'sent','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
-            return $rows;
-        }
-        // Only the fully authenticated superadmin can query global operations.
-        $in=$db->all('SELECT status,amount_cents,created_at FROM admin_quick_pix WHERE created_at>=? ORDER BY created_at DESC LIMIT 400',[$since]);
-        $out=$db->all('SELECT status,amount_cents,created_at FROM admin_payouts WHERE created_at>=? ORDER BY created_at DESC LIMIT 200',[$since]);
-        $rows=[];
-        foreach($in as $r)$rows[]=['direction'=>'received','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
-        foreach($out as $r)$rows[]=['direction'=>'sent','status'=>$r['status'],'amount_cents'=>(int)$r['amount_cents'],'created_at'=>$r['created_at']];
-        return $rows;
+    private static function summary(Database $db,string $type,array $actor):array{
+        $m=ArgusGrowth::metrics($db,$type,(string)$actor['id']);
+        $daily=[];foreach(array_slice($m['daily'],-7) as $day)$daily[substr($day['day'],8,2).'/'.substr($day['day'],5,2)]=$day['gross_cents'];
+        $alerts=[];foreach($m['risk_signals'] as $s)$alerts[]=['level'=>'attention','code'=>'signal_'.substr(hash('sha256',$s),0,12),'title'=>'Sinal de atenção','message'=>$s];
+        return ['period'=>'30 dias de calendário (Brasília); pendências de qualquer data','received_cents'=>$m['gross_cents'],'sent_cents'=>$m['sent_cents'],'pending_count'=>$m['pending_count'],'failed_count'=>$m['failed_count'],'paid_count'=>$m['confirmed_count']+$m['sent_count'],'transaction_count'=>$m['transaction_count'],'today_received_cents'=>$m['daily'][29]['gross_cents'],'last_7_days'=>$daily,'alerts'=>$alerts,'forecast_30d_cents'=>$m['forecast_30d_cents'],'forecast_note'=>$m['model'],'note'=>$m['model']];
     }
     public static function analyze(array $rows,?int $now=null):array {
         $now??=time();
@@ -96,7 +76,7 @@ final class ArgusAI
         if(count($recent)>=8)$alerts[]=['level'=>'attention','code'=>'volume','title'=>'Volume incomum','message'=>count($recent).' movimentações registradas nos últimos 10 minutos. Confira o histórico.'];
         if(count($history)>=5){
             $avg=array_sum($history)/count($history);
-            foreach($high as $a){if($a>=100000 && $a>=$avg*3){
+            foreach($high as $a){if($a>=100 && $a>=$avg*3){
                 $alerts[]=['level'=>'attention','code'=>'amount','title'=>'Valor fora do padrão','message'=>'Um recebimento recente está acima do padrão histórico. Verifique os registros.'];break;
             }}
         }
@@ -182,13 +162,19 @@ final class ArgusAI
         // Optional account tables may not exist on a freshly migrated environment.
         Portal::install($db);
         Notifications::install($db);
-        foreach($db->all("SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' LIMIT 20") as $actor){
-            try{self::notifyAlerts($db,'admin',$actor['id'],self::analyze(self::rows($db,'admin',$actor)));}
-            catch(\Throwable $e){error_log('ARGUS AI admin advisory unavailable: '.get_class($e));}
-        }
-        foreach($db->all("SELECT id,merchant_id,status FROM argus_portal_accounts WHERE status='approved' AND merchant_id IS NOT NULL LIMIT 100") as $actor){
-            try{self::notifyAlerts($db,'portal',$actor['id'],self::analyze(self::rows($db,'portal',$actor)));}
-            catch(\Throwable $e){error_log('ARGUS AI portal advisory unavailable: '.get_class($e));}
+        ArgusGrowth::install($db);
+        $start=microtime(true);
+        foreach(['admin','portal'] as $type){
+            $job='ai_'.$type;$cursor=ArgusGrowth::cursor($db,$job);
+            $sql=$type==='admin'?"SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' AND id>? ORDER BY id LIMIT 20":"SELECT id,merchant_id,status FROM argus_portal_accounts WHERE status='approved' AND merchant_id IS NOT NULL AND id>? ORDER BY id LIMIT 100";
+            $actors=$db->all($sql,[$cursor]);if(!$actors){ArgusGrowth::saveCursor($db,$job,'');continue;}
+            $slice=microtime(true);
+            foreach($actors as $actor){
+                if(microtime(true)-$slice>4||microtime(true)-$start>9)break;
+                ArgusGrowth::saveCursor($db,$job,(string)$actor['id']);
+                try{self::notifyAlerts($db,$type,$actor['id'],self::summary($db,$type,$actor));}
+                catch(\Throwable $e){error_log('ARGUS AI advisory unavailable: '.get_class($e));}
+            }
         }
     }
     public static function handle(Database $db,string $method,string $path,string $type,array $actor):never {
@@ -202,18 +188,18 @@ final class ArgusAI
             'model'=>getenv('ARGUS_GROQ_MODEL')?:'openai/gpt-oss-20b',
             'daily_alerts_enabled'=>getenv('ARGUS_AI_ALERTS_ENABLED')==='yes']);
         if($path===$prefix.'/insights'&&$method==='GET'){
-            $s=self::analyze(self::rows($db,$type,$actor));
+            $s=self::summary($db,$type,$actor);
             self::out(['insights'=>$s]);
         }
         if($path===$prefix.'/chat'&&$method==='POST'){
-            $q=trim((string)(self::input()['message']??''));
+            $input=self::input()['message']??null;if(!is_string($input))self::fail('Mensagem inválida.',422);$q=trim($input);
             $len=mb_strlen($q,'UTF-8');
             if($len<2||$len>850)self::fail('Digite uma pergunta de 2 a 850 caracteres',422);
             // Refuse sensitive data before sending user text to any external processor.
-            if(preg_match('/(?:ag[ps]_live_[a-f0-9]{12,}|gsk_[A-Za-z0-9_-]{10,}|[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}|\b\d{11,}\b)/i',$q))
+            if(preg_match('/(?:ag[ps]_live_[a-f0-9]{12,}|gsk_[A-Za-z0-9_-]{10,}|[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}|\b\d{11,}\b|\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b|(?:pk|sk)_[A-Za-z0-9_-]{12,})/i',$q))
                 self::fail('Não envie chaves, documentos, e-mails ou dados sensíveis. Reformule sua pergunta sem essas informações.',422);
             self::limit($db,$type,(string)$actor['id']);
-            $summary=self::analyze(self::rows($db,$type,$actor));
+            $summary=self::summary($db,$type,$actor);
             $answer=self::groq($q,$summary);
             $reply=$answer??('✦ Argus por aqui — olhos atentos, decisões suas.' . "\n\n" . self::knowledge($q,$summary));
             self::out(['reply'=>$reply,
