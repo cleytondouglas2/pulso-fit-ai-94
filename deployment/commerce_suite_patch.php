@@ -41,8 +41,16 @@ $portal=<<<'PHP'
         // All merchant Commerce Studio writes inherit the established seller
         // session and portal CSRF guard. There are NO provider money routes.
         if(str_starts_with($path,'/api/portal/commerce/')){
+            // Action endpoints carry their action in the path, not the body.
+            // Portal::body rejects an empty JSON object ({}), leading to 400
+            // for publish/archive. Keep session+CSRF, skip the needless parser
+            // only for these explicitly enumerated no-payload actions.
+            $actionNoBody=$method==='POST'&&preg_match(
+                '~^/api/portal/commerce/pages/cmp_[a-f0-9]{32}/(?:publish|archive|delete)$~D',
+                $path
+            )===1;
             CommerceSuite::portal($db,$method,$path,$account,
-                $method==='POST'?self::body():[]);
+                $method==='POST'&&!$actionNoBody?self::body():[]);
         }
 PHP;
 comReplace("$root/src/Portal.php",
@@ -80,7 +88,7 @@ $screen=<<<'HTML'
   '<div class="argus-commerce-grid"><section class="argus-commerce-panel"><h4>Criar ou editar oferta</h4><form id="argus-commerce-form" autocomplete="off">'+
    '<label>Título da oferta<input name="title" maxlength="100" placeholder="Produto ou serviço" required></label>'+
    '<label>Descrição comercial<textarea name="description" maxlength="600" placeholder="O que seu cliente recebe?" required></textarea></label>'+
-   '<div class="argus-commerce-form-row"><label>Valor sugerido (R$)<input name="amount" inputmode="decimal" value="10,00" placeholder="10,00" required></label>'+
+   '<div class="argus-commerce-form-row"><label>Valor sugerido (R$) · opcional<input name="amount" inputmode="decimal" value="" placeholder="Deixe vazio para valor livre"></label>'+
    '<label>Cor principal<input name="accent_color" type="color" value="#e9bc74"></label></div>'+
    '<label>Imagem ilustrativa (URL HTTPS)<input name="image_url" maxlength="600" placeholder="https://.../foto.webp"></label>'+
    '<div class="argus-commerce-form-row"><label>Texto do botão<input name="call_to_action" maxlength="70" value="Continuar para o Pix" required></label>'+
