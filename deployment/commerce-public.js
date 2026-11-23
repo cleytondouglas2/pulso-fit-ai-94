@@ -14,7 +14,10 @@ function show(d){
  const eyebrow=document.createElement('div');eyebrow.className='argus-cp-eyebrow';eyebrow.textContent=d.seller_name||'ARGUS Pay';body.append(eyebrow);
  const title=document.createElement('h1');title.textContent=d.title;body.append(title);
  const description=document.createElement('p');description.textContent=d.description;body.append(description);
- const value=document.createElement('strong');value.textContent='Valor sugerido: '+money(d.suggested_amount_cents);body.append(value);
+ const value=document.createElement('strong');
+ value.textContent=d.suggested_amount_cents===null?
+  'Valor livre — você escolhe quanto pagar':'Valor sugerido: '+money(d.suggested_amount_cents);
+ body.append(value);
  const ready=d.checkout?.available&&/^\/e\/[a-f0-9]{32}$/.test(d.checkout?.public_path||'');
  const btn=document.createElement(ready?'a':'div');btn.className='argus-cp-button'+(ready?'':' is-disabled');
  btn.textContent=ready?d.call_to_action:'Pagamento indisponível neste momento';
