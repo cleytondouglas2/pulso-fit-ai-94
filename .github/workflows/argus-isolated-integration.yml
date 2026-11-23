@@ -17,5 +17,7 @@ jobs:
         run: |
           find deployment -name '*.php' -print0 | xargs -0 -n1 php -l
           find deployment -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Simulated mobile share capability tests
+        run: node deployment/receipt-share-test.cjs
       - name: Build and execute offline integration tests
         run: docker build --progress=plain --tag argus-offline-test .

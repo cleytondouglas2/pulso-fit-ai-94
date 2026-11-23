@@ -92,3 +92,17 @@ $history=G::thread($db,'portal',$a,$ticket['id']);$ids=[];
 while(true){array_push($ids,...array_column($history['messages'],'id'));if(!$history['next_cursor'])break;$history=G::thread($db,'portal',$a,$ticket['id'],null,null,$history['next_cursor']);}
 if(count($ids)!==208||count(array_unique($ids))!==208)throw new RuntimeException('Support history pagination failed');
 echo "PASS: atomic batch, changed replay rejection, identical distinct rows, paginated 208-message history.\n";
+
+foreach(['senha: example-secret','Bearer example-token','PIN = 1234','meu cartão 4111 1111 1111 1111','telefone (11) 99999-0000'] as $q)if(!\ArgusPayments\ArgusAI::sensitive($q))throw new RuntimeException('Sensitive input accepted');
+if(\ArgusPayments\ArgusAI::publicTopic('meu saldo é 25 reais')!==null||\ArgusPayments\ArgusAI::publicTopic('como integrar a api?')!=='integration'||\ArgusPayments\ArgusAI::chooseFaq('pix','R$ 1000 confirmado')!==null)throw new RuntimeException('Untrusted model output or private question accepted');
+$payload=json_encode(['items'=>array_fill(0,50,['title'=>str_repeat('á',100),'note'=>str_repeat('ã',100),'amount_cents'=>100,'due'=>'2027-01-01']),'nonce'=>bin2hex(random_bytes(16))],JSON_UNESCAPED_UNICODE);
+if(strlen($payload)<=12288||count(G::batchInput($payload)['items'])!==50)throw new RuntimeException('Long batch rejected');
+try{G::batchInput(str_repeat('x',65537));throw new RuntimeException('Oversized batch accepted');}catch(ApiError $e){}
+$hash=hash('sha256','expired synthetic token');$db->run('INSERT INTO argus_growth_verify(token_hash,audience,owner_id,operation_id,kind,expires_at,revoked,created_at) VALUES (?,?,?,?,?,?,?,?)',[$hash,'admin',$b,$id,'deposit','2000-01-01 00:00:00',0,'1999-01-01 00:00:00']);
+G::maintenance($db);if($db->one('SELECT token_hash FROM argus_growth_verify WHERE token_hash=?',[$hash]))throw new RuntimeException('Expired token not removed');
+$cached=G::cachedMetrics($db,'admin',$a);$cached2=G::cachedMetrics($db,'admin',$a);if(!$cached2['cached']||$cached['gross_cents']!==$cached2['gross_cents'])throw new RuntimeException('Cache consistency');
+$fake='ntf_fixture_'.bin2hex(random_bytes(8));G::queueAdvisory($db,'admin',$a,'test',$fake);$now=time();$calls=0;
+$send=function($eid)use(&$calls){$calls++;return ['failed'=>$calls===1?1:0];};
+G::retryAdvisories($db,$send,$now);G::retryAdvisories($db,$send,$now+1);G::retryAdvisories($db,$send,$now+61);G::retryAdvisories($db,$send,$now+900);
+if($calls!==2)throw new RuntimeException('Retry backoff or terminal deduplication failed');
+echo "PASS: private AI inputs, constrained FAQ output, 64KiB batch, metric cache, expired token cleanup and advisory retry backoff.\n";

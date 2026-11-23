@@ -31,7 +31,7 @@
    try{
      const [info,response]=await Promise.all([call('/status'),call('/insights')]);
      const s=response.insights||{};
-     status.textContent=info.groq_configured?'Groq configurada · atendimento generativo':'Análises e orientações gratuitas · configure Groq para respostas generativas';
+     status.textContent=info.groq_configured?'Groq configurada · orientações públicas assistidas':'Análises e orientações locais · dados financeiros não enviados à IA externa';
      const metrics=[
        ['Recebidos confirmados (30 dias)',real(s.received_cents)],
        ['Enviados confirmados (30 dias)',real(s.sent_cents)],

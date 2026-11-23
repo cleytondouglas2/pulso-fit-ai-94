@@ -28,6 +28,19 @@ function fields(r){
  x.push(['Emitido em',dt(r.issued_at)||'Não informado']);
  return x;
 }
+async function shareReceipt(prepared,nav=navigator,FileType=File){
+ const fileName='ArgusPay.pdf',registerUrl='https://app.arguspay.com.br/conta#cadastro';
+ if(!prepared||typeof nav.share!=='function'||typeof nav.canShare!=='function')return 'fallback';
+ const f=new FileType([prepared],fileName,{type:'application/pdf'});
+ const variants=[{files:[f],title:'ArgusPay',url:registerUrl},{files:[f],text:registerUrl},{files:[f]}];
+ for(const payload of variants){
+  let supported=false;try{supported=nav.canShare(payload)}catch{}
+  if(!supported)continue;
+  try{await nav.share(payload);return payload.url||payload.text?'shared':'file-only'}
+  catch(e){return e?.name==='AbortError'?'cancelled':'fallback'}
+ }
+ return 'fallback';
+}
 function render(r,scope='public'){
  if(!allowed(r))throw Error('Registro não disponível.');
  close();const d=document.createElement('dialog');d.id='argus-tx-receipt-dialog';d.className='argus-tx-receipt-dialog';
@@ -60,16 +73,10 @@ function render(r,scope='public'){
  const share=button(controls,'Compartilhar',async()=>{
   if(!prepared)return;
   try{
-   const f=new File([prepared],fileName,{type:'application/pdf'});
-   const payload={files:[f],title:'ArgusPay',url:registerUrl};
-   if(navigator.share&&navigator.canShare?.(payload)){
-    await navigator.share(payload);
-   }else if(navigator.share&&navigator.canShare?.({files:[f],text:registerUrl})){
-    await navigator.share({files:[f],text:registerUrl});
-   }else{
-    status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.';
-   }
-  }catch(e){if(e.name!=='AbortError')status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.'}
+   const result=await shareReceipt(prepared);
+   if(result==='file-only')status.textContent='PDF compartilhado. Use Copiar link de cadastro para enviar o endereço separadamente.';
+   else if(result==='fallback')status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.';
+  }catch(e){status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.'}
  });
  button(controls,'Copiar link de cadastro',async()=>{
   try{await navigator.clipboard.writeText(registerUrl);status.textContent='Link de cadastro copiado.'}

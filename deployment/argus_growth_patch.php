@@ -18,19 +18,19 @@ $routes=<<<'PHP'
             }
 PHP;
 growthReplace($root.'/src/Gateway.php','// Real-operation console: legacy demo pages, test checkout and demo login are removed.',$routes."\n".'// Real-operation console: legacy demo pages, test checkout and demo login are removed.');
-growthReplace($root.'/src/Portal.php',"        if(\$method!=='GET')self::csrf(\$account);","        if(\$method!=='GET')self::csrf(\$account);\n        if(str_starts_with(\$path,'/api/portal/growth/'))ArgusGrowth::handle(\$db,'portal',\$method,\$path,\$account,\$method==='POST'?self::body():[]);");
+growthReplace($root.'/src/Portal.php',"        if(\$method!=='GET')self::csrf(\$account);","        if(\$method!=='GET')self::csrf(\$account);\n        if(str_starts_with(\$path,'/api/portal/growth/'))ArgusGrowth::handle(\$db,'portal',\$method,\$path,\$account,\$method==='POST'?(\$path==='/api/portal/growth/batch'?ArgusGrowth::batchInput():self::body()):[]);");
 $admin=<<<'PHP'
         if(str_starts_with($path,'/api/admin/growth/')){
             if(($actor['role']??'')!=='superadmin')self::fail('Acesso restrito.',403);
             if($method==='POST')self::writeAllowed($actor,true);
-            ArgusGrowth::handle($db,'admin',$method,$path,$actor,$method==='POST'?self::input():[]);
+            ArgusGrowth::handle($db,'admin',$method,$path,$actor,$method==='POST'?($path==='/api/admin/growth/batch'?ArgusGrowth::batchInput():self::input()):[]);
         }
 PHP;
 growthReplace($root.'/src/Admin.php',"        if(\$method==='GET'&&\$path==='/api/admin/fees/operations'){",$admin."\n        if(\$method==='GET'&&\$path==='/api/admin/fees/operations'){");
 $d=$root.'/public/static/';
 foreach(['admin.html','client.html'] as $f){
  growthReplace($d.$f,'</head>','<link rel="stylesheet" href="/static/argus-growth.css?v=1"></head>');
- growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=5"></script></body>');
+ growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=6"></script></body>');
 }
 // A suggested amount is only a prefill; the normal quote and buyer confirmation are mandatory.
 $prefill=<<<'JS'

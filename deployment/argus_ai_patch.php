@@ -62,6 +62,6 @@ argusAIReplace($portal,
     'client AI page');
 foreach([$admin,$portal] as $html){
     argusAIReplace($html,'</head>','<link rel="stylesheet" href="/static/ai-ui.css?v=1"></head>','AI stylesheet '.basename($html));
-    argusAIReplace($html,'</body>','<script src="/static/ai-ui.js?v=1" defer></script></body>','AI script '.basename($html));
+    argusAIReplace($html,'</body>','<script src="/static/ai-ui.js?v=2" defer></script></body>','AI script '.basename($html));
 }
 echo "ARGUS IA routes, menus, tenant controls wired; advisory worker installed separately.\n";

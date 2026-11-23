@@ -1,7 +1,6 @@
 <?php
 declare(strict_types=1);
 if(PHP_SAPI!=='cli')exit(1);
-if(getenv('ARGUS_GROWTH_ALERTS_ENABLED')!=='yes'&&getenv('ARGUS_AI_ALERTS_ENABLED')!=='yes')exit(0);
 require_once '/var/www/html/src/Gateway.php';
 use ArgusPayments\Database;
 use ArgusPayments\ArgusGrowth;
@@ -13,6 +12,8 @@ try{
  else $locked=$pdo->query("SELECT GET_LOCK(CONCAT(DATABASE(),':argus-growth-advisory'),0)")->fetchColumn();
  if((int)$locked!==1)exit(0);
  ArgusGrowth::ready($db);
+ ArgusGrowth::maintenance($db);
+ ArgusGrowth::retryAdvisories($db);
  ArgusGrowth::worker($db);ArgusAI::worker($db);
 }catch(\Throwable $e){error_log('ARGUS_GROWTH_WORKER status=unavailable class='.get_class($e));}
 finally{if(isset($locked)&&(int)$locked===1){try{$pdo->query($pg?"SELECT pg_advisory_unlock(hashtext(current_schema()||':argus-growth-advisory'))":"SELECT RELEASE_LOCK(CONCAT(DATABASE(),':argus-growth-advisory'))");}catch(\Throwable $e){}}}
