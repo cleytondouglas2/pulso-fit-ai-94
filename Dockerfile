@@ -1306,11 +1306,11 @@ COPY deployment/AcquirerControl.php /var/www/html/src/AcquirerControl.php
 COPY deployment/acquirer-monitor.js deployment/acquirer-monitor.css deployment/acquirer-editor.js /var/www/html/public/static/
 COPY deployment/acquirer_monitor_patch.php /tmp/acquirer_monitor_patch.php
 COPY deployment/acquirer_monitor_test.php /var/www/html/tests/acquirer_monitor_test.php
-RUN php -l /var/www/html/src/AcquirerControl.php \\
- && php -l /tmp/acquirer_monitor_patch.php \\
- && php /tmp/acquirer_monitor_patch.php \\
- && php -l /var/www/html/tests/acquirer_monitor_test.php \\
- && php /var/www/html/tests/acquirer_monitor_test.php \\
+RUN php -l /var/www/html/src/AcquirerControl.php \
+ && php -l /tmp/acquirer_monitor_patch.php \
+ && php /tmp/acquirer_monitor_patch.php \
+ && php -l /var/www/html/tests/acquirer_monitor_test.php \
+ && php /var/www/html/tests/acquirer_monitor_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
 FROM scratch AS argus_flat_runtime
