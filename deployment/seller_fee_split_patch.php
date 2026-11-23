@@ -181,20 +181,23 @@ PHP,
         $debit=$amount;$id=self::uid('mww');
 PHP,
     'validate quote and locked fee version');
-sellerSplitReplace($wallet,
-    <<<'PHP'
-        $db->transaction(static function(Database $db)use($id,$accountId,$idemHash,$bodyHash,$amount,
-                                                     $type,$masked,$sealed,$desc,$debit){
-            $w=self::lock($db,$accountId);
-PHP,
-    <<<'PHP'
-        $db->transaction(static function(Database $db)use($id,$accountId,$idemHash,$bodyHash,$amount,
-                                                     $type,$masked,$sealed,$desc,$debit,$quote){
-            if(FeePolicy::current($db)['version']!==$quote['policy_version'])
-                self::fail('Tarifa atualizada durante o saque; confirme novamente',409);
-            $w=self::lock($db,$accountId);
-PHP,
-    'reject payout if prices change before fund reservation');
+// Match the single withdrawal closure, allowing prior security patches to
+// insert tenant-specific guards inside its body.
+$walletText=file_get_contents($wallet);
+if(!is_string($walletText))throw new RuntimeException('Merchant source unavailable');
+$pattern='~(\$db->transaction\(static function\(Database \$db\)use\(\$id,\$accountId,\$idemHash,\$bodyHash,\$amount,[^)]{0,450})\)\{~s';
+$count=0;
+$walletText=preg_replace_callback($pattern,static function(array $m):string {
+    if(!str_contains($m[1],'$debit'))
+        throw new RuntimeException('Withdrawal closure no longer captures debit');
+    return $m[1].',$quote){'."\n".
+        "            if(FeePolicy::current(\$db)['version']!==\$quote['policy_version'])\n".
+        "                self::fail('Tarifa atualizada durante o saque; confirme novamente',409);\n";
+},$walletText,1,$count);
+if(!is_string($walletText)||$count!==1||
+   file_put_contents($wallet,$walletText)===false)
+    throw new RuntimeException('Seller fee policy lease missing in withdrawal transaction');
+
 sellerSplitReplace($wallet,
     <<<'PHP'
                 $id,$accountId,$idemHash,$bodyHash,$amount,self::FEE,$debit,$type,
