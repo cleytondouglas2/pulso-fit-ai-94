@@ -71,26 +71,26 @@ comReplace($dashboard,
  'merchant commerce navigation');
 $screen=<<<'HTML'
  page('commerce','Monte páginas comerciais, compartilhe ofertas e teste integrações sem dinheiro real.',
-  '<div id="argus-commerce-root"><div class="argus-commerce-header"><div><small>ARGUS PAY · COMMERCE SUITE</small><h3>Checkout Studio</h3><p>Crie páginas com sua marca e direcione o cliente ao checkout Pix autorizado. Você controla o conteúdo; os valores e taxas são confirmados no checkout existente.</p></div><button id="argus-commerce-refresh" type="button">↻ Atualizar</button></div>'.
-  '<div class="argus-commerce-grid"><section class="argus-commerce-panel"><h4>Criar ou editar oferta</h4><form id="argus-commerce-form" autocomplete="off">'.
-   '<label>Título da oferta<input name="title" maxlength="100" placeholder="Produto ou serviço" required></label>'.
-   '<label>Descrição comercial<textarea name="description" maxlength="600" placeholder="O que seu cliente recebe?" required></textarea></label>'.
-   '<div class="argus-commerce-form-row"><label>Valor sugerido (R$)<input name="amount" inputmode="decimal" value="10,00" placeholder="10,00" required></label>'.
-   '<label>Cor principal<input name="accent_color" type="color" value="#e9bc74"></label></div>'.
-   '<label>Imagem ilustrativa (URL HTTPS)<input name="image_url" maxlength="600" placeholder="https://.../foto.webp"></label>'.
-   '<div class="argus-commerce-form-row"><label>Texto do botão<input name="call_to_action" maxlength="70" value="Continuar para o Pix" required></label>'.
-   '<label>Data de validade (opcional)<input name="expires_at" type="date"></label></div>'.
-   '<div class="argus-commerce-btn-row"><button type="submit" id="argus-commerce-submit">Criar rascunho</button>'.
-   '<button class="muted" type="button" id="argus-commerce-cancel" hidden>Cancelar edição</button></div></form></section>'.
-   '<section class="argus-commerce-panel"><h4>Prévia instantânea</h4><div id="argus-commerce-preview"></div>'.
-    '<div class="argus-commerce-notice">As páginas são comerciais. Não cobram nem creditam saldo: somente o Pix existente faz isso após autorização do PSP.</div></section></div>'.
-  '<div class="argus-commerce-list-head"><h4>Minhas páginas</h4><span id="argus-commerce-count">0 páginas</span></div>'.
-  '<div class="argus-commerce-list" id="argus-commerce-list"></div>'.
-  '<section class="argus-commerce-panel argus-commerce-sandbox"><h4>Sandbox de desenvolvimento · 100% simulado</h4>'.
-   '<p>Experimente respostas de pagamento sem usar a adquirente, sem QR Code real e sem movimentar carteiras. Resultados têm prefixo simulado.</p>'.
-   '<form id="argus-commerce-sandbox-form"><div class="argus-commerce-form-row"><label>Cenário<select name="scenario"><option value="paid">Pagamento simulado</option><option value="pending">Pendente simulado</option><option value="failed">Falha simulada</option><option value="refunded">Estorno simulado</option></select></label>'.
-   '<label>Valor fictício (R$)<input name="amount" inputmode="decimal" value="25,00" required></label></div><div><button type="submit">Simular resposta API</button></div></form>'.
-   '<pre id="argus-commerce-sandbox-result" class="argus-commerce-sandbox-result">Nenhum teste executado nesta sessão.</pre></section>'.
+  '<div id="argus-commerce-root"><div class="argus-commerce-header"><div><small>ARGUS PAY · COMMERCE SUITE</small><h3>Checkout Studio</h3><p>Crie páginas com sua marca e direcione o cliente ao checkout Pix autorizado. Você controla o conteúdo; os valores e taxas são confirmados no checkout existente.</p></div><button id="argus-commerce-refresh" type="button">↻ Atualizar</button></div>'+
+  '<div class="argus-commerce-grid"><section class="argus-commerce-panel"><h4>Criar ou editar oferta</h4><form id="argus-commerce-form" autocomplete="off">'+
+   '<label>Título da oferta<input name="title" maxlength="100" placeholder="Produto ou serviço" required></label>'+
+   '<label>Descrição comercial<textarea name="description" maxlength="600" placeholder="O que seu cliente recebe?" required></textarea></label>'+
+   '<div class="argus-commerce-form-row"><label>Valor sugerido (R$)<input name="amount" inputmode="decimal" value="10,00" placeholder="10,00" required></label>'+
+   '<label>Cor principal<input name="accent_color" type="color" value="#e9bc74"></label></div>'+
+   '<label>Imagem ilustrativa (URL HTTPS)<input name="image_url" maxlength="600" placeholder="https://.../foto.webp"></label>'+
+   '<div class="argus-commerce-form-row"><label>Texto do botão<input name="call_to_action" maxlength="70" value="Continuar para o Pix" required></label>'+
+   '<label>Data de validade (opcional)<input name="expires_at" type="date"></label></div>'+
+   '<div class="argus-commerce-btn-row"><button type="submit" id="argus-commerce-submit">Criar rascunho</button>'+
+   '<button class="muted" type="button" id="argus-commerce-cancel" hidden>Cancelar edição</button></div></form></section>'+
+   '<section class="argus-commerce-panel"><h4>Prévia instantânea</h4><div id="argus-commerce-preview"></div>'+
+    '<div class="argus-commerce-notice">As páginas são comerciais. Não cobram nem creditam saldo: somente o Pix existente faz isso após autorização do PSP.</div></section></div>'+
+  '<div class="argus-commerce-list-head"><h4>Minhas páginas</h4><span id="argus-commerce-count">0 páginas</span></div>'+
+  '<div class="argus-commerce-list" id="argus-commerce-list"></div>'+
+  '<section class="argus-commerce-panel argus-commerce-sandbox"><h4>Sandbox de desenvolvimento · 100% simulado</h4>'+
+   '<p>Experimente respostas de pagamento sem usar a adquirente, sem QR Code real e sem movimentar carteiras. Resultados têm prefixo simulado.</p>'+
+   '<form id="argus-commerce-sandbox-form"><div class="argus-commerce-form-row"><label>Cenário<select name="scenario"><option value="paid">Pagamento simulado</option><option value="pending">Pendente simulado</option><option value="failed">Falha simulada</option><option value="refunded">Estorno simulado</option></select></label>'+
+   '<label>Valor fictício (R$)<input name="amount" inputmode="decimal" value="25,00" required></label></div><div><button type="submit">Simular resposta API</button></div></form>'+
+   '<pre id="argus-commerce-sandbox-result" class="argus-commerce-sandbox-result">Nenhum teste executado nesta sessão.</pre></section>'+
   '<p class="argus-commerce-feedback" id="argus-commerce-feedback" aria-live="polite">Crie sua primeira página de oferta.</p></div>'),
 HTML;
 comReplace($dashboard,
