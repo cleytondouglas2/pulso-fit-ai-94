@@ -59,12 +59,15 @@ if(!isset($by[$id],$by[$other])||
  throw new RuntimeException('Incorrect real settlement aggregates, ticket, goals, or remaining');
 $own=RevenueAwards::seller($db,$id);
 $rankedOther=array_values(array_filter($own['ranking'],static fn($r)=>$r['private']??false));
-if(count($rankedOther)!==1||$rankedOther[0]['monthly_gross_cents']!==null||
- $rankedOther[0]['monthly_count']!==null||
- $rankedOther[0]['ticket_cents']!==null||
- array_key_exists('lifetime_gross_cents',$rankedOther[0])||
- array_key_exists('account_id',$rankedOther[0]))
- throw new RuntimeException('Private seller gross, ticket and lifetime exposure');
+if(count($rankedOther)<1)throw new RuntimeException('At least one participant must be private');
+foreach($rankedOther as $privateRow){
+ if($privateRow['monthly_gross_cents']!==null||
+    $privateRow['monthly_count']!==null||
+    $privateRow['ticket_cents']!==null||
+    array_key_exists('lifetime_gross_cents',$privateRow)||
+    array_key_exists('account_id',$privateRow))
+    throw new RuntimeException('Private seller gross, ticket and lifetime exposure');
+}
 if($own['self']['account_id']!==$id||
  count($own['monthly'])!==12||
  in_array($other,array_column($own['ranking'],'account_id'),true))
