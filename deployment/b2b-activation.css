@@ -1,0 +1,46 @@
+/* ARGUS B2B — read-only activation control. Never touch Pix checkout or account styles. */
+#argus-b2b-readiness-root{color:#f6f2e9;max-width:1300px;margin:0 auto;padding:10px 0 36px;--argus-b2b-gold:#e9bc74;--argus-b2b-line:rgba(232,190,124,.29)}
+#argus-b2b-readiness-root *{box-sizing:border-box}
+#argus-b2b-readiness-root .argus-b2b-hero{display:flex;gap:22px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:30px;border:1px solid var(--argus-b2b-line);border-radius:24px;background:radial-gradient(circle at 75% 0,#dca35838,transparent 50%),linear-gradient(145deg,#1d2736,#0c1524)}
+#argus-b2b-readiness-root .argus-b2b-hero small{font-size:10px;letter-spacing:.17em;color:#eccc8d;font-weight:900}
+#argus-b2b-readiness-root .argus-b2b-hero h2{font-size:clamp(23px,3vw,37px);font-weight:900;letter-spacing:-.035em;color:#fff;margin:9px 0}
+#argus-b2b-readiness-root p{color:#bac6d3;font-size:12px;line-height:1.75;margin:8px 0}
+#argus-b2b-readiness-root .argus-b2b-progress{display:flex;flex-direction:column;align-items:center;min-width:112px;padding:16px;border:1px solid #deb66c70;border-radius:18px;background:#dac0841a}
+#argus-b2b-readiness-root .argus-b2b-progress strong{font-size:31px;color:#f0cf8a;font-weight:900;white-space:nowrap}
+#argus-b2b-readiness-root .argus-b2b-progress span{font-size:10px;color:#d2dae4}
+#argus-b2b-readiness-root .argus-b2b-progressbar{height:7px;margin:12px 3px 22px;overflow:hidden;border-radius:100px;background:#3c4657}
+#argus-b2b-readiness-root .argus-b2b-progressbar>div{height:100%;background:linear-gradient(90deg,#bc8837,#ffda86);transition:width .4s}
+#argus-b2b-readiness-root .argus-b2b-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+#argus-b2b-readiness-root .argus-b2b-metric{border:1px solid var(--argus-b2b-line);border-radius:15px;padding:17px;min-width:0;background:linear-gradient(150deg,#1e2939,#101824)}
+#argus-b2b-readiness-root .argus-b2b-metric small{font-size:11px;color:#bcc9da;display:block}
+#argus-b2b-readiness-root .argus-b2b-metric strong{font-size:19px;font-weight:850;display:block;color:#fff;margin:9px 0;overflow-wrap:anywhere}
+#argus-b2b-readiness-root .argus-b2b-metric span{font-size:10px;font-weight:800}
+#argus-b2b-readiness-root .good{color:#83eac3}#argus-b2b-readiness-root .bad{color:#f0c889}
+#argus-b2b-readiness-root .argus-b2b-alert{padding:19px 21px;border:1px solid #eab26485;border-radius:15px;background:linear-gradient(115deg,#5e39282b,#151c2b);margin:16px 0}
+#argus-b2b-readiness-root .argus-b2b-alert strong{font-size:16px;color:#f9cf8b}
+#argus-b2b-readiness-root .argus-b2b-checks{padding:20px;border:1px solid var(--argus-b2b-line);border-radius:18px;background:linear-gradient(125deg,#1b2837,#111a27)}
+#argus-b2b-readiness-root .argus-b2b-checks header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 18px}
+#argus-b2b-readiness-root .argus-b2b-checks header small{color:#edc684;font-weight:900;letter-spacing:.13em;font-size:10px}
+#argus-b2b-readiness-root .argus-b2b-checks h3,#argus-b2b-readiness-root .argus-b2b-next h3{font-size:22px;margin:5px 0;color:#fff}
+#argus-b2b-readiness-root .argus-b2b-checks header span{color:#acb9c9;font-size:10px}
+#argus-b2b-readiness-root .argus-b2b-checklist{display:grid;gap:9px}
+#argus-b2b-readiness-root .argus-b2b-check{display:flex;align-items:center;gap:15px;min-width:0;border-radius:13px;border:1px solid #cfa7783b;background:#0d1726;padding:14px 16px}
+#argus-b2b-readiness-root .argus-b2b-check-number{flex:0 0 39px;width:39px;height:39px;display:grid;place-items:center;font-size:12px;font-weight:900;color:#f5c881;border:2px solid #deba805a;border-radius:10px}
+#argus-b2b-readiness-root .argus-b2b-check-details{flex:1;min-width:0}
+#argus-b2b-readiness-root .argus-b2b-check-details h4{font-size:13px;color:#f5f0e8;margin:0;font-weight:850}
+#argus-b2b-readiness-root .argus-b2b-check-details p{font-size:11px;margin:5px 0 0}
+#argus-b2b-readiness-root .argus-b2b-check-state{flex:0 0 auto;border-radius:100px;color:#f7c47c;border:1px solid #c89c5460;background:#ba873326;padding:7px 11px;font-size:11px;font-weight:900}
+#argus-b2b-readiness-root .argus-b2b-check.is-ready .argus-b2b-check-state{color:#a3eccd;background:#1b664830;border-color:#4cae7f80}
+#argus-b2b-readiness-root .argus-b2b-next{margin-top:16px;padding:21px;border:1px solid var(--argus-b2b-line);background:#161f2e;border-radius:18px}
+#argus-b2b-readiness-root .argus-b2b-next-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:18px 0}
+#argus-b2b-readiness-root .argus-b2b-next-cards article{min-width:0;padding:17px;border-radius:13px;border:1px solid #b99e714f;background:#111928}
+#argus-b2b-readiness-root .argus-b2b-next-cards small{color:#f8c77e;font-size:11px;letter-spacing:.09em}
+#argus-b2b-readiness-root .argus-b2b-next-cards h4{font-size:15px;color:#fff;margin:10px 0}
+#argus-b2b-readiness-root .argus-b2b-next-cards article>span{display:block;font-size:11px;color:#f0d59c;font-weight:750;margin-top:13px}
+#argus-b2b-readiness-root .argus-b2b-links{display:flex;gap:10px;flex-wrap:wrap}
+#argus-b2b-readiness-root .argus-b2b-links a{color:#262012;border-radius:10px;padding:11px 16px;font-size:12px;text-decoration:none;font-weight:900;background:linear-gradient(110deg,#f5d59c,#cd9d52)}
+#argus-b2b-readiness-refresh{min-height:42px;padding:9px 16px;border-radius:11px;color:#251b13;font-weight:900;border:1px solid #e6c18f;background:linear-gradient(130deg,#f8d898,#cd9951);cursor:pointer}
+#argus-b2b-readiness-refresh:disabled{opacity:.5;cursor:wait}
+@media(max-width:920px){#argus-b2b-readiness-root .argus-b2b-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#argus-b2b-readiness-root .argus-b2b-next-cards{grid-template-columns:1fr}}
+@media(max-width:600px){#argus-b2b-readiness-root .argus-b2b-hero{padding:19px}#argus-b2b-readiness-root .argus-b2b-checks{padding:13px}#argus-b2b-readiness-root .argus-b2b-check{flex-wrap:wrap;gap:9px;padding:11px}#argus-b2b-readiness-root .argus-b2b-check-details{flex:1 1 calc(100% - 55px)}#argus-b2b-readiness-root .argus-b2b-check-state{margin-left:47px}#argus-b2b-readiness-root .argus-b2b-metric{padding:13px}}
+@media(prefers-reduced-motion:reduce){#argus-b2b-readiness-root .argus-b2b-progressbar>div{transition:none}}
