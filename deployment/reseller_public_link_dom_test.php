@@ -29,9 +29,9 @@ if(str_contains($script,"$('argus-rpl-copy').addEventListener('click',copy)")||
 if(strpos($script,"root.querySelector('#argus-rpl-copy')")>
    strpos($script,'overview.insertBefore(root,top)'))
     throw new RuntimeException('Pix listener must be created before mounting');
-if(!str_contains($dash,"'argus-reseller-page-overview'")||
-   !str_contains($dash,"'argus-reseller-overview-top'")||
-   !str_contains($dash,"'Nova cobrança Pix'"))
+if(!str_contains($dash,'argus-reseller-page-overview')||
+   !str_contains($dash,'argus-reseller-overview-top')||
+   !str_contains($dash,'Nova cobrança Pix'))
     throw new RuntimeException('Pix CTA placement differs from live reseller dashboard');
 if(!str_contains($css,'#argus-reseller-page-overview>.argus-rpl-card'))
     throw new RuntimeException('Pix card responsive style no longer targets the new workspace');
