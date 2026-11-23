@@ -1080,3 +1080,18 @@ RUN php -l /var/www/html/src/ResellerPublicPix.php \
  && php -l /var/www/html/tests/reseller_public_pix_readiness_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_pix_readiness_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Fix actual 23:03 seller public Pix HTTP 500 before PSP submission:
+# SecurityShield categories must use lowercase letters/underscores <= 40;
+# a previous dynamic category embedded the 128-bit seller URL code.
+# Keep HMAC-scoped limits, two windows, 2FA/money controls, fee snapshots.
+COPY deployment/ResellerPublicPix.php /var/www/html/src/ResellerPublicPix.php
+COPY deployment/reseller_pix_rate_guard_patch.php /tmp/reseller_pix_rate_guard_patch.php
+COPY deployment/reseller_pix_rate_guard_test.php /var/www/html/tests/reseller_pix_rate_guard_test.php
+RUN php -l /var/www/html/src/ResellerPublicPix.php \
+ && php -l /tmp/reseller_pix_rate_guard_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_pix_rate_guard_patch.php \
+ && php -l /var/www/html/tests/reseller_pix_rate_guard_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_pix_rate_guard_test.php \
+ && php /var/www/html/tests/security_regression_test.php

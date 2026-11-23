@@ -249,7 +249,15 @@ final class ResellerPublicPix {
         return ['attempt'=>$attempt,'charge'=>$charge];
     }
     private static function rate(Database $db,string $code):void {
-        SecurityShield::rate($db,'reseller_public_create_'.$code,SecurityShield::remoteTag(),8,600);
+        // SecurityShield categories are fixed lowercase identifiers <= 40
+        // chars; seller codes belong in the HMAC-hashed subject, NEVER in
+        // the category or persisted plaintext. Separate burst and sustained
+        // abuse throttles per public seller link. The reverse proxy may give
+        // many distinct paying customers the same REMOTE_ADDR; allow normal
+        // checkout traffic while retaining protection and idempotency.
+        $subject=$code."\n".SecurityShield::remoteTag();
+        SecurityShield::rate($db,'seller_pix_burst',$subject,25,60);
+        SecurityShield::rate($db,'seller_pix_sustained',$subject,100,600);
     }
     public static function handle(Database $db,string $method,string $path):never {
         if(!preg_match('~^/e/([a-f0-9]{32})/(config|quote|create|status)$~D',$path,$m))
