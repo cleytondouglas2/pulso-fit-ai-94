@@ -91,14 +91,13 @@ final class ResellerPublicPix {
     }
     public static function myLink(Database $db,array $account):array {
         $code=self::linkForAccount($db,(string)$account['id']);
+        $readiness=self::readiness($db,$account);
         return [
             'public_code'=>$code,
             'public_path'=>'/e/'.$code,
-            'available'=>self::accountReady($db,$account),
+            'available'=>$readiness['can_generate'],
             'business_name'=>mb_substr((string)$account['display_name'],0,90),
-            'message'=>self::accountReady($db,$account)
-                ?'Seu Pix público está disponível para clientes.'
-                :'Seu link é permanente. A emissão ficará disponível após aprovação do cadastro e dos recebimentos.'
+            'message'=>$readiness['availability_message']
         ];
     }
     private static function accountByCode(Database $db,string $code):array {
@@ -110,21 +109,48 @@ final class ResellerPublicPix {
         if(!$account)self::fail('Página de pagamento não encontrada',404);
         return $account;
     }
-    private static function accountReady(Database $db,array $account):bool {
+    /**
+     * Use the SAME financial authorization as MerchantWallet, including
+     * independently approved CPF (PF) and CNPJ (PJ) seller wallets.
+     * Never allow a public Pix when the custody/PSP prerequisites are off.
+     * Public responses contain only ARGUS Pay availability, never PSP names,
+     * keys, internal account IDs, or sensitive KYC details.
+     */
+    private static function readiness(Database $db,array $account):array {
+        $fail=static fn(string $code,string $message):array=>[
+            'can_generate'=>false,'availability_code'=>$code,
+            'availability_message'=>$message
+        ];
         if(($account['status']??'')!=='approved'||empty($account['merchant_id']))
-            return false;
-        if(!in_array($db->driver(),['pgsql','mysql'],true)||
+            return $fail('account_review','Esta página aguardará a aprovação financeira do revendedor pela ARGUS Pay.');
+        try {
+            if(!KycStudio::identityApproved($db,(string)$account['id']))
+                return $fail('account_review','O recebimento deste revendedor ainda aguarda aprovação da ARGUS Pay.');
+            if(!PfFinancialApproval::authorized($db,$account))
+                return $fail('account_review','O recebimento deste revendedor ainda aguarda liberação financeira da ARGUS Pay.');
+        }catch(\Throwable $e){
+            error_log('ARGUS_PUBLIC_PIX_AUTH_CHECK_UNAVAILABLE class='.get_class($e));
+            return $fail('temporary_unavailable','Não foi possível confirmar a liberação desta conta. Tente novamente.');
+        }
+        $offline=PHP_SAPI==='cli'&&getenv('ARGUS_MERCHANT_UNIT_TEST')==='local-sqlite-only';
+        if((!in_array($db->driver(),['pgsql','mysql'],true)&&!$offline)||
            getenv('ARGUS_MERCHANT_CUSTODY_ENABLED')!=='yes'||
            getenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED')!=='yes')
-            return false;
-        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',(string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID'))||
-           !preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',(string)getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')))
-            return false;
-        try {
-            $approved=$db->one("SELECT id FROM b2b_merchants WHERE id=?
-                AND status='approved_live' LIMIT 1",[(string)$account['merchant_id']]);
-            return (bool)$approved&&KycStudio::identityApproved($db,(string)$account['id']);
-        }catch(\Throwable){return false;}
+            return $fail('platform_not_ready','Recebimentos Pix temporariamente indisponíveis na ARGUS Pay. O administrador precisa concluir a habilitação da operação.');
+        // Traditional admin Pix supports the FINANCE_QR pair as fallback; the
+        // seller wallet now follows that exact precedence too. No keys ever
+        // leave the server or appear in this endpoint.
+        $id=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_ID')?:getenv('ARGUS_FINANCE_QR_CLIENT_ID')?:''));
+        $secret=trim((string)(getenv('ARGUS_TRADITIONAL_PIX_CLIENT_SECRET')?:getenv('ARGUS_FINANCE_QR_CLIENT_SECRET')?:''));
+        if(!preg_match('/^pk_[A-Za-z0-9_-]{8,}$/D',$id)||
+           !preg_match('/^sk_[A-Za-z0-9_-]{8,}$/D',$secret)||
+           !function_exists('curl_init')&&!$offline)
+            return $fail('platform_not_ready','O serviço de recebimento Pix da ARGUS Pay está em configuração. Tente novamente mais tarde.');
+        return ['can_generate'=>true,'availability_code'=>'ready',
+            'availability_message'=>'Recebimento Pix disponível nesta página da ARGUS Pay.'];
+    }
+    private static function accountReady(Database $db,array $account):bool {
+        return self::readiness($db,$account)['can_generate'];
     }
     /** The payer enters a desired seller amount. Minimal gross Pix is
      * computed from the live admin deposit fee table so seller net >= base
@@ -237,15 +263,15 @@ final class ResellerPublicPix {
         if($action==='config'){
             self::response([
                 'business_name'=>mb_substr((string)$account['display_name'],0,90),
-                'can_generate'=>self::accountReady($db,$account),
+                ...self::readiness($db,$account),
                 'payment_platform'=>'ARGUS Pay'
             ]);
         }
         if($action==='quote'){
             $base=filter_var($_GET['amount_cents']??null,FILTER_VALIDATE_INT);
             if(!is_int($base))self::fail('Valor inválido');
-            $ready=self::accountReady($db,$account);
-            self::response(['quote'=>self::quote($db,$base),'can_generate'=>$ready]);
+            $readiness=self::readiness($db,$account);
+            self::response(['quote'=>self::quote($db,$base),...$readiness]);
         }
         self::browserOrigin();
         self::install($db);

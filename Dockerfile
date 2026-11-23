@@ -1064,3 +1064,19 @@ RUN php -l /tmp/reseller_public_link_dom_hotfix.php \
  && php -l /var/www/html/tests/reseller_public_link_dom_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_link_dom_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Public /e/{code} Pix readiness: use same approved PF/PJ wallet status as
+# seller financial API, same custody gate, same traditional Pix credential
+# fallback, and precise ARGUS Pay availability messages in checkout.
+# No hardcoded enabled flag or bypass of financial authorization.
+COPY deployment/ResellerPublicPix.php /var/www/html/src/ResellerPublicPix.php
+COPY deployment/reseller_public_pix_readiness_patch.php /tmp/reseller_public_pix_readiness_patch.php
+COPY deployment/reseller_public_pix_readiness_test.php /var/www/html/tests/reseller_public_pix_readiness_test.php
+RUN php -l /var/www/html/src/ResellerPublicPix.php \
+ && php -l /tmp/reseller_public_pix_readiness_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_public_pix_readiness_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/tests/reseller_public_pix_readiness_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_pix_readiness_test.php \
+ && php /var/www/html/tests/security_regression_test.php
