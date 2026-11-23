@@ -1421,6 +1421,7 @@ RUN php -l /var/www/html/src/B2BActivationPreflight.php \
 COPY deployment/CommerceSuite.php /var/www/html/src/CommerceSuite.php
 COPY deployment/commerce-suite.js deployment/commerce-admin.js deployment/commerce-suite.css /var/www/html/public/static/
 COPY deployment/commerce-public.js deployment/commerce-public.css deployment/commerce-public.html /var/www/html/public/static/
+COPY deployment/commerce-status.js deployment/commerce-status.html deployment/commerce-openapi.json /var/www/html/public/static/
 COPY deployment/commerce_suite_patch.php /tmp/commerce_suite_patch.php
 COPY deployment/commerce_suite_test.php /var/www/html/tests/commerce_suite_test.php
 RUN php -l /var/www/html/src/CommerceSuite.php \
