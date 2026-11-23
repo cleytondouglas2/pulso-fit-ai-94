@@ -44,3 +44,9 @@
 @media(max-width:920px){#argus-b2b-readiness-root .argus-b2b-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}#argus-b2b-readiness-root .argus-b2b-next-cards{grid-template-columns:1fr}}
 @media(max-width:600px){#argus-b2b-readiness-root .argus-b2b-hero{padding:19px}#argus-b2b-readiness-root .argus-b2b-checks{padding:13px}#argus-b2b-readiness-root .argus-b2b-check{flex-wrap:wrap;gap:9px;padding:11px}#argus-b2b-readiness-root .argus-b2b-check-details{flex:1 1 calc(100% - 55px)}#argus-b2b-readiness-root .argus-b2b-check-state{margin-left:47px}#argus-b2b-readiness-root .argus-b2b-metric{padding:13px}}
 @media(prefers-reduced-motion:reduce){#argus-b2b-readiness-root .argus-b2b-progressbar>div{transition:none}}
+
+/* B2B diagnostic action header, outside the data canvas. */
+#page-b2b-activation .argus-b2b-view-head{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin:8px 0 18px;padding:18px 20px;background:linear-gradient(135deg,#172337,#111b29);border:1px solid #c4a27061;border-radius:16px}
+#page-b2b-activation .argus-b2b-view-head h1{font-size:clamp(23px,2.6vw,31px);line-height:1.2;color:#fff;margin:5px 0}
+#page-b2b-activation .argus-b2b-view-head small{font-size:10px;color:#efce8b;letter-spacing:.15em;font-weight:850}
+#page-b2b-activation .argus-b2b-view-head p{margin:7px 0;color:#bdcada;font-size:12px;line-height:1.6}
