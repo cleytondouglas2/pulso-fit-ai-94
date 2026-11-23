@@ -4,6 +4,18 @@ const root=document.getElementById('argus-cp-main');
 const id=location.pathname.match(/^\/c\/([a-f0-9]{32})\/?$/)?.[1];
 const money=c=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(c)/100);
 function show(d){
+ const headerLogo=document.getElementById('argus-cp-merchant-logo');
+ if(headerLogo){
+  const ownLogo=typeof d.logo_url==='string'&&
+   /^\/api\/public\/commerce\/logo\/[a-f0-9]{32}$/.test(d.logo_url);
+  headerLogo.onerror=()=>{
+   headerLogo.onerror=null;
+   headerLogo.src='/static/assets/argus-payments-logo-transparent.webp';
+   headerLogo.alt='Argus Pay';
+  };
+  headerLogo.src=ownLogo?d.logo_url:'/static/assets/argus-payments-logo-transparent.webp';
+  headerLogo.alt=ownLogo?'Logomarca da loja: '+String(d.seller_name||''): 'Argus Pay';
+ }
  root.replaceChildren();
  const card=document.createElement('article');card.className='argus-cp-card';
  card.style.setProperty('--accent',/^#[a-f0-9]{6}$/i.test(d.accent_color)?d.accent_color:'#e9bc74');
