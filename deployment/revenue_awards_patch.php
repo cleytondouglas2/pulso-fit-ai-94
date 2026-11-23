@@ -68,12 +68,8 @@ awardsReplace($dashboard,
  "nav('overview'),nav('charges'),nav('history'),",
  "nav('overview'),nav('awards'),nav('charges'),nav('history'),",
  'reseller awards navigation');
-awardsReplace($dashboard,
- "  page('charges',",
- "  page('awards','Seu ranking, faturamento, gráficos e placas personalizadas.',".
- "\n   '<div id=\"argus-awards-seller\" class=\"argus-awards\"><p>Consultando conquistas reais…</p></div>'),\n".
- "  page('charges',",
- 'reseller dedicated awards page');
+// The reseller page is mounted by the deferred awards JS when its SPA shell is ready.
+
 $landing="$root/public/static/landing.html";
 $public=<<<'HTML'
 <section class="section-wrap argus-public-awards" id="ranking" aria-labelledby="argus-ranking-title">
