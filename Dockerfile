@@ -1148,3 +1148,16 @@ RUN php -l /tmp/argus_home_icon_patch.php \
  && php -l /var/www/html/tests/argus_home_icon_test.php \
  && php /var/www/html/tests/argus_home_icon_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Critical PWA isolation: /admin previously loaded the seller /conta manifest,
+# so Safari/Chrome home icons for Admin launched the reseller account instead.
+# Distinct IDs/start_url/scope; route-specific installation guides. UI/GET only.
+COPY deployment/argus_pwa_split_patch.php /tmp/argus_pwa_split_patch.php
+COPY deployment/argus_pwa_split_test.php /var/www/html/tests/argus_pwa_split_test.php
+RUN php -l /tmp/argus_pwa_split_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_pwa_split_patch.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/argus_pwa_split_test.php \
+ && php /var/www/html/tests/argus_pwa_split_test.php \
+ && php /var/www/html/tests/security_regression_test.php
