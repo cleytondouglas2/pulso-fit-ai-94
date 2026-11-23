@@ -1419,12 +1419,16 @@ RUN php -l /var/www/html/src/B2BActivationPreflight.php \
 # isolated no-money sandbox and Super Admin innovation inventory.
 # Never change existing PSP charge creation, custody, payout or fee pathways.
 COPY deployment/CommerceSuite.php /var/www/html/src/CommerceSuite.php
+COPY deployment/CommerceBrand.php /var/www/html/src/CommerceBrand.php
 COPY deployment/commerce-suite.js deployment/commerce-admin.js deployment/commerce-suite.css /var/www/html/public/static/
+COPY deployment/commerce-brand.js /var/www/html/public/static/
 COPY deployment/commerce-public.js deployment/commerce-public.css deployment/commerce-public.html /var/www/html/public/static/
 COPY deployment/commerce-status.js deployment/commerce-status.html deployment/commerce-openapi.json /var/www/html/public/static/
 COPY deployment/commerce_suite_patch.php /tmp/commerce_suite_patch.php
 COPY deployment/commerce_suite_test.php /var/www/html/tests/commerce_suite_test.php
-RUN php -l /var/www/html/src/CommerceSuite.php \
+COPY deployment/commerce_brand_test.php /var/www/html/tests/commerce_brand_test.php
+RUN php -l /var/www/html/src/CommerceBrand.php \
+ && php -l /var/www/html/src/CommerceSuite.php \
  && php -l /tmp/commerce_suite_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/commerce_suite_patch.php \
  && php -l /var/www/html/src/Gateway.php \
@@ -1432,6 +1436,8 @@ RUN php -l /var/www/html/src/CommerceSuite.php \
  && php -l /var/www/html/src/Admin.php \
  && php -l /var/www/html/tests/commerce_suite_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/commerce_suite_test.php \
+ && php -l /var/www/html/tests/commerce_brand_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/commerce_brand_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
 FROM scratch AS argus_flat_runtime
