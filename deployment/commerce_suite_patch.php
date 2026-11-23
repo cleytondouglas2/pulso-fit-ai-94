@@ -15,6 +15,11 @@ comReplace("$root/src/Gateway.php",
  "require_once __DIR__ . '/B2BActivationPreflight.php';\nrequire_once __DIR__ . '/CommerceSuite.php';",
  'commerce service bootstrap');
 $public=<<<'PHP'
+            // Public infrastructure visibility only; this does NOT test the PSP.
+            if($method==='GET'&&$path==='/status'){
+                self::htmlFile('commerce-status.html');
+                return;
+            }
             // Public product presentation only. Real money flows continue to
             // require the existing /e/{seller code} PSP/KYC/custody safeguards.
             if($method==='GET'&&preg_match('~^/c/[a-f0-9]{32}/?$~D',$path)){
