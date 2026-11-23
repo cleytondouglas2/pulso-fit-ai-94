@@ -45,10 +45,38 @@ function render(r){
  add(paper,'small','Referência de consulta: '+r.id);
  const controls=add(d,'div',undefined,'argus-tx-receipt-controls');
  const status=add(d,'p','','argus-tx-receipt-feedback');status.setAttribute('role','status');
- const fileName='ArgusPay-'+r.kind+'-'+r.id+'.pdf';
- button(controls,'Baixar PDF',async()=>{try{const b=await pdf(r);const url=URL.createObjectURL(b);const a=document.createElement('a');a.href=url;a.download=fileName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent='PDF gerado a partir do registro consultado.'}catch(e){status.textContent='Não foi possível gerar o PDF. Use Imprimir / salvar PDF.'}});
- button(controls,'Imprimir / salvar PDF',()=>window.print());
- button(controls,'Compartilhar',async()=>{try{const b=await pdf(r),f=new File([b],fileName,{type:'application/pdf'});if(navigator.canShare?.({files:[f]})){await navigator.share({files:[f],title:r.title})}else{status.textContent='Compartilhamento direto indisponível. Baixe o PDF para enviá-lo.'}}catch(e){if(e.name!=='AbortError')status.textContent='Baixe o PDF para compartilhar.'}});
+ const fileName='ArgusPay.pdf';
+ const registerUrl='https://app.arguspay.com.br/conta#cadastro';
+ // Prepare one real PDF before the user taps Share. iOS requires the native
+ // share call to start within user activation, not after asynchronous canvas work.
+ let prepared=null;
+ const download=button(controls,'Baixar PDF',()=>{if(!prepared)return;const url=URL.createObjectURL(prepared);const a=document.createElement('a');a.href=url;a.download=fileName;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);status.textContent='ArgusPay.pdf pronto para salvar.'});
+ button(controls,'Imprimir / salvar PDF',()=>{
+  const previous=document.title;
+  const restore=()=>{document.title=previous;window.removeEventListener('afterprint',restore)};
+  window.addEventListener('afterprint',restore,{once:true});
+  document.title='ArgusPay';window.print();
+ });
+ const share=button(controls,'Compartilhar',async()=>{
+  if(!prepared)return;
+  try{
+   const f=new File([prepared],fileName,{type:'application/pdf'});
+   const payload={files:[f],title:'ArgusPay',url:registerUrl};
+   if(navigator.share&&navigator.canShare?.(payload)){
+    await navigator.share(payload);
+   }else if(navigator.share&&navigator.canShare?.({files:[f],text:registerUrl})){
+    await navigator.share({files:[f],text:registerUrl});
+   }else{
+    status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.';
+   }
+  }catch(e){if(e.name!=='AbortError')status.textContent='Baixe ArgusPay.pdf e use Copiar link de cadastro para enviar junto ao arquivo.'}
+ });
+ button(controls,'Copiar link de cadastro',async()=>{
+  try{await navigator.clipboard.writeText(registerUrl);status.textContent='Link de cadastro copiado.'}
+  catch(e){status.textContent=registerUrl}
+ });
+ download.disabled=true;share.disabled=true;status.textContent='Preparando ArgusPay.pdf…';
+ pdf(r).then(b=>{prepared=b;download.disabled=false;share.disabled=false;status.textContent=''}).catch(()=>{status.textContent='Não foi possível preparar o PDF. Use Imprimir / salvar PDF.'});
  d.addEventListener('close',()=>{if(currentDialog===d){currentDialog=null;d.remove()}});
  document.body.append(d);currentDialog=d;d.showModal();
 }

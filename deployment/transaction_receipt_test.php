@@ -40,3 +40,9 @@ $receipt=TransactionReceipt::admin($db,$a,$ids[0],'deposit');
 if(!$receipt['confirmed']||$receipt['amount_cents']!==100||$receipt['fee_cents']!==null)throw new RuntimeException('Historical receipt wrong or invented fee');
 try{TransactionReceipt::confirmedAdminPix($db,$a,$ids[151]);throw new RuntimeException('Foreign cursor accepted');}catch(\ArgusPayments\ApiError $expected){}
 echo "PASS: all historical paid admin Pix, 150 records across pages, expired QR independent, tenant isolation and pending exclusion.\n";
+
+$receiptJs=file_get_contents('/var/www/html/public/static/transaction-receipts.js');
+foreach(["const fileName='ArgusPay.pdf'","https://app.arguspay.com.br/conta#cadastro","url:registerUrl","text:registerUrl","new File([prepared],fileName","document.title='ArgusPay'","Copiar link de cadastro"] as $needle)
+ if(!str_contains($receiptJs,$needle))throw new RuntimeException('Receipt share name/link contract missing: '.$needle);
+if(str_contains($receiptJs,'navigator.share({url:url')||str_contains($receiptJs,'ArgusPay-\'+r.kind'))throw new RuntimeException('Old receipt share name or temporary URL retained');
+echo "PASS: ArgusPay.pdf filename, public registration link, native file sharing and copy fallback.\n";

@@ -19,7 +19,7 @@ receiptPatch($base.'/src/ResellerPublicPix.php',"'receipt_is_provider_settled'=>
 $d=$base.'/public/static/';
 foreach(['admin.html','client.html','public-pix.html','reseller-public-pix.html'] as $f){
  receiptPatch($d.$f,'</head>','<link rel="stylesheet" href="/static/transaction-receipts.css?v=confirmed-history-20261123-2"></head>');
- receiptPatch($d.$f,'</body>','<script defer src="/static/transaction-receipts.js?v=confirmed-history-20261123-2"></script></body>');
+ receiptPatch($d.$f,'</body>','<script defer src="/static/transaction-receipts.js?v=share-argus-20261123-3"></script></body>');
 }
 $publicHook=<<<'JS'
 function showStatus(charge){
