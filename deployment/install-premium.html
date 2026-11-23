@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR" data-role="%%ROLE%%" data-worker="%%WORKER%%" data-worker-scope="%%SCOPE%%">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#080d16">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="%%SHORT_NAME%%">
+<meta name="description" content="Instale %%APP_NAME%% na tela inicial do seu iPhone ou Android. Seu painel sempre no seu dispositivo, com notificações opcionais de Pix.">
+<title>Instalar %%APP_NAME%% | ARGUS Pay</title>
+<link rel="manifest" href="%%MANIFEST%%">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-argus-brand-20261123.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/assets/argus-brand-home-192-v7.png">
+<link rel="preload" as="image" href="/static/assets/argus-brand-home-512-v7.png">
+<link rel="stylesheet" href="/static/install-premium.css?v=20261123-1">
+<script src="/static/install-premium.js?v=20261123-1" defer></script>
+</head>
+<body class="argus-install-body">
+<div id="argus-install-root">
+  <div class="atmosphere" aria-hidden="true"><div class="glow g1"></div><div class="glow g2"></div><div class="orbits"></div></div>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="%%TARGET%%" aria-label="Voltar para %%APP_NAME%%">
+        <span class="brand-mark"><img src="/static/assets/argus-brand-home-192-v7.png" width="48" height="48" alt=""></span>
+        <span class="brand-name"><b>ARGUS<span>PAY</span></b><small>%%ROLE_LABEL%%</small></span>
+      </a>
+      <nav class="top-actions" aria-label="Navegação principal">
+        <span class="security-label"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 2 8 4v6c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-4Z"/><path d="m9 12 2 2 4-4"/></svg> Acesso protegido</span>
+        <a href="%%TARGET%%" class="nav-link">Abrir painel <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-heading">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="live-dot"></span> SUA ARGUS PAY, SEMPRE À MÃO <span class="divider-dot">·</span> %%ROLE_BADGE%%</div>
+          <h1 id="hero-heading">Seu painel.<br><span class="gold-text">Na palma da mão.</span></h1>
+          <p>Transforme o <strong>%%APP_NAME%%</strong> em um aplicativo na tela inicial. Acesse com um toque, acompanhe suas operações e ative notificações de Pix quando desejar.</p>
+          <div class="hero-actions">
+            <button class="primary-btn" type="button" id="install-cta"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v3h16v-3"/></svg><span id="install-cta-label">Ver como instalar</span><span class="arrow" aria-hidden="true">↗</span></button>
+            <a href="%%TARGET%%" class="ghost-btn">Voltar ao painel <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="hero-benefits" aria-label="Vantagens"><span><i class="tick" aria-hidden="true">✓</i> Sem APK ou IPA</span><span><i class="tick" aria-hidden="true">✓</i> Acesso rápido</span><span><i class="tick" aria-hidden="true">✓</i> iOS e Android</span></div>
+        </div>
+        <div class="visual" aria-label="Prévia de instalação da ARGUS Pay">
+          <div class="visual-halo"></div>
+          <div class="phone">
+            <div class="phone-island"></div>
+            <div class="phone-head"><span>9:41</span><span aria-hidden="true">▴ ▰ ▰</span></div>
+            <div class="phone-surface">
+              <div class="app-icon"><img src="/static/assets/argus-brand-home-512-v7.png" width="146" height="146" alt="Marca oficial da ARGUS Pay"></div>
+              <p class="app-caption">%%APP_NAME%%</p>
+              <div class="phone-internal-card"><span class="mini-badge">ARGUS PAY</span><b>Uma experiência<br>mais próxima de você.</b><div class="internal-sparks"><span></span><span></span><span></span><span></span></div></div>
+              <div class="fake-home-indicator" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="float-label"><span class="pulse-icon">✦</span><span><small>Seu acesso</small><b>Direto e exclusivo</b></span></div>
+        </div>
+      </section>
+
+      <section id="install-guide" class="install-section" aria-labelledby="guide-heading">
+        <div class="section-top">
+          <div><span class="section-kicker">INSTALAÇÃO ASSISTIDA</span><h2 id="guide-heading">Configure em poucos passos.</h2><p>Escolha seu sistema. As instruções se adaptam ao dispositivo sem precisar baixar nada da loja.</p></div>
+          <span class="section-pill"><span class="pill-dot"></span> Instalação gratuita</span>
+        </div>
+        <div class="guide-shell">
+          <div class="device-picker" role="tablist" aria-label="Escolha o sistema do aparelho">
+            <button type="button" id="tab-ios" class="device-tab" data-device="ios" role="tab" aria-controls="guide-ios" aria-selected="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.6 12.2c0-2 1.6-3 1.7-3.1a3.5 3.5 0 0 0-2.7-1.5c-1.2-.1-2.3.7-2.9.7-.6 0-1.5-.7-2.5-.7-1.3 0-2.5.8-3.2 1.9-1.3 2.2-.3 5.3.9 7.1.6.9 1.2 1.9 2.2 1.8.9 0 1.2-.6 2.3-.6 1.1 0 1.4.6 2.4.6 1 0 1.7-1 2.3-1.9.7-1 1-1.8 1.1-1.9-.1 0-1.6-.7-1.6-2.4ZM14.9 6.3c.5-.6.8-1.4.7-2.3-.8.1-1.6.6-2.1 1.2-.5.6-.8 1.4-.7 2.2.8 0 1.6-.5 2.1-1.1Z"/></svg><span><strong>iPhone / iPad</strong><small>Safari · iOS</small></span><span class="selected-check">✓</span></button>
+            <button type="button" id="tab-android" class="device-tab" data-device="android" role="tab" aria-controls="guide-android" aria-selected="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.3 8.5a6.7 6.7 0 0 1 11.4 0H6.3Zm-.1 1.4h11.6v6.9c0 .6-.5 1-1 1h-1V20c0 .5-.4 1-.9 1s-1-.5-1-1v-2.2h-3.8V20c0 .5-.4 1-.9 1s-1-.5-1-1v-2.2h-1c-.6 0-1-.4-1-1V9.9ZM4.2 10c-.5 0-.9.4-.9.9v5c0 .5.4 1 .9 1s1-.5 1-1v-5c0-.5-.5-.9-1-.9Zm15.6 0c-.5 0-.9.4-.9.9v5c0 .5.4 1 .9 1s1-.5 1-1v-5c0-.5-.4-.9-1-.9ZM7.8 5.1 6.7 3.5l.5-.3 1.1 1.6a7 7 0 0 1 7.4 0l1.1-1.6.5.3-1.1 1.6a7.4 7.4 0 0 1 2.5 3.4H5.3a7.4 7.4 0 0 1 2.5-3.4Z"/></svg><span><strong>Android</strong><small>Google Chrome</small></span><span class="selected-check">✓</span></button>
+          </div>
+
+          <div class="guide-body">
+            <section id="guide-ios" class="guide-panel" role="tabpanel" aria-labelledby="tab-ios">
+              <div class="guide-title"><div class="guide-title-icon">⌁</div><div><h3>Instalação no iPhone</h3><p>Abra no Safari e siga o procedimento abaixo.</p></div><span class="step-counter">4 etapas</span></div>
+              <ol class="steps">
+                <li><span class="step-number">01</span><div><b>Abra o site no Safari</b><p>Use o Safari no seu iPhone ou iPad. Abra esta página por ele, não pelo navegador interno de outro aplicativo.</p></div></li>
+                <li><span class="step-number">02</span><div><b>Toque em Compartilhar</b><p>Encontre o ícone de quadrado com uma seta apontando para cima na barra do navegador.</p></div></li>
+                <li><span class="step-number">03</span><div><b>Adicione à Tela de Início</b><p>Escolha <strong>Adicionar à Tela de Início</strong>. Se aparecer a opção <strong>Abrir como App da Web</strong>, deixe-a ativada.</p></div></li>
+                <li><span class="step-number">04</span><div><b>Abra e habilite os avisos</b><p>Toque no ícone <strong>%%APP_NAME%%</strong> criado, entre na sua conta e use o sino → <strong>Instalação → Ativar notificações</strong>.</p></div></li>
+              </ol>
+              <div class="guide-bottom"><span class="info-dot">i</span><p>Para receber notificações Push no iPhone, é necessário iOS 16.4 ou superior e a permissão do dispositivo. A instalação não exige APK ou IPA.</p></div>
+            </section>
+            <section id="guide-android" class="guide-panel" role="tabpanel" aria-labelledby="tab-android">
+              <div class="guide-title"><div class="guide-title-icon">▦</div><div><h3>Instalação no Android</h3><p>Use o navegador Chrome para a melhor experiência.</p></div><span class="step-counter">4 etapas</span></div>
+              <ol class="steps">
+                <li><span class="step-number">01</span><div><b>Abra pelo Chrome</b><p>Entre nesta página pelo Google Chrome do seu Android.</p></div></li>
+                <li><span class="step-number">02</span><div><b>Abra o menu do navegador</b><p>Toque nos <strong>três pontinhos ⋮</strong> do Chrome.</p></div></li>
+                <li><span class="step-number">03</span><div><b>Instale o aplicativo</b><p>Escolha <strong>Instalar aplicativo</strong> ou <strong>Adicionar à tela inicial</strong> e confirme.</p></div></li>
+                <li><span class="step-number">04</span><div><b>Ative as notificações</b><p>Abra o novo ícone <strong>%%APP_NAME%%</strong>, faça login e acesse o sino → <strong>Instalação → Ativar notificações</strong>.</p></div></li>
+              </ol>
+              <div class="guide-bottom"><span class="info-dot">i</span><p>O Chrome também pode mostrar um botão direto de instalação. As notificações dependem da autorização do Android e do aplicativo instalado.</p></div>
+            </section>
+          </div>
+        </div>
+      </section>
+
+      <section class="feature-grid" aria-label="Vantagens do aplicativo">
+        <article class="feature"><span class="feature-icon">✦</span><h3>Sua rotina, mais rápida</h3><p>Entre direto no painel correto, sem procurar o endereço toda vez.</p></article>
+        <article class="feature"><span class="feature-icon">◈</span><h3>Alertas de Pix</h3><p>Ative avisos no próprio aparelho para acompanhar confirmações reais de pagamento.</p></article>
+        <article class="feature"><span class="feature-icon">◇</span><h3>Sua escolha</h3><p>Você pode ativar ou desativar as notificações a qualquer momento pelo painel.</p></article>
+      </section>
+
+      <section class="last-cta">
+        <div class="last-symbol" aria-hidden="true">✧</div>
+        <div><span class="section-kicker">PRONTO PARA USAR</span><h2>Seu acesso a um toque de distância.</h2><p>%%ROLE_EXPLAIN%%</p></div>
+        <a href="%%TARGET%%" class="primary-btn inline-link">Abrir %%APP_NAME%% <span aria-hidden="true">↗</span></a>
+      </section>
+    </main>
+
+    <footer class="footer"><span><b>ARGUS PAY</b> · Uma experiência premium para seu dia a dia.</span><span>Notificações somente com sua autorização e confirmação válida do Pix.</span></footer>
+  </div>
+</div>
+</body></html>

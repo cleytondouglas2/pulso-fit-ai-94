@@ -1193,3 +1193,19 @@ RUN php -l /var/www/html/src/Notifications.php \
  && php -l /var/www/html/tests/argus_push_toggle_test.php \
  && php /var/www/html/tests/argus_push_toggle_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Premium installation page (iOS/Android), replacing the outdated inline
+# HTML AFTER legacy layout, notification and PWA split patches. External CSS/JS
+# makes styling resilient and retains role-scoped service worker registrations.
+# Read-only presentation; payments, wallets, fees and sessions remain unchanged.
+COPY deployment/install-premium.html /var/www/html/public/static/install-premium.html
+COPY deployment/install-premium.css /var/www/html/public/static/install-premium.css
+COPY deployment/install-premium.js /var/www/html/public/static/install-premium.js
+COPY deployment/install_premium_patch.php /tmp/install_premium_patch.php
+COPY deployment/install_premium_test.php /var/www/html/tests/install_premium_test.php
+RUN php -l /tmp/install_premium_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/install_premium_patch.php \
+ && php -l /var/www/html/tests/install_premium_test.php \
+ && php /var/www/html/tests/install_premium_test.php \
+ && php /var/www/html/tests/security_regression_test.php
