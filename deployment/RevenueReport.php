@@ -10,12 +10,13 @@ namespace ArgusPayments;
 final class RevenueReport {
     private const ZONE='America/Sao_Paulo';
     private static function blank():array {
-        return ['gross_cents'=>0,'net_cents'=>0,'paid_count'=>0,'refund_count'=>0];
+        return ['gross_cents'=>0,'net_cents'=>0,'paid_gross_cents'=>0,'paid_count'=>0,'refund_count'=>0];
     }
     private static function apply(array &$bucket,int $gross,int $net,string $kind,int $count):void {
         $sign=$kind==='deposit_refund'?-1:1;
         $bucket['gross_cents']+=$sign*$gross;
         $bucket['net_cents']+=$sign*$net;
+        if($sign===1)$bucket['paid_gross_cents']+=$gross;
         $bucket[$sign===1?'paid_count':'refund_count']+=$count;
     }
     private static function change(array $current,array $baseline):array {
