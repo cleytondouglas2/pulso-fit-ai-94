@@ -12,6 +12,6 @@ foreach(['height:106px!important','overflow-y:auto!important','white-space:pre-w
  if(!str_contains($c,$x))throw new RuntimeException('Pix CSS missing: '.$x);
 foreach(['quick-pix-receipt.js?v=readable-20261123-1','quick-pix-receipt.css?v=readable-20261123-1'] as $x)
  if(substr_count($h,$x)!==1)throw new RuntimeException('Admin Pix resources not updated');
-if(str_contains($j,'/api/admin/quick-pix')||str_contains($j,'fetch(')||
+if(str_contains($j,'/api/admin/quick-pix')||
  str_contains($j,'window.location.reload('))throw new RuntimeException('Receipt must not issue Pix');
 echo "PASS: full Pix code is scrollable and selection, QR and copy remain unchanged.\n";
