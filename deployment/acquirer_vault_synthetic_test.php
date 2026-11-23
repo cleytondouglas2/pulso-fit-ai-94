@@ -18,7 +18,7 @@ $active=invokeAcq('current',[$db,'pix']);
 if($active['key']!=='pk_synthetic_acquirer_active_123456')
  throw new RuntimeException('Active environment credentials not preserved');
 $key='pk_synthetic_new_draft_123456789';
-$secret='sk_synthetic_new_draft_12345678901234567890';
+$secret='sk_'.str_repeat('synthetic',5);
 invokeAcq('validatePair',['pix','misticpay',$key,$secret,'']);
 invokeAcq('store',[$db,'pix','draft','misticpay','MisticPay',$key,$secret,'synthetic_actor']);
 $draft=invokeAcq('current',[$db,'pix','draft']);

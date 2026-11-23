@@ -18,7 +18,7 @@ async function loadWallets(){
    (Number(a.debt_cents)>0?'<p class="seller-admin-problem">Ajuste pendente '+cash(a.debt_cents)+'</p>':'')+
    '</article>').join(''):'<p>Nenhuma carteira habilitada ainda.</p>';
   pending.innerHTML=items.length?items.map(r=>'<article class="seller-admin-line">'+
-    '<div><strong>Solicitado '+cash(r.amount_cents)+'</strong><small>Pix líquido '+cash(Number(r.amount_cents)-100)+'</small><small>'+esc(r.pix_key_masked)+'</small>+
+    '<div><strong>Solicitado '+cash(r.amount_cents)+'</strong><small>Pix líquido '+cash(Number(r.amount_cents)-100)+'</small><small>'+esc(r.pix_key_masked)+'</small>'+
     '<small>Taxa de serviço R$ 1,00</small></div><div><strong>'+esc(r.status)+'</strong><small>'+esc(r.created_at)+'</small></div>'+
     '<div class="seller-admin-buttons">'+
     (r.status==='requested'?'<small>Aguardando processamento do próprio revendedor</small>':'')+
