@@ -51,8 +51,8 @@ agfix($w,
  "if(!in_array(\$charge['status'],['pending','unknown','paid','refunded','partial_review'],true)||",
  'recognize manual-refund-review charge in status lookup');
 agfix($w,
- "((status IN ('pending','unknown') AND (checked_at IS NULL OR checked_at<?))",
- "((status IN ('pending','unknown','partial_review') AND (checked_at IS NULL OR checked_at<?))",
+ "((status IN ('pending','unknown') AND\n                  ((created_at>=? AND (checked_at IS NULL OR checked_at<?))",
+ "((status IN ('pending','unknown','partial_review') AND\n                  ((created_at>=? AND (checked_at IS NULL OR checked_at<?))",
  'continue periodic safe PSP query for partial reviews');
 agfix($w,
  "ORDER BY CASE WHEN status IN ('pending','unknown') THEN 0 ELSE 1 END,",
