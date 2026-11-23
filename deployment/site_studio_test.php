@@ -54,19 +54,29 @@ foreach([
   if($e->status!==422)throw $e;
  }
 }
-$saveRef=new ReflectionMethod(SiteStudio::class,'save');
-$snapshot=$original['settings'];
-$saveRef->invoke(null,$db,$snapshot,$clean,0,1,'synthetic_site_studio');
-$public=SiteStudio::publicConfig($db);
-if($public['settings']['brand.name']===$draft['brand.name']||
- $public['published_version']!==0)
- throw new RuntimeException('Unpublished draft leaked to public website');
-$saveRef->invoke(null,$db,$clean,$clean,1,1,'synthetic_site_studio');
-$published=SiteStudio::publicConfig($db);
-if($published['published_version']!==1||
- $published['settings']['brand.name']!==$draft['brand.name']||
- $published['settings']['copy_001']!==$draft['copy_001'])
- throw new RuntimeException('Published website did not read only confirmed version');
+// The site studio test must NEVER leave fictitious brand/copy in the image's
+// SQLite database. Keep synthetic writes in a real transaction, then roll back.
+$testPdo=$db->pdo();
+if($testPdo->inTransaction())throw new RuntimeException('Isolation test must own its transaction');
+$testPdo->beginTransaction();
+try {
+  $saveRef=new ReflectionMethod(SiteStudio::class,'save');
+  $snapshot=$original['settings'];
+  $saveRef->invoke(null,$db,$snapshot,$clean,0,1,'synthetic_site_studio');
+  $public=SiteStudio::publicConfig($db);
+  if($public['settings']['brand.name']===$draft['brand.name']||
+   $public['published_version']!==0)
+   throw new RuntimeException('Unpublished draft leaked to public website');
+  $saveRef->invoke(null,$db,$clean,$clean,1,1,'synthetic_site_studio');
+  $published=SiteStudio::publicConfig($db);
+  if($published['published_version']!==1||
+   $published['settings']['brand.name']!==$draft['brand.name']||
+   $published['settings']['copy_001']!==$draft['copy_001'])
+   throw new RuntimeException('Published website did not read only confirmed version');
+  
+} finally {
+  if($testPdo->inTransaction())$testPdo->rollBack();
+}
 $gateway=(string)file_get_contents('/var/www/html/src/Gateway.php');
 $admin=(string)file_get_contents('/var/www/html/src/Admin.php');
 $html=(string)file_get_contents('/var/www/html/public/static/admin.html');
