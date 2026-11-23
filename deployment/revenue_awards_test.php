@@ -13,7 +13,8 @@ RevenueAwards::install($db);
 $id='awd_'.bin2hex(random_bytes(13));
 $other='awd_'.bin2hex(random_bytes(13));
 $now=(new DateTimeImmutable('now',new DateTimeZone('UTC')))->format('Y-m-d H:i:s');
-foreach([[$id,'Loja Prêmio Alfa'],[$other,'Loja Prêmio Beta']] as [$account,$name]){
+$myName='Loja Prêmio Alfa '.substr($id,-8);
+foreach([[$id,$myName],[$other,'Loja Prêmio Beta '.substr($other,-8)]] as [$account,$name]){
  $db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,
   document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at)
   VALUES(?,?,?,?,?,?,?,?,?,?,?)',[
@@ -73,12 +74,12 @@ if($own['self']['account_id']!==$id||
  in_array($other,array_column($own['ranking'],'account_id'),true))
  throw new RuntimeException('Seller tenant isolation failed');
 $pub=RevenueAwards::publicRanking($db);
-if(count(array_filter($pub['ranking'],static fn($r)=>str_contains($r['display_name'],'Prêmio')))!==0)
+if(count(array_filter($pub['ranking'],static fn($r)=>$r['display_name']===$myName))!==0)
  throw new RuntimeException('Public financial identities leaked without consent');
 $db->run('INSERT INTO argus_awards_public_consent(account_id,enabled,updated_at) VALUES(?,?,?)',
  [$id,1,$now]);
 $pub=RevenueAwards::publicRanking($db);
-$match=array_values(array_filter($pub['ranking'],static fn($r)=>$r['display_name']==='Loja Prêmio Alfa'));
+$match=array_values(array_filter($pub['ranking'],static fn($r)=>$r['display_name']===$myName));
 if(count($match)!==1||$match[0]['monthly_gross_cents']!==9000||
  array_key_exists('account_id',$match[0]))
  throw new RuntimeException('Explicit public consent or public projection invalid');
