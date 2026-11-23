@@ -74,7 +74,9 @@ try{
 $src=(string)file_get_contents('/var/www/html/src/MerchantWallet.php');
 $quick=(string)file_get_contents('/var/www/html/src/TraditionalQuickPix.php');
 $ops=(string)file_get_contents('/var/www/html/src/FinanceOperations.php');
-if(substr_count($src,"'DEVOLVIDO_PARCIAL'=>'unknown'")!==2||
+if(!str_contains($src,'ARGUS_SELLER_PARTIAL_PAYOUT_REVIEW')||
+   !str_contains($src,"SET status='unknown',checked_at=?")||
+   substr_count($src,"'DEVOLVIDO_PARCIAL'=>'unknown'")!==2||
    str_contains($src,"'DEVOLVIDO','DEVOLVIDO_PARCIAL'=>'refunded'")||
    !str_contains($quick,"'DEVOLVIDO_PARCIAL'=>'partial_review'")||
    !str_contains($ops,'unknown_charges_without_provider_id')||
