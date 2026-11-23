@@ -1332,6 +1332,18 @@ RUN php -l /var/www/html/src/RevenueAwards.php \
  && php /var/www/html/tests/revenue_awards_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+
+# Last-stage visual fix: show full Pix copy payload on ONE line, with aligned icon
+# for the reseller and Super Admin. Never modify Pix creation/reconciliation.
+COPY deployment/pix-code-alignment.css /var/www/html/public/static/pix-code-alignment.css
+COPY deployment/pix_code_alignment_patch.php /tmp/pix_code_alignment_patch.php
+COPY deployment/pix_code_alignment_test.php /var/www/html/tests/pix_code_alignment_test.php
+RUN php -l /tmp/pix_code_alignment_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/pix_code_alignment_patch.php \
+ && php -l /var/www/html/tests/pix_code_alignment_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/pix_code_alignment_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
