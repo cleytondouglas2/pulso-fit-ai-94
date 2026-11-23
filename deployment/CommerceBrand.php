@@ -47,8 +47,8 @@ final class CommerceBrand {
             'mime'=>$row['mime']??null,
             'updated_at'=>$row['updated_at']??null,
             'preview_url'=>$row?'/api/portal/commerce/logo/image':null,
-            'applies_to'=>'Todas as páginas comerciais deste revendedor',
-            'note'=>'A logomarca substitui a marca Argus Pay no cabeçalho das páginas comerciais, mas não nos comprovantes nem no checkout financeiro da adquirente.'
+            'applies_to'=>'Todas as páginas comerciais e o Pix público deste revendedor',
+            'note'=>'A logomarca substitui a marca Argus Pay no cabeçalho das páginas comerciais e do Pix público do revendedor. Os comprovantes e a identificação da plataforma financeira continuam Argus Pay.'
         ];
     }
     public static function save(Database $db,string $owner,array $body):array {
@@ -83,13 +83,13 @@ final class CommerceBrand {
                 (account_id,mime,encoded_image,content_sha256,updated_at)
                 VALUES(?,?,?,?,?)',[$owner,$detected,$encoded,$hash,Database::stamp()]);
         }
-        return ['ok'=>true,'message'=>'Logomarca salva. Ela aparecerá em todas as suas páginas comerciais publicadas.',
+        return ['ok'=>true,'message'=>'Logomarca salva. Ela aparecerá nas páginas comerciais publicadas e no seu Pix público.',
             'branding'=>self::info($db,$owner)];
     }
     public static function remove(Database $db,string $owner):array {
         self::install($db);
         $db->run('DELETE FROM argus_commerce_brand_logos WHERE account_id=?',[$owner]);
-        return ['ok'=>true,'message'=>'Logomarca removida. As páginas comerciais voltarão a exibir Argus Pay.',
+        return ['ok'=>true,'message'=>'Logomarca removida. As páginas comerciais e o Pix público voltarão a exibir Argus Pay.',
             'branding'=>self::info($db,$owner)];
     }
     public static function hasLogo(Database $db,string $owner):bool {
@@ -127,6 +127,26 @@ final class CommerceBrand {
             self::json(self::remove($db,$owner));
         }
         self::fail('Rota de logomarca inválida.',404);
+    }
+    /** Resolve only the owner of this existing public /e/ link.
+     * A logo URL never authorizes a financial operation. */
+    private static function resellerPixOwner(Database $db,string $code):?string {
+        if(!preg_match('/^[a-f0-9]{32}$/D',$code))return null;
+        ResellerPublicPix::install($db);
+        self::install($db);
+        $row=$db->one("SELECT a.id FROM argus_reseller_public_links p
+            JOIN argus_portal_accounts a ON a.id=p.account_id
+            JOIN argus_commerce_brand_logos l ON l.account_id=a.id
+            WHERE p.public_code=? AND a.status NOT IN ('suspended','rejected')",[$code]);
+        return $row?(string)$row['id']:null;
+    }
+    public static function resellerPixLogoUrl(Database $db,string $code):?string {
+        return self::resellerPixOwner($db,$code)!==null?'/e/'.$code.'/logo':null;
+    }
+    public static function resellerPixLogo(Database $db,string $code):never {
+        $owner=self::resellerPixOwner($db,$code);
+        if($owner===null)self::fail('Logomarca não encontrada.',404);
+        self::image($db,$owner);
     }
     public static function publicLogo(Database $db,string $code):never {
         if(!preg_match('/^[a-f0-9]{32}$/D',$code))

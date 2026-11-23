@@ -42,7 +42,7 @@ async function loadLogo(force=false){
   checkedAt=Date.now();display();
   const local=$('argus-commerce-logo-status');
   if(local&&!pending)local.textContent=hasLogo?
-   'Sua logomarca aparecerá em todas as páginas comerciais publicadas.':
+   'Sua logomarca aparecerá nas páginas comerciais publicadas e no seu Pix público.':
    'Marca padrão Argus Pay. Envie sua logomarca para substituí-la.';
  }catch(e){inform('Não foi possível carregar sua marca: '+e.message,true)}
  finally{reading=false}
