@@ -198,7 +198,9 @@ function setup(){
   filter=e.target.value;renderFields();
  });
  E('argus-studio-save').addEventListener('click',save);
+ E('argus-studio-save-bottom').addEventListener('click',save);
  E('argus-studio-publish').addEventListener('click',publish);
+ E('argus-studio-publish-bottom').addEventListener('click',publish);
  E('argus-studio-reload').addEventListener('click',()=>{
   if(dirtyFromDraft()&&!confirm('Descartar alterações não salvas?'))return;
   load();
