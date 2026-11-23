@@ -1,0 +1,40 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "ARGUS Pay Commerce Suite — API de desenvolvimento",
+    "version": "0.1.0",
+    "description": "Superfície de marketing e sandbox local. Estes endpoints não criam Pix válido, não creditam carteiras e não autorizam saques. A documentação financeira oficial do gateway continua separada."
+  },
+  "servers": [{"url": "https://arguspay.com.br"}],
+  "paths": {
+    "/api/portal/commerce/pages": {
+      "get": {
+        "summary": "Listar minhas páginas comerciais",
+        "description": "Exige sessão de revendedor autenticada",
+        "responses": {"200":{"description":"Páginas da própria conta, sem dados de outras carteiras"}}
+      },
+      "post": {
+        "summary": "Criar rascunho comercial",
+        "description": "Exige sessão de revendedor e cabeçalho X-CSRF-Token. NÃO cria cobrança. Valor é sugestão, em centavos.",
+        "requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["title","description","suggested_amount_cents","call_to_action"],"properties":{"title":{"type":"string","maxLength":100},"description":{"type":"string","maxLength":600},"suggested_amount_cents":{"type":"integer","minimum":100,"maximum":9000},"call_to_action":{"type":"string","maxLength":70},"image_url":{"type":"string"},"accent_color":{"type":"string"},"expires_at":{"type":["string","null"],"format":"date"}}}}}},
+        "responses":{"201":{"description":"Página salva em rascunho"},"403":{"description":"Sessão ou CSRF inválidos"}}
+      }
+    },
+    "/api/portal/commerce/sandbox": {
+      "post": {
+        "summary": "Simular estados de operação (offline, sem PSP)",
+        "description": "Exige sessão autenticada e X-CSRF-Token. Gera status simulated_paid, simulated_pending, simulated_failed ou simulated_refunded. Não fornece cópia e cola Pix, ID da adquirente, webhook nem saldo.",
+        "requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","required":["scenario","amount_cents"],"properties":{"scenario":{"type":"string","enum":["paid","pending","failed","refunded"]},"amount_cents":{"type":"integer","minimum":100,"maximum":1000000}}}}}},
+        "responses":{"200":{"description":"Resposta sintética não financeira"}}
+      }
+    },
+    "/api/public/commerce/{code}": {
+      "get": {
+        "summary": "Consultar página comercial publicada",
+        "description": "Somente informações públicas. A disponibilidade do Pix é confirmada pelo fluxo financeiro existente.",
+        "parameters":[{"in":"path","name":"code","required":true,"schema":{"type":"string","pattern":"^[a-f0-9]{32}$"}}],
+        "responses":{"200":{"description":"Oferta e estado de disponibilidade do checkout"},"404":{"description":"Oferta não publicada, arquivada, expirada ou indisponível"}}
+      }
+    }
+  }
+}
