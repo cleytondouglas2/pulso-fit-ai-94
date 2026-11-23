@@ -92,13 +92,13 @@ $screen=<<<'HTML'
      </label>
     </div>
     <div class="argus-acq-form-actions">
-     <button type="submit" class="btn" id="argus-acq-save" disabled title="Editor exige habilitação do cliente autenticado">Salvar rascunho</button>
-     <button type="button" class="btn secondary" id="argus-acq-test-draft" disabled>Testar rascunho</button>
+     <button type="submit" class="btn" id="argus-acq-save">Salvar rascunho</button>
+     <button type="button" class="btn secondary" id="argus-acq-test-draft">Testar rascunho</button>
      <button type="button" class="btn secondary" id="argus-acq-activate" disabled>Ativar nova chave</button>
      <button type="button" class="btn secondary" id="argus-acq-close" onclick="this.closest('section').hidden=true">Fechar</button>
     </div>
    </form>
-   <p class="argus-acq-warn">As ações de alteração permanecem desabilitadas até o editor autenticado ser disponibilizado. Outras adquirentes exigem integração técnica homologada.</p>
+   <p class="argus-acq-warn">A troca exige um novo código 2FA, validação de conexão e nenhuma operação pendente. Outras adquirentes precisam de adaptador homologado.</p>
    <p id="argus-acq-feedback" class="argus-acq-feedback" role="status" aria-live="polite">As credenciais atuais nunca são exibidas.</p>
   </section>
  </div>
@@ -111,6 +111,6 @@ acqPatch($admin,'</head>',
  '<link rel="stylesheet" href="/static/acquirer-monitor.css?v=1"></head>',
  'acquirer CSS');
 acqPatch($admin,'</body>',
- '<script defer src="/static/acquirer-monitor.js?v=1"></script></body>',
+ '<script defer src="/static/acquirer-monitor.js?v=2"></script><script defer src="/static/acquirer-editor.js?v=2"></script></body>',
  'acquirer JS');
 echo "PASS: read-only acquirer monitor mounted with protected API; credential draft actions fail closed until authenticated editor is available.\n";
