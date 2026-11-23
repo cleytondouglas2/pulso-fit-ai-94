@@ -28,8 +28,10 @@ function ensure(){
   root.setAttribute('aria-labelledby','argus-rpl-heading');
   root.innerHTML=markup;
   root.querySelector('h2').id='argus-rpl-heading';
-  $('argus-rpl-copy').addEventListener('click',copy);
-  $('argus-rpl-share').addEventListener('click',share);
+  // Bind controls on the detached element itself. A document-wide lookup
+  // returns null until this card is inserted, preventing it from rendering.
+  root.querySelector('#argus-rpl-copy').addEventListener('click',copy);
+  root.querySelector('#argus-rpl-share').addEventListener('click',share);
  }
  if(modern){
   // Move the SAME element if it was previously inserted into the old,

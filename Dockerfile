@@ -1050,3 +1050,17 @@ RUN php -l /tmp/reseller_public_overview_fix_patch.php \
  && php -l /var/www/html/tests/reseller_public_overview_fix_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_overview_fix_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Actual /conta Reseller Pix CTA hotfix:
+# Bind click listeners against detached card nodes using root.querySelector
+# rather than document.getElementById, which was null before insertion and
+# aborted card mounting. Bump mobile Safari JS/CSS version.
+COPY deployment/reseller-public-link.js /var/www/html/public/static/reseller-public-link.js
+COPY deployment/reseller_public_link_dom_hotfix.php /tmp/reseller_public_link_dom_hotfix.php
+COPY deployment/reseller_public_link_dom_test.php /var/www/html/tests/reseller_public_link_dom_test.php
+RUN php -l /tmp/reseller_public_link_dom_hotfix.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_public_link_dom_hotfix.php \
+ && php -l /var/www/html/tests/reseller_public_link_dom_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_link_dom_test.php \
+ && php /var/www/html/tests/security_regression_test.php
