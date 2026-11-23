@@ -97,7 +97,7 @@ final class CommerceSuite {
     public static function create(Database $db,string $owner,array $input):array {
         self::install($db);
         $count=$db->one("SELECT COUNT(*) AS total FROM argus_commerce_pages
-            WHERE account_id=? AND status<>'archived'",[$owner]);
+            WHERE account_id=? AND status NOT IN ('archived','deleted')",[$owner]);
         if((int)($count['total']??0)>=30)
             self::fail('Limite de 30 páginas não arquivadas por revendedor.',409);
         [$title,$description,$amount,$image,$color,$button,$expires]=self::validated($input);
@@ -117,7 +117,8 @@ final class CommerceSuite {
         if(!preg_match('/^cmp_[a-f0-9]{32}$/D',$id))self::fail('Página não encontrada.',404);
         self::install($db);
         $row=$db->one('SELECT * FROM argus_commerce_pages WHERE id=? AND account_id=?',[$id,$owner]);
-        if(!$row)self::fail('Página não encontrada nesta conta.',404);
+        if(!$row||$row['status']==='deleted')
+            self::fail('Página não encontrada nesta conta.',404);
         return $row;
     }
     public static function edit(Database $db,string $owner,string $id,array $input):array {
