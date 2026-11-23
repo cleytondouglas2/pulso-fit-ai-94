@@ -66,6 +66,55 @@ try{
  CommerceSuite::action($db,$one,$create['id'],'archive');
  try{CommerceSuite::show($db,$publicCode);throw new RuntimeException('Archived offer still public');}
  catch(ApiError $e){if($e->status!==404)throw $e;}
+ // Previously empty JSON {} rejected action routes in Portal::body (HTTP 400).
+ // Regression guards the bodyless action bypass without disabling CSRF.
+ $portalSource=(string)file_get_contents('/var/www/html/src/Portal.php');
+ if(!str_contains($portalSource,'$actionNoBody=')||
+    !str_contains($portalSource,"(?:publish|archive|delete)")||
+    !str_contains($portalSource,'$method===\'POST\'&&!$actionNoBody?self::body():[]'))
+    throw new RuntimeException('Bodyless action route 400 regression');
+ $free=$body;
+ $free['suggested_amount_cents']=null;
+ $freeOffer=CommerceSuite::create($db,$one,$free);
+ $freeId=$freeOffer['id'];
+ $freeCode=substr($freeOffer['public_path'],3);
+ $visible=CommerceSuite::mine($db,$one)['pages'];
+ $ourOffer=array_values(array_filter($visible,static fn($p)=>$p['id']===$freeId));
+ if(count($ourOffer)!==1||$ourOffer[0]['suggested_amount_cents']!==null)
+    throw new RuntimeException('Optional price lost on reseller listing');
+ CommerceSuite::action($db,$one,$freeId,'publish');
+ $publicFree=CommerceSuite::show($db,$freeCode);
+ if($publicFree['suggested_amount_cents']!==null||
+    !str_contains($publicFree['price_note'],'Valor aberto'))
+    throw new RuntimeException('Public page must disclose optional payer-selected amount');
+ $free['suggested_amount_cents']=0;
+ CommerceSuite::edit($db,$one,$freeId,$free);
+ CommerceSuite::action($db,$one,$freeId,'publish');
+ if(CommerceSuite::show($db,$freeCode)['suggested_amount_cents']!==null)
+    throw new RuntimeException('Optional zero sentinel incorrectly shown as price');
+ $del=CommerceSuite::action($db,$one,$freeId,'delete');
+ if($del['status']!=='deleted')throw new RuntimeException('Page deletion failed');
+ if(count(array_filter(CommerceSuite::mine($db,$one)['pages'],
+     static fn($p)=>$p['id']===$freeId))!==0)
+    throw new RuntimeException('Deleted page appears in reseller list');
+ try{CommerceSuite::show($db,$freeCode);throw new RuntimeException('Deleted offer publicly visible');}
+ catch(ApiError $e){if($e->status!==404)throw $e;}
+ try{CommerceSuite::action($db,$one,$freeId,'publish');throw new RuntimeException('Deleted offer restored');}
+ catch(ApiError $e){if($e->status!==404)throw $e;}
+ try{CommerceSuite::edit($db,$two,$freeId,$body);throw new RuntimeException('Deleted page cross-tenant restored');}
+ catch(ApiError $e){if($e->status!==404)throw $e;}
+ // Publishing a marketing-only page must not require approved PSP/KYC.
+ $db->run('UPDATE argus_portal_accounts SET status=?,merchant_id=NULL WHERE id=?',
+     ['documents_required',$two]);
+ $marketing=CommerceSuite::create($db,$two,$free);
+ CommerceSuite::action($db,$two,$marketing['id'],'publish');
+ $publicMarketing=CommerceSuite::show($db,substr($marketing['public_path'],3));
+ if(($publicMarketing['checkout']['available']??null)!==false)
+    throw new RuntimeException('Unapproved merchant was offered real Pix checkout');
+ $db->run('UPDATE argus_portal_accounts SET status=? WHERE id=?',['suspended',$two]);
+ try{CommerceSuite::show($db,substr($marketing['public_path'],3));
+     throw new RuntimeException('Suspended merchant still public');}
+ catch(ApiError $e){if($e->status!==404)throw $e;}
  foreach([
   ['image_url'=>'http://invalid.example.org/x.png'],
   ['image_url'=>'https://127.0.0.1/secret.png'],
@@ -107,14 +156,18 @@ try{
     throw new RuntimeException('Admin commerce overview not protected');
  foreach(["nav('commerce')","page('commerce'","commerce:'Checkout Studio'"] as $t)
   if(!str_contains($nav,$t))throw new RuntimeException('Reseller commerce SPA missing: '.$t);
- foreach(['commerce-suite.js?v=20261123-1','commerce-suite.css?v=20261123-1'] as $t)
+ foreach(['commerce-suite.js?v=20261123-2','commerce-suite.css?v=20261123-2'] as $t)
   if(!str_contains($ui,$t)||!str_contains($admin,$t))throw new RuntimeException('Commerce UI assets missing');
  if(!str_contains($merchantUi,'if(!booted)setup()')||
+    !str_contains($merchantUi,'data-com-delete')||
+    !str_contains($merchantUi,'Valor livre — cliente escolhe no Pix')||
+    !str_contains($merchantUi,'argus-commerce-toast')||
     !str_contains($statusUi,"fetch('/readyz'")||
     !str_contains($g,"self::htmlFile('commerce-status.html')")||
     ($openApi['openapi']??null)!=='3.1.0')
     throw new RuntimeException('Post-login async shell, safe status or developer API docs missing');
- if(str_contains($publicUi,'innerHTML=')||str_contains($publicUi,'POST')||
+ if(!str_contains($publicUi,'Valor livre — você escolhe quanto pagar')||
+    str_contains($publicUi,'innerHTML=')||str_contains($publicUi,'POST')||
     str_contains($publicUi,'pix_copy_paste'))
     throw new RuntimeException('Public product page must never issue money or inject HTML');
  echo "PASS: commerce drafts, publish/archive, 2-seller isolation, SSRF-safe images, simulation with zero credit, protected routes and no-money handoff.\n";
