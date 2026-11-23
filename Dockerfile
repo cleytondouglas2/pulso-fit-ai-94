@@ -1274,7 +1274,7 @@ COPY deployment/argus_nonmoney_security_test.php /var/www/html/tests/argus_nonmo
 RUN a2enmod remoteip \
  && apache2ctl configtest \
  && php -l /tmp/argus_nonmoney_security_patch.php \
- && php /tmp/argus_nonmoney_security_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_nonmoney_security_patch.php \
  && php -l /var/www/html/tests/argus_nonmoney_security_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_nonmoney_security_test.php \
  && php /var/www/html/tests/security_regression_test.php
