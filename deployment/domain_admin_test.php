@@ -57,9 +57,8 @@ if(!str_contains($admin,"DomainControl::handle(\$db,\$method,\$path,\$actor,\$pa
 foreach(['data-nav="domains"','id="page-domains"','id="argus-domain-otp"',
  'domain-admin.js?v=20261123-1','domain-admin.css?v=20261123-1'] as $term)
  if(!str_contains($html,$term))throw new RuntimeException('Domain tab missing: '.$term);
-foreach(['api/admin/domains/status','api/admin/domains/stage',
- 'api/admin/domains/register','api/admin/domains/verify',
- 'api/admin/domains/activate',"post('/api/admin/domains/'"] as $term)
+foreach(['api/admin/domains/status',"post('/api/admin/domains/'",
+ "mutate('stage'","mutate('register'","mutate('verify'","mutate('activate'"] as $term)
  if(!str_contains($js,$term))throw new RuntimeException('Domain UI workflow missing: '.$term);
 if(!str_contains($css,'@media(max-width:740px)')||
  !str_contains($css,'#argus-domain-shell'))throw new RuntimeException('Responsive domain UI styling missing');
