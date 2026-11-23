@@ -1,0 +1,8 @@
+
+/* Financial preflight v2: authenticated Super Admin only; no transaction actions. */
+#argus-finance-preflight{border-color:#b88749;background:linear-gradient(135deg,#332b23,#1a2430)}
+#argus-finance-preflight h2{color:#f8d69e}
+#argus-finance-preflight .argus-preflight-list{display:grid;gap:9px;margin:14px 0}
+#argus-finance-preflight .argus-preflight-line{padding:11px 13px;margin:0;border:1px solid #806347;border-radius:9px;background:#241f1d;color:#f6dcc0;font-size:12px;line-height:1.55}
+#argus-finance-preflight .argus-preflight-states{display:flex;flex-wrap:wrap;gap:8px}
+#argus-finance-preflight .argus-preflight-states span{border:1px solid #647080;border-radius:999px;padding:7px 10px;font-size:11px;color:#dce0e7;background:#151e2c;overflow-wrap:anywhere}

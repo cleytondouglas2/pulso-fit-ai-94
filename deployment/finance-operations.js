@@ -19,17 +19,39 @@ function details(title,rows,render){
 }
 function item(r){return '<div class="argus-op-item"><strong>'+esc(r.name||r.id||'Registro')+
  '</strong><small>'+esc(r.account_id||'')+' · '+esc(r.created_at||r.status||'')+'</small></div>'}
-function show(data){
+function show(data,preflight){
  const setting=data.settings||{},alerts=E('argus-operations-alerts'),stateEl=E('argus-operations-status');
  if(!alerts||!stateEl)return;
  const cycle=setting.reconciliation_worker||{};
+ const gate=preflight||{};
+ const finance=gate.finance||{},traditional=gate.traditional||{},payout=gate.payout||{};
+ const blocked=[];
+ if(!setting.database_persistent)blocked.push("Banco financeiro persistente indisponível nesta instância.");
+ else if(setting.database_shared===true)blocked.push("Banco PostgreSQL compartilhado: backup/restauração independente ainda precisa ser comprovado.");
+ if(!setting.custody_configuration_confirmed)blocked.push("Custódia do PSP sem confirmação operacional nesta instância.");
+ if(finance.provider==="credentials_rejected"||finance.provider==="legacy_misticpay_keys")blocked.push("Finance QR Codes: credenciais rejeitadas ou incompatíveis. Não reutilize o par de outra API.");
+ else if(finance.ready_to_attempt!==true)blocked.push("Finance QR Codes: autorização não comprovada por consulta autenticada.");
+ if(traditional.transaction_read_scope!=="verified")blocked.push("API Pix tradicional: permissão de consulta TRANSACTION_READ ainda não confirmada.");
+ if(payout.ready_to_request!==true)blocked.push("Saques: requisitos locais incompletos; nenhum saque foi realizado nesta verificação.");
+ else blocked.push("Saques: configuração local presente, mas WITHDRAW_CREATE e liquidação real não foram verificados.");
+ if(cycle.fresh!==true)blocked.push("Conciliação: execução recente não confirmada.");
+ const checkText=(s)=>'<p class="argus-preflight-line">'+esc(s)+'</p>';
+ const preflightMarkup='<section class="argus-op-panel argus-preflight" id="argus-finance-preflight">'+
+ '<h2>Pré-homologação financeira — diagnóstico somente leitura</h2>'+
+ '<p>O funcionamento da página e a criação de um QR Code não comprovam recebimento, conciliação ou autorização de saque.</p>'+
+ '<div class="argus-preflight-list">'+blocked.map(checkText).join('')+'</div>'+
+ '<div class="argus-preflight-states"><span>Finance QR Codes: '+esc(finance.provider||"não verificado")+'</span>'+
+ '<span>API tradicional: '+esc(traditional.transaction_read_scope||"não verificado")+'</span>'+
+ '<span>Saques: '+esc(payout.reason||"escopos não verificados")+'</span></div>'+
+ '<p class="argus-op-disclaimer">Nenhuma operação financeira foi enviada nesta conferência. Acesso restrito ao Super Admin; não divulgue credenciais em mensagens.</p></section>';
  const settings=[['Banco persistente',setting.database_persistent],['Custódia configurada',setting.custody_configuration_confirmed],
  ['Saques habilitados',setting.payouts_enabled],
  ['Processador configurado',setting.background_reconciliation_configured],
  ['Conferência recente (5 min)',cycle.fresh===true],
  ['Agendador independente verificado',cycle.schedule_external_verified===true],
- ['E-mail de recuperação',setting.email_delivery_configured]];
- alerts.innerHTML='<div class="argus-op-grid">'+
+ ['E-mail de recuperação',setting.email_delivery_configured],
+ ['Banco exclusivo da ARGUS',setting.database_persistent===true&&setting.database_shared===false]];
+ alerts.innerHTML=preflightMarkup+'<div class="argus-op-grid">'+
   row('Carteiras conferidas',data.wallets_checked)+row('Divergências de saldo',data.ledger_mismatches?.length,!!data.ledger_mismatches?.length)+
   row('Ajustes de saldo',data.wallet_debts?.length,!!data.wallet_debts?.length)+
   row('Saques incertos',data.uncertain_withdrawals?.length,!!data.uncertain_withdrawals?.length)+
@@ -72,7 +94,15 @@ async function load(force=false){
     api('/api/admin/merchant-wallet/overview')
   ]);
   if(health?.read_only!==true)throw Error('Diagnóstico não autenticado');
-  show(health);
+  // These endpoints only query provider capabilities or local readiness.
+  // Partial failures must not hide the wallet/ledger audit.
+  const checks=await Promise.allSettled([
+    api('/api/admin/pix/diagnostics'),
+    api('/api/admin/quick-pix/config'),
+    api('/api/admin/payouts/readiness')
+  ]);
+  const verified=(index)=>checks[index].status==='fulfilled'&&checks[index].value&&typeof checks[index].value==='object'?checks[index].value:{};
+  show(health,{finance:verified(0),traditional:verified(1),payout:verified(2)});
   const select=E('argus-operations-export')?.elements.namedItem('account_id');
   if(select){
     const prior=select.value,accounts=overview.wallets||[];

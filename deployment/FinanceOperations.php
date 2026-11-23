@@ -140,6 +140,7 @@ final class FinanceOperations {
             'uncertain_withdrawals'=>$uncertainPayouts,'stale_withdrawals'=>$heldPayouts,
             'settings'=>[
                 'database_persistent'=>in_array($db->driver(),['pgsql','mysql'],true),
+                'database_shared'=>filter_var((string)(getenv('ARGUS_PGSQL_SHARED')?:'false'),FILTER_VALIDATE_BOOLEAN),
                 'custody_configuration_confirmed'=>$custody,
                 'payouts_enabled'=>getenv('ARGUS_PAYOUTS_ENABLED')==='yes'&&$custody,
                 'background_reconciliation_configured'=>$worker,
