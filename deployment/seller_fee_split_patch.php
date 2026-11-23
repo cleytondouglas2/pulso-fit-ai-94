@@ -201,18 +201,21 @@ if(!is_string($walletText)||$count!==1||
 sellerSplitReplace($wallet,
     <<<'PHP'
                 $id,$accountId,$idemHash,$bodyHash,$amount,self::FEE,$debit,$type,
-                $masked,$sealed,$desc,null,null,'requested',self::now(),null
-            ]);
-            self::journal($db,$accountId,'withdraw_hold',$id,-$debit,$debit,0,self::FEE);
 PHP,
     <<<'PHP'
                 $id,$accountId,$idemHash,$bodyHash,$amount,$quote['total_fee_cents'],$debit,$type,
-                $masked,$sealed,$desc,null,null,'requested',self::now(),null
-            ]);
+PHP,
+    'freeze merchant payout tariff before provider request');
+sellerSplitReplace($wallet,
+    <<<'PHP'
+            self::journal($db,$accountId,'withdraw_hold',$id,-$debit,$debit,0,self::FEE);
+PHP,
+    <<<'PHP'
             SellerFeeSplit::reserve($db,'withdraw',$id,$accountId,$quote);
             self::journal($db,$accountId,'withdraw_hold',$id,-$debit,$debit,0,$quote['total_fee_cents']);
 PHP,
-    'reserve payout with immutable ARGUS/Mistic split');
+    'persist both payout fee beneficiaries alongside hold');
+
 sellerSplitReplace($wallet,
     <<<'PHP'
         if($method==='POST'&&$path==='/api/v2/wallet/withdrawals'){
