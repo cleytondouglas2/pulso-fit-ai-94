@@ -85,8 +85,11 @@ final class CommerceSuite {
             'pix_flow_unchanged'=>true];
     }
     public static function create(Database $db,string $owner,array $input):array {
-        $current=self::mine($db,$owner)['pages'];
-        if(count($current)>=30)self::fail('Limite de 30 páginas por revendedor.',409);
+        self::install($db);
+        $count=$db->one("SELECT COUNT(*) AS total FROM argus_commerce_pages
+            WHERE account_id=? AND status<>'archived'",[$owner]);
+        if((int)($count['total']??0)>=30)
+            self::fail('Limite de 30 páginas não arquivadas por revendedor.',409);
         [$title,$description,$amount,$image,$color,$button,$expires]=self::validated($input);
         $id='cmp_'.bin2hex(random_bytes(16));
         $code=bin2hex(random_bytes(16));
