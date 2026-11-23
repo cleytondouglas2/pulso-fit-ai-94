@@ -1036,3 +1036,17 @@ RUN php -l /var/www/html/src/ResellerPublicPix.php \
  && php -l /var/www/html/tests/reseller_public_pix_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_pix_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Fix public Pix link card hidden behind legacy reseller HTML:
+# Current /conta UI renders #argus-reseller-page-overview, so the CTA must
+# be mounted inside that visible tab, directly after Nova cobrança Pix.
+# This hotfix changes UI mounting only, no fees, balances or PSP requests.
+COPY deployment/reseller-public-link.js deployment/reseller-public-link.css /var/www/html/public/static/
+COPY deployment/reseller_public_overview_fix_patch.php /tmp/reseller_public_overview_fix_patch.php
+COPY deployment/reseller_public_overview_fix_test.php /var/www/html/tests/reseller_public_overview_fix_test.php
+RUN php -l /tmp/reseller_public_overview_fix_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/reseller_public_overview_fix_patch.php \
+ && php -l /var/www/html/tests/reseller_public_overview_fix_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_public_overview_fix_test.php \
+ && php /var/www/html/tests/security_regression_test.php

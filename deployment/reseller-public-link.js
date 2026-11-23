@@ -14,17 +14,33 @@ const markup=[
 ].join('');
 function ensure(){
  if(!canShow())return null;
- let root=$(rootId);
- if(root)return root;
- root=document.createElement('section');root.id=rootId;root.className='argus-rpl-card';
- root.setAttribute('aria-labelledby','argus-rpl-heading');
- root.innerHTML=markup;
- root.querySelector('h2').id='argus-rpl-heading';
+ // The new reseller workspace hides the legacy .dash-top. Mount INSIDE
+ // the visible "Visão geral" tab, directly under its primary Pix action.
+ const overview=$('argus-reseller-page-overview');
+ const top=overview?.querySelector('#argus-reseller-overview-top');
  const dashboard=$('dashboard');
- const header=dashboard.querySelector('.dash-top');
- if(header)header.insertAdjacentElement('afterend',root);else dashboard.prepend(root);
- $('argus-rpl-copy').addEventListener('click',copy);
- $('argus-rpl-share').addEventListener('click',share);
+ const modern=!!overview&&!!top&&overview.closest('#argus-reseller-workspace');
+ const parent=modern?overview:dashboard;
+ if(!parent)return null;
+ let root=$(rootId);
+ if(!root){
+  root=document.createElement('section');root.id=rootId;root.className='argus-rpl-card';
+  root.setAttribute('aria-labelledby','argus-rpl-heading');
+  root.innerHTML=markup;
+  root.querySelector('h2').id='argus-rpl-heading';
+  $('argus-rpl-copy').addEventListener('click',copy);
+  $('argus-rpl-share').addEventListener('click',share);
+ }
+ if(modern){
+  // Move the SAME element if it was previously inserted into the old,
+  // hidden dashboard. Do not duplicate the card or its event listeners.
+  if(root.parentElement!==overview||root.nextElementSibling!==top)
+   overview.insertBefore(root,top);
+ }else if(root.parentElement!==dashboard){
+  const header=dashboard.querySelector('.dash-top');
+  if(header)header.insertAdjacentElement('afterend',root);
+  else dashboard.prepend(root);
+ }
  return root;
 }
 function notice(message,isError=false){const area=$('argus-rpl-message');if(!area)return;area.textContent=message;area.dataset.kind=isError?'error':'normal';}

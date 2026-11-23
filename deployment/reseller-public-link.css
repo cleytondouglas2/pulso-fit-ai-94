@@ -22,3 +22,18 @@
 .argus-rpl-message[data-kind="error"]{color:#ffaaa9}
 @media(max-width:630px){.argus-rpl-card{padding:21px 16px;gap:12px;flex-direction:column;margin:13px 0 18px}.argus-rpl-symbol{width:43px;height:43px;border-radius:13px}.argus-rpl-body p{font-size:12px}.argus-rpl-actions>*{flex:1;min-width:128px}.argus-rpl-url input{font-size:11px}.argus-rpl-url button{font-size:11px;padding:9px 10px}}
 @media(prefers-reduced-motion:reduce){.argus-rpl-card *{animation:none!important;transition:none!important}}
+
+/* The current reseller dashboard is a tabbed workspace. Keep the public
+ * checkout card under "Nova cobrança Pix" and above wallet balances. */
+#argus-reseller-page-overview>.argus-rpl-card{margin:16px 0 24px;max-width:100%;box-sizing:border-box}
+#argus-reseller-page-overview>.argus-rpl-card .argus-rpl-url{width:100%}
+#argus-reseller-page-overview>.argus-rpl-card .argus-rpl-primary,
+#argus-reseller-page-overview>.argus-rpl-card .argus-rpl-secondary{white-space:normal;text-align:center}
+@media(max-width:610px){
+ #argus-reseller-page-overview>.argus-rpl-card{gap:9px;padding:17px 14px;margin:14px 0 22px;border-radius:20px}
+ #argus-reseller-page-overview>.argus-rpl-card .argus-rpl-body h2{font-size:20px;margin:4px 0 5px}
+ #argus-reseller-page-overview>.argus-rpl-card .argus-rpl-body p{font-size:12px;margin-bottom:11px}
+ #argus-reseller-page-overview>.argus-rpl-card .argus-rpl-actions{margin:11px 0}
+ #argus-reseller-page-overview>.argus-rpl-card .argus-rpl-primary,
+ #argus-reseller-page-overview>.argus-rpl-card .argus-rpl-secondary{padding:11px;font-size:12px}
+}
