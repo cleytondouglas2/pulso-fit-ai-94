@@ -83,6 +83,9 @@ $req=[
  'description'=>'Saque teste split','confirm'=>true,
  'fee_version'=>$current['version'],'idempotency_key'=>'idem-'.bin2hex(random_bytes(16))
 ];
+$merchantCheck=$db->one('SELECT id,status FROM b2b_merchants WHERE id=?',[$merchant]);
+if(!$merchantCheck||$merchantCheck['status']!=='approved_live')
+ throw new RuntimeException('Synthetic merchant not authorized by fixture; status='.($merchantCheck['status']??'missing'));
 $payout=Wallet::requestWithdraw($db,$acc,$req);
 $payoutAgain=Wallet::requestWithdraw($db,$acc,$req);
 if($payout['id']!==$payoutAgain['id']||$payout['service_fee_cents']!==100||
