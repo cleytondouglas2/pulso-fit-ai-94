@@ -5,7 +5,7 @@
 (()=>{'use strict';
 const get=id=>document.getElementById(id);
 const previewMode=new URLSearchParams(location.search).has('argus_studio_preview');
-let manifest=null,ready=false;
+let manifest=null,ready=false,pendingPreview=null;
 const originalNodes=new WeakMap();
 const validUrl=value=>typeof value==='string'&&(
  /^\/(?!\/)[a-zA-Z0-9/_\-.?#=&%]+$/.test(value)||
@@ -144,12 +144,13 @@ async function load(){
   manifest=await m.json();const response=await c.json();
   if(response&&response.settings)apply(response.settings);
   ready=true;
+  if(pendingPreview){apply(pendingPreview);pendingPreview=null;}
  }catch(_){/* Preserve the original functional website when configuration is unavailable. */}
 }
 if(previewMode){
  window.addEventListener('message',e=>{
   if(e.origin!==location.origin||e.source!==window.parent||e.data?.kind!=='ARGUS_SITE_STUDIO_PREVIEW')return;
-  if(!ready||!manifest)return;
+  if(!ready||!manifest){pendingPreview=e.data.settings;return;}
   apply(e.data.settings);
  });
 }
