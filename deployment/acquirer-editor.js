@@ -1,0 +1,2 @@
+/* Private Super Admin staged configuration form. */
+(()=>{'use strict';function ready(){const form=document.getElementById('argus-acq-form');if(!form)return;document.getElementById('argus-acq-provider').addEventListener('change',e=>{document.getElementById('argus-acq-other').hidden=e.target.value!=='other'});}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready);else ready();})();
