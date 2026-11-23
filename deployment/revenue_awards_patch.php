@@ -69,10 +69,10 @@ awardsReplace($dashboard,
  "nav('overview'),nav('awards'),nav('charges'),nav('history'),",
  'reseller awards navigation');
 awardsReplace($dashboard,
- "  page('charges','Crie um QR Code e compartilhe o código Pix Copia e Cola.',",
+ "  page('charges',",
  "  page('awards','Seu ranking, faturamento, gráficos e placas personalizadas.',".
  "\n   '<div id=\"argus-awards-seller\" class=\"argus-awards\"><p>Consultando conquistas reais…</p></div>'),\n".
- "  page('charges','Crie um QR Code e compartilhe o código Pix Copia e Cola.',",
+ "  page('charges',",
  'reseller dedicated awards page');
 $landing="$root/public/static/landing.html";
 $public=<<<'HTML'
