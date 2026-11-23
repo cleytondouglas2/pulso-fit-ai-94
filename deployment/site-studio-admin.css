@@ -1,0 +1,104 @@
+/* ARGUS PAY • SITE STUDIO — visual CMS in Super Admin.
+   All selectors scoped to #argus-studio-shell: no checkout or wallet effects. */
+#argus-studio-shell{--ss-panel:#161e2d;--ss-line:rgba(234,196,128,.28);--ss-gold:#eec783;--ss-soft:#b9c6d6;color:#f7f3ec;max-width:1580px;width:100%;margin:auto;padding:8px 0 40px;position:relative;font-family:inherit}
+#argus-studio-shell *{box-sizing:border-box}
+#argus-studio-shell [hidden]{display:none!important}
+#argus-studio-shell .argus-studio-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:15px;margin-bottom:16px;padding:24px;border:1px solid var(--ss-line);border-radius:22px;background:radial-gradient(ellipse at 10% -20%,rgba(219,175,93,.3),transparent 48%),linear-gradient(130deg,#242632,#101825)}
+#argus-studio-shell .argus-studio-eyebrow{color:#f2d191;letter-spacing:.18em;font-size:10px;font-weight:900}
+#argus-studio-shell .argus-studio-head h1{color:#fff;font-size:clamp(25px,3vw,34px);margin:5px 0 8px;letter-spacing:-.035em;font-weight:900;line-height:1.18}
+#argus-studio-shell .argus-studio-head p{margin:0;max-width:690px;color:var(--ss-soft);font-size:13px;line-height:1.65}
+#argus-studio-shell .argus-studio-head-icon{height:61px;width:61px;display:grid;place-items:center;border:2px solid #e8bd7eaa;border-radius:19px;box-shadow:0 0 33px #e8bb6840,inset 0 0 21px #e8bb6827;color:#f6d18e;font-size:33px;font-weight:900;flex:none;background:#161d27}
+#argus-studio-shell .argus-studio-topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+#argus-studio-shell .argus-studio-topbar-left{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#argus-studio-shell .argus-studio-pill{display:inline-flex;align-items:center;gap:7px;min-height:29px;padding:6px 11px;border:1px solid #e9bb6a47;border-radius:100px;background:#ae7e3019;color:#f4d59d;font-size:11px;font-weight:700}
+#argus-studio-shell .argus-studio-pill[data-state=unsaved]{color:#ffd5aa;background:#e6a45b24;border-color:#e5b66a88}
+#argus-studio-shell .argus-studio-pill[data-state=draft]{color:#d6bfff;background:#67439e30;border-color:#937bb672}
+#argus-studio-shell .argus-studio-topbar-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+#argus-studio-shell button{font-family:inherit;cursor:pointer}
+#argus-studio-shell .argus-studio-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:41px;padding:10px 15px;border:1px solid #e6c18b;border-radius:10px;font-size:12px;font-weight:850;color:#1e201c;background:linear-gradient(110deg,#f5d99e,#c9974b);transition:transform .17s,box-shadow .17s,filter .17s}
+#argus-studio-shell .argus-studio-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 21px #c48e3450}
+#argus-studio-shell .argus-studio-btn.secondary{background:#1b2433;color:#f5d18a;border-color:#d5aa675f}
+#argus-studio-shell .argus-studio-btn:disabled{opacity:.42;cursor:not-allowed}
+#argus-studio-shell .argus-studio-main{display:grid;grid-template-columns:210px minmax(280px,.96fr) minmax(310px,1.05fr);gap:13px;align-items:start}
+#argus-studio-shell .argus-studio-nav,#argus-studio-shell .argus-studio-editor-pane,#argus-studio-shell .argus-studio-preview-pane{min-width:0;border-radius:19px;border:1px solid #c5a66b3e;background:linear-gradient(150deg,#172131,#111928);box-shadow:0 16px 34px #0003}
+#argus-studio-shell .argus-studio-nav{position:sticky;top:80px;padding:12px;max-height:min(83vh,850px);overflow:auto}
+#argus-studio-shell .argus-studio-nav-title{padding:11px;font-size:10px;letter-spacing:.14em;font-weight:900;color:#adbac8}
+#argus-studio-shell .argus-studio-category{display:flex;align-items:center;gap:10px;width:100%;min-width:0;text-align:left;margin:3px 0;padding:11px 10px;background:transparent;color:#c2cedb;border:1px solid transparent;border-radius:11px;font-weight:750;font-size:12px;transition:background .2s,color .2s,border .2s}
+#argus-studio-shell .argus-studio-category>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+#argus-studio-shell .argus-studio-category small{color:#91a1b5;font-size:10px}
+#argus-studio-shell .argus-studio-category.is-selected{color:#ffe5b0;border-color:#d5b16b66;background:linear-gradient(95deg,#be8a3c33,#a97d3112)}
+#argus-studio-shell .argus-studio-category:hover:not(.is-selected){background:#e9c07c15}
+#argus-studio-shell .argus-studio-cat-icon{display:grid;place-items:center;flex:0 0 29px;width:29px;height:29px;border-radius:9px;border:1px solid #e3b76933;color:#f0c879;font-size:16px}
+#argus-studio-shell .argus-studio-editor-pane{padding:16px;max-height:min(83vh,850px);overflow:auto}
+#argus-studio-shell .argus-studio-editor-tools{display:flex;align-items:center;gap:9px;margin-bottom:14px;position:sticky;top:-16px;z-index:3;background:#152031;border-bottom:1px solid #e3c17d22;padding:10px 0 14px}
+#argus-studio-shell .argus-studio-search{flex:1;min-width:0;border:1px solid #b9a17a69;border-radius:10px;background:#0d1727;padding:11px 12px;color:#fff;font-size:12px}
+#argus-studio-shell .argus-studio-search:focus,#argus-studio-shell input:focus,#argus-studio-shell textarea:focus{outline:2px solid #f0c779;outline-offset:1px}
+#argus-studio-shell .argus-studio-field-count{border-radius:8px;background:#e1ae6c24;color:#efc682;font-size:11px;font-weight:850;padding:11px}
+#argus-studio-shell .argus-studio-fields-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 2px 17px}
+#argus-studio-shell .argus-studio-fields-heading small{color:#deb775;letter-spacing:.14em;font-size:10px;font-weight:900}
+#argus-studio-shell .argus-studio-fields-heading h2{font-size:24px;color:#fff;margin:4px 0}
+#argus-studio-shell .argus-studio-fields-heading>span{font-size:11px;color:#afbccd}
+#argus-studio-shell .argus-studio-field{padding:15px 15px 16px;border:1px solid #bdac8952;border-radius:13px;margin-bottom:10px;background:linear-gradient(120deg,#1e283a,#111a28)}
+#argus-studio-shell .argus-studio-field-head{display:flex;justify-content:space-between;gap:9px;margin-bottom:10px;align-items:flex-start}
+#argus-studio-shell .argus-studio-field-head label{font-size:12px;color:#f6f3eb;font-weight:750;overflow-wrap:anywhere;line-height:1.4}
+#argus-studio-shell .argus-studio-field-head>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#argus-studio-shell .argus-studio-field-head small{font-size:9px;color:#aab7c7}
+#argus-studio-shell .argus-studio-edited{border:1px solid #f0c67980;color:#f1ca81;background:#b7883227;border-radius:999px;font-size:9px;font-weight:800;padding:3px 7px;white-space:nowrap}
+#argus-studio-shell .argus-studio-field input:not([type=checkbox]),#argus-studio-shell .argus-studio-field textarea{display:block;width:100%;max-width:100%;min-height:43px;border-radius:9px;border:1px solid #78839879;background:#0b1321;color:#f2f5f8;padding:11px 12px;font-size:12px;font-family:inherit;line-height:1.55}
+#argus-studio-shell .argus-studio-field textarea{min-height:95px;resize:vertical}
+#argus-studio-shell .argus-studio-field .argus-studio-color{display:flex;align-items:center;gap:12px}
+#argus-studio-shell .argus-studio-field .argus-studio-color input{width:73px;flex:0 0 73px;height:47px;padding:4px;cursor:pointer}
+#argus-studio-shell .argus-studio-color span{font-family:ui-monospace,monospace;color:#eccc91;font-size:12px}
+#argus-studio-shell .argus-studio-switch{display:flex;align-items:center;gap:11px;cursor:pointer}
+#argus-studio-shell .argus-studio-switch input{position:absolute;opacity:0;width:1px;height:1px}
+#argus-studio-shell .argus-studio-switch-track{position:relative;display:inline-flex;width:49px;height:28px;flex:0 0 49px;background:#4f5969;border:1px solid #ffffff2b;border-radius:60px;transition:background .2s}
+#argus-studio-shell .argus-studio-switch-track::before{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+#argus-studio-shell .argus-studio-switch input:checked+.argus-studio-switch-track{background:linear-gradient(100deg,#e9bd73,#ad792f)}
+#argus-studio-shell .argus-studio-switch input:checked+.argus-studio-switch-track::before{transform:translateX(20px)}
+#argus-studio-shell .argus-studio-switch input:focus-visible+.argus-studio-switch-track{outline:2px solid #f7d9a2;outline-offset:3px}
+#argus-studio-shell .argus-studio-switch b{color:#e5e9f1;font-size:12px}
+#argus-studio-shell .argus-studio-counter{display:block;margin-top:7px;text-align:right;color:#a6b4c5;font-size:10px}
+#argus-studio-shell .argus-studio-hint{font-size:10px;color:#a5b6ca;line-height:1.6;margin:8px 0 0}
+#argus-studio-shell .argus-studio-preview-pane{padding:15px;position:sticky;top:80px}
+#argus-studio-shell .argus-studio-preview-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+#argus-studio-shell .argus-studio-preview-head h2{margin:0;font-size:15px;color:#fff}
+#argus-studio-shell .argus-studio-frame-wrap{display:flex;align-items:flex-start;justify-content:center;overflow:hidden;min-width:0;padding:10px;border:1px solid #d0a76243;border-radius:13px;background:radial-gradient(ellipse at 50% 0%,#91714324,transparent 50%),#0a1120;min-height:560px}
+#argus-studio-shell .argus-studio-frame-wrap iframe{display:block;border:0;width:100%;min-height:550px;height:64vh;background:#080c12;border-radius:9px;box-shadow:0 15px 34px #0007;transition:width .3s}
+#argus-studio-shell .argus-studio-frame-wrap.is-mobile iframe{width:min(100%,390px);border:5px solid #313944;border-radius:22px}
+#argus-studio-shell .argus-studio-preview-caption{font-size:10px;color:#99a8b8;margin:10px 2px 0;text-align:center}
+#argus-studio-shell .argus-studio-bottom{display:grid;grid-template-columns:1fr minmax(270px,.8fr);gap:14px;margin-top:15px;align-items:start}
+#argus-studio-shell .argus-studio-approval,#argus-studio-shell .argus-studio-history{border:1px solid #d2ad704e;background:linear-gradient(145deg,#192337,#101823);border-radius:19px;padding:20px;min-width:0}
+#argus-studio-shell .argus-studio-approval h3,#argus-studio-shell .argus-studio-history h3{color:#fff;font-size:17px;margin:0 0 6px}
+#argus-studio-shell .argus-studio-approval p,#argus-studio-shell .argus-studio-history p{color:#aab9cb;font-size:12px;line-height:1.6;margin:7px 0 12px}
+#argus-studio-shell .argus-studio-approval label{font-size:12px;font-weight:750;color:#f0d295}
+#argus-studio-shell .argus-studio-approval input{width:100%;max-width:300px;display:block;margin-top:7px;margin-bottom:12px;border-radius:9px;background:#0c1524;color:#f5f5f5;border:1px solid #c29f6670;padding:12px 15px;letter-spacing:.13em}
+#argus-studio-shell .argus-studio-approval-actions{display:flex;gap:9px;flex-wrap:wrap}
+#argus-studio-shell .argus-studio-feedback{border:1px solid #3c95766b;background:#143228;border-radius:12px;padding:12px 14px;color:#c7ffe5;font-size:12px;line-height:1.5;margin:14px 0 0}
+#argus-studio-shell .argus-studio-feedback.is-warning{background:#472832;border-color:#b2757c;color:#ffdbdb}
+#argus-studio-shell .argus-studio-version{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:12px 0;border-top:1px solid #e0c49123}
+#argus-studio-shell .argus-studio-version>div{min-width:0}
+#argus-studio-shell .argus-studio-version strong{display:block;color:#f7ddac;font-size:12px}
+#argus-studio-shell .argus-studio-version small{display:block;color:#acbac7;font-size:10px;overflow-wrap:anywhere;line-height:1.5;margin-top:4px}
+#argus-studio-shell .argus-studio-version button{flex:0 0 auto;background:transparent;border:1px solid #e3bf7b70;color:#f6d492;border-radius:9px;padding:9px 11px;font-size:11px;font-weight:850}
+#argus-studio-shell .argus-studio-version button:disabled{opacity:.34;cursor:not-allowed}
+#argus-studio-shell .argus-studio-welcome{display:flex;gap:15px;align-items:flex-start;padding:20px 17px;border-radius:15px;border:1px solid #d5ac625d;background:radial-gradient(circle at 0 0,#dfa85636,transparent 53%),#1d2838}
+#argus-studio-shell .argus-studio-welcome-symbol{flex:0 0 60px;width:60px;height:60px;display:grid;place-items:center;border-radius:17px;background:linear-gradient(145deg,#f8e4b4,#bc8d48);color:#332315;font-size:33px;box-shadow:0 4px 24px #bd8e4880}
+#argus-studio-shell .argus-studio-welcome small{font-size:9px;color:#efc97d;letter-spacing:.12em}
+#argus-studio-shell .argus-studio-welcome h2{font-size:23px;color:#fff;margin:4px 0}
+#argus-studio-shell .argus-studio-welcome p{font-size:12px;color:#bdcad6;line-height:1.6;margin:0}
+#argus-studio-shell .argus-studio-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:15px 0}
+#argus-studio-shell .argus-studio-kpi{min-width:0;border:1px solid #e7be7346;border-radius:14px;padding:17px;background:#1b2637}
+#argus-studio-shell .argus-studio-kpi small{display:block;color:#c1cbd9;font-size:11px}
+#argus-studio-shell .argus-studio-kpi strong{display:block;color:#f9d389;font-size:30px;line-height:1.4}
+#argus-studio-shell .argus-studio-kpi span{display:block;color:#adbccc;font-size:10px;line-height:1.4}
+#argus-studio-shell .argus-studio-overview-note{border-radius:15px;background:#152032;border:1px solid #ffffff1f;padding:17px}
+#argus-studio-shell .argus-studio-overview-note h3{margin:0 0 12px;font-size:15px}
+#argus-studio-shell .argus-studio-feature-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#argus-studio-shell .argus-studio-feature-list span{font-size:11px;color:#e0cfb3;background:#baa87918;border-radius:9px;padding:9px}
+#argus-studio-shell .argus-studio-overview-note p{color:#a3b1c4;font-size:11px;line-height:1.6}
+#argus-studio-shell .argus-studio-empty{padding:21px;background:#121c2c;border:1px dashed #ceae7755;border-radius:12px;color:#aebacd;font-size:12px}
+@media(max-width:1450px){#argus-studio-shell .argus-studio-main{grid-template-columns:175px minmax(260px,1fr) minmax(290px,1fr)}}
+@media(max-width:1160px){#argus-studio-shell .argus-studio-main{grid-template-columns:175px minmax(280px,1fr)}#argus-studio-shell .argus-studio-preview-pane{grid-column:2;position:static}#argus-studio-shell .argus-studio-editor-pane{max-height:640px}#argus-studio-shell .argus-studio-nav{grid-row:span 2}}
+@media(max-width:720px){#argus-studio-shell{padding-bottom:25px}#argus-studio-shell .argus-studio-head{padding:18px}#argus-studio-shell .argus-studio-head-icon{display:none}#argus-studio-shell .argus-studio-main{grid-template-columns:minmax(0,1fr)}#argus-studio-shell .argus-studio-nav{position:static;grid-row:auto;max-height:none;display:flex;overflow-x:auto;gap:5px;padding:9px;scroll-snap-type:x mandatory}#argus-studio-shell .argus-studio-nav-title{display:none}#argus-studio-shell .argus-studio-category{width:auto;flex:0 0 auto;white-space:nowrap;scroll-snap-align:start}#argus-studio-shell .argus-studio-category>span:nth-child(2){white-space:nowrap}#argus-studio-shell .argus-studio-editor-pane{max-height:none;overflow:visible;padding:13px}#argus-studio-shell .argus-studio-editor-tools{position:static}#argus-studio-shell .argus-studio-preview-pane{grid-column:auto}#argus-studio-shell .argus-studio-frame-wrap{min-height:460px}#argus-studio-shell .argus-studio-frame-wrap iframe{min-height:450px;height:60vh}#argus-studio-shell .argus-studio-bottom{grid-template-columns:1fr}#argus-studio-shell .argus-studio-approval-actions .argus-studio-btn{flex:1}#argus-studio-shell .argus-studio-feature-list{grid-template-columns:1fr 1fr}}
+@media(max-width:380px){#argus-studio-shell .argus-studio-kpi-grid{grid-template-columns:1fr}#argus-studio-shell .argus-studio-feature-list{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){#argus-studio-shell .argus-studio-btn,#argus-studio-shell .argus-studio-category,#argus-studio-shell .argus-studio-frame-wrap iframe{transition:none!important}}
