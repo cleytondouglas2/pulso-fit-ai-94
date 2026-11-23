@@ -24,6 +24,12 @@ agfix($q,
  "            'DEVOLVIDO_PARCIAL'=>'partial_review',",
  'partial PSP Pix state distinct from complete refund');
 
+agfix($q,
+ "if(!is_numeric(\$value)||abs((int)round((float)\$value*100)-\$expectedCents)>0)throw new \\RuntimeException('Valor informado pelo provedor diverge');",
+ "if(!is_numeric(\$value)||(\$state!=='partial_review'&&abs((int)round((float)\$value*100)-\$expectedCents)>0))throw new \\RuntimeException('Valor informado pelo provedor diverge');",
+ 'allow partial refund review even when PSP returns the refunded portion instead of original gross');
+
+
 agfix($w,
  "            if(\$state==='paid'&&in_array(\$old,['pending','unknown'],true)){",
  <<<'CODE'
