@@ -65,6 +65,8 @@ final class RevenueAwards {
         $period=$account['month'];
         $gross=max(0,(int)$period['gross_cents']);
         $count=(int)$period['paid_count'];
+        // Average ticket measures original confirmed purchases, not returned money.
+        $paidGross=(int)($period['paid_gross_cents']??$period['gross_cents']);
         $total=(int)($life['gross_cents']??0);
         $next=null;
         foreach(self::GOALS as $goal){if($total<$goal){$next=$goal;break;}}
@@ -75,7 +77,7 @@ final class RevenueAwards {
           'monthly_net_cents'=>(int)$period['net_cents'],
           'monthly_refunds'=>(int)$period['refund_count'],
           'monthly_count'=>$count,
-          'ticket_cents'=>$count>0?(int)round($gross/$count):0,
+          'ticket_cents'=>$count>0?(int)round($paidGross/$count):0,
           'previous_month_cents'=>(int)$account['previous_month']['gross_cents'],
           'lifetime_gross_cents'=>$total,
           'lifetime_paid_count'=>(int)($life['paid_count']??0),
@@ -94,8 +96,7 @@ final class RevenueAwards {
         foreach($data['sellers'] as $row){
             $id=(string)$row['account_id'];
             // Omit non-operational accounts and non-positive volume from rankings.
-            if(!in_array((string)$row['status'],['active','approved','identity_verified','verified','financial_authorized'],true)
-                && (int)$row['month']['gross_cents']<=0)continue;
+            if(!in_array((string)$row['status'],['active','approved','identity_verified','verified','financial_authorized'],true))continue;
             $detail=self::details($row,$all[$id]??[],(bool)($consent[$id]??false));
             if($detail['monthly_gross_cents']<=0)continue;
             $rows[]=$detail;
@@ -165,12 +166,18 @@ final class RevenueAwards {
         if(!$my)throw new ApiError('Conta não encontrada para consulta de faturamento',404);
         $my['rank']=null;
         foreach($rows as $r)if($r['account_id']===$accountId){$my['rank']=$r['rank'];break;}
-        // The private leaderboard names are shown only to opted-in participants.
-        $top=array_map(static function($r)use($accountId){
-            if(!$r['public_opt_in']&&$r['account_id']!==$accountId)
-                $r['display_name']='Revendedor '.(string)$r['rank'];
-            unset($r['account_id'],$r['public_opt_in']);
-            return $r;
+        // Never send another reseller's private revenue, lifetime totals,
+        // refund history, goals, identifiers or personal name without opt-in.
+        $top=array_map(static function(array $r)use($accountId):array{
+            $visible=$r['account_id']===$accountId||$r['public_opt_in'];
+            return [
+                'rank'=>(int)$r['rank'],
+                'display_name'=>$visible?(string)$r['display_name']:'Participante privado',
+                'monthly_gross_cents'=>$visible?(int)$r['monthly_gross_cents']:null,
+                'monthly_count'=>$visible?(int)$r['monthly_count']:null,
+                'ticket_cents'=>$visible?(int)$r['ticket_cents']:null,
+                'private'=>!$visible
+            ];
         },array_slice($rows,0,5));
         return ['basis'=>'confirmed_pix_ledger','timezone'=>self::ZONE,
             'period'=>'current_month','as_of'=>$data['as_of'],
