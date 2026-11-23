@@ -1,0 +1,15 @@
+ARGUS PAY — Plano de segurança e dados, 23/11/2026
+
+Implementado:
+- Scanner de segredos no GitHub Actions inclui fontes de texto de source.zip, sem revelar valores. Não substitui varredura de commits anteriores.
+- Campo Pix Copia e Cola do Admin passa a mostrar múltiplas linhas, sem cortar o texto ou alterar payload, cópia e conciliação.
+- Verificador de backup confere SHA256 e catálogo de um arquivo já exportado, SEM conectar nem gravar em banco.
+
+Pendências externas:
+- Repositório público: mudar visibilidade para privado com acesso Render preservado e investigar histórico Git. O conector disponível não permite alterar visibilidade.
+- PostgreSQL compartilhado, gratuito e com expiração no Render em 18/12/2026: preparar banco dedicado, backup privado íntegro, restauração em staging e conciliação de saldos e IDs de operações antes de qualquer migração.
+- Render Virginia: builds passam, mas as instâncias falham ao iniciar com código 128, antes de logs de Apache. Investigar infraestrutura da região sem afetar o serviço Oregon.
+- Confrontar Pix pagos, saques e estornos com extratos autenticados da adquirente em modo de consulta; nenhuma transferência de teste foi feita.
+- WAF/CDN, alertas, pentest externo autorizado e revisão LGPD ainda exigem configuração e comprovação.
+
+Não alterar credenciais, taxas, estado de Pix, saldos, saques ou a base financeira sem migração com backup e conferência.

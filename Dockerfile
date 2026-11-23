@@ -1241,3 +1241,16 @@ RUN php -l /var/www/html/src/FinanceOperations.php \
  && php -l /var/www/html/tests/finance_preflight_test.php \
  && php /var/www/html/tests/finance_preflight_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Visual Pix readability and schema backup verifier (no financial API calls).
+COPY deployment/pix_receipt_readability_patch.php /tmp/pix_receipt_readability_patch.php
+COPY deployment/pix_receipt_readability_test.php /var/www/html/tests/pix_receipt_readability_test.php
+COPY deployment/argus_backup_verify.sh /usr/local/share/argus/argus_backup_verify.sh
+COPY deployment/ARGUS_PRODUCTION_READINESS_2026-11-23.txt /usr/local/share/argus/ARGUS_PRODUCTION_READINESS_2026-11-23.txt
+RUN php -l /tmp/pix_receipt_readability_patch.php \
+ && php /tmp/pix_receipt_readability_patch.php \
+ && php -l /var/www/html/tests/pix_receipt_readability_test.php \
+ && php /var/www/html/tests/pix_receipt_readability_test.php \
+ && bash -n /usr/local/share/argus/argus_backup_verify.sh \
+ && php /var/www/html/tests/security_regression_test.php
