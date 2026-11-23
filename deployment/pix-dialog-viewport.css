@@ -1,0 +1,113 @@
+/* ARGUS Pay — safe viewport scrolling for public Pix receipt dialogs.
+   Applies to /pix and individual /e/{code} checkouts without affecting
+   seller wallets, QR payload, payment status or desktop layout. */
+@media (max-width: 700px), (max-height: 680px) {
+  dialog.payment-dialog[open] {
+    position: fixed;
+    inset: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    max-height: none;
+    margin: 0;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 12px)
+      10px
+      calc(env(safe-area-inset-bottom, 0px) + 18px);
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  dialog.payment-dialog[open] > .dialog-shell {
+    box-sizing: border-box;
+    display: block;
+    position: relative;
+    width: min(100%, 480px);
+    max-width: 480px;
+    max-height: none;
+    min-height: 0;
+    height: auto;
+    margin: 0 auto;
+    padding: 19px 16px 22px;
+    overflow: visible;
+    border: 1px solid rgba(219, 185, 111, .47);
+    border-radius: 22px;
+    background: linear-gradient(156deg, #192133, #0d1321);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .65);
+  }
+  dialog.payment-dialog[open] .dialog-head {
+    min-width: 0;
+    align-items: flex-start;
+  }
+  dialog.payment-dialog[open] .dialog-head > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  dialog.payment-dialog[open] .dialog-head .close {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    position: relative;
+    z-index: 1;
+  }
+  dialog.payment-dialog[open] .qr-stage { min-height: 0; }
+  dialog.payment-dialog[open] .qr-stage .qr {
+    width: 190px;
+    height: 190px;
+    max-width: 100%;
+    margin: 16px auto 9px;
+  }
+  dialog.payment-dialog[open] .qr canvas,
+  dialog.payment-dialog[open] .qr img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  dialog.payment-dialog[open] .pix-copy-row,
+  dialog.payment-dialog[open] .pix-code-preview { min-width: 0; }
+  dialog.payment-dialog[open] .dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  dialog.payment-dialog[open] .dialog-actions button {
+    flex: 1 1 135px;
+    min-width: 0;
+  }
+  dialog.payment-dialog[open] .reseller-modal-recipient {
+    min-width: 0;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+  }
+  dialog.payment-dialog[open] .reseller-modal-recipient strong {
+    max-width: 66%;
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 360px) {
+  dialog.payment-dialog[open] { padding-inline: 7px; }
+  dialog.payment-dialog[open] > .dialog-shell { padding: 16px 12px 20px; border-radius: 17px; }
+  dialog.payment-dialog[open] .dialog-head h2 { font-size: 20px; }
+  dialog.payment-dialog[open] .pay-value strong { font-size: 23px; }
+  dialog.payment-dialog[open] .qr-stage .qr { width: 178px; height: 178px; }
+  dialog.payment-dialog[open] .pix-code-preview { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.payment-dialog[open] *, dialog.payment-dialog[open] *::before,
+  dialog.payment-dialog[open] *::after { scroll-behavior: auto !important; }
+}

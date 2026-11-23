@@ -1095,3 +1095,16 @@ RUN php -l /var/www/html/src/ResellerPublicPix.php \
  && php -l /var/www/html/tests/reseller_pix_rate_guard_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/reseller_pix_rate_guard_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# iOS/Safari public Pix modal safe-area hotfix for /pix and /e/{code}.
+# The receipt dialog is full-viewport scrollable on mobile and always
+# resets to the top; no payment/fee/account/PSP behavior is modified.
+COPY deployment/pix-dialog-viewport.css /var/www/html/public/static/pix-dialog-viewport.css
+COPY deployment/pix_dialog_safe_area_patch.php /tmp/pix_dialog_safe_area_patch.php
+COPY deployment/pix_dialog_safe_area_test.php /var/www/html/tests/pix_dialog_safe_area_test.php
+RUN php -l /tmp/pix_dialog_safe_area_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/pix_dialog_safe_area_patch.php \
+ && php -l /var/www/html/tests/pix_dialog_safe_area_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/pix_dialog_safe_area_test.php \
+ && php /var/www/html/tests/security_regression_test.php
