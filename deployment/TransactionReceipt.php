@@ -113,9 +113,36 @@ final class TransactionReceipt {
         if(preg_match('~^/api/portal/receipts/([a-zA-Z0-9_-]{1,80})$~D',$path,$m))self::json(['receipt'=>self::seller($db,$owner,$m[1])]);
         self::fail('Operação não encontrada.');
     }
+    /** All confirmed administrator Pix, including records older than the QR or
+     * normal statement period. Keyset pagination, scoped to the authenticated
+     * actor. Cursor is only a position, never an authorization or status. */
+    public static function confirmedAdminPix(Database $db,string $actorId,?string $cursor=null):array{
+        $args=[$actorId];
+        $where='';
+        if($cursor!==null&&$cursor!==''){
+            if(!self::valid($cursor))self::fail('Página inválida.',422);
+            $previous=$db->one('SELECT id,created_at FROM admin_quick_pix WHERE id=? AND actor_id=?',[$cursor,$actorId]);
+            if(!$previous)self::fail('Página não encontrada.');
+            $where=' AND (created_at<? OR (created_at=? AND id<?))';
+            array_push($args,$previous['created_at'],$previous['created_at'],$previous['id']);
+        }
+        $rows=$db->all("SELECT id,amount_cents,status,created_at,checked_at FROM admin_quick_pix
+            WHERE actor_id=? AND status='paid' AND provider_id IS NOT NULL AND provider_id<>''".$where.
+            ' ORDER BY created_at DESC,id DESC LIMIT 101',$args);
+        $more=count($rows)>100;
+        $items=array_slice($rows,0,100);
+        foreach($items as &$row){$row['kind']='deposit';$row['amount_cents']=(int)$row['amount_cents'];}
+        unset($row);
+        return ['items'=>$items,'next_cursor'=>$more?(string)$items[count($items)-1]['id']:null];
+    }
     public static function adminRoute(Database $db,string $path,array $actor):never{
         if(($actor['role']??'')!=='superadmin')self::fail('Acesso restrito.',403);
         $owner=(string)$actor['id'];
+        if($path==='/api/admin/receipts/confirmed-pix'){
+            $cursor=$_GET['cursor']??null;
+            if($cursor!==null&&!is_string($cursor))self::fail('Página inválida.',422);
+            self::json(self::confirmedAdminPix($db,$owner,$cursor));
+        }
         if($path==='/api/admin/receipts')self::json(self::listing($db,$owner,true));
         if(preg_match('~^/api/admin/receipts/(deposit|withdrawal)/([a-zA-Z0-9_-]{1,80})$~D',$path,$m))self::json(['receipt'=>self::admin($db,$owner,$m[2],$m[1])]);
         self::fail('Operação não encontrada.');

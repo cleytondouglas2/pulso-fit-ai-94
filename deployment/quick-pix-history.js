@@ -116,6 +116,7 @@
  }
  async function view(id){
    const row=rows.find(x=>x.id===id);
+   if(row&&displayStatus(row)==='paid'&&window.ArgusReceipts){window.ArgusReceipts.open('admin','deposit',id);return;}
    if(!row||displayStatus(row)==='expired'||expiry(row)<=Date.now()){if(row)details(row);else if(typeof toast==='function')toast('Cobrança não encontrada.',true);return;}
    try{
      const result=await api('/api/admin/quick-pix/'+encodeURIComponent(id));
@@ -166,10 +167,12 @@
    // structure intact and update only the status/actions of traditional qpx_ rows.
    const table=by('payment-rows');if(!table)return;
    for(const tr of table.querySelectorAll('tr')){
-     const id=(tr.querySelector('td[data-label="CLIENTE"]')?.textContent||'').match(/qpx_[a-f0-9]{32}/)?.[0];
+     const id=tr.querySelector('button[data-viewpix]')?.dataset.viewpix||
+       tr.querySelector('button[data-reconcile]')?.dataset.reconcile||
+       (tr.querySelector('td[data-label="CLIENTE"]')?.textContent||'').match(/qpx_[a-f0-9]{32}/)?.[0];
      if(!valid(id))continue;
      const row=rows.find(x=>x.id===id);
-     const fallback=Array.isArray(state?.payments)?state.payments.find(x=>x.id===id):null;
+     const fallback=typeof state!=='undefined'&&Array.isArray(state?.payments)?state.payments.find(x=>x.id===id):null;
      const source=row||fallback;if(!source)continue;
      const status=displayStatus(source),pill=tr.querySelector('td[data-label="STATUS"] .demo-status-pill');
      if(pill){
@@ -180,7 +183,11 @@
        if(pill.className!==cls)pill.className=cls;
      }
      const view=tr.querySelector('button[data-viewpix]');
-     if(view)view.textContent=status==='expired'?'Detalhes':'Ver Pix';
+     if(view){const label=status==='paid'?'Ver comprovante':status==='expired'?'Detalhes':'Ver Pix';if(view.textContent!==label)view.textContent=label;}
+     const actions=view?.parentElement||tr.lastElementChild;
+     const receipt=actions?.querySelector('[data-argus-receipt]');
+     if(status==='paid'&&!view)window.ArgusReceipts?.attach(actions,'admin','deposit',id);
+     else if(receipt)receipt.remove();
      const reconcile=tr.querySelector('button[data-reconcile]');
      if(reconcile)reconcile.hidden=!row?.can_reconcile||!['pending','unknown'].includes(status);
    }
@@ -194,6 +201,10 @@
    if(!valid(id))return;
    event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
    if(!rows.find(x=>x.id===id))await refresh(true);
+   const local=rows.find(x=>x.id===id)||(typeof state!=='undefined'&&Array.isArray(state?.payments)?state.payments.find(x=>x.id===id):null);
+   if(button.dataset.viewpix&&local&&displayStatus(local)==='paid'&&window.ArgusReceipts){
+     window.ArgusReceipts.open('admin','deposit',id);return;
+   }
    if(button.dataset.viewpix)view(id);
    else reconcile(id);
  }

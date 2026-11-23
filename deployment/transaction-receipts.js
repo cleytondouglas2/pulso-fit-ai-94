@@ -87,7 +87,7 @@ async function pdf(r){
  const xref=size;push('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)push(String(offsets[i]).padStart(10,'0')+' 00000 n \n');push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
  return new Blob(parts,{type:'application/pdf'});
 }
-async function fetchJson(path){const res=await fetch(path,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});if(!res.ok)throw Error('Registro indisponível ou sessão expirada.');return res.json()}
+async function fetchJson(path){if(path.startsWith('/api/admin/')&&typeof api==='function')return api(path);const res=await fetch(path,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});if(!res.ok)throw Error('Registro indisponível ou sessão expirada.');return res.json()}
 async function open(scope,kind,id){
  if(!valid(id))return;
  try{const path=scope==='admin'?'/api/admin/receipts/'+kind+'/'+encodeURIComponent(id):'/api/portal/receipts/'+encodeURIComponent(id);
@@ -121,11 +121,53 @@ function listPanel(host,scope){
  if(data.truncated)add(list,'p','Mostrando os 150 registros mais recentes. Reduza o intervalo para consultar os demais.')}catch(e){list.textContent=e.message}};
  button(filters,'Consultar comprovantes',load);
 }
+// Unlimited historical access with server-authorized, stable pagination.
+function confirmedArchive(host){
+ if(!host||host.querySelector('[data-argus-confirmed-archive]'))return;
+ const box=add(host,'section',undefined,'argus-tx-receipt-list');box.dataset.argusConfirmedArchive='1';
+ add(box,'h3','Comprovantes de todos os Pix confirmados');
+ add(box,'p','Histórico completo de recebimentos da sua conta administrativa, inclusive Pix antigos e QR Codes vencidos. Os dados são consultados novamente ao abrir cada comprovante.');
+ const actions=add(box,'div',undefined,'argus-tx-receipt-filters');
+ const info=add(box,'p','');info.setAttribute('role','status');
+ const list=add(box,'div',undefined,'argus-tx-receipt-list-body');
+ let cursor=null,busy=false,loaded=false,count=0;
+ const seen=new Set();
+ const more=button(actions,'Carregar mais',()=>load(false));more.hidden=true;
+ const refresh=button(actions,'Atualizar comprovantes',()=>load(true));
+ async function load(reset){
+  if(busy||(!reset&&!cursor))return;
+  busy=true;more.disabled=true;refresh.disabled=true;info.textContent='Consultando Pix confirmados…';
+  try{
+   const path='/api/admin/receipts/confirmed-pix'+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):'');
+   const data=await fetchJson(path);
+   if(!Array.isArray(data.items))throw Error('Histórico indisponível.');
+   if(reset){list.replaceChildren();seen.clear();count=0;}
+   for(const r of data.items){
+    if(!valid(r.id)||r.status!=='paid'||seen.has(r.id))continue;
+    seen.add(r.id);count++;
+    const line=add(list,'div',undefined,'argus-tx-receipt-row');const a=add(line,'div');
+    add(a,'strong',money(r.amount_cents)+' · Confirmado');
+    add(a,'small',(dt(r.created_at)||'Data não registrada')+' · '+r.id);
+    attach(line,'admin','deposit',r.id);
+   }
+   cursor=valid(data.next_cursor)?data.next_cursor:null;
+   more.hidden=!cursor;loaded=true;
+   info.textContent=count?count+' comprovante(s) carregado(s)'+(cursor?' · Mais registros disponíveis.':' · Fim do histórico.'):'Nenhum Pix confirmado encontrado.';
+  }catch(e){info.textContent=e.message||'Não foi possível consultar os comprovantes.'}
+  finally{busy=false;more.disabled=false;refresh.disabled=false;}
+ }
+ const auto=()=>{if(!loaded&&!busy&&!box.closest('[hidden]')&&box.getClientRects().length){load(true);return true}return false};
+ if(!auto()){
+  const observer=new MutationObserver(()=>{if(auto())observer.disconnect()});
+  observer.observe(host,{attributes:true,attributeFilter:['hidden','class','style']});
+ }
+}
 function init(){
  const seller=E('argus-reseller-page-statement');if(seller)listPanel(seller,'seller');
  const admin=E('argus-operations-export')?.parentElement;if(admin)listPanel(admin,'admin');
  const adminPayout=E('payout-form')?.closest('section.page');if(adminPayout)listPanel(adminPayout,'admin');
- const adminPayments=E('page-payments');if(adminPayments)listPanel(adminPayments,'admin');
+ const adminPayments=E('page-payments');if(adminPayments){confirmedArchive(adminPayments);listPanel(adminPayments,'admin');}
+ const adminCharge=E('page-charge-create');if(adminCharge)confirmedArchive(adminCharge);
 }
 window.ArgusReceipts=Object.freeze({open,attach,publicButton});
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

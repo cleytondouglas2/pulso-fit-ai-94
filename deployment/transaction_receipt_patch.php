@@ -18,8 +18,8 @@ receiptPatch($base.'/src/ResellerPublicPix.php',"'receipt_is_provider_settled'=>
  "'receipt_is_provider_settled'=>\$status==='paid',\n            'receipt'=>TransactionReceipt::publicDeposit(\$charge,(int)\$charge['amount_cents'],(int)\$charge['service_fee_cents'],(int)\$charge['net_cents'])");
 $d=$base.'/public/static/';
 foreach(['admin.html','client.html','public-pix.html','reseller-public-pix.html'] as $f){
- receiptPatch($d.$f,'</head>','<link rel="stylesheet" href="/static/transaction-receipts.css?v=1"></head>');
- receiptPatch($d.$f,'</body>','<script defer src="/static/transaction-receipts.js?v=1"></script></body>');
+ receiptPatch($d.$f,'</head>','<link rel="stylesheet" href="/static/transaction-receipts.css?v=confirmed-history-20261123-2"></head>');
+ receiptPatch($d.$f,'</body>','<script defer src="/static/transaction-receipts.js?v=confirmed-history-20261123-2"></script></body>');
 }
 $publicHook=<<<'JS'
 function showStatus(charge){
@@ -104,7 +104,7 @@ if(file_put_contents($merchant,$raw)===false)throw new RuntimeException('Receipt
 // Avoid stale PWA assets after adding the new confirmation actions.
 foreach(['admin.html','client.html','public-pix.html','reseller-public-pix.html'] as $f){
  $s=file_get_contents($d.$f);
- $s=preg_replace('~(/static/(?:admin|merchant-portal|quick-pix-popup|quick-pix-history|public-pix|reseller-public-pix)\.js\?v=)[A-Za-z0-9._-]+~','$1receipt-20261123-1',$s);
+ $s=preg_replace('~(/static/(?:admin|merchant-portal|quick-pix-popup|quick-pix-history|public-pix|reseller-public-pix)\.js\?v=)[A-Za-z0-9._-]+~','$1receipt-20261123-2',$s);
  if(!is_string($s)||file_put_contents($d.$f,$s)===false)throw new RuntimeException('Receipt cache refresh failed');
 }
 echo "PASS: authenticated transaction receipt routes, public token receipt, seller and admin actions, statement panel installed.\n";
