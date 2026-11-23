@@ -1316,6 +1316,22 @@ RUN php -l /var/www/html/src/AcquirerControl.php \
 COPY deployment/acquirer_vault_synthetic_test.php /var/www/html/tests/acquirer_vault_synthetic_test.php
 RUN php -l /var/www/html/tests/acquirer_vault_synthetic_test.php && php /var/www/html/tests/acquirer_vault_synthetic_test.php
 
+
+# ARGUS award podiums, authentic sales ranking and opt-in public recognition.
+# No payment, wallet, PSP, payout or tax mutation; consent is account-scoped.
+COPY deployment/RevenueAwards.php /var/www/html/src/RevenueAwards.php
+COPY deployment/revenue-awards.js deployment/revenue-awards.css /var/www/html/public/static/
+COPY deployment/revenue_awards_patch.php /tmp/revenue_awards_patch.php
+COPY deployment/revenue_awards_test.php /var/www/html/tests/revenue_awards_test.php
+RUN php -l /var/www/html/src/RevenueAwards.php \
+ && php -l /tmp/revenue_awards_patch.php \
+ && php /tmp/revenue_awards_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/Gateway.php \
+ && php -l /var/www/html/tests/revenue_awards_test.php \
+ && php /var/www/html/tests/revenue_awards_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
