@@ -10,8 +10,8 @@ const choices={
  product:['Catálogo de produtos','Cadastre e organize ofertas. O checkout atual confirma o valor efetivo.',[['amount_cents','Preço sugerido (R$)','money']]],
  coupon:['Cupons · planejamento','Registre descontos para campanhas. Ainda não altera o valor no checkout.',[['code','Código','text'],['discount_percent','Desconto (%)','number'],['due','Validade','date']]],
  flow:['Argus Flow','Regras de alerta avaliadas ao consultar indicadores. Não movimentam dinheiro.',[['trigger','Gatilho',['pending:Pix pendentes','failed:Falhas e reversões','due:Vencimentos']],['threshold','Quantidade mínima','number']]],
- support:['Central de suporte · registros','Organize solicitações internas. O envio para atendimento externo depende da integração.',[['category','Categoria',['payments:Pagamento','account:Conta','technical:Técnico','other:Outros']]]],
- dispute:['Contestações e MED · registro','Organize evidências e referências; não abre MED na adquirente nem devolve valores.',[['reference','ID de operação','text'],['category','Tipo',['refund:Devolução','partial_refund:Devolução parcial','med:MED','other:Outros']]]],
+ support:['Central de suporte','Abra chamados e converse com a administração dentro do painel.',[['category','Categoria',['payments:Pagamento','account:Conta','technical:Técnico','other:Outros']]]],
+ dispute:['Contestações e MED','Organize evidências e referências; não abre MED na adquirente nem devolve valores.',[['reference','ID de operação','text'],['category','Tipo',['refund:Devolução','partial_refund:Devolução parcial','med:MED','other:Outros']]]],
  integration:['Integrações · configuração planejada','Cadastre necessidades de integração. Use as APIs e webhooks existentes para conexão real.',[['category','Canal',['woocommerce:WooCommerce','shopify:Shopify','telegram:Telegram','api:API','other:Outros']]]],
  team:['Equipe · propostas de acesso','Registre funções desejadas. Não cria credenciais nem concede permissões.',[['role_requested','Perfil solicitado',['finance:Financeiro','support:Suporte','developer:Desenvolvedor','viewer:Consulta']]]],
  limit_request:['Limites · propostas','Não altera limites financeiros efetivos.',[['amount_cents','Limite sugerido (R$)','money']]],
@@ -64,8 +64,15 @@ function setup(host,scope,identity){
   const submit=add(form,'button','Salvar registro');submit.type='submit';
   const list=add(content,'div',undefined,'ag-list');let cursor=null;
   const more=btn(content,'Carregar mais',()=>load(false));more.hidden=true;
+  const thread=async(id,host)=>{
+   host.replaceChildren();const log=add(host,'div','Consultando mensagens…');const form=add(host,'form',undefined,'ag-form');
+   const field=add(form,'textarea');field.required=true;field.maxLength=1000;field.placeholder='Mensagem sem dados sensíveis';const send=add(form,'button','Enviar mensagem');send.type='submit';
+   const load=async()=>{const r=await call('/thread/'+id);log.replaceChildren();for(const m of r.messages||[])add(log,'p',(m.sender==='admin'?'Admin: ':'Revendedor: ')+m.body);if(!r.messages?.length)add(log,'p','Nenhuma mensagem ainda.')};
+   form.onsubmit=async e=>{e.preventDefault();send.disabled=true;try{await call('/thread/'+id,{message:field.value});field.value='';await load()}catch(e){tell(e.message)}finally{send.disabled=false}};
+   try{await load()}catch(e){tell(e.message)}
+  };
   const copy=async t=>{try{await navigator.clipboard.writeText(t);tell('Copiado.')}catch{tell(t)}};
-  async function load(reset=true){try{const r=await call('/records/'+kind+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(g!==generation)return;if(reset)list.replaceChildren();for(const item of r.items||[]){if(!valid(item.id))continue;const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'small',item.state==='open'?'Ativo · registro interno':'Arquivado');for(const [k,v] of Object.entries(item.data))if(k!=='title'&&v!=='')add(c,'p',(fieldsLabels[k]||k)+': '+(k==='amount_cents'?money(v):String(v)));const a=add(c,'div',undefined,'ag-tabs');btn(a,item.state==='open'?'Arquivar':'Reabrir',()=>action(item.id,item.state==='open'?'archive':'reopen'));if(kind==='subscription'&&item.state==='open')btn(a,'Avançar vencimento',()=>{if(confirm('Avançar somente a data, sem confirmar pagamento?'))action(item.id,'advance')});if(['subscription','invoice'].includes(kind)&&scope==='portal')btn(a,'Copiar link Pix público',async()=>{try{const r=await request('/api/portal/public-pix-link');if(!/^\/e\/[a-f0-9]{32}$/.test(r.public_path||''))throw Error('Link indisponível');copy(location.origin+r.public_path+'?amount_cents='+item.data.amount_cents)}catch(e){tell(e.message)}})}
+  async function load(reset=true){try{const r=await call('/records/'+kind+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(g!==generation)return;if(reset)list.replaceChildren();for(const item of r.items||[]){if(!valid(item.id))continue;const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'small',item.state==='open'?'Ativo · registro interno':'Arquivado');for(const [k,v] of Object.entries(item.data))if(k!=='title'&&v!=='')add(c,'p',(fieldsLabels[k]||k)+': '+(k==='amount_cents'?money(v):String(v)));const a=add(c,'div',undefined,'ag-tabs');btn(a,item.state==='open'?'Arquivar':'Reabrir',()=>action(item.id,item.state==='open'?'archive':'reopen'));if(kind==='invoice'){if(item.matched_operation)add(c,'p',item.match_confirmed?'Pix vinculado e confirmado':'Pix vinculado · conferir status atual');else if(item.state==='open')btn(a,'Vincular Pix confirmado',async()=>{const op=prompt('ID do Pix confirmado da sua conta:');if(!op)return;try{await call('/match-invoice',{id:item.id,operation_id:op.trim()});tell('Pix existente associado. Nenhum valor movimentado.');await load()}catch(e){tell(e.message)}})}if(['support','dispute'].includes(kind)&&scope==='portal'){const h=add(c,'div');btn(a,'Abrir conversa',()=>thread(item.id,h))}if(kind==='subscription'&&item.state==='open')btn(a,'Avançar vencimento',()=>{if(confirm('Avançar somente a data, sem confirmar pagamento?'))action(item.id,'advance')});if(['subscription','invoice'].includes(kind)&&scope==='portal')btn(a,'Copiar link Pix público',async()=>{try{const r=await request('/api/portal/public-pix-link');if(!/^\/e\/[a-f0-9]{32}$/.test(r.public_path||''))throw Error('Link indisponível');copy(location.origin+r.public_path+'?amount_cents='+item.data.amount_cents)}catch(e){tell(e.message)}})}
    cursor=valid(r.next_cursor)?r.next_cursor:null;more.hidden=!cursor;if(reset&&!r.items?.length)add(list,'p','Nenhum registro cadastrado.');
   }catch(e){if(g===generation)tell(e.message)}}
   async function action(id,action){if(busy)return;busy=true;try{await call('/action',{id,action});tell('Registro atualizado. Nenhum pagamento alterado.');await load()}catch(e){tell(e.message)}finally{busy=false}}
@@ -78,6 +85,14 @@ function setup(host,scope,identity){
   }
   load();
  }
+ async function inbox(){
+  const g=++generation;content.replaceChildren();add(content,'h3','Chamados e contestações dos revendedores');const list=add(content,'div',undefined,'ag-list');
+  try{const r=await call('/inbox');if(g!==generation)return;for(const item of r.items||[]){if(!valid(item.id))continue;const c=add(list,'article',undefined,'ag-card');add(c,'strong',item.data.title);add(c,'p',item.data.note);add(c,'small',item.kind+' · '+item.state);const log=add(c,'div');const refresh=async()=>{const x=await call('/thread/'+item.id);log.replaceChildren();for(const m of x.messages||[])add(log,'p',(m.sender==='admin'?'Admin: ':'Revendedor: ')+m.body)};
+   btn(c,'Ler conversa',()=>refresh().catch(e=>tell(e.message)));if(item.state==='open'){const f=add(c,'form',undefined,'ag-form');const t=add(f,'textarea');t.maxLength=1000;t.required=true;const b=add(f,'button','Responder');b.type='submit';f.onsubmit=async e=>{e.preventDefault();b.disabled=true;try{await call('/thread/'+item.id,{message:t.value});t.value='';await refresh()}catch(e){tell(e.message)}finally{b.disabled=false}}}}
+   if(!r.items?.length)add(list,'p','Nenhum chamado registrado.');
+  }catch(e){tell(e.message)}
+ }
+ if(scope==='admin')btn(nav,'Chamados dos revendedores',inbox);
  btn(nav,'Intelligence',()=>{view='metrics';metrics()});for(const k of [...shared,...(scope==='admin'?adminExtra:[])])btn(nav,choices[k][0].split(' · ')[0],()=>records(k));btn(nav,'Homologações',blocked);btn(content,'Carregar indicadores',metrics);
 }
 function init(){

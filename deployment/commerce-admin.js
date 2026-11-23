@@ -15,7 +15,7 @@ const initiatives=[
 ['Comércio','Boleto bancário','external','Depende de integração bancária/PSP habilitado'],
 ['Comércio','Links avançados','partial','Páginas de ofertas com expiração; pagamentos ainda no checkout Pix existente'],
 ['Comércio','Recuperação de checkout','planned','Requer consentimento, captura de evento e mensageria homologada'],
-['Comércio','Gestão de assinaturas','planned','Modelo de planos, ciclo e consentimento do pagador ainda necessários'],
+['Comércio','Gestão de assinaturas','partial','Agenda persistente, ciclos e links manuais. Débito automático ainda depende do PSP'],
 ['Comércio','Saques programados','external','Exigem escopo PSP, worker persistente e auditoria'],
 ['Comércio','Subcontas financeiras','partial','Carteiras por conta existem; abertura no PSP depende de KYC e contrato'],
 ['Comércio','Emissão fiscal','external','Necessita fornecedor NFS-e e configuração legal'],
@@ -28,10 +28,10 @@ const initiatives=[
 ['Ecossistema','Sandbox offline','ready','Cenários de transação simulados sem Pix nem crédito real'],
 ['Ecossistema','Portal do desenvolvedor','partial','Documentação/API existente; SDKs e OpenAPI abrangente pendentes'],
 ['Ecossistema','Equipe e RBAC granular','planned','Papéis específicos por organização ainda não prontos'],
-['Ecossistema','Central de suporte IA','partial','IA consultiva existe; tickets omnichannel ainda não implementados'],
+['Ecossistema','Central de suporte IA','partial','IA consultiva e chamados com conversa interna; canais externos pendentes'],
 ['Ecossistema','Notificações multicanal','partial','Push e webhooks implementados; outros canais dependem de provedores'],
 ['Ecossistema','Status e incidentes','partial','Saúde interna presente; página pública e alertas SLA pendentes'],
-['Ecossistema','Cobrança em massa','planned','Importação em lote e validação idempotente ainda pendentes'],
+['Ecossistema','Cobrança em massa','partial','Importação de rascunhos idempotentes e vínculo com Pix confirmado. Emissão automática ainda não homologada'],
 ['Ecossistema','Portal do pagador','planned','Histórico e autoatendimento precisam de autorização e privacidade']
 ];
 let busy=false,last=0;

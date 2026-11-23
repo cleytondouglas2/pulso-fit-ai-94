@@ -27,3 +27,15 @@ if(G::verify($db,$token)['confirmed'])throw new RuntimeException('Stale verified
 G::revokeVerification($db,'admin',$a,$id);
 try{G::verify($db,$token);throw new RuntimeException('Revoked link accepted');}catch(ApiError $e){}
 echo "PASS: growth scope, idempotent records, monthly calendar, actual paid metrics, privacy and revocable current-status verification. No PSP calls.\n";
+
+$invoice=G::create($db,'admin',$a,'invoice',['title'=>'Synthetic invoice','note'=>'','amount_cents'=>1234,'due'=>'2027-01-01','nonce'=>bin2hex(random_bytes(16))]);
+try{G::invoiceMatch($db,'admin',$a,$invoice['id'],$id);throw new RuntimeException('Refunded matched');}catch(ApiError $e){}
+$db->run("UPDATE admin_quick_pix SET status='paid' WHERE id=?",[$id]);
+G::invoiceMatch($db,'admin',$a,$invoice['id'],$id);
+if(!G::listing($db,'admin',$a,'invoice')['items'][0]['match_confirmed'])throw new RuntimeException('Invoice match missing');
+$ticket=G::create($db,'portal',$a,'support',['title'=>'Test ticket','note'=>'Synthetic','category'=>'technical','nonce'=>bin2hex(random_bytes(16))]);
+G::thread($db,'portal',$a,$ticket['id'],'Test question');
+G::thread($db,'admin',$b,$ticket['id'],'Test answer');
+if(count(G::thread($db,'portal',$a,$ticket['id'])['messages'])!==2)throw new RuntimeException('Support conversation missing');
+try{G::thread($db,'portal',$b,$ticket['id']);throw new RuntimeException('Thread scope leak');}catch(ApiError $e){}
+echo "PASS: existing confirmed Pix matched to invoice, refunded exclusion, admin support replies and seller thread isolation.\n";

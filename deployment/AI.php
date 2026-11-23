@@ -85,6 +85,13 @@ final class ArgusAI
             }
         }
         ksort($daily);
+        $windowStart=$now-7*86400;
+        $seven=0;$recentPaid=0;
+        foreach($rows as $r){
+            if(($r['direction']??'received')!=='received'||($r['status']??'')!=='paid')continue;
+            $when=strtotime((string)($r['created_at']??''))?:0;
+            if($when>=$windowStart&&$when<=$now){$seven+=max(0,(int)$r['amount_cents']);$recentPaid++;}
+        }
         $alerts=[];
         if(count($recent)>=8)$alerts[]=['level'=>'attention','code'=>'volume','title'=>'Volume incomum','message'=>count($recent).' movimentações registradas nos últimos 10 minutos. Confira o histórico.'];
         if(count($history)>=5){
@@ -97,10 +104,17 @@ final class ArgusAI
             'sent_cents'=>$total['sent'],'pending_count'=>$total['pending'],'failed_count'=>$total['failed'],
             'paid_count'=>$total['paid_count'],'transaction_count'=>$total['transactions'],
             'today_received_cents'=>$total['today_received'],'last_7_days'=>$daily,'alerts'=>$alerts,
+            'forecast_30d_cents'=>$recentPaid>=5?(int)round($seven/7*30):null,
+            'forecast_note'=>'Estimativa linear dos últimos 7 dias na amostra consultada; não garante receita.',
             'note'=>'Análise heurística informativa. Nenhuma anomalia prova fraude; confirme com o prestador e sua equipe.'];
     }
     private static function knowledge(string $q,array $s):string {
         $t=function_exists('mb_strtolower')?mb_strtolower($q,'UTF-8'):strtolower($q);
+        if(str_contains($t,'projeç')||str_contains($t,'previs')||str_contains($t,'faturamento')){
+            $f=$s['forecast_30d_cents']??null;
+            return $f===null?'A amostra ainda não tem cinco recebimentos confirmados nos últimos sete dias para estimar o faturamento.':
+            'A projeção indicativa de 30 dias é R$ '.number_format($f/100,2,',','.').'. '.$s['forecast_note'];
+        }
         if(str_contains($t,'api')||str_contains($t,'integra')||str_contains($t,'telegram'))
             return 'Para integrar o ARGUS ao seu site ou bot, abra Documentação API. Cadastre-se, conclua a validação e emita API Key e chave secreta. Mantenha a chave secreta somente no servidor; não envie ao assistente.';
         if(str_contains($t,'qr')||str_contains($t,'gerar pix'))
@@ -122,6 +136,8 @@ final class ArgusAI
         $safe=['recebimentos_confirmados_centavos'=>$summary['received_cents'],
             'enviados_confirmados_centavos'=>$summary['sent_cents'],
             'recebidos_hoje_centavos'=>$summary['today_received_cents'],
+            'projecao_30_dias_centavos'=>$summary['forecast_30d_cents']??null,
+            'observacao_projecao'=>$summary['forecast_note']??'',
             'transacoes_pendentes'=>$summary['pending_count'],'falhas'=>$summary['failed_count'],
             'alertas'=>array_map(static fn($a)=>$a['title'],$summary['alerts'])];
         $system='Você é o Argus IA, assistente de suporte e análise FINANCEIRA INFORMATIVA do gateway ARGUS Pay. '
