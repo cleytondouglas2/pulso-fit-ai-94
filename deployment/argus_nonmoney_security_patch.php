@@ -67,9 +67,15 @@ $new=<<<'JS'
 JS;
 agNonMoneyReplace($js,$old,$new,'show retry on dead only');
 $client=$root.'public/static/client.html';
-$old='merchant-webhooks.js?v=20261119-1';
-$new='merchant-webhooks.js?v=retry-safe-20261123-v1';
-agNonMoneyReplace($client,$old,$new,'invalidate seller webhook JS cache');
+$clientHtml=file_get_contents($client);
+if(!is_string($clientHtml)||!str_contains($clientHtml,'merchant-webhooks.js'))
+    throw new RuntimeException('Missing seller webhook script reference');
+$clientNew=preg_replace(
+    '~merchant-webhooks\.js\?v=[A-Za-z0-9._-]+~',
+    'merchant-webhooks.js?v=retry-safe-20261123-v1',$clientHtml);
+if(!is_string($clientNew)||$clientNew===$clientHtml||
+   file_put_contents($client,$clientNew)===false)
+    throw new RuntimeException('Could not invalidate seller webhook JS cache');
 
 $adminPix=$root.'src/PublicAdminPix.php';
 agNonMoneyReplace($adminPix,"'provider'=>'MisticPay',","'provider'=>'ARGUS Pay',",'public quote never advertises acquiring PSP');
