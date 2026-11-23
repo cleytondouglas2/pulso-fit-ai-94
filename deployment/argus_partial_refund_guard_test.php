@@ -16,6 +16,7 @@ putenv('ARGUS_MERCHANT_UNIT_TEST=local-sqlite-only');
 putenv('ARGUS_MERCHANT_CUSTODY_ENABLED=yes');
 putenv('ARGUS_MERCHANT_PSP_ACCOUNT_MATCH_CONFIRMED=yes');
 putenv('ARGUS_PAYOUTS_ENABLED=yes');
+putenv('ARGUS_MERCHANT_PAYOUT_ENCRYPTION_KEY='.base64_encode(random_bytes(32)));
 $db=new DB(require '/var/www/html/config.php');
 $db->installAndSeed();Portal::install($db);KycStudio::install($db);Wallet::install($db);
 $account=bin2hex(random_bytes(16));$merchant='mer_'.bin2hex(random_bytes(10));
@@ -24,6 +25,9 @@ $db->run("INSERT INTO b2b_merchants(id,legal_name,cnpj,email,misticpay_email,com
 $db->run("INSERT INTO argus_portal_accounts(id,account_type,display_name,email,document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at)
  VALUES(?,?,?,?,?,?,?,?,?,?,?)",
  [$account,'PJ','Seller partial refund',$account.'@example.invalid',hash('sha256','test'.$account),'0000','synthetic','approved',$merchant,DB::stamp(),DB::stamp()]);
+$db->run("INSERT INTO argus_kyc_review_events(id,account_id,reviewer_id,reviewer_role,event_type,note,document_types,created_at)
+ VALUES(?,?,?,?,?,?,?,?)",
+ [bin2hex(random_bytes(16)),$account,'synthetic','superadmin','identity_approved','Offline test','',DB::stamp()]);
 $db->run("INSERT INTO argus_seller_wallets(account_id,merchant_id,available_cents,held_cents,debt_cents,updated_at)
  VALUES(?,?,?,?,?,?)",[$account,$merchant,1000,0,0,DB::stamp()]);
 $id='mwc_'.bin2hex(random_bytes(16));
@@ -49,7 +53,7 @@ try{
   'description'=>'Test only','idempotency_key'=>'safe-partial-'.bin2hex(random_bytes(12))]);
  throw new RuntimeException('Partial-refund seller withdrawal incorrectly allowed');
 }catch(\ArgusPayments\ApiError $e){
- if($e->status!==409 && $e->status!==403)throw $e;
+ if($e->status!==409)throw new RuntimeException('Payout did not reach the partial-refund block: '.$e->status);
 }
 $src=(string)file_get_contents('/var/www/html/src/MerchantWallet.php');
 $quick=(string)file_get_contents('/var/www/html/src/TraditionalQuickPix.php');
