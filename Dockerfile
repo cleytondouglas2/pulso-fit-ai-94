@@ -921,3 +921,21 @@ RUN php -l /var/www/html/src/PlatformFeeTreasury.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/platform_fee_treasury_test.php \
  && php /var/www/html/tests/hybrid_payout_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+
+# Immutable seller fee split: the existing Super Admin rates are the source
+# for all new seller Pix charges and withdrawals. Provider cost is provisional,
+# ARGUS commercial share is recognized only after PSP-paid reconciliation.
+# Never send an extra Pix for accounting. No live PSP calls during tests.
+COPY deployment/SellerFeeSplit.php /var/www/html/src/SellerFeeSplit.php
+COPY deployment/seller_fee_split_patch.php /tmp/seller_fee_split_patch.php
+COPY deployment/seller_fee_split_test.php /var/www/html/tests/seller_fee_split_test.php
+RUN php -l /var/www/html/src/SellerFeeSplit.php \
+ && php -l /tmp/seller_fee_split_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/seller_fee_split_patch.php \
+ && php -l /var/www/html/src/MerchantWallet.php \
+ && php -l /var/www/html/src/PlatformFeeTreasury.php \
+ && php -l /var/www/html/src/FeePolicy.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/seller_fee_split_test.php \
+ && php /var/www/html/tests/hybrid_payout_test.php \
+ && php /var/www/html/tests/security_regression_test.php
