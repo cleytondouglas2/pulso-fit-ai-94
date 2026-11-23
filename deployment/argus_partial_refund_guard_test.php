@@ -8,6 +8,22 @@ use ArgusPayments\Database as DB;
 use ArgusPayments\Portal;
 use ArgusPayments\KycStudio;
 
+$partialResponse=['transaction'=>[
+ 'transactionId'=>'synthetic-refund-001','transactionState'=>'DEVOLVIDO_PARCIAL',
+ 'transactionType'=>'DEPOSITO','transactionMethod'=>'PIX','value'=>5.00
+]];
+$partialCheck=Pix::readChecked($partialResponse,1100,'synthetic-refund-001');
+if(($partialCheck['status']??null)!=='partial_review')
+ throw new RuntimeException('PSP partial refund amount must trigger manual review, not full reversal');
+$unsafeResponse=$partialResponse;
+$unsafeResponse['transaction']['transactionState']='COMPLETO';
+try{
+ Pix::readChecked($unsafeResponse,1100,'synthetic-refund-001');
+ throw new RuntimeException('Mismatched complete Pix was incorrectly accepted');
+}catch(\RuntimeException $e){
+ if(str_contains($e->getMessage(),'incorrectly accepted'))throw $e;
+}
+
 if(Pix::status('DEVOLVIDO_PARCIAL')!=='partial_review'||
    Pix::status('DEVOLVIDO')!=='failed'||
    Pix::status('COMPLETO')!=='paid')
