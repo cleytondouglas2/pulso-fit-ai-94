@@ -257,6 +257,13 @@ final class AcquirerControl {
             if(!$draft)self::fail('Salve e teste novas credenciais antes de ativá-las.',409);
             if($draft['provider']!=='misticpay')
                 self::fail('Essa adquirente ainda precisa de um adaptador homologado. A integração atual foi preservada.',409);
+            // An old payment can be disputed or refunded long after being paid,
+            // and an old payout can require reconciliation after completion.
+            // Do not activate different Pix/payout secrets without immutable
+            // transaction-to-credential-version binding and an atomic drain gate.
+            // Draft editing and non-mutating provider probes remain available.
+            if(in_array($slot,['pix','payout'],true))
+                self::fail('Troca de chaves Pix/saques temporariamente bloqueada: vinculação de cada operação à versão original das credenciais e controle de novas operações ainda não homologados. O rascunho e a integração atual foram preservados.',409);
             $key=self::unseal((string)$draft['key_sealed']);
             $secret=self::unseal((string)$draft['secret_sealed']);
             $check=self::probe($slot,'misticpay',$key,$secret);
