@@ -1325,7 +1325,7 @@ COPY deployment/revenue_awards_patch.php /tmp/revenue_awards_patch.php
 COPY deployment/revenue_awards_test.php /var/www/html/tests/revenue_awards_test.php
 RUN php -l /var/www/html/src/RevenueAwards.php \
  && php -l /tmp/revenue_awards_patch.php \
- && php /tmp/revenue_awards_patch.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/revenue_awards_patch.php \
  && php -l /var/www/html/src/MerchantWallet.php \
  && php -l /var/www/html/src/Gateway.php \
  && php -l /var/www/html/tests/revenue_awards_test.php \
