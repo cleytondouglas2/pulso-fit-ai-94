@@ -1121,3 +1121,30 @@ RUN php -l /tmp/admin_public_link_patch.php \
  && php -l /var/www/html/tests/admin_public_link_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/admin_public_link_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+# Brand supplied by account owner: exact full-square logo, opaque, no black/white
+# side padding. Regenerate PNG app icons for Android PWA and iOS Safari Home Screen.
+# Everything below is static presentation: NO PSP, fees, sessions or money changes.
+COPY deployment/argus-home-art.webp.b64 /tmp/argus-home-art.webp.b64
+RUN base64 -d /tmp/argus-home-art.webp.b64 >/tmp/argus-home-art.webp \
+ && echo '9b63f1f90e4779c18af7ff124db9328a7e2daf7aca76a0cb768995f1d229446e  /tmp/argus-home-art.webp' | sha256sum -c - \
+ && identify /tmp/argus-home-art.webp \
+ && convert /tmp/argus-home-art.webp -resize 1024x1024! -alpha off -strip /var/www/html/public/static/assets/argus-brand-home-1024-v7.png \
+ && convert /tmp/argus-home-art.webp -resize 512x512! -alpha off -strip /var/www/html/public/static/assets/argus-brand-home-512-v7.png \
+ && convert /tmp/argus-home-art.webp -resize 192x192! -alpha off -strip /var/www/html/public/static/assets/argus-brand-home-192-v7.png \
+ && convert /tmp/argus-home-art.webp -resize 180x180! -alpha off -strip /var/www/html/public/apple-touch-icon-argus-brand-20261123.png \
+ && convert /tmp/argus-home-art.webp -resize 32x32! -alpha off -strip /var/www/html/public/static/assets/argus-brand-home-32-v7.png \
+ && cp /var/www/html/public/apple-touch-icon-argus-brand-20261123.png /var/www/html/public/apple-touch-icon.png \
+ && cp /var/www/html/public/apple-touch-icon-argus-brand-20261123.png /var/www/html/public/static/assets/argus-icon-180.png \
+ && cp /var/www/html/public/static/assets/argus-brand-home-192-v7.png /var/www/html/public/static/assets/argus-icon-192.png \
+ && cp /var/www/html/public/static/assets/argus-brand-home-512-v7.png /var/www/html/public/static/assets/argus-icon-512.png \
+ && cp /var/www/html/public/static/assets/argus-brand-home-32-v7.png /var/www/html/public/static/assets/favicon.png \
+ && test "$(identify -format '%[opaque]' /var/www/html/public/apple-touch-icon-argus-brand-20261123.png)" = "true" \
+ && test "$(identify -format '%[opaque]' /var/www/html/public/static/assets/argus-brand-home-512-v7.png)" = "true"
+COPY deployment/argus_home_icon_patch.php /tmp/argus_home_icon_patch.php
+COPY deployment/argus_home_icon_test.php /var/www/html/tests/argus_home_icon_test.php
+RUN php -l /tmp/argus_home_icon_patch.php \
+ && php /tmp/argus_home_icon_patch.php \
+ && php -l /var/www/html/tests/argus_home_icon_test.php \
+ && php /var/www/html/tests/argus_home_icon_test.php \
+ && php /var/www/html/tests/security_regression_test.php
