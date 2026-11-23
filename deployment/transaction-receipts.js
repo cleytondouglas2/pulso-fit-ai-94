@@ -113,56 +113,87 @@ function render(r,scope='public'){
 // A single-page PDF generated from the same server-issued record, with brand
 // image and full values. Browser canvas keeps accented Portuguese text intact.
 async function pdf(r,verification=null){
- const canvas=document.createElement('canvas');canvas.width=1240;
- const c=canvas.getContext('2d');if(!c)throw Error('PDF unavailable');
+ const W=1240,H=1754,TOP=365,BOTTOM=1630;
+ const measure=document.createElement('canvas').getContext('2d');
+ if(!measure)throw Error('PDF unavailable');
  function lines(text,font,limit){
-  c.font=font;const out=[];let line='';
+  measure.font=font;const out=[];let line='';
   for(const word of String(text??'').split(/\s+/)){
    if(!word)continue;
-   if(c.measureText((line?line+' ':'')+word).width<=limit){line+=(line?' ':'')+word;continue;}
+   if(measure.measureText((line?line+' ':'')+word).width<=limit){line+=(line?' ':'')+word;continue}
    if(line){out.push(line);line=''}
-   for(const ch of Array.from(word)){if(line&&c.measureText(line+ch).width>limit){out.push(line);line=''}line+=ch}
+   for(const ch of Array.from(word)){if(line&&measure.measureText(line+ch).width>limit){out.push(line);line=''}line+=ch}
   }
   if(line)out.push(line);return out.length?out:[''];
  }
  const rows=fields(r).map(([key,value])=>({key,lines:lines(value,'29px sans-serif',1090)}));
  const notice=lines(r.notice,'24px sans-serif',1090);
- const verifyLines=verification?lines(verification.url,'20px sans-serif',780):[];
- const required=493+rows.reduce((n,row)=>n+54+34*row.lines.length,0)+35+notice.length*30+(verification?Math.max(320,80+verifyLines.length*26):0)+100;
- canvas.height=Math.max(1754,required);
- c.fillStyle='#fff';c.fillRect(0,0,1240,canvas.height);
- c.fillStyle='#111b29';c.fillRect(0,0,1240,178);
- const im=new Image();im.src=logo;try{await im.decode();const scale=Math.min(280/im.width,132/im.height,1),w=im.width*scale,h=im.height*scale;c.drawImage(im,72,(178-h)/2,w,h)}catch{c.fillStyle='#ecc785';c.font='bold 48px sans-serif';c.fillText('ARGUS PAY',72,108)}
- c.fillStyle='#c39d62';c.font='bold 23px sans-serif';c.fillText('DOCUMENTO DA PLATAFORMA',74,228);
- c.fillStyle='#172336';c.font='bold 47px sans-serif';c.fillText(r.title,74,291);
- c.fillStyle=r.confirmed?'#16704a':'#946019';c.font='bold 30px sans-serif';c.fillText(r.status_label,74,349);
- c.fillStyle='#152135';c.font='bold 65px sans-serif';c.fillText(money(r.amount_cents),74,433);
- let y=493;
+ const verifyLines=verification?lines(verification.url,'22px sans-serif',780):[];
+ // Lay out fixed A4 pages, preserving font sizes; split even a single very long field.
+ const pages=[[]];let y=493;
+ const page=()=>{pages.push([]);y=TOP;};
+ const put=(entry,h)=>{if(y+h>BOTTOM)page();pages[pages.length-1].push({...entry,y});y+=h;};
  for(const row of rows){
-  c.strokeStyle='#e1e5ea';c.beginPath();c.moveTo(74,y-19);c.lineTo(1166,y-19);c.stroke();
-  c.font='bold 22px sans-serif';c.fillStyle='#56657a';c.fillText(row.key,74,y+8);
-  c.font='29px sans-serif';c.fillStyle='#172336';row.lines.forEach((line,i)=>c.fillText(line,74,y+43+34*i));
-  y+=54+34*row.lines.length;
+  let at=0;
+  while(at<row.lines.length){
+   if(BOTTOM-y<88)page();
+   const count=Math.min(row.lines.length-at,Math.floor((BOTTOM-y-54)/34));
+   const chunk=row.lines.slice(at,at+count);
+   put({type:'field',key:row.key+(at?' (continuação)':''),lines:chunk},54+34*chunk.length);at+=count;
+  }
  }
- y+=20;c.font='24px sans-serif';c.fillStyle='#536174';notice.forEach((line,i)=>c.fillText(line,74,y+30*i));y+=30*notice.length+20;
- if(verification){
-  c.fillStyle='#172336';c.font='bold 24px sans-serif';c.fillText('VERIFICAÇÃO PÚBLICA · VÁLIDA POR 30 DIAS',74,y+20);
-  c.font='20px sans-serif';verifyLines.forEach((line,i)=>c.fillText(line,74,y+60+26*i));
-  if(verification.image){try{if(verification.image instanceof HTMLImageElement&&!verification.image.complete)await verification.image.decode();c.imageSmoothingEnabled=false;c.fillStyle='#fff';c.fillRect(896,y+38,268,268);c.drawImage(verification.image,926,y+68,208,208);c.imageSmoothingEnabled=true}catch{}}
+ for(let at=0;at<notice.length;){
+  if(BOTTOM-y<65)page();
+  const count=Math.min(notice.length-at,Math.floor((BOTTOM-y-20)/30));
+  put({type:'notice',lines:notice.slice(at,at+count)},20+30*count);at+=count;
  }
- const footer=canvas.height-77;c.fillStyle='#e0b76f';c.fillRect(74,footer,1092,3);
- c.fillStyle='#516074';c.font='20px sans-serif';c.fillText('ARGUS PAY  •  Consulte o registro atualizado no painel',74,footer+38);
- const jpg=new Uint8Array(await (await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(Error('PDF unavailable')),'image/jpeg',0.94))).arrayBuffer());
+ if(verification)put({type:'verify',lines:verifyLines},Math.max(330,90+verifyLines.length*28));
+ const im=new Image();im.src=logo;let logoOk=false;
+ try{await im.decode();logoOk=im.width>0&&im.height>0}catch{}
+ const jpgs=[];
+ for(const [pageIndex,entries] of pages.entries()){
+  const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+  const c=canvas.getContext('2d');if(!c)throw Error('PDF unavailable');
+  c.fillStyle='#fff';c.fillRect(0,0,W,H);c.fillStyle='#111b29';c.fillRect(0,0,W,178);
+  if(logoOk){const scale=Math.min(280/im.width,132/im.height,1),w=im.width*scale,h=im.height*scale;c.drawImage(im,72,(178-h)/2,w,h)}
+  else{c.fillStyle='#ecc785';c.font='bold 48px sans-serif';c.fillText('ARGUS PAY',72,108)}
+  c.fillStyle='#c39d62';c.font='bold 23px sans-serif';c.fillText('DOCUMENTO DA PLATAFORMA',74,228);
+  c.fillStyle='#172336';c.font='bold '+(pageIndex===0?'47':'36')+'px sans-serif';
+  c.fillText(pageIndex===0?r.title:r.title+' · continuação',74,pageIndex===0?291:276);
+  c.fillStyle=r.confirmed?'#16704a':'#946019';c.font='bold 30px sans-serif';
+  c.fillText(r.status_label,74,pageIndex===0?349:310);
+  if(pageIndex===0){c.fillStyle='#152135';c.font='bold 65px sans-serif';c.fillText(money(r.amount_cents),74,433)}
+  for(const row of entries){
+   const y=row.y;
+   if(row.type==='field'){
+    c.strokeStyle='#e1e5ea';c.beginPath();c.moveTo(74,y-19);c.lineTo(1166,y-19);c.stroke();
+    c.font='bold 22px sans-serif';c.fillStyle='#56657a';c.fillText(row.key,74,y+8);
+    c.font='29px sans-serif';c.fillStyle='#172336';row.lines.forEach((line,k)=>c.fillText(line,74,y+43+34*k));
+   }else if(row.type==='notice'){
+    c.font='24px sans-serif';c.fillStyle='#536174';row.lines.forEach((line,k)=>c.fillText(line,74,y+20+30*k));
+   }else{
+    c.fillStyle='#172336';c.font='bold 24px sans-serif';c.fillText('VERIFICAÇÃO PÚBLICA · VÁLIDA POR 30 DIAS',74,y+30);
+    c.font='22px sans-serif';row.lines.forEach((line,k)=>c.fillText(line,74,y+70+28*k));
+    if(verification.image){try{if(verification.image instanceof HTMLImageElement&&!verification.image.complete)await verification.image.decode();c.imageSmoothingEnabled=false;c.fillStyle='#fff';c.fillRect(896,y+38,268,268);c.drawImage(verification.image,926,y+68,208,208);c.imageSmoothingEnabled=true}catch{}}
+   }
+  }
+  c.fillStyle='#e0b76f';c.fillRect(74,1677,1092,3);c.fillStyle='#516074';c.font='20px sans-serif';
+  c.fillText('ARGUS PAY  •  Consulte o registro atualizado no painel',74,1715);
+  c.fillText('Página '+(pageIndex+1)+' de '+pages.length,1000,1715);
+  jpgs.push(new Uint8Array(await (await new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(Error('PDF unavailable')),'image/jpeg',0.94))).arrayBuffer()));
+ }
  const en=new TextEncoder(),parts=[],offsets=[0];let size=0;
  const push=v=>{const b=typeof v==='string'?en.encode(v):v;parts.push(b);size+=b.length};
  const obj=(n,s)=>{offsets[n]=size;push(n+' 0 obj\n'+s+'\nendobj\n')};
  push('%PDF-1.4\n');obj(1,'<< /Type /Catalog /Pages 2 0 R >>');
- obj(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
- obj(3,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>');
- offsets[4]=size;push('4 0 obj\n<< /Type /XObject /Subtype /Image /Width 1240 /Height '+canvas.height+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
- const scale=Math.min(595/1240,842/canvas.height),w=(1240*scale).toFixed(3),h=(canvas.height*scale).toFixed(3),x=((595-Number(w))/2).toFixed(3),yOffset=(842-Number(h)).toFixed(3);
- const commands='q '+w+' 0 0 '+h+' '+x+' '+yOffset+' cm /Im0 Do Q\n';obj(5,'<< /Length '+en.encode(commands).length+' >>\nstream\n'+commands+'endstream');
- const xref=size;push('xref\n0 6\n0000000000 65535 f \n');for(let i=1;i<=5;i++)push(String(offsets[i]).padStart(10,'0')+' 00000 n \n');push('trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
+ obj(2,'<< /Type /Pages /Kids ['+jpgs.map((_,k)=>(3+3*k)+' 0 R').join(' ')+'] /Count '+jpgs.length+' >>');
+ for(const [k,jpg] of jpgs.entries()){
+  const n=3+k*3;
+  obj(n,'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /XObject << /Im0 '+(n+1)+' 0 R >> >> /Contents '+(n+2)+' 0 R >>');
+  offsets[n+1]=size;push((n+1)+' 0 obj\n<< /Type /XObject /Subtype /Image /Width '+W+' /Height '+H+' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length '+jpg.length+' >>\nstream\n');push(jpg);push('\nendstream\nendobj\n');
+  const commands='q 595 0 0 842 0 0 cm /Im0 Do Q\n';obj(n+2,'<< /Length '+en.encode(commands).length+' >>\nstream\n'+commands+'endstream');
+ }
+ const total=3+3*jpgs.length,xref=size;push('xref\n0 '+total+'\n0000000000 65535 f \n');for(let k=1;k<total;k++)push(String(offsets[k]).padStart(10,'0')+' 00000 n \n');push('trailer\n<< /Size '+total+' /Root 1 0 R >>\nstartxref\n'+xref+'\n%%EOF\n');
  return new Blob(parts,{type:'application/pdf'});
 }
 async function fetchJson(path){if(path.startsWith('/api/admin/')&&typeof api==='function')return api(path);const res=await fetch(path,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});if(!res.ok)throw Error('Registro indisponível ou sessão expirada.');return res.json()}

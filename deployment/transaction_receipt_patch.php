@@ -21,7 +21,7 @@ foreach(['admin.html','client.html','public-pix.html','reseller-public-pix.html'
  receiptPatch($d.$f,'</head>','<link rel="stylesheet" href="/static/transaction-receipts.css?v=confirmed-history-20261123-2"></head>');
  $html=file_get_contents($d.$f);
  $qr=str_contains($html,'/static/qrcode.min.js')?'':'<script defer src="/static/qrcode.min.js?v=1"></script>';
- receiptPatch($d.$f,'</body>',$qr.'<script defer src="/static/transaction-receipts.js?v=verified-fit-20261123-5"></script></body>');
+ receiptPatch($d.$f,'</body>',$qr.'<script defer src="/static/transaction-receipts.js?v=multipage-20261123-6"></script></body>');
 }
 $publicHook=<<<'JS'
 function showStatus(charge){

@@ -47,6 +47,6 @@ foreach(["const fileName='ArgusPay.pdf'","https://app.arguspay.com.br/conta#cada
 if(str_contains($receiptJs,'navigator.share({url:url')||str_contains($receiptJs,'ArgusPay-\'+r.kind'))throw new RuntimeException('Old receipt share name or temporary URL retained');
 echo "PASS: ArgusPay.pdf filename, public registration link, native file sharing and copy fallback.\n";
 
-foreach(['canvas.height=Math.max(1754,required)','verification.image','pdf(r,verification)','pdfGeneration','/verify#[a-f0-9]'] as $needle)
+foreach(['const W=1240,H=1754','verification.image','pdf(r,verification)','pdfGeneration','/verify#[a-f0-9]','/Count '+"'+jpgs.length+'"] as $needle)
  if(!str_contains($receiptJs,$needle))throw new RuntimeException('Receipt fitting/verification missing: '.$needle);
 echo "PASS: adaptive receipt layout and optional QR regeneration source contracts.\n";
