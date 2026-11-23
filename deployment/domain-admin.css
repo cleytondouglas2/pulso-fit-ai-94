@@ -1,0 +1,34 @@
+/* ARGUS Pay — Super Admin domain control. Private, scoped UI. */
+#argus-domain-shell{--d-gold:#f0c476;--d-line:rgba(233,189,116,.3);--d-panel:#151e2d;max-width:1250px;margin:0 auto;padding:12px 0 40px;color:#f8f6f0}
+#argus-domain-shell *{box-sizing:border-box}
+#argus-domain-shell .argus-domain-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;border:1px solid var(--d-line);background:radial-gradient(circle at 90% -30%,#b5802840,transparent 50%),linear-gradient(135deg,#20222b,#0f1725);border-radius:23px;padding:26px;margin-bottom:20px}
+#argus-domain-shell .argus-domain-kicker{display:inline-block;color:var(--d-gold);font-size:11px;font-weight:800;letter-spacing:.18em}
+#argus-domain-shell .argus-domain-hero h1{font-size:clamp(25px,3vw,36px);font-weight:900;letter-spacing:-.025em;color:#fff;margin:9px 0}
+#argus-domain-shell p{line-height:1.65;color:#aebccc;font-size:13px;margin:9px 0}
+#argus-domain-shell .argus-domain-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+#argus-domain-shell .argus-domain-panel{min-width:0;border:1px solid #b9a17c48;border-radius:19px;padding:23px;background:linear-gradient(150deg,#1b2638,#101824);box-shadow:0 13px 35px #0004}
+#argus-domain-shell .argus-domain-panel h2{color:#fff;font-size:19px;margin:0 0 9px;font-weight:850}
+#argus-domain-shell .argus-domain-panel small{font-size:11px;color:#b9c6d4}
+#argus-domain-shell .argus-domain-value{display:block;margin:14px 0;overflow-wrap:anywhere;font-size:clamp(16px,2.1vw,22px);font-weight:900;color:var(--d-gold)}
+#argus-domain-shell a{color:#f7cc82}
+#argus-domain-shell .argus-domain-status{display:inline-flex;border-radius:100px;border:1px solid #e4ba7040;background:#e4ba7019;color:#f6d596;padding:8px 12px;font-size:11px;font-weight:800}
+#argus-domain-shell .argus-domain-action{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+#argus-domain-shell button{cursor:pointer;border-radius:11px;font:inherit;font-size:12px;font-weight:800;border:1px solid #e2ba7b88;background:linear-gradient(145deg,#f6d597,#cb9b53);color:#201b14;padding:12px 15px;min-height:43px;transition:opacity .2s,transform .2s}
+#argus-domain-shell button.secondary{background:rgba(229,184,106,.1);color:#f7d393}
+#argus-domain-shell button:hover:not(:disabled){transform:translateY(-2px)}
+#argus-domain-shell button:disabled{opacity:.35;cursor:not-allowed}
+#argus-domain-shell label{display:block;margin:12px 0;color:#e3e8ef;font-size:12px;font-weight:750}
+#argus-domain-shell input{width:100%;max-width:100%;display:block;margin-top:7px;border-radius:11px;background:#0b1320;border:1px solid #7c879b80;color:#fff;padding:13px 14px;font:inherit;font-size:14px;min-height:45px}
+#argus-domain-shell input:focus{outline:2px solid #e8bb70;outline-offset:2px}
+#argus-domain-shell .argus-domain-span{grid-column:1/-1}
+#argus-domain-shell .argus-domain-notice{border:1px solid #d8aa6255;border-radius:13px;background:#c6923120;padding:13px 16px;margin-top:14px;color:#f5d5a6;font-size:12px;line-height:1.65}
+#argus-domain-shell .argus-domain-dns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:15px}
+#argus-domain-shell .argus-domain-dns>div{padding:14px;background:#0d1725;border:1px solid #ffffff1e;border-radius:11px;overflow-wrap:anywhere}
+#argus-domain-shell .argus-domain-dns small{display:block;margin-bottom:6px}
+#argus-domain-shell .argus-domain-dns strong{font-size:13px;color:#eed6a1}
+#argus-domain-shell .argus-domain-checklist{margin:14px 0 0;padding-left:20px;color:#c4ccdc;font-size:12px;line-height:1.85}
+#argus-domain-shell .argus-domain-feedback{min-height:43px;padding:12px 14px;margin:16px 0;border-radius:11px;background:#163a2b;border:1px solid #3a8d63;color:#dbffea;font-size:12px;line-height:1.6}
+#argus-domain-shell .argus-domain-feedback.is-error{background:#46252a;border-color:#ae5a61;color:#ffe0dc}
+#argus-domain-shell.is-working{opacity:.8;pointer-events:none}
+@media(max-width:740px){#argus-domain-shell{padding:0 0 22px}#argus-domain-shell .argus-domain-hero{padding:19px}#argus-domain-shell .argus-domain-grid{grid-template-columns:1fr}#argus-domain-shell .argus-domain-dns{grid-template-columns:1fr}#argus-domain-shell .argus-domain-panel{padding:18px}}
+@media(prefers-reduced-motion:reduce){#argus-domain-shell button{transition:none!important}}
