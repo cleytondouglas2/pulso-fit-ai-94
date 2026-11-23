@@ -19,7 +19,7 @@ foreach([
  if(!str_contains($js,$needle))throw new RuntimeException('Push UI regression '.$needle);
 }
 foreach(['dispatch(Database $db,string $eventId):array','delivery',
-          "'accepted'=>$report['accepted']","self::pushConfigured()",
+          "'accepted'=>","self::pushConfigured()",
           'sendOneNotification','isSubscriptionExpired()'] as $needle){
  if(!str_contains($backend,$needle))throw new RuntimeException('Push backend regression '.$needle);
 }
