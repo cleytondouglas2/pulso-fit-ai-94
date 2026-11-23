@@ -74,8 +74,11 @@ $wallet=(string)file_get_contents($root.'/src/MerchantWallet.php');
 $gateway=(string)file_get_contents($root.'/src/Gateway.php');
 foreach(['data-nav="awards"','id="page-awards"','argus-awards-admin'] as $term)
  if(!str_contains($admin,$term))throw new RuntimeException('Admin awards page missing '.$term);
-foreach(['argus-reseller-page-awards','Ranking e placas','nav(\'awards\')'] as $term)
- if(!str_contains($dash,$term)&&!str_contains($dash,'page(\'awards\''))throw new RuntimeException('Seller awards menu missing '.$term);
+if(!str_contains($dash,"nav('awards')")||
+ !str_contains($dash,"awards:'Ranking e placas'")||
+ !str_contains($js,'argus-reseller-page-awards')||
+ !str_contains($js,'argus-awards-seller'))
+ throw new RuntimeException('Seller awards menu or dynamic awards page missing');
 if(!str_contains($landing,'id="argus-awards-public"')||
  !str_contains($gateway,"/api/public/revenue-ranking")||
  !str_contains($wallet,'/api/portal/wallet/awards/visibility')||
