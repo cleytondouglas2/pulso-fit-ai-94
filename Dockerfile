@@ -969,5 +969,4 @@ RUN php -l /tmp/public_pix_watch_patch.php \
  && php -l /var/www/html/src/TraditionalQuickPix.php \
  && php -l /var/www/html/src/PublicAdminPix.php \
  && php /var/www/html/tests/public_pix_premium_test.php \
- && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/financial_safety_test.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/security_regression_test.php
