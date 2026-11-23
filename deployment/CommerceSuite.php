@@ -187,6 +187,8 @@ final class CommerceSuite {
             'title'=>$row['title'],'description'=>$row['description'],
             'suggested_amount_cents'=>(int)$row['suggested_amount_cents']>0?(int)$row['suggested_amount_cents']:null,
             'seller_name'=>$row['seller_name'],
+            'logo_url'=>CommerceBrand::hasLogo($db,(string)$row['owner'])?
+                '/api/public/commerce/logo/'.$code:null,
             'image_url'=>$row['image_url'],'accent_color'=>$row['accent_color'],
             'call_to_action'=>$row['call_to_action'],'expires_at'=>$row['expires_at'],
             'checkout'=>$payment,
