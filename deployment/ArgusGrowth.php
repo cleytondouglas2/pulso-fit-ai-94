@@ -58,7 +58,11 @@ final class ArgusGrowth {
         self::index($db,'argus_growth_scan_retry','argus_growth_scan_due_idx','job,next_at');
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_failed_jobs(id VARCHAR(64) PRIMARY KEY,kind VARCHAR(12) NOT NULL,job VARCHAR(24) NOT NULL,subject VARCHAR(160) NOT NULL,attempts INTEGER NOT NULL,reason VARCHAR(32) NOT NULL,failed_at BIGINT NOT NULL,state VARCHAR(16) NOT NULL,reviewed_by VARCHAR(80),reviewed_at BIGINT)");
         self::index($db,'argus_growth_failed_jobs','argus_growth_failed_state_idx','state,failed_at,id');
-        self::saveCursor($db,'schema_version','6');
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_delivery_state(event_id VARCHAR(80) PRIMARY KEY,claim_token VARCHAR(64) NOT NULL,lease_until BIGINT NOT NULL,state VARCHAR(20) NOT NULL,updated_at BIGINT NOT NULL)");
+        self::index($db,'argus_growth_delivery_state','argus_growth_delivery_lease_idx','state,lease_until');
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_failure_history(id VARCHAR(64) PRIMARY KEY,failure_id VARCHAR(64) NOT NULL,action VARCHAR(24) NOT NULL,actor_id VARCHAR(80),reason VARCHAR(32) NOT NULL,attempts INTEGER NOT NULL,created_at BIGINT NOT NULL)");
+        self::index($db,'argus_growth_failure_history','argus_growth_failure_history_idx','failure_id,created_at,id');
+        self::saveCursor($db,'schema_version','7');
         self::$installed[$key]=$db->pdo();
     }
     /** Transactional mutex, independent of financial tables. */
@@ -71,7 +75,7 @@ final class ArgusGrowth {
     public static function ready(Database $db):void{
         $key=spl_object_id($db->pdo());if(isset(self::$ready[$key]))return;
         try{$v=self::cursor($db,'schema_version');}catch(\Throwable $e){self::fail('Módulos de gestão aguardando migração.',503);}
-        if($v!=='6')self::fail('Módulos de gestão aguardando migração.',503);
+        if($v!=='7')self::fail('Módulos de gestão aguardando migração.',503);
         self::$ready[$key]=$db->pdo();
     }
     public static function cursor(Database $db,string $job):string{
@@ -352,21 +356,49 @@ final class ArgusGrowth {
     }
     /** Optional existing notification worker; informational and consent-aware. */
     private static function failureId(string $kind,string $job,string $subject):string{return hash('sha256',$kind.'|'.$job.'|'.$subject);}
+    private static function history(Database $db,string $id,string $action,?string $actor,string $reason,int $attempts,int $now):void{
+        $db->run('INSERT INTO argus_growth_failure_history(id,failure_id,action,actor_id,reason,attempts,created_at) VALUES (?,?,?,?,?,?,?)',[bin2hex(random_bytes(32)),$id,$action,$actor,$reason,$attempts,$now]);
+    }
     public static function failJob(Database $db,string $kind,string $job,string $subject,int $attempts,string $reason,int $now):void{
         $id=self::failureId($kind,$job,$subject);
         $args=[$id,$kind,$job,$subject,$attempts,$reason,$now,'pending'];
+        self::history($db,$id,'failed',null,$reason,$attempts,$now);
         if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE attempts=VALUES(attempts),reason=VALUES(reason),failed_at=VALUES(failed_at),state=VALUES(state),reviewed_by=NULL,reviewed_at=NULL',$args);
         else $db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET attempts=excluded.attempts,reason=excluded.reason,failed_at=excluded.failed_at,state=excluded.state,reviewed_by=NULL,reviewed_at=NULL',$args);
     }
     public static function failedJobs(Database $db,?string $cursor=null):array{
+        // Immutable identifier ordering: changes to failed_at never move a row across pages.
         $where=" WHERE state='pending'";$args=[];
-        if($cursor!==null&&$cursor!==''){
-            $anchor=$db->one("SELECT failed_at,id FROM argus_growth_failed_jobs WHERE id=?",[$cursor]);
-            if(!$anchor)self::fail('Cursor inválido.',422);
-            $where.=" AND (failed_at<? OR (failed_at=? AND id<?))";$args=[$anchor['failed_at'],$anchor['failed_at'],$cursor];
-        }
-        // Expose operational IDs only, never notification content or device endpoints.
-        $rows=$db->all('SELECT id,kind,job,subject,attempts,reason,failed_at FROM argus_growth_failed_jobs'.$where.' ORDER BY failed_at DESC,id DESC LIMIT 51',$args);
+        if($cursor!==null&&$cursor!==''){$where.=" AND id>?";$args=[$cursor];}
+        $rows=$db->all('SELECT id,kind,job,subject,attempts,reason,failed_at FROM argus_growth_failed_jobs'.$where.' ORDER BY id LIMIT 51',$args);
+        $more=count($rows)>50;if($more)array_pop($rows);
+        $now=time();
+        foreach($rows as &$row){
+            $row['retry_allowed']=true;
+            if($row['kind']==='notice'){
+                $event=$db->one('SELECT category,created_at FROM argus_notice_events WHERE id=?',[$row['subject']]);
+                $row['retry_allowed']=$event&&$event['category']==='announcement'&&self::timestamp($event['created_at'])>=$now-86400;
+            }
+        }unset($row);
+        return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
+    }
+    public static function archiveJob(Database $db,string $id,string $actor,?int $clock=null):array{
+        if(!preg_match('/^[a-f0-9]{64}$/D',$id))self::fail('Identificador inválido.');
+        $now=$clock??time();$pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'failed-job:'.$id);
+            $row=$db->one("SELECT * FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$id]);
+            if(!$row)self::fail('Falha já tratada ou inexistente.',409);
+            self::history($db,$id,'archived',$actor,$row['reason'],(int)$row['attempts'],$now);
+            $db->run("UPDATE argus_growth_failed_jobs SET state='archived',reviewed_by=?,reviewed_at=? WHERE id=?",[$actor,$now,$id]);
+            $pdo->commit();return ['ok'=>true,'financial_effect'=>false];
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
+    public static function failureHistory(Database $db,string $id,?string $cursor=null):array{
+        if(!preg_match('/^[a-f0-9]{64}$/D',$id))self::fail('Identificador inválido.');
+        $args=[$id];$filter='';
+        if($cursor!==null){if(!preg_match('/^[a-f0-9]{64}$/D',$cursor))self::fail('Cursor inválido.');$filter=' AND id>?';$args[]=$cursor;}
+        $rows=$db->all('SELECT id,action,actor_id,reason,attempts,created_at FROM argus_growth_failure_history WHERE failure_id=?'.$filter.' ORDER BY id LIMIT 51',$args);
         $more=count($rows)>50;if($more)array_pop($rows);
         return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
@@ -382,11 +414,13 @@ final class ArgusGrowth {
                 if(!$event||$event['category']!=='announcement'||self::timestamp($event['created_at'])<$now-86400)self::fail('Alerta antigo ou inválido. Não será reenviado.',409);
                 $changed=$db->run('UPDATE argus_growth_notice_retry SET attempts=0,next_at=?,expires_at=? WHERE event_id=? AND attempts>=5',[$now,$now+3600,$row['subject']]);
                 if($changed->rowCount()!==1)self::fail('Fila indisponível ou já em processamento.',409);
+                $db->run('DELETE FROM argus_growth_delivery_state WHERE event_id=?',[$row['subject']]);
             }elseif($row['kind']==='scan'){
                 if(!in_array($row['job'],['flow','ai_admin','ai_portal'],true))self::fail('Tipo de automação inválido.');
                 $changed=$db->run('UPDATE argus_growth_scan_retry SET attempts=0,next_at=? WHERE job=? AND subject=? AND attempts>=8',[$now,$row['job'],$row['subject']]);
                 if($changed->rowCount()!==1)self::fail('Conta já em processamento.',409);
             }else self::fail('Tipo de falha inválido.');
+            self::history($db,$id,'requeued',$actor,$row['reason'],(int)$row['attempts'],$now);
             $db->run("UPDATE argus_growth_failed_jobs SET state='requeued',reviewed_by=?,reviewed_at=? WHERE id=?",[$actor,$now,$id]);
             $pdo->commit();return ['ok'=>true,'financial_effect'=>false];
         }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
@@ -420,7 +454,10 @@ final class ArgusGrowth {
             'pending_advisories'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>?',[$now])['n'],
             'deferred_accounts'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_scan_retry WHERE attempts<8')['n'],
             'failed_jobs'=>(int)$db->one("SELECT COUNT(*) AS n FROM argus_growth_failed_jobs WHERE state='pending'")['n'],
-            'notice_last_completed_at'=>($n=(int)self::cursor($db,'notice_complete'))?gmdate('c',$n):null];
+            'notice_last_completed_at'=>($n=(int)self::cursor($db,'notice_complete'))?gmdate('c',$n):null,
+            'notice_last_accepted_at'=>($n=(int)self::cursor($db,'notice_accepted'))?gmdate('c',$n):null,
+            'notice_outcome'=>self::cursor($db,'notice_outcome'),
+            'notice_worker_status'=>!$enabled?'not_supported':((int)self::cursor($db,'notice_error')>(int)self::cursor($db,'notice_complete')?'error':((int)self::cursor($db,'notice_complete')>=$now-150?'healthy':'stale'))];
     }
     public static function worker(Database $db):void{
         if(getenv('ARGUS_GROWTH_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
@@ -506,18 +543,63 @@ final class ArgusGrowth {
     public static function deliveryComplete(array $result):bool{
         return ($result['deferred']??false)!==true&&(int)($result['failed']??1)===0&&($result['status']??'processed')!=='transport_unavailable';
     }
-    public static function retryAdvisories(Database $db,?callable $transport=null,?int $clock=null):void{
-        $now=$clock??time();
-        $rows=$db->all('SELECT event_id,attempts,expires_at FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>? AND next_at<=? ORDER BY next_at,event_id LIMIT '.($transport?8:1),[$now,$now]);
+    public static function claimAdvisory(Database $db,string $id,int $now):?array{
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'notice-claim:'.$id);
+            $row=$db->one('SELECT attempts,next_at,expires_at FROM argus_growth_notice_retry WHERE event_id=?',[$id]);
+            $s=$db->one('SELECT state,lease_until FROM argus_growth_delivery_state WHERE event_id=?',[$id]);
+            if(!$row||(int)$row['attempts']>=5||(int)$row['expires_at']<=$now||(int)$row['next_at']>$now||($s&&$s['state']==='sending'&&(int)$s['lease_until']>$now)){$pdo->commit();return null;}
+            $attempt=(int)$row['attempts']+1;$token=bin2hex(random_bytes(32));$lease=$now+120;
+            $db->run('UPDATE argus_growth_notice_retry SET attempts=?,next_at=? WHERE event_id=?',[$attempt,$now+min(900,60*(2**($attempt-1))),$id]);
+            $db->run('DELETE FROM argus_growth_delivery_state WHERE event_id=?',[$id]);
+            $db->run('INSERT INTO argus_growth_delivery_state(event_id,claim_token,lease_until,state,updated_at) VALUES (?,?,?,?,?)',[$id,$token,$lease,'sending',$now]);
+            $pdo->commit();return ['attempt'=>$attempt,'token'=>$token];
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
+    public static function finishAdvisory(Database $db,string $id,array $claim,array $result,int $now):bool{
+        $pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'notice-claim:'.$id);
+            $s=$db->one('SELECT state,claim_token FROM argus_growth_delivery_state WHERE event_id=?',[$id]);
+            if(!$s||$s['state']!=='sending'||!hash_equals($s['claim_token'],$claim['token'])){$pdo->commit();return false;}
+            $complete=self::deliveryComplete($result);
+            $state=$complete?'complete':($claim['attempt']>=5?'failed':'retry');
+            $db->run('UPDATE argus_growth_delivery_state SET state=?,lease_until=0,updated_at=? WHERE event_id=?',[$state,$now,$id]);
+            if($complete)$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$id]);
+            elseif($claim['attempt']>=5)self::failJob($db,'notice','advisory',$id,$claim['attempt'],'delivery_exhausted',$now);
+            if((int)($result['accepted']??0)>0)self::saveCursor($db,'notice_accepted',(string)$now);
+            self::saveCursor($db,'notice_outcome',$complete?((int)($result['accepted']??0)>0?'accepted':($result['status']??'processed')):'deferred');
+            $pdo->commit();return true;
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
+    public static function reapAdvisories(Database $db,int $now):void{
+        $rows=$db->all("SELECT q.event_id FROM argus_growth_notice_retry q LEFT JOIN argus_growth_delivery_state s ON s.event_id=q.event_id WHERE (q.attempts<5 AND q.expires_at<=? AND (s.state IS NULL OR s.state<>'sending' OR s.lease_until<=?)) OR (s.state='sending' AND s.lease_until<=? AND q.attempts>=5) ORDER BY q.expires_at,q.event_id LIMIT 100",[$now,$now,$now]);
         foreach($rows as $row){
-            // Claim before dispatch; accepted devices are skipped by Notifications::dispatch.
-            $next=(int)$row['attempts']+1;$delay=min(900,60*(2**($next-1)));
-            $claimed=$db->run('UPDATE argus_growth_notice_retry SET attempts=?,next_at=? WHERE event_id=? AND attempts=? AND next_at<=?',[$next,$now+$delay,$row['event_id'],$row['attempts'],$now]);
-            if($claimed->rowCount()!==1)continue;
-            try{$result=$transport?$transport($row['event_id']):Notifications::dispatch($db,$row['event_id']);
-                if(self::deliveryComplete($result))$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$row['event_id']]);
-                elseif($next>=5)self::failJob($db,'notice','advisory',$row['event_id'],$next,'delivery_exhausted',$now);
-            }catch(\Throwable $e){if($next>=5)self::failJob($db,'notice','advisory',$row['event_id'],$next,'delivery_exception',$now);error_log('ARGUS advisory delivery deferred');}
+            $id=$row['event_id'];$pdo=$db->pdo();$pdo->beginTransaction();
+            try{
+                self::mutex($db,'notice-claim:'.$id);
+                $q=$db->one('SELECT attempts,expires_at FROM argus_growth_notice_retry WHERE event_id=?',[$id]);
+                $s=$db->one('SELECT state,lease_until FROM argus_growth_delivery_state WHERE event_id=?',[$id]);
+                $active=$s&&$s['state']==='sending'&&(int)$s['lease_until']>$now;
+                $uncertain=$s&&$s['state']==='sending'&&!$active&&(int)($q['attempts']??0)>=5;
+                if($q&&!$active&&($uncertain||((int)$q['attempts']<5&&(int)$q['expires_at']<=$now))){
+                    self::failJob($db,'notice','advisory',$id,(int)$q['attempts'],$uncertain?'delivery_interrupted':'delivery_expired',$now);
+                    $db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$id]);
+                    $db->run("UPDATE argus_growth_delivery_state SET state='failed',lease_until=0,updated_at=? WHERE event_id=?",[$now,$id]);
+                }
+                $pdo->commit();
+            }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+        }
+    }
+    public static function retryAdvisories(Database $db,?callable $transport=null,?int $clock=null):void{
+        $now=$clock??time();self::reapAdvisories($db,$now);
+        $rows=$db->all('SELECT event_id FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>? AND next_at<=? ORDER BY next_at,event_id LIMIT '.($transport?8:1),[$now,$now]);
+        foreach($rows as $row){
+            $id=$row['event_id'];$claim=self::claimAdvisory($db,$id,$now);if(!$claim)continue;
+            try{$result=$transport?$transport($id):Notifications::dispatch($db,$id);}
+            catch(\Throwable $e){$result=['failed'=>1,'deferred'=>true];error_log('ARGUS advisory delivery deferred');}
+            self::finishAdvisory($db,$id,$claim,$result,$clock??time());
         }
     }
     public static function maintenance(Database $db,?int $clock=null):array{
@@ -525,14 +607,9 @@ final class ArgusGrowth {
         $expired=$db->all('SELECT token_hash FROM argus_growth_verify WHERE expires_at<? ORDER BY expires_at LIMIT 500',[gmdate('Y-m-d H:i:s',$now)]);
         if($expired){$hashes=array_column($expired,'token_hash');$db->run('DELETE FROM argus_growth_verify WHERE token_hash IN ('.implode(',',array_fill(0,count($hashes),'?')).') AND expires_at<?',[...$hashes,gmdate('Y-m-d H:i:s',$now)]);}
         $db->run('DELETE FROM argus_growth_metrics_cache WHERE computed_at<?',[$now-86400]);
-        // Expired unfinished notices go to the manual queue, never disappear silently.
-        $expiredNotices=$db->all('SELECT event_id,attempts FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at<=? ORDER BY expires_at LIMIT 100',[$now]);
-        foreach($expiredNotices as $n){
-            $claim=$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=? AND attempts<5 AND expires_at<=?',[$n['event_id'],$now]);
-            if($claim->rowCount()===1)self::failJob($db,'notice','advisory',$n['event_id'],(int)$n['attempts'],'delivery_expired',$now);
-        }
-        // Previous completed jobs are retained for daily deduplication. Unresolved jobs remain for review.
-        $db->run("DELETE FROM argus_growth_notice_retry WHERE expires_at<? AND event_id NOT IN (SELECT subject FROM argus_growth_failed_jobs WHERE kind='notice' AND state='pending')",[$now-172800]);
+        self::reapAdvisories($db,$now);
+        $db->run("DELETE FROM argus_growth_notice_retry WHERE expires_at<? AND attempts>=5 AND event_id NOT IN (SELECT subject FROM argus_growth_failed_jobs WHERE kind='notice' AND state='pending') AND event_id NOT IN (SELECT event_id FROM argus_growth_delivery_state WHERE state='sending')",[$now-172800]);
+        $db->run("DELETE FROM argus_growth_delivery_state WHERE updated_at<? AND state<>'sending' AND event_id NOT IN (SELECT event_id FROM argus_growth_notice_retry)",[$now-172800]);
         return ['expired_tokens'=>count($expired)];
     }
     public static function readSnapshot(Database $db,callable $read):mixed{
@@ -651,6 +728,13 @@ final class ArgusGrowth {
         }
         if($scope==='admin'&&$method==='POST'&&$path===$base.'/retry-job'){
             $id=$body['id']??null;if(!is_string($id))self::fail('Identificador inválido.');self::out(self::recoverJob($db,$id,$owner));
+        }
+        if($scope==='admin'&&$method==='POST'&&$path===$base.'/archive-job'){
+            $id=$body['id']??null;if(!is_string($id))self::fail('Identificador inválido.');self::out(self::archiveJob($db,$id,$owner));
+        }
+        if($scope==='admin'&&$method==='GET'&&$path===$base.'/failure-history'){
+            $id=$_GET['id']??null;$cursor=$_GET['cursor']??null;if(!is_string($id)||($cursor!==null&&!is_string($cursor)))self::fail('Identificador inválido.');
+            SecurityShield::rate($db,'growth_history_owner',$owner,30,60);self::out(self::failureHistory($db,$id,$cursor));
         }
         if($method==='GET'&&$scope==='admin'&&$path===$base.'/inbox'){
             $cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::inbox($db,$cursor));

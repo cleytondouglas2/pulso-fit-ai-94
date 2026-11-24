@@ -12,5 +12,5 @@ try{
  G::saveCursor($db,'notice_start',(string)time());
  G::retryAdvisories($db);
  G::saveCursor($db,'notice_complete',(string)time());
-}catch(\Throwable $e){error_log('ARGUS_ADVISORY_DELIVERY status=unavailable class='.get_class($e));exit(1);}
+}catch(\Throwable $e){if(isset($db,$lock)&&(int)$lock===1){try{G::saveCursor($db,'notice_error',(string)time());}catch(\Throwable $ignored){}}error_log('ARGUS_ADVISORY_DELIVERY status=unavailable class='.get_class($e));exit(1);}
 finally{if(isset($lock)&&(int)$lock===1){try{$pdo->query($pg?"SELECT pg_advisory_unlock(hashtext(current_schema()||':argus-growth-delivery'))":"SELECT RELEASE_LOCK(CONCAT(DATABASE(),':argus-growth-delivery'))");}catch(\Throwable $e){}}}

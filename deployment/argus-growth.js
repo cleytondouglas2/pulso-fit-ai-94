@@ -117,7 +117,7 @@ function setup(host,scope,identity){
   const date=v=>v?new Date(v).toLocaleString('pt-BR'):'—';
   try{
    const h=await call('/worker-health');if(gen!==generation)return;area.replaceChildren();
-   for(const [label,value] of [['Processador',status[h.status]||'Indisponível'],['Última conclusão',date(h.last_completed_at)],['Último envio de alertas',date(h.notice_last_completed_at)],['Alertas pendentes',h.pending_advisories],['Contas em recuperação',h.deferred_accounts],['Falhas para revisão',h.failed_jobs]]){const c=add(area,'article');add(c,'small',label);add(c,'strong',String(value));}
+   for(const [label,value] of [['Processador',status[h.status]||'Indisponível'],['Última conclusão',date(h.last_completed_at)],['Processador de alertas',status[h.notice_worker_status]||'Indisponível'],['Último ciclo de alertas',date(h.notice_last_completed_at)],['Última aceitação pelo Push',date(h.notice_last_accepted_at)],['Último resultado',({accepted:'Aceito pelo serviço Push',disabled:'Desativado',no_devices:'Sem dispositivos',missing_event:'Evento inexistente',processed:'Processado, sem nova aceitação',deferred:'Aguardando nova tentativa'})[h.notice_outcome]||'—'],['Alertas pendentes',h.pending_advisories],['Contas em recuperação',h.deferred_accounts],['Falhas para revisão',h.failed_jobs]]){const c=add(area,'article');add(c,'small',label);add(c,'strong',String(value));}
   }catch(e){if(gen===generation)area.textContent=e.message;return}
   const actions=add(content,'div',undefined,'ag-tabs');btn(actions,'Atualizar monitoramento',health);
   const more=btn(actions,'Carregar mais falhas',()=>load(false));more.hidden=true;
@@ -126,6 +126,10 @@ function setup(host,scope,identity){
    try{const res=await call('/failed-jobs'+(!reset&&cursor?'?cursor='+encodeURIComponent(cursor):''));if(gen!==generation)return;if(reset)list.replaceChildren();
     for(const job of res.items||[]){const c=add(list,'article',undefined,'ag-card');add(c,'strong',job.kind==='notice'?'Alerta não concluído':'Automação não concluída');add(c,'small',job.job+' · '+job.attempts+' tentativas');add(c,'p','Referência: '+job.subject);add(c,'small','Falha em '+date(new Date(job.failed_at*1000).toISOString()));
      const b=btn(c,'Recolocar na fila',async()=>{if(!confirm('Reprocessar somente este alerta ou análise? Nenhum pagamento será executado.'))return;b.disabled=true;try{await call('/retry-job',{id:job.id});tell('Solicitação registrada. A recuperação será processada pela fila.');if(gen===generation)await health()}catch(e){tell(e.message);b.disabled=false}});
+     b.disabled=job.retry_allowed===false;if(b.disabled)add(c,'small','Alerta antigo ou indisponível: arquive sem reenviar.');
+     const archive=btn(c,'Arquivar falha',async()=>{if(!confirm('Arquivar esta falha sem reenviar? O histórico será preservado.'))return;archive.disabled=true;try{await call('/archive-job',{id:job.id});if(gen===generation)await health()}catch(e){tell(e.message);archive.disabled=false}});
+     const history=btn(c,'Histórico',async()=>{history.disabled=true;try{let next=null;const detail=add(c,'details');detail.open=true;add(detail,'summary','Histórico de recuperação');const entries=add(detail,'div');const loadHistory=async()=>{const res=await call('/failure-history?id='+encodeURIComponent(job.id)+(next?'&cursor='+encodeURIComponent(next):''));for(const event of res.items||[])add(entries,'p',event.action+' · '+date(new Date(event.created_at*1000).toISOString())+' · '+event.reason+' · '+(event.actor_id||'Sistema'));next=res.next_cursor;moreHistory.hidden=!next;};const moreHistory=btn(detail,'Mais histórico',loadHistory);await loadHistory()}catch(e){tell(e.message);history.disabled=false}});
+
     }
     if(reset&&!res.items?.length)add(list,'p','Nenhuma falha pendente de revisão.');cursor=res.next_cursor||null;more.hidden=!cursor;
    }catch(e){tell(e.message)}finally{loading=false;more.disabled=false}

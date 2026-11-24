@@ -149,3 +149,26 @@ if($db->driver()==='pgsql'){
  echo "PASS: PostgreSQL read-only repeatable snapshot under independent committed write.\n";
 }
 echo "PASS: exhausted alerts, terminal account scans, audited manual recovery and duplicate recovery protection.\n";
+
+$crash='ntf_crash_'.bin2hex(random_bytes(8));$clock=time();
+$db->run('INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[$crash,hash('sha256',$crash),'admin',$a,'announcement','Fixture','Synthetic',null,'/admin',Database::stamp()]);
+G::queueAdvisory($db,'admin',$a,'crash',$crash);
+$db->run('UPDATE argus_growth_notice_retry SET attempts=4,next_at=?,expires_at=? WHERE event_id=?',[$clock,$clock+30,$crash]);
+$claim=G::claimAdvisory($db,$crash,$clock);
+if(!$claim||$claim['attempt']!==5)throw new RuntimeException('Final claim failed');
+$crashId=hash('sha256','notice|advisory|'.$crash);
+G::maintenance($db,$clock+31);
+if($db->one('SELECT id FROM argus_growth_failed_jobs WHERE id=?',[$crashId]))throw new RuntimeException('Cleanup raced active delivery');
+G::maintenance($db,$clock+121);
+if(!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pending' AND reason='delivery_interrupted'",[$crashId]))throw new RuntimeException('Final interrupted attempt lost');
+if(G::finishAdvisory($db,$crash,$claim,['failed'=>0,'accepted'=>1],$clock+122))throw new RuntimeException('Stale worker finalized expired claim');
+G::recoverJob($db,$crashId,$a,$clock+123);
+$db->run('UPDATE argus_growth_notice_retry SET attempts=4,next_at=? WHERE event_id=?',[$clock+124,$crash]);
+$second=G::claimAdvisory($db,$crash,$clock+124);if(!$second)throw new RuntimeException('Reclaim failed');
+G::finishAdvisory($db,$crash,$second,['failed'=>1,'deferred'=>true],$clock+125);
+G::archiveJob($db,$crashId,$a,$clock+126);
+$history=G::failureHistory($db,$crashId);
+if(count($history['items'])!==4||!in_array('requeued',array_column($history['items'],'action'),true)||!in_array('archived',array_column($history['items'],'action'),true))throw new RuntimeException('Immutable history lost');
+if($db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$crashId]))throw new RuntimeException('Archived job still pending');
+if(G::workerHealth($db,$clock+127)['notice_outcome']!=='deferred')throw new RuntimeException('False push delivery status');
+echo "PASS: final-attempt crash recovery, active lease protection, stale worker rejection, append-only recovery history and archival.\n";
