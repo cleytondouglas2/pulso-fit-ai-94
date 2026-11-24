@@ -53,3 +53,16 @@ if(count($wh)!==2||$wh[1]['new_status']!=='delivered')throw new RuntimeException
 $trace=\ArgusPayments\Compliance::trace($db,['role'=>'superadmin'],'seller-deposit',$op);
 if(count($trace['webhook_deliveries'])!==1||$trace['webhook_deliveries'][0]['status']!=='delivered'||isset($trace['webhook_deliveries'][0]['payload']))throw new RuntimeException('Webhook trace wrong or leaked payload');
 echo "PASS: webhook delivery metadata and state journal linked to correct transaction and owner\n";
+
+$manifest=['active'=>true,'version'=>'test-v2','terms_sha256'=>str_repeat('a',64),'privacy_sha256'=>str_repeat('b',64),'digest'=>str_repeat('c',64)];
+$input=['accepted_terms'=>'1','read_privacy'=>'1','legal_digest'=>$manifest['digest']];
+LegalAcceptance::registrationManifest($input,$manifest);
+if($input['accepted_terms']!==true||$input['read_privacy']!==true)throw new RuntimeException('Explicit registration checkboxes not parsed');
+try{$bad=['accepted_terms'=>'0','read_privacy'=>'1','legal_digest'=>$manifest['digest']];LegalAcceptance::registrationManifest($bad,$manifest);throw new RuntimeException('Unchecked registration accepted');}catch(ApiError $e){}
+$account='reg-'.bin2hex(random_bytes(12));$stamp=gmdate('c');
+$create=static function(\ArgusPayments\Database $db)use($account,$stamp){$db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$account,'PJ','Synthetic legal',$account.'@example.invalid',hash('sha256',$account),'0000','synthetic','documents_required',null,$stamp,$stamp]);};
+try{LegalAcceptance::registerAtomically($db,$account,['accepted_terms'=>false],$manifest,$create);throw new RuntimeException('Invalid legal registration committed');}catch(ApiError $e){}
+if($db->one('SELECT id FROM argus_portal_accounts WHERE id=?',[$account]))throw new RuntimeException('Invalid registration did not roll back');
+LegalAcceptance::registerAtomically($db,$account,$input,$manifest,$create);
+if(!$db->one('SELECT id FROM argus_portal_accounts WHERE id=?',[$account])||!LegalAcceptance::status($db,$account,$manifest)['accepted'])throw new RuntimeException('Registration acceptance not atomic');
+echo "PASS: required active document acknowledgement, form parsing and atomic account acceptance rollback\n";

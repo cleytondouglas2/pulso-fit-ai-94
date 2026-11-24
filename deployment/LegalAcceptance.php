@@ -21,6 +21,26 @@ final class LegalAcceptance {
             privacy_sha256 VARCHAR(64) NOT NULL,digest VARCHAR(64) NOT NULL,accepted_at VARCHAR(32) NOT NULL,
             PRIMARY KEY(account_id,digest))");
     }
+    /** Forms carry strings, JSON API clients can use booleans. No implicit consent. */
+    public static function registrationManifest(array &$body,?array $manifest=null):array {
+        $manifest??=self::manifest();
+        if($manifest['active']){
+            foreach(['accepted_terms','read_privacy'] as $key){
+                if(($body[$key]??null)==='1')$body[$key]=true;
+            }
+            self::validate($body,$manifest);
+        }elseif(getenv('ARGUS_LEGAL_REQUIRED')==='yes'){
+            throw new ApiError('Cadastro temporariamente indisponível: documentos aguardam aprovação.',503);
+        }
+        return $manifest;
+    }
+    public static function registerAtomically(Database $db,string $account,array $body,array $manifest,callable $create):void {
+        // The legal record and account insert either both commit or both roll back.
+        $db->transaction(function(Database $db)use($account,$body,$manifest,$create){
+            $create($db);
+            if($manifest['active'])self::record($db,$account,$body,$manifest);
+        });
+    }
     public static function validate(array $body,array $manifest):void {
         if(!$manifest['active'])throw new ApiError('Documentos ainda não vigentes.',409);
         if(($body['accepted_terms']??null)!==true||($body['read_privacy']??null)!==true||
@@ -41,7 +61,7 @@ final class LegalAcceptance {
         return ['document'=>$manifest,'accepted'=>$row!==null&&$row!==false,'acceptance'=>$row?:null];
     }
     public static function publicInfo():never {
-        header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
-        echo json_encode(self::manifest(),JSON_THROW_ON_ERROR);exit;
+        header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');header('X-Content-Type-Options: nosniff');
+        echo Compliance::encodeJson(self::manifest()+['registration_required'=>getenv('ARGUS_LEGAL_REQUIRED')==='yes']);exit;
     }
 }
