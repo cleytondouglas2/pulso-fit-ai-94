@@ -43,7 +43,9 @@ try {
     return ['accepted'=>true,'expired'=>false];
  };
  $report=Notifications::dispatch($db,$first,$send);
- if($report['accepted']!==12||$report['failed']!==0)throw new RuntimeException('Not all devices notified');
+ if($report['accepted']!==8||$report['status']!=='continuation')throw new RuntimeException('Batch limit or continuation failed');
+ $report=Notifications::dispatch($db,$first,$send);
+ if($report['accepted']!==4||$report['previously_accepted']!==8||$report['failed']!==0||$report['deferred'])throw new RuntimeException('Remaining devices not notified');
  $report=Notifications::dispatch($db,$first,$send);
  if($report['attempted']!==0||$report['previously_accepted']!==12)throw new RuntimeException('Repeated device delivery');
  $pending=Notifications::record($db,'portal','client-a','pix.received','fixture-suspended','Fixture','Private',123);
@@ -56,14 +58,23 @@ try {
    $sent[]=$sub['endpoint_hash'];
    if(count($sent)===1)$db->run("UPDATE argus_notice_subscriptions SET audience_id='client-b' WHERE endpoint_hash=?",[$target]);
    return $send($sub,$payload);
- });
+ },12);
  if(in_array($target,$sent,true)||$report['accepted']!==11||$report['skipped']!==1)throw new RuntimeException('Reassigned device received previous account push');
  $expired=Notifications::record($db,'portal','client-a','announcement','fixture-expired','Fixture','Private');
  $report=Notifications::dispatch($db,$expired,function($sub,$payload)use($db){
     $db->run("UPDATE argus_notice_subscriptions SET audience_id='client-b' WHERE endpoint_hash=?",[$sub['endpoint_hash']]);
     return ['accepted'=>false,'expired'=>true];
- });
+ },12);
  if($report['expired']!==11||$report['status']!=='no_delivery'||(int)$db->one("SELECT COUNT(*) AS n FROM argus_notice_subscriptions WHERE audience_id='client-b'")['n']!==12)throw new RuntimeException('New binding deleted by stale transport');
- echo "PASS: all 12 devices, generic private push, suspended account, reassignment, stale expiry and delivery deduplication.\n";
+ $tags=[];
+ foreach(['tag-1','tag-2'] as $key){
+  $event=Notifications::record($db,'portal','client-b','announcement',$key,'Fixture','Private');
+  Notifications::dispatch($db,$event,function($sub,$payload)use(&$tags,$key){$tags[$key]=json_decode($payload,true)['tag'];return ['accepted'=>true];},1);
+ }
+ if($tags['tag-1']===$tags['tag-2'])throw new RuntimeException('Different events overwrite notification');
+ $db->pdo()->exec('DROP TABLE argus_portal_accounts');
+ $report=Notifications::dispatch($db,$first,static function(){throw new RuntimeException('No send when validation unavailable');});
+ if(!$report['deferred']||$report['status']!=='validation_unavailable'||$report['attempted']!==0)throw new RuntimeException('Database error misclassified as inactive account');
+ echo "PASS: bounded 12-device delivery, continuation, private push, suspended account, reassignment, stale expiry, unique tags and unavailable validation.\n";
 
 }finally{unset($db);@unlink($file);@unlink($file.'-shm');@unlink($file.'-wal');}

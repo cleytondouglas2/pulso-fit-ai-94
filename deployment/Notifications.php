@@ -152,13 +152,14 @@ final class Notifications
                 '🔔 ARGUS Pay conectado','Seu dispositivo recebeu um teste de notificações ARGUS Pay.',null,$type==='admin'?'/admin':'/conta');
             if(!$n)self::fail('Ative Avisos e novidades em Preferências antes de testar.',409);
             $report=self::dispatch($db,$n);
+            if($report['deferred'])self::queueRecorded($db,$n);
             if($report['accepted']===0){
                 self::out(['ok'=>false,'delivery'=>'failed','accepted'=>0,'failed'=>$report['failed'],
                     'message'=>'Teste registrado nos Avisos, mas o serviço Push não aceitou o envio. Reative as notificações no aparelho e tente novamente.'],502);
             }
-            self::out(['ok'=>true,'delivery'=>$report['failed']>0?'partial':'accepted',
+            self::out(['ok'=>true,'delivery'=>($report['failed']>0||$report['deferred'])?'partial':'accepted',
                 'accepted'=>$report['accepted'],'failed'=>$report['failed'],
-                'message'=>$report['failed']>0?
+                'message'=>($report['failed']>0||$report['deferred'])?
                     'O serviço Push aceitou alguns dispositivos, mas outros falharam. Confira as permissões e reative os dispositivos afetados.':
                     'Serviço Push aceitou o aviso para '.(int)$report['accepted'].' dispositivo(s). O recebimento na tela depende das permissões do sistema.']);
         }
@@ -172,20 +173,8 @@ final class Notifications
             if(strlen($title)<4||strlen($title)>100||strlen($message)<8||strlen($message)>280)self::fail('Título ou mensagem fora dos limites',422);
             $audience=$b['audience']??'clients';
             if(!in_array($audience,['clients','team','all'],true))self::fail('Público inválido',422);
-            $total=0;$base='notice-'.bin2hex(random_bytes(9));
-            if($audience==='clients'||$audience==='all'){
-                foreach($db->all("SELECT id FROM argus_portal_accounts WHERE status NOT IN ('rejected','suspended') ORDER BY id LIMIT 500") as $person){
-                    $ev=self::record($db,'portal',$person['id'],'announcement',$base,$title,$message,null,'/conta');
-                    if($ev){self::dispatch($db,$ev);$total++;}
-                }
-            }
-            if($audience==='team'||$audience==='all'){
-                foreach($db->all("SELECT id FROM admin_users WHERE status='active' ORDER BY id LIMIT 100") as $person){
-                    $ev=self::record($db,'admin',$person['id'],'announcement',$base,$title,$message,null,'/admin');
-                    if($ev){self::dispatch($db,$ev);$total++;}
-                }
-            }
-            self::out(['ok'=>true,'recipients'=>$total,'message'=>'Aviso registrado para os destinatários. Push depende da permissão em cada aparelho.']);
+            SecurityShield::rate($db,'notice_broadcast',$id,6,3600);
+            self::out(ArgusGrowth::enqueueBroadcast($db,$id,$audience,$title,$message),202);
         }
         self::fail('Rota de notificações inexistente',404);
     }
@@ -210,7 +199,7 @@ final class Notifications
         foreach($targets as [$type,$id]){
             $event=self::record($db,$type,$id,'pix.received','pix.received:'.$chargeId,
                 'Olha o Pix aí, cachorro! 🐶💸','Pix recebido e confirmado. Abra o ARGUS Pay para consultar.', $amount,$type==='admin'?'/admin':'/conta');
-            if($event)self::dispatch($db,$event);
+            if($event)self::queueRecorded($db,$event);
         }
     }
     public static function adminPixReceived(Database $db,string $chargeId,int $amount):void {
@@ -218,20 +207,26 @@ final class Notifications
         foreach($db->all("SELECT id FROM admin_users WHERE role='superadmin' AND status='active'") as $x){
             $event=self::record($db,'admin',$x['id'],'pix.received','quick-pix.received:'.$chargeId,
                 'Olha o Pix aí, cachorro! 🐶💸','Um Pix foi recebido e confirmado na conta ARGUS.',$amount,'/admin');
-            if($event)self::dispatch($db,$event);
+            if($event)self::queueRecorded($db,$event);
         }
     }
     public static function adminPixSent(Database $db,string $actorId,string $payoutId,int $amount):void {
         $event=self::record($db,'admin',$actorId,'pix.sent','payout.paid:'.$payoutId,
             '💸 Pix enviado com sucesso','Transferência Pix concluída e confirmada.',$amount,'/admin');
-        if($event)self::dispatch($db,$event);
+        if($event)self::queueRecorded($db,$event);
     }
     public static function accountUpdate(Database $db,string $accountId,string $status):void {
         $titles=['approved'=>'✅ Conta ARGUS aprovada','identity_verified'=>'📋 Identidade verificada',
             'rejected'=>'Atenção ao cadastro ARGUS','suspended'=>'Conta ARGUS temporariamente suspensa'];
         $event=self::record($db,'portal',$accountId,'announcement','account-status:'.$accountId.':'.$status,
             $titles[$status]??'Atualização da sua conta ARGUS','Seu cadastro foi atualizado. Consulte os detalhes na sua conta.',null,'/conta');
-        if($event)self::dispatch($db,$event);
+        if($event)self::queueRecorded($db,$event);
+    }
+    private static function queueRecorded(Database $db,string $event):void{
+        try{
+            ArgusGrowth::ready($db);
+            ArgusGrowth::queueAdvisory($db,'','','',$event);
+        }catch(\Throwable $e){error_log('ARGUS notification queue unavailable; inbox retained: '.get_class($e));}
     }
     public static function audienceActive(Database $db,string $type,string $id,string $category):bool{
         try{
@@ -240,25 +235,30 @@ final class Notifications
                 $sql=$category==='announcement'?"SELECT id FROM argus_portal_accounts WHERE id=? AND status NOT IN ('rejected','suspended')":"SELECT id FROM argus_portal_accounts WHERE id=? AND status='approved'";
                 return (bool)$db->one($sql,[$id]);
             }
-        }catch(\Throwable $e){error_log('ARGUS push audience validation unavailable: '.get_class($e));}
+        }catch(\Throwable $e){error_log('ARGUS push audience validation unavailable: '.get_class($e));throw $e;}
         return false;
     }
     /** Gateway acceptance is not proof of display. A generic push cannot leak a prior account's transaction. */
-    public static function dispatch(Database $db,string $eventId,?callable $fixtureTransport=null):array {
+    public static function dispatch(Database $db,string $eventId,?callable $fixtureTransport=null,int $limit=8):array {
         if($fixtureTransport!==null&&PHP_SAPI!=='cli')throw new \LogicException('Fixture only');
+        $limit=max(1,min(16,$limit));if($fixtureTransport===null)$limit=min(8,$limit);
         $result=['attempted'=>0,'accepted'=>0,'failed'=>0,'expired'=>0,'skipped'=>0,'previously_accepted'=>0,'deferred'=>false,'status'=>'not_attempted'];
         $event=$db->one('SELECT * FROM argus_notice_events WHERE id=?',[$eventId]);
         if(!$event){$result['status']='missing_event';return $result;}
         $type=$event['audience_type'];$id=$event['audience_id'];$category=$event['category'];
-        if(!self::audienceActive($db,$type,$id,$category)){$result['status']='inactive_account';return $result;}
+        try{$active=self::audienceActive($db,$type,$id,$category);}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
+        if(!$active){$result['status']='inactive_account';return $result;}
         if(!self::enabled(self::settings($db,$type,$id),$category)){$result['status']='disabled';return $result;}
-        $list=$db->all('SELECT * FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=? ORDER BY endpoint_hash',[$type,$id]);
-        if(!$list){$result['status']='no_devices';return $result;}
+        $total=(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=?',[$type,$id])['n'];
+        if(!$total){$result['status']='no_devices';return $result;}
+        $result['previously_accepted']=(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions s JOIN argus_notice_deliveries d ON d.endpoint_hash=s.endpoint_hash AND d.event_id=? WHERE s.audience_type=? AND s.audience_id=? AND d.delivered_at IS NOT NULL',[$eventId,$type,$id])['n'];
+        $list=$db->all('SELECT s.* FROM argus_notice_subscriptions s LEFT JOIN argus_notice_deliveries d ON d.endpoint_hash=s.endpoint_hash AND d.event_id=? WHERE s.audience_type=? AND s.audience_id=? AND d.delivered_at IS NULL ORDER BY CASE WHEN d.attempt_at IS NULL THEN 0 ELSE 1 END,d.attempt_at,s.endpoint_hash LIMIT '.$limit,[$eventId,$type,$id]);
+        if(!$list){$result['status']='processed';return $result;}
         if(!$fixtureTransport&&!self::pushConfigured()){$result['deferred']=true;$result['status']='transport_unavailable';return $result;}
         // Browser push may arrive AFTER logout or device reassignment. Never include amounts,
         // financial status, merchant identity, arbitrary announcement text or account-specific links.
         // Full original message remains in the authenticated notification center.
-        $payload=json_encode(['title'=>'ARGUS Pay','body'=>'Você tem um novo aviso. Entre na sua conta para consultar.','url'=>'/','tag'=>'argus-notice','image'=>null,'category'=>'notice'],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
+        $payload=json_encode(['title'=>'ARGUS Pay','body'=>'Você tem um novo aviso. Entre na sua conta para consultar.','url'=>'/','tag'=>'argus-notice-'.substr(hash('sha256',$eventId),0,32),'image'=>null,'category'=>'notice'],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR);
         if(!$fixtureTransport){
             try{
                 $sender=new WebPush(['VAPID'=>[
@@ -275,12 +275,13 @@ final class Notifications
         }
         foreach($list as $sub){
             // Revalidate account, consent and exact subscription binding immediately before transport.
-            if(!self::audienceActive($db,$type,$id,$category)||!self::enabled(self::settings($db,$type,$id),$category)){$result['skipped']++;continue;}
+            try{$active=self::audienceActive($db,$type,$id,$category);}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
+            if(!$active||!self::enabled(self::settings($db,$type,$id),$category)){$result['skipped']++;continue;}
             $current=$db->one('SELECT * FROM argus_notice_subscriptions WHERE endpoint_hash=? AND audience_type=? AND audience_id=?',[$sub['endpoint_hash'],$type,$id]);
             if(!$current||!hash_equals($sub['p256dh'],$current['p256dh'])||!hash_equals($sub['auth'],$current['auth'])||!hash_equals($sub['endpoint'],$current['endpoint'])||$sub['created_at']!==$current['created_at']){$result['skipped']++;continue;}
-            if(!self::validEndpoint($current['endpoint'])){$result['failed']++;continue;}
+            if(!self::validEndpoint($current['endpoint'])){$result['expired']++;$db->run('DELETE FROM argus_notice_subscriptions WHERE endpoint_hash=? AND audience_type=? AND audience_id=? AND p256dh=? AND auth=? AND created_at=?',[$current['endpoint_hash'],$type,$id,$current['p256dh'],$current['auth'],$current['created_at']]);continue;}
             $existing=$db->one('SELECT delivered_at FROM argus_notice_deliveries WHERE event_id=? AND endpoint_hash=?',[$eventId,$current['endpoint_hash']]);
-            if($existing&&$existing['delivered_at']){$result['previously_accepted']++;continue;}
+            if($existing&&$existing['delivered_at'])continue;
             $result['attempted']++;
             try{
                 $report=$fixtureTransport($current,$payload);
@@ -296,6 +297,11 @@ final class Notifications
                 if($db->driver()==='mysql')$db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE attempt_at=VALUES(attempt_at),delivered_at=COALESCE(argus_notice_deliveries.delivered_at,VALUES(delivered_at))',$args);
                 else $db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON CONFLICT(event_id,endpoint_hash) DO UPDATE SET attempt_at=excluded.attempt_at,delivered_at=COALESCE(argus_notice_deliveries.delivered_at,excluded.delivered_at)',$args);
             }catch(\Throwable $ex){$result['failed']++;error_log('ARGUS push delivery exception: '.get_class($ex));}
+        }
+        // First pass through all devices is continuation, not a failed retry.
+        $unseen=(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions s LEFT JOIN argus_notice_deliveries d ON d.endpoint_hash=s.endpoint_hash AND d.event_id=? WHERE s.audience_type=? AND s.audience_id=? AND d.event_id IS NULL',[$eventId,$type,$id])['n'];
+        if($unseen>0&&$result['attempted']+$result['expired']>0){
+            $result['deferred']=true;$result['status']='continuation';return $result;
         }
         $result['deferred']=$result['failed']>0;
         $result['status']=$result['deferred']?'partial_or_failed':(($result['accepted']+$result['previously_accepted'])>0?'processed':'no_delivery');

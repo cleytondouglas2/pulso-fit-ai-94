@@ -87,7 +87,7 @@ function build(){
  '<div id="an-guide"></div><p id="an-installed"></p><button type="button" id="an-install-button" hidden>Instalar ARGUS</button><p id="an-device-status" role="status" aria-live="polite">Conferindo autorização e vínculo deste aparelho...</p><button type="button" id="an-activate" aria-pressed="false" disabled>⌛ Verificando notificações...</button><button type="button" id="an-test">Enviar aviso de teste</button><p id="an-server-status"></p></div>'+
  '<div id="an-prefs" class="an-body" hidden><label><input type="checkbox" id="an-received"> Pix recebidos e confirmados</label>'+
  '<label><input type="checkbox" id="an-sent"> Pix enviados e confirmados</label><label><input type="checkbox" id="an-announcements"> Avisos e novidades</label>'+
- '<label><input type="checkbox" id="an-amount"> Mostrar o valor no celular</label><button id="an-save" type="button">Salvar preferências</button>'+
+ '<label><input type="checkbox" id="an-amount"> Mostrar valor na central autenticada (nunca na tela bloqueada)</label><button id="an-save" type="button">Salvar preferências</button>'+
  (isAdmin?'<section id="an-broadcast-block" hidden><h3>Comunicar aos usuários</h3><label>Título<input id="an-message-title" maxlength="100"></label><label>Mensagem<textarea id="an-message-body" rows="3" maxlength="280"></textarea></label><label>Público<select id="an-message-audience"><option value="clients">Clientes</option><option value="team">Equipe interna</option><option value="all">Todos</option></select></label><button type="button" id="an-send-broadcast">Enviar comunicado</button></section>':'')+
  '</div><p id="an-status" role="status" aria-live="polite"></p></section>';
  document.body.appendChild(root);
@@ -124,13 +124,13 @@ function build(){
   const title=$("an-message-title").value.trim(),message=$("an-message-body").value.trim(),audience=$("an-message-audience").value;
   if(title.length<4||message.length<8){feedback("Digite um título e mensagem válidos.",true);return;}
   if(!confirm("Enviar este aviso aos destinatários selecionados?"))return;
-  try{const res=await api("/announce","POST",{title,message,audience});feedback("Comunicado registrado para "+res.recipients+" usuários.");$("an-message-body").value="";}catch(e){feedback(e.message,true);}
+  try{const res=await api("/announce","POST",{title,message,audience});feedback(res.message||"Comunicado adicionado à fila.");$("an-message-body").value="";}catch(e){feedback(e.message,true);}
  };
  $("an-inbox").onclick=async e=>{const b=e.target.closest("[data-read]");if(!b)return;try{await api("/"+encodeURIComponent(b.dataset.read)+"/read","POST",{});await refresh();}catch(err){feedback(err.message,true);}};
  guide();
 }
 function renderNotifications(rows){
- $("an-inbox").innerHTML=rows.length?rows.map(x=>'<article class="an-notice"><span class="an-emoji">'+(x.category==="pix.received"?'<img src="/static/assets/pix-cachorro.png" width="42" height="42" style="object-fit:contain" alt="Cachorrinho comemorando Pix recebido">':x.category==="pix.sent"?"💸":"📣")+'</span><div><b>'+escapeHTML(x.title)+'</b><p>'+escapeHTML(x.body)+'</p><small>'+escapeHTML(x.created_at)+'</small></div>'+(x.read_at?"":'<button type="button" title="Marcar como lido" data-read="'+escapeHTML(x.id)+'">✓</button>')+'</article>').join(""):'<p>Seus avisos aparecerão aqui. Nenhuma cobrança de teste será exibida como recebida.</p>';
+ $("an-inbox").innerHTML=rows.length?rows.map(x=>'<article class="an-notice"><span class="an-emoji">'+(x.category==="pix.received"?'<img src="/static/assets/pix-cachorro.png" width="42" height="42" style="object-fit:contain" alt="Cachorrinho comemorando Pix recebido">':x.category==="pix.sent"?"💸":"📣")+'</span><div><b>'+escapeHTML(x.title)+'</b><p>'+escapeHTML(x.body)+(info?.preferences?.show_amount&&x.amount_cents!==null&&Number.isFinite(Number(x.amount_cents))?' · '+escapeHTML((Number(x.amount_cents)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})):'')+'</p><small>'+escapeHTML(x.created_at)+'</small></div>'+(x.read_at?"":'<button type="button" title="Marcar como lido" data-read="'+escapeHTML(x.id)+'">✓</button>')+'</article>').join(""):'<p>Seus avisos aparecerão aqui. Nenhuma cobrança de teste será exibida como recebida.</p>';
 }
 async function refresh(){
  try{

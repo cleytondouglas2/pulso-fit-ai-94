@@ -21,7 +21,7 @@ foreach([
 require_once '/var/www/html/src/Notifications.php';
 $dispatch=new ReflectionMethod(\ArgusPayments\Notifications::class,'dispatch');
 $params=$dispatch->getParameters();
-if(!$dispatch->isPublic()||!$dispatch->isStatic()||$dispatch->getNumberOfRequiredParameters()!==2||count($params)!==3||!$params[2]->isOptional()||(string)$dispatch->getReturnType()!=='array')
+if(!$dispatch->isPublic()||!$dispatch->isStatic()||$dispatch->getNumberOfRequiredParameters()!==2||count($params)!==4||!$params[2]->isOptional()||!$params[3]->isOptional()||(string)$dispatch->getReturnType()!=='array')
  throw new RuntimeException('Push dispatch contract regression');
 foreach(['delivery',
           "'accepted'=>","self::pushConfigured()",

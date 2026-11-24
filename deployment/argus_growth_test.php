@@ -232,3 +232,21 @@ G::recoverJob($db,$closedId,$a,$clock+1);
 $cl=G::claimAdvisory($db,$closed,$clock+1);G::finishAdvisory($db,$closed,$cl,['failed'=>0,'accepted'=>0,'status'=>'inactive_account'],$clock+2);
 if(!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='closed'",[$closedId]))throw new RuntimeException('Undelivered notification incorrectly resolved');
 echo "PASS: closed without delivery separated from accepted notification resolution.\n";
+
+$batchEvent='ntf_batch_'.bin2hex(random_bytes(8));$clock=time();
+$db->run('INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[$batchEvent,hash('sha256',$batchEvent),'admin',$a,'announcement','Fixture','Synthetic',null,'/admin',Database::stamp()]);
+G::queueAdvisory($db,'admin',$a,'batch',$batchEvent);
+for($i=0;$i<7;$i++){
+ $claim=G::claimAdvisory($db,$batchEvent,$clock+$i);
+ if(!$claim||$claim['attempt']!==1)throw new RuntimeException('Continuation consumed retry budget');
+ G::finishAdvisory($db,$batchEvent,$claim,['failed'=>0,'deferred'=>true,'status'=>'continuation','accepted'=>1],$clock+$i);
+}
+$claim=G::claimAdvisory($db,$batchEvent,$clock+7);
+G::finishAdvisory($db,$batchEvent,$claim,['failed'=>0,'deferred'=>true,'status'=>'validation_unavailable'],$clock+7);
+if((int)$db->one('SELECT attempts FROM argus_growth_notice_retry WHERE event_id=?',[$batchEvent])['attempts']!==0||G::claimAdvisory($db,$batchEvent,$clock+8)!==null)throw new RuntimeException('Validation outage exhausted retries or ignored backoff');
+$campaign=G::enqueueBroadcast($db,$a,'team','Fixture broadcast','Synthetic announcement');
+if($campaign['state']!=='queued'||!$db->one("SELECT id FROM argus_growth_broadcasts WHERE id=? AND state='queued'",[$campaign['campaign_id']]))throw new RuntimeException('Campaign not queued');
+G::expandBroadcasts($db,$clock);
+$row=$db->one('SELECT state FROM argus_growth_broadcasts WHERE id=?',[$campaign['campaign_id']]);
+if($row['state']!=='expanded')throw new RuntimeException('Small campaign not expanded');
+echo "PASS: continuation without retry exhaustion, transient validation backoff and durable asynchronous campaign expansion.\n";
