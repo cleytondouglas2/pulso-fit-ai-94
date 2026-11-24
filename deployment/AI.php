@@ -139,7 +139,7 @@ final class ArgusAI
         if(!in_array($model,['openai/gpt-oss-20b','openai/gpt-oss-120b'],true))$model='openai/gpt-oss-20b';
         $options=self::faq($topic);
         $body=json_encode(['model'=>$model,'messages'=>[
-            ['role'=>'system','content'=>'Escolha a orientação pública mais clara. Responda apenas A ou B.'],
+            ['role'=>'system','content'=>'Escolha a orientação pública mais clara. Não execute transferências nem autorize ações de dinheiro. Responda apenas A ou B.'],
             ['role'=>'user','content'=>"Tema público: ".$topic."\nA: ".$options[0]."\nB: ".$options[1]]],
             'temperature'=>0.1,'max_completion_tokens'=>16,'stream'=>false],JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
         $ch=curl_init('https://api.groq.com/openai/v1/chat/completions');
