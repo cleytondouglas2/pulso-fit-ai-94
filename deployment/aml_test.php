@@ -33,5 +33,16 @@ AmlCenter::decide($db,$actor,['case_id'=>$id,'from_state'=>'open','state'=>'inve
 AmlCenter::decide($db,$actor,['case_id'=>$id,'from_state'=>'investigating','state'=>'escalated','evidence_ref'=>'TEST.2']);
 $d=AmlCenter::detail($db,$actor,$id);
 if($d['case']['state']!=='escalated'||count($d['events'])!==2)throw new RuntimeException('Case state or history wrong');
-try{AmlCenter::decide($db,$actor,['case_id'=>$id,'from_state'=>'investigating','state'=>'closed_no_escalation','evidence_ref'=>'TEST.3']);throw new RuntimeException('Stale review accepted');}catch(ApiError $e){}
+try{AmlCenter::decide($db,$actor,['case_id'=>$id,'from_state'=>'investigating','state'=>'closed_no_escalation','evidence_ref'=>'TEST.3']);throw new RuntimeException('Stale review accepted');}catch(ApiError $e){if($e->status!==409)throw $e;}
+$after=AmlCenter::detail($db,$actor,$id);
+if($after['case']['state']!=='escalated'||count($after['events'])!==2)throw new RuntimeException('Stale review changed case or created an audit event');
+try{AmlCenter::decide($db,$actor,['case_id'=>bin2hex(random_bytes(32)),'from_state'=>'open','state'=>'investigating','evidence_ref'=>'TEST.4']);throw new RuntimeException('Missing case accepted');}catch(ApiError $e){if($e->status!==409)throw $e;}
+$account='aml-'.bin2hex(random_bytes(12));$day=gmdate('Y-m-d');
+$db->run('INSERT INTO argus_portal_accounts(id,account_type,display_name,email,document_digest,document_last4,password_hash,status,merchant_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$account,'PJ','Synthetic AML',$account.'@example.invalid',hash('sha256',$account),'0000','synthetic','documents_required',null,$now,$now]);
+AmlCenter::profile($db,$actor,['account_id'=>$account,'expected_monthly_cents'=>0,'risk'=>'high','pep'=>'pending','sanctions'=>'pending','beneficial_owner'=>'pending','evidence_ref'=>'TEST.PROFILE']);
+if(AmlCenter::scanAccount($db,$account,$day)!==1)throw new RuntimeException('First scan did not create expected case');
+if(AmlCenter::scanAccount($db,$account,$day)!==0)throw new RuntimeException('Repeated scan counted duplicate case');
+$case=$db->one('SELECT id FROM argus_aml_cases WHERE account_id=? AND period_key=? AND rule_code=?',[$account,$day,'high_risk_profile']);
+if(!$case||count(AmlCenter::detail($db,$actor,$case['id'])['events'])!==1)throw new RuntimeException('Duplicate scan created phantom audit event');
+echo "PASS: stale and missing case writes denied; repeated scan produces exactly one case and one opening event\n";
 echo "PASS: AML pilot signals, no fabricated match, RBAC, state transitions, review history and stale-write protection\n";

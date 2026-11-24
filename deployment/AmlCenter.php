@@ -100,9 +100,9 @@ final class AmlCenter {
         foreach($signals as $rule=>$severity){
             $case=hash('sha256',$id.':'.$day.':'.$rule.':'.self::RULE_VERSION);$at=gmdate('c');
             $db->transaction(function(Database $db)use($case,$id,$day,$rule,$severity,$metrics,$at,&$added){
-                $n=$db->run("INSERT INTO argus_aml_cases(id,account_id,rule_code,rule_version,period_key,severity,evidence_json,state,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'open',?,?) ON CONFLICT(id) DO NOTHING",
-                  [$case,$id,$rule,self::RULE_VERSION,$day,$severity,Compliance::encodeJson($metrics),$at,$at]);
-                if($n){self::event($db,$case,'case','system','opened',['rule'=>$rule,'period'=>$day]);$added++;}
+                $statement=$db->pdo()->prepare("INSERT INTO argus_aml_cases(id,account_id,rule_code,rule_version,period_key,severity,evidence_json,state,created_at,updated_at) VALUES (?,?,?,?,?,?,?,'open',?,?) ON CONFLICT(id) DO NOTHING");
+                $statement->execute([$case,$id,$rule,self::RULE_VERSION,$day,$severity,Compliance::encodeJson($metrics),$at,$at]);
+                if($statement->rowCount()===1){self::event($db,$case,'case','system','opened',['rule'=>$rule,'period'=>$day]);$added++;}
             });
         }
         return $added;
@@ -122,8 +122,9 @@ final class AmlCenter {
         $allowed=['open'=>['investigating'],'investigating'=>['escalated','closed_no_escalation'],'escalated'=>['closed_escalated']];
         if(!in_array($state,$allowed[$from],true))self::fail('Transição inválida.',409);
         $db->transaction(function(Database $db)use($id,$who,$ref,$state,$from){
-            $changed=$db->run('UPDATE argus_aml_cases SET state=?,updated_at=? WHERE id=? AND state=?',[$state,gmdate('c'),$id,$from]);
-            if(!$changed)self::fail('Caso inexistente ou atualizado por outro analista.',409);
+            $statement=$db->pdo()->prepare('UPDATE argus_aml_cases SET state=?,updated_at=? WHERE id=? AND state=?');
+            $statement->execute([$state,gmdate('c'),$id,$from]);
+            if($statement->rowCount()!==1)self::fail('Caso inexistente ou atualizado por outro analista.',409);
             self::event($db,$id,'case',$who,'state_changed',['from'=>$from,'to'=>$state,'evidence_ref'=>$ref]);
         });
         return ['case_id'=>$id,'state'=>$state];
