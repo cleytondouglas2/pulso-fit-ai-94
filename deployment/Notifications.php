@@ -153,7 +153,7 @@ final class Notifications
             if((int)($subCount['n']??0)<1)
                 self::fail('Nenhum dispositivo habilitado neste painel. Toque em Ativar notificações primeiro.',409);
             $n=self::record($db,$type,$id,'announcement','argus-push-test-'.$id.'-'.bin2hex(random_bytes(5)),
-                '🔔 ARGUS Pay conectado','Seu dispositivo recebeu um teste de notificações ARGUS Pay.',null,$type==='admin'?'/admin':'/conta');
+                '🔔 ARGUS Pay conectado','Seu dispositivo recebeu um teste de notificações ARGUS Pay.',null,$type==='admin'?'/admin':'/conta',null,false);
             if(!$n)self::fail('Ative Avisos e novidades em Preferências antes de testar.',409);
             $report=self::dispatch($db,$n);
             if($report['deferred'])self::queueRecorded($db,$n);

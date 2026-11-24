@@ -65,6 +65,7 @@ final class ArgusGrowth {
         self::index($db,'argus_growth_failed_jobs','argus_growth_failed_state_id_idx','state,id');
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_broadcasts(id VARCHAR(64) PRIMARY KEY,actor_id VARCHAR(80) NOT NULL,audience VARCHAR(12) NOT NULL,title VARCHAR(160) NOT NULL,body VARCHAR(350) NOT NULL,phase VARCHAR(12) NOT NULL,position VARCHAR(80) NOT NULL,state VARCHAR(16) NOT NULL,created_at BIGINT NOT NULL)");
         self::index($db,'argus_growth_broadcasts','argus_growth_broadcast_due_idx','state,created_at,id');
+        Notifications::install($db);
         self::index($db,'argus_notice_outbox','argus_notice_outbox_created_idx','created_at,event_id');
         self::saveCursor($db,'schema_version','10');
         self::$installed[$key]=$db->pdo();

@@ -74,9 +74,13 @@ try {
  if($tags['tag-1']===$tags['tag-2'])throw new RuntimeException('Different events overwrite notification');
  $retryEvent=Notifications::record($db,'portal','client-b','announcement','earlier-batch-fail','Fixture','Private');
  $count=0;
- $report=Notifications::dispatch($db,$retryEvent,function($sub,$payload)use(&$count){if(++$count===1)throw new RuntimeException('Synthetic failure');return ['accepted'=>true];});
+ $report=Notifications::dispatch($db,$retryEvent,function($sub,$payload)use(&$count){if(++$count===1)throw new RuntimeException('Synthetic failure');return ['accepted'=>true];},4);
  if($report['status']!=='continuation'||$report['failed']!==1)throw new RuntimeException('First batch failed fixture');
- $report=Notifications::dispatch($db,$retryEvent,static fn()=>['accepted'=>true]);
+ $report=Notifications::dispatch($db,$retryEvent,static fn()=>['accepted'=>true],4);
+ if($report['status']!=='continuation')throw new RuntimeException('Middle batch lost continuation');
+ $report=Notifications::dispatch($db,$retryEvent,static fn()=>['accepted'=>true],4);
+ if(!$report['deferred']||$report['status']!=='partial_or_failed'||$report['failed']!==0)throw new RuntimeException('Earlier failed device silently finalized');
+ $report=Notifications::dispatch($db,$retryEvent,static fn()=>['accepted'=>true],4);
  if($report['deferred']||(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_deliveries WHERE event_id=? AND delivered_at IS NOT NULL',[$retryEvent])['n']!==12)throw new RuntimeException('Earlier failed device lost');
  $db->pdo()->exec('DROP TABLE argus_portal_accounts');
  $report=Notifications::dispatch($db,$first,static function(){throw new RuntimeException('No send when validation unavailable');});
