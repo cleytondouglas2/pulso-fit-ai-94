@@ -110,6 +110,17 @@ function setup(host,scope,identity){
    cursor=valid(r.next_cursor)?r.next_cursor:null;more.hidden=!cursor;if(reset&&!r.items?.length)add(list,'p','Nenhum chamado registrado.');
   }catch(e){tell(e.message)}finally{loading=false;more.disabled=false;refreshList.disabled=false}}load();
  }
+ function historyPager(fetchPage,append,onBusy){
+  let cursor=null,loading=false,done=false;const seen=new Set();
+  return async function load(){
+    if(loading||done)return;loading=true;onBusy(true,done);
+    try{
+      const res=await fetchPage(cursor);
+      for(const event of res.items||[]){if(!seen.has(event.id)){seen.add(event.id);append(event);}}
+      const next=res.next_cursor||null;done=!next||next===cursor;cursor=next;
+    }finally{loading=false;onBusy(false,done);}
+  };
+ }
  async function health(){
   const gen=++generation;content.replaceChildren();add(content,'h3','Operações · saúde das automações');add(content,'p','Monitoramento e recuperação de alertas informativos. Nenhuma ação movimenta dinheiro.');
   const area=add(content,'div','Consultando…','ag-metrics');const list=add(content,'div',undefined,'ag-list');let cursor=null;let loading=false;let filter='pending';
@@ -120,7 +131,7 @@ function setup(host,scope,identity){
    for(const [label,value] of [['Processador',status[h.status]||'Indisponível'],['Última conclusão',date(h.last_completed_at)],['Processador de alertas',status[h.notice_worker_status]||'Indisponível'],['Último ciclo de alertas',date(h.notice_last_completed_at)],['Última aceitação pelo Push',date(h.notice_last_accepted_at)],['Último resultado',({accepted:'Aceito pelo serviço Push',disabled:'Desativado',no_devices:'Sem dispositivos',missing_event:'Evento inexistente',processed:'Processado, sem nova aceitação',deferred:'Aguardando nova tentativa'})[h.notice_outcome]||'—'],['Alertas pendentes',h.pending_advisories],['Contas em recuperação',h.deferred_accounts],['Falhas para revisão',h.failed_jobs]]){const c=add(area,'article');add(c,'small',label);add(c,'strong',String(value));}
   }catch(e){if(gen===generation)area.textContent=e.message;return}
   const actions=add(content,'div',undefined,'ag-tabs');btn(actions,'Atualizar monitoramento',health);
-  const select=add(actions,'select');select.setAttribute('aria-label','Estado das falhas');for(const [v,label] of [['pending','Pendentes'],['archived','Arquivadas'],['requeued','Reencaminhadas']]){const opt=add(select,'option',label);opt.value=v;}select.onchange=()=>{filter=select.value;cursor=null;load(true);};
+  const select=add(actions,'select');select.setAttribute('aria-label','Estado das falhas');for(const [v,label] of [['pending','Pendentes'],['archived','Arquivadas'],['requeued','Reencaminhadas'],['resolved','Resolvidas']]){const opt=add(select,'option',label);opt.value=v;}select.onchange=()=>{filter=select.value;cursor=null;load(true);};
   const more=btn(actions,'Carregar mais falhas',()=>load(false));more.hidden=true;
   async function load(reset){
    if(loading||gen!==generation)return;loading=true;more.disabled=true;select.disabled=true;
@@ -129,9 +140,13 @@ function setup(host,scope,identity){
      if(job.state==='pending'){
      const b=btn(c,'Recolocar na fila',async()=>{if(!confirm('Reprocessar somente este alerta ou análise? Nenhum pagamento será executado.'))return;b.disabled=true;try{await call('/retry-job',{id:job.id});tell('Solicitação registrada. A recuperação será processada pela fila.');if(gen===generation)await health()}catch(e){tell(e.message);b.disabled=false}});
      b.disabled=job.retry_allowed===false;if(b.disabled)add(c,'small','Alerta antigo ou indisponível: arquive sem reenviar.');
-     const archive=btn(c,'Arquivar falha',async()=>{if(!confirm('Arquivar esta falha sem reenviar? O histórico será preservado.'))return;archive.disabled=true;try{await call('/archive-job',{id:job.id});if(gen===generation)await health()}catch(e){tell(e.message);archive.disabled=false}});
+     const archive=btn(c,'Arquivar falha',async()=>{if(!confirm('Arquivar esta falha? Alertas não serão reenviados; análises de contas retomam após 30 minutos. O histórico será preservado.'))return;archive.disabled=true;try{await call('/archive-job',{id:job.id});if(gen===generation)await health()}catch(e){tell(e.message);archive.disabled=false}});
      }else{add(c,'small','Revisado por '+(job.reviewed_by||'—')+' · '+(job.reviewed_at?date(new Date(job.reviewed_at*1000).toISOString()):'—'));}
-     const history=btn(c,'Histórico',async()=>{history.disabled=true;try{let next=null;const detail=add(c,'details');detail.open=true;add(detail,'summary','Histórico de recuperação');const entries=add(detail,'div');const loadHistory=async()=>{const res=await call('/failure-history?id='+encodeURIComponent(job.id)+(next?'&cursor='+encodeURIComponent(next):''));for(const event of res.items||[])add(entries,'p',event.action+' · '+date(new Date(event.created_at*1000).toISOString())+' · '+event.reason+' · '+(event.actor_id||'Sistema'));next=res.next_cursor;moreHistory.hidden=!next;};const moreHistory=btn(detail,'Mais histórico',loadHistory);await loadHistory()}catch(e){tell(e.message);history.disabled=false}});
+     const history=btn(c,'Histórico',async()=>{history.disabled=true;const detail=add(c,'details');detail.open=true;add(detail,'summary','Histórico de recuperação');const entries=add(detail,'div');
+      const labels={failed:'Falhou',archived:'Arquivada',requeued:'Reencaminhada',resolved:'Resolvida',resumed:'Retomada'};
+      let moreHistory;const loadHistory=historyPager(next=>call('/failure-history?id='+encodeURIComponent(job.id)+(next?'&cursor='+encodeURIComponent(next):'')),event=>add(entries,'p',(labels[event.action]||event.action)+' · '+date(new Date(event.created_at*1000).toISOString())+' · '+event.reason+' · '+(event.actor_id||'Sistema')),(busy,done)=>{moreHistory.disabled=busy;moreHistory.hidden=done;});
+      const safeLoad=async()=>{try{await loadHistory()}catch(e){tell(e.message)}};moreHistory=btn(detail,'Mais histórico / tentar novamente',safeLoad);await safeLoad();
+     });
 
     }
     if(reset&&!res.items?.length)add(list,'p','Nenhuma falha nesta categoria.');cursor=res.next_cursor||null;more.hidden=!cursor;

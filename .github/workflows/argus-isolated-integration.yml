@@ -19,6 +19,8 @@ jobs:
           find deployment -name '*.js' -print0 | xargs -0 -n1 node --check
       - name: Simulated mobile share capability tests
         run: node deployment/receipt-share-test.cjs
+      - name: History pagination concurrency tests
+        run: node deployment/growth-history-test.cjs
       - name: Build and execute offline integration tests
         run: docker build --progress=plain --tag argus-offline-test .
 

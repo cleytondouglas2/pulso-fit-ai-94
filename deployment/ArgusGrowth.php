@@ -372,8 +372,16 @@ final class ArgusGrowth {
         if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE attempts=VALUES(attempts),reason=VALUES(reason),failed_at=VALUES(failed_at),state=VALUES(state),reviewed_by=NULL,reviewed_at=NULL',$args);
         else $db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET attempts=excluded.attempts,reason=excluded.reason,failed_at=excluded.failed_at,state=excluded.state,reviewed_by=NULL,reviewed_at=NULL',$args);
     }
+    private static function resolveJob(Database $db,string $kind,string $job,string $subject,int $now,string $reason):void{
+        $id=self::failureId($kind,$job,$subject);
+        $states=$kind==='scan'?"('requeued','archived')":"('requeued')";
+        $row=$db->one('SELECT attempts FROM argus_growth_failed_jobs WHERE id=? AND state IN '.$states,[$id]);
+        if(!$row)return;
+        $updated=$db->run("UPDATE argus_growth_failed_jobs SET state='resolved' WHERE id=? AND state IN ".$states,[$id]);
+        if($updated->rowCount()===1)self::history($db,$id,'resolved',null,$reason,(int)$row['attempts'],$now);
+    }
     public static function failedJobs(Database $db,?string $cursor=null,string $state='pending'):array{
-        if(!in_array($state,['pending','archived','requeued'],true))self::fail('Estado inválido.');
+        if(!in_array($state,['pending','archived','requeued','resolved'],true))self::fail('Estado inválido.');
         $where=' WHERE f.state=?';$args=[$state];
         if($cursor!==null&&$cursor!==''){if(!preg_match('/^[a-f0-9]{64}$/D',$cursor))self::fail('Cursor inválido.');$where.=" AND f.id>?";$args[]=$cursor;}
         // One bounded query: join metadata only; never return content, credentials or device endpoints.
@@ -393,6 +401,8 @@ final class ArgusGrowth {
             self::mutex($db,'failed-job:'.$id);
             $row=$db->one("SELECT * FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$id]);
             if(!$row)self::fail('Falha já tratada ou inexistente.',409);
+            // Archive the incident, not the account. Resume normal informational scans after cooldown.
+            if($row['kind']==='scan')$db->run('UPDATE argus_growth_scan_retry SET attempts=0,next_at=? WHERE job=? AND subject=? AND attempts>=8',[$now+1800,$row['job'],$row['subject']]);
             self::history($db,$id,'archived',$actor,$row['reason'],(int)$row['attempts'],$now);
             $db->run("UPDATE argus_growth_failed_jobs SET state='archived',reviewed_by=?,reviewed_at=? WHERE id=?",[$actor,$now,$id]);
             $pdo->commit();return ['ok'=>true,'financial_effect'=>false];
@@ -457,13 +467,33 @@ final class ArgusGrowth {
         if(!$rows){self::saveCursor($db,'terminal_scan_repair_job','');self::saveCursor($db,'terminal_scan_repair_subject','');return;}
         foreach($rows as $row){
             $id=self::failureId('scan',$row['job'],$row['subject']);
-            if(!$db->one('SELECT id FROM argus_growth_failed_jobs WHERE id=?',[$id]))self::deferScan($db,$row['job'],$row['subject'],$now);
+            $incident=$db->one('SELECT state FROM argus_growth_failed_jobs WHERE id=?',[$id]);
+            if(!$incident)self::deferScan($db,$row['job'],$row['subject'],$now);
+            elseif($incident['state']==='archived'){
+                // Repair legacy archived scans, rechecking under the same lock as administrative recovery.
+                $pdo=$db->pdo();$pdo->beginTransaction();
+                try{
+                    self::mutex($db,'failed-job:'.$id);
+                    if($db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='archived'",[$id])){
+                        $changed=$db->run('UPDATE argus_growth_scan_retry SET attempts=0,next_at=? WHERE job=? AND subject=? AND attempts>=8',[$now+1800,$row['job'],$row['subject']]);
+                        if($changed->rowCount()===1)self::history($db,$id,'resumed',null,'archive_cooldown',8,$now);
+                    }
+                    $pdo->commit();
+                }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+            }
         }
         $last=end($rows);self::saveCursor($db,'terminal_scan_repair_job',$last['job']);self::saveCursor($db,'terminal_scan_repair_subject',$last['subject']);
     }
     public static function scanAccount(Database $db,string $job,string $subject,callable $process,?int $clock=null):bool{
-        try{$process($subject);$db->run('DELETE FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);return true;}
-        catch(\Throwable $e){self::deferScan($db,$job,$subject,$clock);error_log('ARGUS_GROWTH_SCAN deferred job='.$job.' class='.get_class($e));return false;}
+        $pdo=$db->pdo();
+        try{
+            $process($subject);
+            $pdo->beginTransaction();
+            self::mutex($db,'failed-job:'.self::failureId('scan',$job,$subject));
+            $db->run('DELETE FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);
+            self::resolveJob($db,'scan',$job,$subject,$clock??time(),'scan_completed');
+            $pdo->commit();return true;
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();self::deferScan($db,$job,$subject,$clock);error_log('ARGUS_GROWTH_SCAN deferred job='.$job.' class='.get_class($e));return false;}
     }
     public static function retryScans(Database $db,string $job,callable $process,?int $clock=null):void{
         $now=$clock??time();$start=microtime(true);
@@ -594,7 +624,12 @@ final class ArgusGrowth {
             $complete=self::deliveryComplete($result);
             $state=$complete?'complete':($claim['attempt']>=5?'failed':'retry');
             $db->run('UPDATE argus_growth_delivery_state SET state=?,lease_until=0,updated_at=? WHERE event_id=?',[$state,$now,$id]);
-            if($complete)$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$id]);
+            if($complete){
+                $db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$id]);
+                $reason=(int)($result['accepted']??0)>0?'push_accepted':match($result['status']??'processed'){
+                    'disabled'=>'push_disabled','no_devices'=>'push_no_devices','missing_event'=>'push_missing_event',default=>'push_processed'};
+                self::resolveJob($db,'notice','advisory',$id,$now,$reason);
+            }
             elseif($claim['attempt']>=5)self::failJob($db,'notice','advisory',$id,$claim['attempt'],'delivery_exhausted',$now);
             if((int)($result['accepted']??0)>0)self::saveCursor($db,'notice_accepted',(string)$now);
             self::saveCursor($db,'notice_outcome',$complete?((int)($result['accepted']??0)>0?'accepted':($result['status']??'processed')):'deferred');
