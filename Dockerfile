@@ -1485,8 +1485,8 @@ RUN php -l /var/www/html/src/ArgusGrowth.php \
  && php /var/www/html/tests/security_regression_test.php
 
 # Compliance draft and read-only transaction trace (no provider calls).
-COPY deployment/Compliance.php /var/www/html/src/Compliance.php
-COPY deployment/privacy-lgpd.html deployment/terms-of-use.html deployment/compliance.css deployment/compliance.js /var/www/html/public/static/
+COPY deployment/Compliance.php deployment/LegalAcceptance.php deployment/TransactionJournal.php /var/www/html/src/
+COPY deployment/privacy-lgpd.html deployment/terms-of-use.html deployment/compliance.css deployment/compliance.js deployment/legal-acceptance.js /var/www/html/public/static/
 COPY deployment/compliance_patch.php /tmp/compliance_patch.php
 COPY deployment/compliance_test.php /var/www/html/tests/compliance_test.php
 RUN php -l /var/www/html/src/Compliance.php && php -l /tmp/compliance_patch.php \
@@ -1495,6 +1495,13 @@ RUN php -l /var/www/html/src/Compliance.php && php -l /tmp/compliance_patch.php 
  && php -l /var/www/html/tests/compliance_test.php \
  && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/compliance_test.php \
  && php /var/www/html/tests/security_regression_test.php
+
+# Compliance explicit migration and synthetic acceptance/journal test. No automatic migration in production.
+COPY deployment/compliance_migrate.php /usr/local/share/argus/compliance_migrate.php
+COPY deployment/compliance_journal_test.php /var/www/html/tests/compliance_journal_test.php
+RUN php -l /var/www/html/src/LegalAcceptance.php && php -l /var/www/html/src/TransactionJournal.php \
+ && php -l /usr/local/share/argus/compliance_migrate.php && php -l /var/www/html/tests/compliance_journal_test.php \
+ && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/compliance_journal_test.php
 
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /

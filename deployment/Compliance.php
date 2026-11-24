@@ -28,7 +28,11 @@ final class Compliance {
             foreach($ledger as $item)$events[]=['source'=>'argus_seller_ledger','event'=>$item['operation_kind'],'at'=>$item['created_at']];
         }
         usort($events,static fn($a,$b)=>strcmp((string)$a['at'],(string)$b['at']));
-        return ['operation'=>$row,'fees'=>$fee,'events'=>$events,'end_to_end_id'=>null,'coverage'=>'Eventos reconstruídos a partir de registros existentes; não é um histórico completo ou imutável. Referência do provedor não equivale ao EndToEndId.'];
+        $journal=null;
+        if(getenv('ARGUS_COMPLIANCE_JOURNAL_ENABLED')==='yes'){
+            $journal=TransactionJournal::entries($db,$table,$id,(string)$row['owner_id']);
+        }
+        return ['operation'=>$row,'fees'=>$fee,'events'=>$events,'journal'=>$journal,'end_to_end_id'=>null,'coverage'=>'Registros históricos reconstruídos e, quando habilitado, novas transições registradas a partir da migração. Referência do provedor não equivale ao EndToEndId.'];
     }
     public static function admin(Database $db,array $actor):never {
         self::authorize($actor);

@@ -6,8 +6,9 @@ function complianceReplace(string $p,string $a,string $b):void {
  if(!is_string($s)||substr_count($s,$a)!==1)throw new RuntimeException('Compliance anchor: '.basename($p));
  if(file_put_contents($p,str_replace($a,$b,$s))===false)throw new RuntimeException('Compliance write failed');
 }
-complianceReplace($root.'/src/Gateway.php',"require_once __DIR__ . '/ArgusGrowth.php';","require_once __DIR__ . '/ArgusGrowth.php';\nrequire_once __DIR__ . '/Compliance.php';");
+complianceReplace($root.'/src/Gateway.php',"require_once __DIR__ . '/ArgusGrowth.php';","require_once __DIR__ . '/ArgusGrowth.php';\nrequire_once __DIR__ . '/Compliance.php';\nrequire_once __DIR__ . '/LegalAcceptance.php';\nrequire_once __DIR__ . '/TransactionJournal.php';");
 $routes=<<<'PHP'
+            if($method==='GET'&&$path==='/api/public/legal')LegalAcceptance::publicInfo();
             if($method==='GET'&&in_array($path,['/privacidade','/termos'],true)){
                 self::htmlFile($path==='/privacidade'?'privacy-lgpd.html':'terms-of-use.html');return;
             }
@@ -25,4 +26,16 @@ $view=<<<'HTML'
 HTML;
 complianceReplace($d.'admin.html','<section class="page" id="page-site-studio" hidden>',$view.'<section class="page" id="page-site-studio" hidden>');
 complianceReplace($d.'admin.html','</body>','<script defer src="/static/compliance.js?v=1"></script></body>');
+// Explicit acknowledgement after authenticated login. Do not block existing withdrawals.
+$portal=$root.'/src/Portal.php';
+$legalRoutes=<<<'PHP'
+        if($method==='GET'&&$path==='/api/portal/legal'){
+            self::out(LegalAcceptance::status($db,(string)$account['id']));
+        }
+        if($method==='POST'&&$path==='/api/portal/legal'){
+            self::out(LegalAcceptance::record($db,(string)$account['id'],self::body()));
+        }
+PHP;
+complianceReplace($portal,"        if(\$method!=='GET')self::csrf(\$account);","        if(\$method!=='GET')self::csrf(\$account);\n".$legalRoutes);
+complianceReplace($d.'client.html','</body>','<script defer src="/static/legal-acceptance.js?v=1"></script></body>');
 echo "PASS: legal drafts and read-only superadmin trace mounted\n";
