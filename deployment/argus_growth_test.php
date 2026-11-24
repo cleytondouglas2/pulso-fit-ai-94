@@ -172,3 +172,32 @@ if(count($history['items'])!==4||!in_array('requeued',array_column($history['ite
 if($db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$crashId]))throw new RuntimeException('Archived job still pending');
 if(G::workerHealth($db,$clock+127)['notice_outcome']!=='deferred')throw new RuntimeException('False push delivery status');
 echo "PASS: final-attempt crash recovery, active lease protection, stale worker rejection, append-only recovery history and archival.\n";
+
+$terminal='portal|terminal-'.bin2hex(random_bytes(8));$clock=time();
+for($i=0;$i<7;$i++)G::deferScan($db,'flow',$terminal,$clock);
+$terminalId=hash('sha256','scan|flow|'.$terminal);
+$pdo=$db->pdo();
+if($db->driver()==='pgsql'){
+ $pdo->exec("CREATE FUNCTION argus_fixture_fail_history() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN RAISE EXCEPTION 'Synthetic rollback'; END; \$\$");
+ $pdo->exec("CREATE TRIGGER argus_fixture_history BEFORE INSERT ON argus_growth_failure_history FOR EACH ROW EXECUTE FUNCTION argus_fixture_fail_history()");
+}else $pdo->exec("CREATE TRIGGER argus_fixture_history BEFORE INSERT ON argus_growth_failure_history BEGIN SELECT RAISE(ABORT,'Synthetic rollback'); END");
+$failed=false;try{G::deferScan($db,'flow',$terminal,$clock+1);}catch(\PDOException $e){$failed=true;}
+if($db->driver()==='pgsql'){$pdo->exec('DROP TRIGGER argus_fixture_history ON argus_growth_failure_history');$pdo->exec('DROP FUNCTION argus_fixture_fail_history()');}
+else $pdo->exec('DROP TRIGGER argus_fixture_history');
+if(!$failed||(int)$db->one('SELECT attempts FROM argus_growth_scan_retry WHERE job=? AND subject=?',['flow',$terminal])['attempts']!==7||$pdo->inTransaction())throw new RuntimeException('Terminal scan rollback failed');
+G::deferScan($db,'flow',$terminal,$clock+2);
+G::archiveJob($db,$terminalId,$a,$clock+3);
+$archived=G::failedJobs($db,null,'archived');
+$found=array_values(array_filter($archived['items'],static fn($x)=>$x['id']===$terminalId));
+if(count($found)!==1||$found[0]['retry_allowed']||$found[0]['reviewed_by']!==$a)throw new RuntimeException('Archived history inaccessible');
+$hist=G::failureHistory($db,$terminalId)['items'];
+if(array_column($hist,'action')!==['failed','archived'])throw new RuntimeException('History not chronological');
+$orphan='portal|orphan-'.bin2hex(random_bytes(8));$db->run('INSERT INTO argus_growth_scan_retry(job,subject,attempts,next_at) VALUES (?,?,?,?)',['flow',$orphan,8,$clock]);
+G::repairTerminalScans($db,$clock);
+if(!$db->one('SELECT id FROM argus_growth_failed_jobs WHERE id=?',[hash('sha256','scan|flow|'.$orphan)]))throw new RuntimeException('Legacy interrupted scan not repaired');
+$before=(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_mutex')['n'];
+for($i=0;$i<40;$i++)G::deferScan($db,'fixture','bounded-'.$i.'-'.bin2hex(random_bytes(8)),$clock);
+$after=(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_mutex')['n'];
+if($db->driver()==='pgsql'&&$before!==$after)throw new RuntimeException('Persistent PostgreSQL locks grew');
+if($db->driver()==='sqlite'&&(int)$db->one("SELECT COUNT(*) AS n FROM argus_growth_mutex WHERE lock_key LIKE 'v8:%'")['n']>4096)throw new RuntimeException('Mutex namespace unbounded');
+echo "PASS: atomic terminal scan rollback, legacy repair, archived list, chronological history and bounded locks.\n";
