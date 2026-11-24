@@ -375,13 +375,14 @@ final class ArgusGrowth {
     private static function resolveJob(Database $db,string $kind,string $job,string $subject,int $now,string $reason):void{
         $id=self::failureId($kind,$job,$subject);
         $states=$kind==='scan'?"('requeued','archived')":"('requeued')";
+        $final=$kind==='notice'&&$reason!=='push_accepted'?'closed':'resolved';
         $row=$db->one('SELECT attempts FROM argus_growth_failed_jobs WHERE id=? AND state IN '.$states,[$id]);
         if(!$row)return;
-        $updated=$db->run("UPDATE argus_growth_failed_jobs SET state='resolved' WHERE id=? AND state IN ".$states,[$id]);
-        if($updated->rowCount()===1)self::history($db,$id,'resolved',null,$reason,(int)$row['attempts'],$now);
+        $updated=$db->run('UPDATE argus_growth_failed_jobs SET state=? WHERE id=? AND state IN '.$states,[$final,$id]);
+        if($updated->rowCount()===1)self::history($db,$id,$final,null,$reason,(int)$row['attempts'],$now);
     }
     public static function failedJobs(Database $db,?string $cursor=null,string $state='pending'):array{
-        if(!in_array($state,['pending','archived','requeued','resolved'],true))self::fail('Estado inválido.');
+        if(!in_array($state,['pending','archived','requeued','resolved','closed'],true))self::fail('Estado inválido.');
         $where=' WHERE f.state=?';$args=[$state];
         if($cursor!==null&&$cursor!==''){if(!preg_match('/^[a-f0-9]{64}$/D',$cursor))self::fail('Cursor inválido.');$where.=" AND f.id>?";$args[]=$cursor;}
         // One bounded query: join metadata only; never return content, credentials or device endpoints.
@@ -626,8 +627,8 @@ final class ArgusGrowth {
             $db->run('UPDATE argus_growth_delivery_state SET state=?,lease_until=0,updated_at=? WHERE event_id=?',[$state,$now,$id]);
             if($complete){
                 $db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$id]);
-                $reason=(int)($result['accepted']??0)>0?'push_accepted':match($result['status']??'processed'){
-                    'disabled'=>'push_disabled','no_devices'=>'push_no_devices','missing_event'=>'push_missing_event',default=>'push_processed'};
+                $reason=((int)($result['accepted']??0)+(int)($result['previously_accepted']??0))>0?'push_accepted':match($result['status']??'processed'){
+                    'disabled'=>'push_disabled','no_devices'=>'push_no_devices','missing_event'=>'push_missing_event','inactive_account'=>'push_inactive_account','no_delivery'=>'push_no_delivery',default=>'push_processed'};
                 self::resolveJob($db,'notice','advisory',$id,$now,$reason);
             }
             elseif($claim['attempt']>=5)self::failJob($db,'notice','advisory',$id,$claim['attempt'],'delivery_exhausted',$now);

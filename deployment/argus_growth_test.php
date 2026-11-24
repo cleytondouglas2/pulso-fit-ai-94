@@ -129,7 +129,7 @@ if(!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pend
 G::recoverJob($db,$deadId,$a,$clock+905);
 if((int)$db->one('SELECT attempts FROM argus_growth_notice_retry WHERE event_id=?',[$dead])['attempts']!==0)throw new RuntimeException('Manual notification recovery failed');
 try{G::recoverJob($db,$deadId,$a,$clock+906);throw new RuntimeException('Duplicate recovery accepted');}catch(ApiError $e){}
-G::retryAdvisories($db,static fn($eid)=>['failed'=>0],$clock+905);
+G::retryAdvisories($db,static fn($eid)=>['failed'=>0,'accepted'=>1,'status'=>'processed'],$clock+905);
 $subject='portal|fixture-terminal';for($i=0;$i<8;$i++)G::deferScan($db,'flow',$subject,$clock);
 $scanId=hash('sha256','scan|flow|'.$subject);
 $tries=0;G::retryScans($db,'flow',function($s)use(&$tries){$tries++;},$clock+3600);
@@ -221,3 +221,14 @@ if((int)$legacyRow['attempts']!==0||(int)$legacyRow['next_at']!==$clock+1802)thr
 $resolved=G::failedJobs($db,null,'resolved');
 if(!in_array($terminalId,array_column($resolved['items'],'id'),true))throw new RuntimeException('Resolved filter missing');
 echo "PASS: resumed archived account after cooldown, repaired legacy archive, audited scan and notification resolution.\n";
+
+$closed='ntf_closed_'.bin2hex(random_bytes(8));$clock=time();
+$db->run('INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[$closed,hash('sha256',$closed),'admin',$a,'announcement','Fixture','Synthetic',null,'/admin',Database::stamp()]);
+G::queueAdvisory($db,'admin',$a,'closed',$closed);
+$db->run('UPDATE argus_growth_notice_retry SET attempts=4,next_at=? WHERE event_id=?',[$clock,$closed]);
+$cl=G::claimAdvisory($db,$closed,$clock);G::finishAdvisory($db,$closed,$cl,['failed'=>1,'deferred'=>true],$clock);
+$closedId=hash('sha256','notice|advisory|'.$closed);
+G::recoverJob($db,$closedId,$a,$clock+1);
+$cl=G::claimAdvisory($db,$closed,$clock+1);G::finishAdvisory($db,$closed,$cl,['failed'=>0,'accepted'=>0,'status'=>'inactive_account'],$clock+2);
+if(!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='closed'",[$closedId]))throw new RuntimeException('Undelivered notification incorrectly resolved');
+echo "PASS: closed without delivery separated from accepted notification resolution.\n";

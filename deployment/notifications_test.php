@@ -27,4 +27,43 @@ try {
  $enabled=Notifications::record($db,'portal','client-b','pix.sent','payout-confirmed:pay-124','Sent','Sent',1000);
  if(!$enabled)throw new RuntimeException('Allowed category missing');
  echo "PASS: ARGUS notifications isolate recipients, deduplicate verified events and honor opt-in preferences.\n";
+ $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_portal_accounts(id VARCHAR(64) PRIMARY KEY,status VARCHAR(24) NOT NULL)");
+ $db->run('INSERT INTO argus_portal_accounts(id,status) VALUES (?,?)',['client-a','approved']);
+ $db->run('INSERT INTO argus_portal_accounts(id,status) VALUES (?,?)',['client-b','approved']);
+ $endpoints=[];
+ for($i=0;$i<12;$i++){
+   $endpoint='https://fcm.googleapis.com/fcm/send/fixture-device-'.$i;$hash=hash('sha256',$endpoint);
+   $endpoints[]=$hash;
+   $db->run('INSERT INTO argus_notice_subscriptions(endpoint_hash,audience_type,audience_id,endpoint,p256dh,auth,created_at) VALUES (?,?,?,?,?,?,?)',[$hash,'portal','client-a',$endpoint,str_repeat('a',87),str_repeat('b',22),Database::stamp()]);
+ }
+ if(!str_contains(file_get_contents(__DIR__.'/../src/Notifications.php'),"'connect_timeout'=>2,'timeout'=>4,'allow_redirects'=>false"))throw new RuntimeException('Push timeout missing');
+ $send=static function(array $sub,string $payload):array{
+    $decoded=json_decode($payload,true,16,JSON_THROW_ON_ERROR);
+    if($decoded['title']!=='ARGUS Pay'||$decoded['url']!=='/'||str_contains($payload,'Pix')||str_contains($payload,'9990')||str_contains($payload,'client-a'))throw new RuntimeException('Private payload leaked');
+    return ['accepted'=>true,'expired'=>false];
+ };
+ $report=Notifications::dispatch($db,$first,$send);
+ if($report['accepted']!==12||$report['failed']!==0)throw new RuntimeException('Not all devices notified');
+ $report=Notifications::dispatch($db,$first,$send);
+ if($report['attempted']!==0||$report['previously_accepted']!==12)throw new RuntimeException('Repeated device delivery');
+ $pending=Notifications::record($db,'portal','client-a','pix.received','fixture-suspended','Fixture','Private',123);
+ $db->run("UPDATE argus_portal_accounts SET status='suspended' WHERE id='client-a'");
+ $report=Notifications::dispatch($db,$pending,static function(){throw new RuntimeException('Must never dispatch suspended account');});
+ if($report['attempted']!==0||$report['status']!=='inactive_account')throw new RuntimeException('Suspended account not blocked');
+ $db->run("UPDATE argus_portal_accounts SET status='approved' WHERE id='client-a'");
+ sort($endpoints);$target=$endpoints[1];$sent=[];
+ $report=Notifications::dispatch($db,$pending,function($sub,$payload)use($db,$target,&$sent,$send){
+   $sent[]=$sub['endpoint_hash'];
+   if(count($sent)===1)$db->run("UPDATE argus_notice_subscriptions SET audience_id='client-b' WHERE endpoint_hash=?",[$target]);
+   return $send($sub,$payload);
+ });
+ if(in_array($target,$sent,true)||$report['accepted']!==11||$report['skipped']!==1)throw new RuntimeException('Reassigned device received previous account push');
+ $expired=Notifications::record($db,'portal','client-a','announcement','fixture-expired','Fixture','Private');
+ $report=Notifications::dispatch($db,$expired,function($sub,$payload)use($db){
+    $db->run("UPDATE argus_notice_subscriptions SET audience_id='client-b' WHERE endpoint_hash=?",[$sub['endpoint_hash']]);
+    return ['accepted'=>false,'expired'=>true];
+ });
+ if($report['expired']!==11||$report['status']!=='no_delivery'||(int)$db->one("SELECT COUNT(*) AS n FROM argus_notice_subscriptions WHERE audience_id='client-b'")['n']!==12)throw new RuntimeException('New binding deleted by stale transport');
+ echo "PASS: all 12 devices, generic private push, suspended account, reassignment, stale expiry and delivery deduplication.\n";
+
 }finally{unset($db);@unlink($file);@unlink($file.'-shm');@unlink($file.'-wal');}
