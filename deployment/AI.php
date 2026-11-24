@@ -33,11 +33,11 @@ final class ArgusAI
     private static function limit(Database $db,string $type,string $id):void{
         SecurityShield::rate($db,'ai_chat_'.$type,$id,12,3600);
     }
-    private static function summary(Database $db,string $type,array $actor):array{
-        $m=ArgusGrowth::cachedMetrics($db,$type,(string)$actor['id']);
+    private static function summary(Database $db,string $type,array $actor,bool $background=false):array{
+        $m=ArgusGrowth::cachedMetrics($db,$type,(string)$actor['id'],$background);
         $daily=[];foreach(array_slice($m['daily'],-7) as $day)$daily[substr($day['day'],8,2).'/'.substr($day['day'],5,2)]=$day['gross_cents'];
         $alerts=[];foreach($m['risk_signals'] as $s)$alerts[]=['level'=>'attention','code'=>'signal_'.substr(hash('sha256',$s),0,12),'title'=>'Sinal de atenção','message'=>$s];
-        return ['period'=>'30 dias de calendário (Brasília); pendências de qualquer data','received_cents'=>$m['gross_cents'],'sent_cents'=>$m['sent_cents'],'pending_count'=>$m['pending_count'],'failed_count'=>$m['failed_count'],'paid_count'=>$m['confirmed_count']+$m['sent_count'],'transaction_count'=>$m['transaction_count'],'today_received_cents'=>$m['daily'][29]['gross_cents'],'last_7_days'=>$daily,'alerts'=>$alerts,'forecast_30d_cents'=>$m['forecast_30d_cents'],'forecast_note'=>$m['model'],'note'=>$m['model']];
+        return ['period'=>'30 dias de calendário (Brasília); pendências de qualquer data','received_cents'=>$m['gross_cents'],'sent_cents'=>$m['sent_cents'],'pending_count'=>$m['pending_count'],'failed_count'=>$m['failed_count'],'paid_count'=>$m['confirmed_count']+$m['sent_count'],'transaction_count'=>$m['transaction_count'],'today_received_cents'=>$m['daily'][29]['gross_cents'],'last_7_days'=>$daily,'alerts'=>$alerts,'forecast_30d_cents'=>$m['forecast_30d_cents'],'forecast_note'=>$m['model'],'note'=>$m['model'],'as_of'=>$m['as_of'],'cached'=>$m['cached']];
     }
     public static function analyze(array $rows,?int $now=null):array {
         $now??=time();
@@ -168,21 +168,24 @@ final class ArgusAI
     }
     public static function worker(Database $db):void {
         if(getenv('ARGUS_AI_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
-        // Optional account tables may not exist on a freshly migrated environment.
-        Portal::install($db);
-        Notifications::install($db);
         ArgusGrowth::ready($db);
         $start=microtime(true);
         foreach(['admin','portal'] as $type){
-            $job='ai_'.$type;$cursor=ArgusGrowth::cursor($db,$job);
-            $sql=$type==='admin'?"SELECT id,role FROM admin_users WHERE role='superadmin' AND status='active' AND id>? ORDER BY id LIMIT 20":"SELECT id,merchant_id,status FROM argus_portal_accounts WHERE status='approved' AND id>? ORDER BY id LIMIT 250";
+            $job='ai_'.$type;
+            $process=static function(string $id)use($db,$type):void{
+                $actor=$type==='admin'?$db->one("SELECT id,role FROM admin_users WHERE id=? AND role='superadmin' AND status='active'",[$id]):$db->one("SELECT id,merchant_id,status FROM argus_portal_accounts WHERE id=? AND status='approved'",[$id]);
+                if($actor)self::notifyAlerts($db,$type,$id,self::summary($db,$type,$actor,true));
+            };
+            ArgusGrowth::retryScans($db,$job,$process);
+            $cursor=ArgusGrowth::cursor($db,$job);
+            $sql=$type==='admin'?"SELECT id FROM admin_users WHERE role='superadmin' AND status='active' AND id>? ORDER BY id LIMIT 20":"SELECT id FROM argus_portal_accounts WHERE status='approved' AND id>? ORDER BY id LIMIT 250";
             $actors=$db->all($sql,[$cursor]);if(!$actors){ArgusGrowth::saveCursor($db,$job,'');continue;}
             $slice=microtime(true);
             foreach($actors as $actor){
-                if(microtime(true)-$slice>12||microtime(true)-$start>25)break;
-                ArgusGrowth::saveCursor($db,$job,(string)$actor['id']);
-                try{self::notifyAlerts($db,$type,$actor['id'],self::summary($db,$type,$actor));}
-                catch(\Throwable $e){error_log('ARGUS AI advisory unavailable: '.get_class($e));}
+                if(microtime(true)-$slice>8||microtime(true)-$start>22)break;
+                $id=(string)$actor['id'];
+                if(!$db->one('SELECT subject FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$id]))ArgusGrowth::scanAccount($db,$job,$id,$process);
+                ArgusGrowth::saveCursor($db,$job,$id);
             }
         }
     }
@@ -197,6 +200,7 @@ final class ArgusAI
             'model'=>getenv('ARGUS_GROQ_MODEL')?:'openai/gpt-oss-20b',
             'daily_alerts_enabled'=>getenv('ARGUS_AI_ALERTS_ENABLED')==='yes']);
         if($path===$prefix.'/insights'&&$method==='GET'){
+            SecurityShield::rate($db,'growth_metrics_owner',$type.':'.$actor['id'],30,60);
             $s=self::summary($db,$type,$actor);
             self::out(['insights'=>$s]);
         }

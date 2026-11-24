@@ -21,3 +21,22 @@ jobs:
         run: node deployment/receipt-share-test.cjs
       - name: Build and execute offline integration tests
         run: docker build --progress=plain --tag argus-offline-test .
+
+      - name: PostgreSQL integration on private ephemeral network
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create --internal argus-ci-network
+          trap 'docker rm -f argus-ci-postgres >/dev/null 2>&1 || true; docker network rm argus-ci-network >/dev/null 2>&1 || true' EXIT
+          pw=$(openssl rand -hex 24)
+          docker run -d --name argus-ci-postgres --network argus-ci-network -e POSTGRES_DB=argus_ci_fixture -e POSTGRES_USER=argus_ci -e POSTGRES_PASSWORD="$pw" postgres:16
+          for n in $(seq 1 40); do docker exec argus-ci-postgres pg_isready -U argus_ci -d argus_ci_fixture && break; sleep 1; done
+          docker run --rm --network argus-ci-network --entrypoint php \
+            -e ARGUS_OFFLINE_PG_FIXTURE=yes -e ARGUS_DB_DRIVER=pgsql \
+            -e ARGUS_PGSQL_SHARED=true -e ARGUS_PGSQL_SCHEMA=argus_payments_b2b \
+            -e ARGUS_PGSQL_URL="postgresql://argus_ci:$pw@argus-ci-postgres:5432/argus_ci_fixture" \
+            -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
+            argus-offline-test /var/www/html/tests/argus_growth_test.php
+      - name: Validate health route in isolated image
+        run: |
+          docker run --rm --entrypoint bash argus-offline-test -c 'test "$(cat /var/www/html/public/healthz)" = ARGUS_OK'

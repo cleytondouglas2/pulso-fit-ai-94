@@ -14,7 +14,7 @@ try{
  elseif($mysql&& (int)$pdo->query("SELECT GET_LOCK(CONCAT(DATABASE(),':argus-growth-migration'),3)")->fetchColumn()!==1)throw new RuntimeException('Migration lock unavailable');
  try{ArgusGrowth::ready($db);$ready=true;}catch(\Throwable $e){$ready=false;}
  if(!$ready){
-  $db->installAndSeed();Admin::install($db);Portal::install($db);MerchantWallet::install($db);
+  $db->installAndSeed();Admin::install($db);Portal::install($db);MerchantWallet::install($db);\ArgusPayments\Notifications::install($db);
   ArgusGrowth::financialIndexes($db,false);ArgusGrowth::financialIndexes($db,true);ArgusGrowth::install($db);
  }
  error_log('ARGUS_GROWTH_MIGRATION status=ready');

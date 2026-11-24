@@ -235,15 +235,15 @@ final class Notifications
     }
     /** Gateway acceptance is not proof of display on the phone. */
     public static function dispatch(Database $db,string $eventId):array {
-        $result=['attempted'=>0,'accepted'=>0,'failed'=>0,'expired'=>0];
-        if(!self::pushConfigured())return $result;
+        $result=['attempted'=>0,'accepted'=>0,'failed'=>0,'expired'=>0,'deferred'=>false,'status'=>'not_attempted'];
         $event=$db->one('SELECT * FROM argus_notice_events WHERE id=?',[$eventId]);
-        if(!$event)return $result;
+        if(!$event){$result['status']='missing_event';return $result;}
         $pref=self::settings($db,$event['audience_type'],$event['audience_id']);
-        if(!self::enabled($pref,$event['category']))return $result;
+        if(!self::enabled($pref,$event['category'])){$result['status']='disabled';return $result;}
         $list=$db->all('SELECT * FROM argus_notice_subscriptions WHERE audience_type=? AND audience_id=? LIMIT 8',
             [$event['audience_type'],$event['audience_id']]);
-        if(!$list)return $result;
+        if(!$list){$result['status']='no_devices';return $result;}
+        if(!self::pushConfigured()){$result['deferred']=true;$result['status']='transport_unavailable';return $result;}
         $body=$event['body'];$amount=$event['amount_cents'];
         if($pref['show_amount']&&$amount!==null)$body='R$ '.number_format(((int)$amount)/100,2,',','.').' · '.$body;
         $image=$event['category']==='pix.received'?'/static/assets/pix-cachorro.png':null;
@@ -258,7 +258,7 @@ final class Notifications
             ]],['TTL'=>3600,'urgency'=>'high','contentType'=>'application/json']);
         }catch(\Throwable $ex){
             error_log('ARGUS push service init failed: '.get_class($ex));
-            $result['failed']=count($list);
+            $result['failed']=count($list);$result['deferred']=true;$result['status']='transport_unavailable';
             return $result;
         }
         foreach($list as $sub){
@@ -295,6 +295,7 @@ final class Notifications
                 error_log('ARGUS push delivery exception: '.get_class($ex));
             }
         }
+        $result['deferred']=$result['failed']>0;$result['status']=$result['deferred']?'partial_or_failed':'processed';
         return $result;
     }
 

@@ -5,9 +5,11 @@ use ArgusPayments\ArgusGrowth as G;
 use ArgusPayments\Database;
 use ArgusPayments\ApiError;
 $db=new Database(require '/var/www/html/config.php');
-if($db->driver()!=='sqlite')throw new RuntimeException('Synthetic tests only');
+if($db->driver()!=='sqlite'){
+ if(getenv('ARGUS_OFFLINE_PG_FIXTURE')!=='yes'||$db->driver()!=='pgsql'||$db->pdo()->query('SELECT current_database()')->fetchColumn()!=='argus_ci_fixture'||$db->pdo()->query('SELECT current_schema()')->fetchColumn()!=='argus_payments_b2b')throw new RuntimeException('Synthetic tests only');
+}
 putenv('ARGUS_SECURITY_RATE_SECRET='.bin2hex(random_bytes(32))); // ephemeral test-only secret
-$db->installAndSeed();\ArgusPayments\Admin::install($db);\ArgusPayments\FeeExecution::install($db);G::install($db);
+$db->installAndSeed();\ArgusPayments\Admin::install($db);\ArgusPayments\Portal::install($db);\ArgusPayments\MerchantWallet::install($db);\ArgusPayments\Notifications::install($db);\ArgusPayments\FeeExecution::install($db);G::financialIndexes($db,false);G::financialIndexes($db,true);G::install($db);
 $a='growth-a-'.bin2hex(random_bytes(8));$b='growth-b-'.bin2hex(random_bytes(8));
 $v=['title'=>'Test subscription','note'=>'Synthetic','amount_cents'=>5000,'due'=>'2028-01-31','cycle'=>'monthly','nonce'=>bin2hex(random_bytes(16))];
 $x=G::create($db,'admin',$a,'subscription',$v);
@@ -107,3 +109,13 @@ $send=function($eid)use(&$calls){$calls++;return ['failed'=>$calls===1?1:0];};
 G::retryAdvisories($db,$send,$now);G::retryAdvisories($db,$send,$now+1);G::retryAdvisories($db,$send,$now+61);G::retryAdvisories($db,$send,$now+900);
 if($calls!==2)throw new RuntimeException('Retry backoff or terminal deduplication failed');
 echo "PASS: private AI inputs, constrained FAQ output, 64KiB batch, metric cache, expired token cleanup and advisory retry backoff.\n";
+
+if(G::deliveryComplete(['failed'=>0,'deferred'=>true,'status'=>'transport_unavailable'])||!G::deliveryComplete(['failed'=>0,'deferred'=>false,'status'=>'processed']))throw new RuntimeException('Push transport state lost');
+$subject='fixture-deferred';$calls=0;$process=function($subject)use(&$calls){if(++$calls===1)throw new RuntimeException('Synthetic temporary failure');};
+$clock=time();if(G::scanAccount($db,'fixture',$subject,$process,$clock))throw new RuntimeException('Failed account marked processed');
+G::retryScans($db,'fixture',$process,$clock+1);if($calls!==1)throw new RuntimeException('Backoff bypassed');
+G::retryScans($db,'fixture',$process,$clock+31);if($calls!==2||$db->one("SELECT subject FROM argus_growth_scan_retry WHERE job='fixture'"))throw new RuntimeException('Deferred account not recovered');
+G::heartbeat($db,'start',$clock);G::heartbeat($db,'complete',$clock+1);$health=G::workerHealth($db,$clock+2);
+if(!$health['last_completed_at']||$health['status']!==($db->driver()==='pgsql'?'healthy':'not_supported'))throw new RuntimeException('Heartbeat invalid');
+if($db->driver()==='pgsql'&&G::workerHealth($db,$clock+400)['status']!=='stale')throw new RuntimeException('Stale worker undetected');
+echo "PASS: delivery deferral, durable account retry, heartbeat and isolated database driver=".$db->driver().".\n";

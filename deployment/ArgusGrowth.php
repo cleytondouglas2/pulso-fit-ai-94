@@ -54,7 +54,9 @@ final class ArgusGrowth {
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_notice_retry(event_id VARCHAR(80) PRIMARY KEY,attempts INTEGER NOT NULL,next_at BIGINT NOT NULL,expires_at BIGINT NOT NULL)");
         self::index($db,'argus_growth_notice_retry','argus_growth_notice_due_idx','next_at,expires_at');
         self::index($db,'argus_growth_metrics_cache','argus_growth_cache_time_idx','computed_at');
-        self::saveCursor($db,'schema_version','4');
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_scan_retry(job VARCHAR(24) NOT NULL,subject VARCHAR(160) NOT NULL,attempts INTEGER NOT NULL,next_at BIGINT NOT NULL,PRIMARY KEY(job,subject))");
+        self::index($db,'argus_growth_scan_retry','argus_growth_scan_due_idx','job,next_at');
+        self::saveCursor($db,'schema_version','5');
         self::$installed[$key]=$db->pdo();
     }
     /** Transactional mutex, independent of financial tables. */
@@ -67,7 +69,7 @@ final class ArgusGrowth {
     public static function ready(Database $db):void{
         $key=spl_object_id($db->pdo());if(isset(self::$ready[$key]))return;
         try{$v=self::cursor($db,'schema_version');}catch(\Throwable $e){self::fail('Módulos de gestão aguardando migração.',503);}
-        if($v!=='4')self::fail('Módulos de gestão aguardando migração.',503);
+        if($v!=='5')self::fail('Módulos de gestão aguardando migração.',503);
         self::$ready[$key]=$db->pdo();
     }
     public static function cursor(Database $db,string $job):string{
@@ -347,28 +349,60 @@ final class ArgusGrowth {
         return ['messages'=>array_reverse($rows),'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
     /** Optional existing notification worker; informational and consent-aware. */
+    public static function deferScan(Database $db,string $job,string $subject,?int $clock=null):void{
+        $now=$clock??time();
+        $row=$db->one('SELECT attempts FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);
+        $attempt=min(20,1+(int)($row['attempts']??0));$next=$now+min(1800,30*(2**min(6,$attempt-1)));
+        if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_scan_retry(job,subject,attempts,next_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE attempts=VALUES(attempts),next_at=VALUES(next_at)',[$job,$subject,$attempt,$next]);
+        else $db->run('INSERT INTO argus_growth_scan_retry(job,subject,attempts,next_at) VALUES (?,?,?,?) ON CONFLICT(job,subject) DO UPDATE SET attempts=excluded.attempts,next_at=excluded.next_at',[$job,$subject,$attempt,$next]);
+    }
+    public static function scanAccount(Database $db,string $job,string $subject,callable $process,?int $clock=null):bool{
+        try{$process($subject);$db->run('DELETE FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);return true;}
+        catch(\Throwable $e){self::deferScan($db,$job,$subject,$clock);error_log('ARGUS_GROWTH_SCAN deferred job='.$job.' class='.get_class($e));return false;}
+    }
+    public static function retryScans(Database $db,string $job,callable $process,?int $clock=null):void{
+        $now=$clock??time();$start=microtime(true);
+        $rows=$db->all('SELECT subject FROM argus_growth_scan_retry WHERE job=? AND next_at<=? ORDER BY next_at,subject LIMIT 10',[$job,$now]);
+        foreach($rows as $row){if(microtime(true)-$start>3)break;self::scanAccount($db,$job,$row['subject'],$process,$now);}
+    }
+    public static function heartbeat(Database $db,string $phase,?int $clock=null):void{
+        if(!in_array($phase,['start','complete','error'],true))throw new \InvalidArgumentException('Invalid heartbeat');
+        self::saveCursor($db,'worker_'.$phase,(string)($clock??time()));
+    }
+    public static function workerHealth(Database $db,?int $clock=null):array{
+        self::ready($db);$now=$clock??time();$start=(int)self::cursor($db,'worker_start');$complete=(int)self::cursor($db,'worker_complete');$error=(int)self::cursor($db,'worker_error');
+        $enabled=in_array($db->driver(),['pgsql','mysql'],true);
+        $state=!$enabled?'not_supported':($error>$complete?'error':($complete&&$now-$complete<=180?'healthy':($start&&$now-$start<=90?'running':'stale')));
+        return ['status'=>$state,'last_started_at'=>$start?gmdate('c',$start):null,'last_completed_at'=>$complete?gmdate('c',$complete):null,'last_error_at'=>$error?gmdate('c',$error):null,
+            'pending_advisories'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>?',[$now])['n'],
+            'deferred_accounts'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_scan_retry')['n']];
+    }
     public static function worker(Database $db):void{
         if(getenv('ARGUS_GROWTH_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
         self::ready($db);
+        $process=static function(string $subject)use($db):void{
+            [$scope,$owner]=explode('|',$subject,2);
+            if($scope==='portal'&&!$db->one("SELECT id FROM argus_portal_accounts WHERE id=? AND status='approved'",[$owner]))return;
+            if($scope==='admin'&&!$db->one("SELECT id FROM admin_users WHERE id=? AND status='active' AND role='superadmin'",[$owner]))return;
+            $m=self::cachedMetrics($db,$scope,$owner,true);
+            foreach($m['flow_alerts'] as $f){
+                $key='growth-flow:'.$f['id'].':'.self::localDay(time());
+                $event=Notifications::record($db,$scope,$owner,'announcement',$key,'Argus Flow · alerta configurado',
+                    'Sua regra de '.$f['trigger'].' atingiu '.$f['observed'].' ocorrências. Consulte a central.',null,$scope==='admin'?'/admin':'/conta');
+                self::queueAdvisory($db,$scope,$owner,$key,$event);
+            }
+        };
+        self::retryScans($db,'flow',$process);
         $cursor=self::cursor($db,'flow');$parts=explode('|',$cursor,2);$a=$parts[0]??'';$b=$parts[1]??'';
         $owners=$db->all("SELECT DISTINCT audience,owner_id FROM argus_growth_records WHERE kind='flow' AND state='open' AND (audience>? OR (audience=? AND owner_id>?)) ORDER BY audience,owner_id LIMIT 250",[$a,$a,$b]);
         if(!$owners){self::saveCursor($db,'flow','');return;}
         $start=microtime(true);
         foreach($owners as $o){
-            if(microtime(true)-$start>15)break;
-            self::saveCursor($db,'flow',$o['audience'].'|'.$o['owner_id']);
-            try{
-                $scope=$o['audience'];$owner=$o['owner_id'];
-                if($scope==='portal'&&!$db->one("SELECT id FROM argus_portal_accounts WHERE id=? AND status='approved'",[$owner]))continue;
-                if($scope==='admin'&&!$db->one("SELECT id FROM admin_users WHERE id=? AND status='active' AND role='superadmin'",[$owner]))continue;
-                $m=self::cachedMetrics($db,$scope,$owner);
-                foreach($m['flow_alerts'] as $f){
-                    $key='growth-flow:'.$f['id'].':'.self::localDay(time());
-                    $event=Notifications::record($db,$scope,$owner,'announcement',$key,'Argus Flow · alerta configurado',
-                        'Sua regra de '.$f['trigger'].' atingiu '.$f['observed'].' ocorrências. Consulte a central.',null,$scope==='admin'?'/admin':'/conta');
-                    self::queueAdvisory($db,$scope,$owner,$key,$event);
-                }
-            }catch(\Throwable $e){error_log('ARGUS_GROWTH_ALERT unavailable class='.get_class($e));}
+            if(microtime(true)-$start>12)break;
+            $subject=$o['audience'].'|'.$o['owner_id'];
+            $deferred=$db->one('SELECT subject FROM argus_growth_scan_retry WHERE job=? AND subject=?',['flow',$subject]);
+            if(!$deferred)self::scanAccount($db,'flow',$subject,$process);
+            self::saveCursor($db,'flow',$subject);
         }
     }
     private static array $financialIndexed=[];
@@ -381,25 +415,40 @@ final class ArgusGrowth {
         self::$financialIndexed[$key]=true;
     }
     /** Exact aggregates, 30 local calendar days, creation-date basis. */
-    public static function cachedMetrics(Database $db,string $scope,string $owner):array{
+    public static function cachedMetrics(Database $db,string $scope,string $owner,bool $background=false):array{
         self::ready($db);$key=hash('sha256',$scope.':'.$owner);$now=time();
         $read=static fn()=>$db->one('SELECT payload,computed_at FROM argus_growth_metrics_cache WHERE cache_key=?',[$key]);
         $row=$read();
-        if($row&&(int)$row['computed_at']>=$now-20){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}
-        $pdo=$db->pdo();$locked=false;$driver=$db->driver();
+        $fresh=static fn($r,int $age)=>$r&&(int)$r['computed_at']>=$now-$age&&self::localDay((int)$r['computed_at'])===self::localDay($now);
+        if($fresh($row,20)){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}
+        $pdo=$db->pdo();$locked=false;$driver=$db->driver();$slot=null;
         try{
             if($driver==='pgsql')$locked=(int)$db->one("SELECT CASE WHEN pg_try_advisory_lock(hashtext(current_schema()||?)) THEN 1 ELSE 0 END AS locked",[':growth-metrics:'.$key])['locked']===1;
             elseif($driver==='mysql')$locked=(int)$db->one('SELECT GET_LOCK(?,0) AS locked',[$key])['locked']===1;
             else $locked=true;
-            if(!$locked){if($row&&(int)$row['computed_at']>=$now-120){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}self::fail('Relatório em processamento. Tente novamente em instantes.',429);}
-            $row=$read();if($row&&(int)$row['computed_at']>=$now-20){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}
-            // A bounded shared throttle also protects against many different accounts requesting reports.
-            SecurityShield::rate($db,'growth_metrics_global','all',120,60);
+            if(!$locked){if($fresh($row,120)){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}self::fail('Relatório em processamento. Tente novamente em instantes.',429);}
+            $row=$read();if($fresh($row,20)){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}
+            // Reserve a separate one-slot lane for background jobs; four for user requests.
+            // No tenant can consume a shared minute-long quota. Stale reports are marked.
+            if(in_array($driver,['pgsql','mysql'],true)){
+                foreach($background?[4]:[0,1,2,3] as $i){
+                    $candidate='argus-metrics-slot-'.$i;
+                    $got=$driver==='pgsql'?(int)$db->one("SELECT CASE WHEN pg_try_advisory_lock(hashtext(current_schema()||?)) THEN 1 ELSE 0 END AS locked",[$candidate])['locked']:(int)$db->one('SELECT GET_LOCK(CONCAT(DATABASE(),?),0) AS locked',[$candidate])['locked'];
+                    if($got===1){$slot=$candidate;break;}
+                }
+                if($slot===null){
+                    if($fresh($row,120)){$v=json_decode($row['payload'],true,32,JSON_THROW_ON_ERROR);return $v+['as_of'=>gmdate('c',(int)$row['computed_at']),'cached'=>true];}
+                    self::fail('Relatório em processamento. Tente novamente em instantes.',429);
+                }
+            }
             $v=self::metrics($db,$scope,$owner,$now);$encoded=json_encode($v,JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE);
             if($driver==='mysql')$db->run('INSERT INTO argus_growth_metrics_cache(cache_key,payload,computed_at) VALUES (?,?,?) ON DUPLICATE KEY UPDATE payload=VALUES(payload),computed_at=VALUES(computed_at)',[$key,$encoded,$now]);
             else $db->run('INSERT INTO argus_growth_metrics_cache(cache_key,payload,computed_at) VALUES (?,?,?) ON CONFLICT(cache_key) DO UPDATE SET payload=excluded.payload,computed_at=excluded.computed_at',[$key,$encoded,$now]);
             return $v+['as_of'=>gmdate('c',$now),'cached'=>false];
-        }finally{if($locked){if($driver==='pgsql')$db->one('SELECT pg_advisory_unlock(hashtext(current_schema()||?))',[':growth-metrics:'.$key]);elseif($driver==='mysql')$db->one('SELECT RELEASE_LOCK(?)',[$key]);}}
+        }finally{
+            try{if($slot!==null){if($driver==='pgsql')$db->one('SELECT pg_advisory_unlock(hashtext(current_schema()||?))',[$slot]);elseif($driver==='mysql')$db->one('SELECT RELEASE_LOCK(CONCAT(DATABASE(),?))',[$slot]);}}
+            finally{if($locked){if($driver==='pgsql')$db->one('SELECT pg_advisory_unlock(hashtext(current_schema()||?))',[':growth-metrics:'.$key]);elseif($driver==='mysql')$db->one('SELECT RELEASE_LOCK(?)',[$key]);}}
+        }
     }
     public static function queueAdvisory(Database $db,string $scope,string $owner,string $eventKey,?string $event):void{
         // Existing event may already have been recorded before a crash.
@@ -408,6 +457,9 @@ final class ArgusGrowth {
         $now=time();
         if($db->driver()==='mysql')$db->run('INSERT IGNORE INTO argus_growth_notice_retry(event_id,attempts,next_at,expires_at) VALUES (?,?,?,?)',[$event,0,$now,$now+3600]);
         else $db->run('INSERT INTO argus_growth_notice_retry(event_id,attempts,next_at,expires_at) VALUES (?,?,?,?) ON CONFLICT(event_id) DO NOTHING',[$event,0,$now,$now+3600]);
+    }
+    public static function deliveryComplete(array $result):bool{
+        return ($result['deferred']??false)!==true&&(int)($result['failed']??1)===0&&($result['status']??'processed')!=='transport_unavailable';
     }
     public static function retryAdvisories(Database $db,?callable $transport=null,?int $clock=null):void{
         $now=$clock??time();
@@ -418,14 +470,14 @@ final class ArgusGrowth {
             $claimed=$db->run('UPDATE argus_growth_notice_retry SET attempts=?,next_at=? WHERE event_id=? AND attempts=? AND next_at<=?',[$next,$now+$delay,$row['event_id'],$row['attempts'],$now]);
             if($claimed->rowCount()!==1)continue;
             try{$result=$transport?$transport($row['event_id']):Notifications::dispatch($db,$row['event_id']);
-                if((int)($result['failed']??1)===0)$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$row['event_id']]);
+                if(self::deliveryComplete($result))$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$row['event_id']]);
             }catch(\Throwable $e){error_log('ARGUS advisory delivery deferred');}
         }
     }
     public static function maintenance(Database $db,?int $clock=null):array{
         self::ready($db);$now=$clock??time();
         $expired=$db->all('SELECT token_hash FROM argus_growth_verify WHERE expires_at<? ORDER BY expires_at LIMIT 500',[gmdate('Y-m-d H:i:s',$now)]);
-        foreach($expired as $v)$db->run('DELETE FROM argus_growth_verify WHERE token_hash=? AND expires_at<?',[$v['token_hash'],gmdate('Y-m-d H:i:s',$now)]);
+        if($expired){$hashes=array_column($expired,'token_hash');$db->run('DELETE FROM argus_growth_verify WHERE token_hash IN ('.implode(',',array_fill(0,count($hashes),'?')).') AND expires_at<?',[...$hashes,gmdate('Y-m-d H:i:s',$now)]);}
         $db->run('DELETE FROM argus_growth_metrics_cache WHERE computed_at<?',[$now-86400]);
         // Keep terminal queue entries for two days so daily deduplication persists.
         $db->run('DELETE FROM argus_growth_notice_retry WHERE expires_at<?',[$now-172800]);
@@ -525,6 +577,7 @@ final class ArgusGrowth {
         if(empty($actor['id'])||($scope==='admin'&&($actor['role']??'')!=='superadmin'))self::fail('Acesso restrito.',403);
         $owner=(string)$actor['id'];self::ready($db);
         $base='/api/'.$scope.'/growth';
+        if($method==='GET'&&$scope==='admin'&&$path===$base.'/worker-health'){SecurityShield::rate($db,'growth_health_owner',$owner,30,60);self::out(self::workerHealth($db));}
         if($method==='GET'&&$path===$base.'/metrics'){SecurityShield::rate($db,'growth_metrics_owner',$scope.':'.$owner,30,60);self::out(self::cachedMetrics($db,$scope,$owner));}
         if($method==='POST')SecurityShield::rate($db,'growth_write_'.$scope,$owner,90,3600);
         if($method==='GET'&&$scope==='admin'&&$path===$base.'/inbox'){
