@@ -27,16 +27,32 @@ jobs:
         run: |
           set -euo pipefail
           docker network create --internal argus-ci-network
-          trap 'docker rm -f argus-ci-postgres >/dev/null 2>&1 || true; docker network rm argus-ci-network >/dev/null 2>&1 || true' EXIT
+          tlsdir=$(mktemp -d)
+          trap 'docker rm -f argus-ci-postgres >/dev/null 2>&1 || true; docker network rm argus-ci-network >/dev/null 2>&1 || true; sudo rm -rf "$tlsdir"' EXIT
           pw=$(openssl rand -hex 24)
-          docker run -d --name argus-ci-postgres --network argus-ci-network -e POSTGRES_DB=argus_ci_fixture -e POSTGRES_USER=argus_ci -e POSTGRES_PASSWORD="$pw" postgres:16
-          for n in $(seq 1 40); do docker exec argus-ci-postgres pg_isready -U argus_ci -d argus_ci_fixture && break; sleep 1; done
+          echo "::add-mask::$pw"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=argus-ci-postgres' -keyout "$tlsdir/server.key" -out "$tlsdir/server.crt" 2>/dev/null
+          sudo chown -R 999:999 "$tlsdir"
+          sudo chmod 700 "$tlsdir"
+          sudo chmod 600 "$tlsdir/server.key"
+          docker run -d --name argus-ci-postgres --network argus-ci-network \
+            -e POSTGRES_DB=argus_ci_fixture -e POSTGRES_USER=argus_ci -e POSTGRES_PASSWORD="$pw" \
+            --mount "type=bind,src=$tlsdir,dst=/fixture-tls,readonly" postgres:16 \
+            -c ssl=on -c ssl_cert_file=/fixture-tls/server.crt -c ssl_key_file=/fixture-tls/server.key
+          ready=no
+          for n in $(seq 1 60); do
+            if docker exec argus-ci-postgres pg_isready -h 127.0.0.1 -U argus_ci -d argus_ci_fixture; then ready=yes; break; fi
+            sleep 1
+          done
+          if [ "$ready" != yes ]; then docker logs --tail 30 argus-ci-postgres; exit 1; fi
+          pgurl="postgresql://argus_ci:$pw@argus-ci-postgres:5432/argus_ci_fixture?sslmode=require"
           docker run --rm --network argus-ci-network --entrypoint php \
             -e ARGUS_OFFLINE_PG_FIXTURE=yes -e ARGUS_DB_DRIVER=pgsql \
             -e ARGUS_PGSQL_SHARED=true -e ARGUS_PGSQL_SCHEMA=argus_payments_b2b \
-            -e ARGUS_PGSQL_URL="postgresql://argus_ci:$pw@argus-ci-postgres:5432/argus_ci_fixture" \
+            -e ARGUS_PGSQL_URL="$pgurl" \
             -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
-            argus-offline-test /var/www/html/tests/argus_growth_test.php
+            argus-offline-test -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 \
+            /var/www/html/tests/argus_growth_test.php
       - name: Validate health route in isolated image
         run: |
           docker run --rm --entrypoint bash argus-offline-test -c 'test "$(cat /var/www/html/public/healthz)" = ARGUS_OK'
