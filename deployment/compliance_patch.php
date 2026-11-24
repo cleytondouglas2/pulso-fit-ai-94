@@ -9,6 +9,7 @@ function complianceReplace(string $p,string $a,string $b):void {
 complianceReplace($root.'/src/Gateway.php',"require_once __DIR__ . '/ArgusGrowth.php';","require_once __DIR__ . '/ArgusGrowth.php';\nrequire_once __DIR__ . '/Compliance.php';\nrequire_once __DIR__ . '/LegalAcceptance.php';\nrequire_once __DIR__ . '/TransactionJournal.php';");
 $routes=<<<'PHP'
             if($method==='GET'&&$path==='/api/public/legal')LegalAcceptance::publicInfo();
+            if($method==='GET'&&$path==='/cookies'){self::htmlFile('cookies-policy.html');return;}
             if($method==='GET'&&in_array($path,['/privacidade','/termos'],true)){
                 self::htmlFile($path==='/privacidade'?'privacy-lgpd.html':'terms-of-use.html');return;
             }
@@ -38,4 +39,8 @@ $legalRoutes=<<<'PHP'
 PHP;
 complianceReplace($portal,"        if(\$method!=='GET')self::csrf(\$account);","        if(\$method!=='GET')self::csrf(\$account);\n".$legalRoutes);
 complianceReplace($d.'client.html','</body>','<script defer src="/static/legal-acceptance.js?v=1"></script></body>');
+// Cookie preferences are same-origin and never gate payment or login.
+foreach(['landing.html','client.html','admin.html','public-pix.html','reseller-public-pix.html','commerce-public.html','privacy-lgpd.html','terms-of-use.html','cookies-policy.html','docs.html','install.html','argus-verify.html','commerce-status.html'] as $f){
+ complianceReplace($d.$f,'</head>','<link rel="stylesheet" href="/static/cookie-consent.css?v=1"><script defer src="/static/cookie-consent-core.js?v=1"></script><script defer src="/static/cookie-consent-ui.js?v=1"></script></head>');
+}
 echo "PASS: legal drafts and read-only superadmin trace mounted\n";

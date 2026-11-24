@@ -1,0 +1,17 @@
+const assert=require('node:assert/strict');
+const C=require('./cookie-consent-core.js');
+const now=1700000000000;
+assert.equal(C.allows(null,'essential',now),true);
+for(const purpose of ['analytics','marketing','unknown'])assert.equal(C.allows(null,purpose,now),false);
+const rejected=C.choice(false,false,now);assert.equal(C.allows(rejected,'analytics',now),false);assert.equal(C.allows(rejected,'marketing',now),false);
+const custom=C.choice(true,false,now);assert.equal(C.allows(custom,'analytics',now),true);assert.equal(C.allows(custom,'marketing',now),false);
+const all=C.choice(true,true,now);assert.deepEqual(C.decode(JSON.stringify(all),now),all);
+assert.equal(C.allows(all,'marketing',now+C.TTL),false);
+assert.equal(C.decode(JSON.stringify({...all,version:'old'}),now),null);
+assert.equal(C.decode(JSON.stringify({...all,analytics:'true'}),now),null);
+assert.equal(C.decode(JSON.stringify({...all,decidedAt:now+1}),now),null);
+assert.equal(C.decode(JSON.stringify({...all,expiresAt:now+C.TTL+1}),now),null);
+assert.equal(C.decode('{bad',now),null);
+assert.throws(()=>C.choice('yes',false,now),TypeError);
+assert.equal(C.allows(C.choice(false,false,now+1),'analytics',now+1),false);
+console.log('PASS: defaults deny, essential continuity, reject, granular opt-in, expiry, version change, invalid storage and withdrawal');

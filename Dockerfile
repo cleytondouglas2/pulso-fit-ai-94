@@ -1487,6 +1487,7 @@ RUN php -l /var/www/html/src/ArgusGrowth.php \
 # Compliance draft and read-only transaction trace (no provider calls).
 COPY deployment/Compliance.php deployment/LegalAcceptance.php deployment/TransactionJournal.php /var/www/html/src/
 COPY deployment/privacy-lgpd.html deployment/terms-of-use.html deployment/compliance.css deployment/compliance.js deployment/legal-acceptance.js /var/www/html/public/static/
+COPY deployment/cookies-policy.html deployment/cookie-consent-core.js deployment/cookie-consent-ui.js deployment/cookie-consent.css /var/www/html/public/static/
 COPY deployment/compliance_patch.php /tmp/compliance_patch.php
 COPY deployment/compliance_test.php /var/www/html/tests/compliance_test.php
 RUN php -l /var/www/html/src/Compliance.php && php -l /tmp/compliance_patch.php \
@@ -1502,6 +1503,10 @@ COPY deployment/compliance_journal_test.php /var/www/html/tests/compliance_journ
 RUN php -l /var/www/html/src/LegalAcceptance.php && php -l /var/www/html/src/TransactionJournal.php \
  && php -l /usr/local/share/argus/compliance_migrate.php && php -l /var/www/html/tests/compliance_journal_test.php \
  && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/compliance_journal_test.php
+
+# Cookie consent release guard; no optional tracker or payment changes.
+COPY deployment/cookie_consent_test.php /var/www/html/tests/cookie_consent_test.php
+RUN php -l /var/www/html/tests/cookie_consent_test.php && php /var/www/html/tests/cookie_consent_test.php
 
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
