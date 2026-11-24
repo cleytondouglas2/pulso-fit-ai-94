@@ -38,3 +38,18 @@ $pdo=$db->pdo();$pdo->beginTransaction();
 try{$db->run("DELETE FROM argus_transaction_journal WHERE operation_id=?",[$id]);throw new RuntimeException('Journal mutation allowed');}catch(PDOException $expected){}finally{if($pdo->inTransaction())$pdo->rollBack();}
 if(count(TransactionJournal::entries($db,'admin_quick_pix',$id,$owner)['entries'])!==2)throw new RuntimeException('Journal mutated');
 echo "PASS: explicit versioned acknowledgement, digest verification, future state history and mutation guard\n";
+
+$owner='trace-seller-'.bin2hex(random_bytes(6));$other='trace-other-'.bin2hex(random_bytes(6));$op='mwc_'.bin2hex(random_bytes(12));$stamp=gmdate('Y-m-d H:i:s');
+$db->run('INSERT INTO argus_seller_charges(id,account_id,merchant_id,idem_hash,body_hash,amount_cents,service_fee_cents,net_cents,description,provider_id,copy_paste,status,created_at,checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[$op,$owner,'synthetic',hash('sha256',$op),hash('sha256','body'.$op),1200,0,1200,'Synthetic',null,null,'paid',$stamp,$stamp]);
+foreach([$owner,$other] as $account){
+ $ledger='mwl_'.bin2hex(random_bytes(12));$event=bin2hex(random_bytes(16));$operation=$account===$owner?$op:'another-'.$op;
+ $db->run('INSERT INTO argus_seller_ledger(id,account_id,operation_kind,operation_id,delta_available,delta_held,delta_debt,service_fee_cents,created_at) VALUES (?,?,?,?,?,?,?,?,?)',[$ledger,$account,'deposit_paid',$operation,1200,0,0,0,$stamp]);
+ $db->run('INSERT INTO argus_merchant_webhook_deliveries(id,webhook_id,account_id,ledger_id,event_kind,payload,status,attempts,next_attempt_at,created_at,delivered_at,last_http_code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[$event,'synthetic-webhook',$account,$ledger,'deposit_paid','{}','pending',0,time(),$stamp,null,null]);
+ $db->run("UPDATE argus_merchant_webhook_deliveries SET status='delivered',attempts=1,last_http_code=200,delivered_at=? WHERE id=?",[$stamp,$event]);
+}
+$r=TransactionJournal::entries($db,'argus_seller_charges',$op,$owner);
+$wh=array_values(array_filter($r['entries'],static fn($e)=>$e['source']==='argus_merchant_webhook_deliveries'));
+if(count($wh)!==2||$wh[1]['new_status']!=='delivered')throw new RuntimeException('Webhook journal association failed');
+$trace=\ArgusPayments\Compliance::trace($db,['role'=>'superadmin'],'seller-deposit',$op);
+if(count($trace['webhook_deliveries'])!==1||$trace['webhook_deliveries'][0]['status']!=='delivered'||isset($trace['webhook_deliveries'][0]['payload']))throw new RuntimeException('Webhook trace wrong or leaked payload');
+echo "PASS: webhook delivery metadata and state journal linked to correct transaction and owner\n";

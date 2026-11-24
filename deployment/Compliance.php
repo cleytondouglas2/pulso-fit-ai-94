@@ -27,12 +27,17 @@ final class Compliance {
             $ledger=$db->all('SELECT operation_kind,created_at FROM argus_seller_ledger WHERE account_id=? AND operation_id=? ORDER BY created_at LIMIT 100',[$row['owner_id'],$id]);
             foreach($ledger as $item)$events[]=['source'=>'argus_seller_ledger','event'=>$item['operation_kind'],'at'=>$item['created_at']];
         }
+        $deliveries=[];
+        if(str_starts_with($source,'seller-')){
+            $prefix=$kind==='deposit'?'deposit_%':'withdraw_%';
+            $deliveries=$db->all("SELECT d.id,d.event_kind,d.status,d.attempts,d.last_http_code,d.created_at,d.delivered_at FROM argus_merchant_webhook_deliveries d JOIN argus_seller_ledger l ON l.id=d.ledger_id AND l.account_id=d.account_id WHERE l.account_id=? AND l.operation_id=? AND l.operation_kind LIKE ? ORDER BY d.created_at,d.id LIMIT 101",[$row['owner_id'],$id,$prefix]);
+        }
         usort($events,static fn($a,$b)=>strcmp((string)$a['at'],(string)$b['at']));
         $journal=null;
         if(getenv('ARGUS_COMPLIANCE_JOURNAL_ENABLED')==='yes'){
             $journal=TransactionJournal::entries($db,$table,$id,(string)$row['owner_id']);
         }
-        return ['operation'=>$row,'fees'=>$fee,'events'=>$events,'journal'=>$journal,'end_to_end_id'=>null,'coverage'=>'Registros históricos reconstruídos e, quando habilitado, novas transições registradas a partir da migração. Referência do provedor não equivale ao EndToEndId.'];
+        return ['operation'=>$row,'fees'=>$fee,'events'=>$events,'journal'=>$journal,'webhook_deliveries'=>array_slice($deliveries,0,100),'webhook_truncated'=>count($deliveries)>100,'end_to_end_id'=>null,'coverage'=>'Registros históricos reconstruídos e, quando habilitado, novas transições registradas a partir da migração. Referência do provedor não equivale ao EndToEndId.'];
     }
     public static function admin(Database $db,array $actor):never {
         self::authorize($actor);

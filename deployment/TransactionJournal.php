@@ -66,6 +66,12 @@ SQL);
     public static function entries(Database $db,string $table,string $id,string $owner):array {
         if(!isset(self::TABLES[$table]))throw new \LogicException('Unknown journal source');
         $rows=$db->all('SELECT sequence_id,source,event_kind,old_status,new_status,recorded_at FROM argus_transaction_journal WHERE (source=? AND operation_id=? AND owner_id=?) OR (source=? AND operation_id=?) ORDER BY sequence_id LIMIT 501',[$table,$id,$owner,'argus_fee_operations',$id]);
+        if(in_array($table,['argus_seller_charges','argus_seller_withdrawals'],true)){
+            $kind=$table==='argus_seller_charges'?'deposit_%':'withdraw_%';
+            $webhooks=$db->all("SELECT j.sequence_id,j.source,j.event_kind,j.old_status,j.new_status,j.recorded_at FROM argus_transaction_journal j JOIN argus_seller_ledger l ON l.id=j.operation_id AND l.account_id=j.owner_id WHERE j.source='argus_merchant_webhook_deliveries' AND l.account_id=? AND l.operation_id=? AND l.operation_kind LIKE ? ORDER BY j.sequence_id LIMIT 501",[$owner,$id,$kind]);
+            $rows=array_merge($rows,$webhooks);
+            usort($rows,static fn($a,$b)=>(int)$a['sequence_id']<=>(int)$b['sequence_id']);
+        }
         return ['entries'=>array_slice($rows,0,500),'truncated'=>count($rows)>500];
     }
 }
