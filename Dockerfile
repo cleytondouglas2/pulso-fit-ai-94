@@ -1484,6 +1484,41 @@ RUN php -l /var/www/html/src/ArgusGrowth.php \
  && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/argus_growth_concurrency_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
+# Compliance draft and read-only transaction trace (no provider calls).
+COPY deployment/Compliance.php deployment/LegalAcceptance.php deployment/TransactionJournal.php /var/www/html/src/
+COPY deployment/privacy-lgpd.html deployment/terms-of-use.html deployment/compliance.css deployment/compliance.js deployment/legal-acceptance.js /var/www/html/public/static/
+COPY deployment/cookies-policy.html deployment/cookie-consent-core.js deployment/cookie-consent-ui.js deployment/cookie-consent.css /var/www/html/public/static/
+COPY deployment/compliance_patch.php /tmp/compliance_patch.php
+COPY deployment/compliance_test.php /var/www/html/tests/compliance_test.php
+RUN php -l /var/www/html/src/Compliance.php && php -l /tmp/compliance_patch.php \
+ && php /tmp/compliance_patch.php \
+ && php -l /var/www/html/src/Gateway.php && php -l /var/www/html/src/Admin.php \
+ && php -l /var/www/html/tests/compliance_test.php \
+ && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/compliance_test.php \
+ && php /var/www/html/tests/security_regression_test.php
+
+# Compliance explicit migration and synthetic acceptance/journal test. No automatic migration in production.
+COPY deployment/compliance_migrate.php /usr/local/share/argus/compliance_migrate.php
+COPY deployment/compliance_journal_test.php /var/www/html/tests/compliance_journal_test.php
+RUN php -l /var/www/html/src/LegalAcceptance.php && php -l /var/www/html/src/TransactionJournal.php \
+ && php -l /usr/local/share/argus/compliance_migrate.php && php -l /var/www/html/tests/compliance_journal_test.php \
+ && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/compliance_journal_test.php
+
+# Cookie consent release guard; no optional tracker or payment changes.
+COPY deployment/cookie_consent_test.php /var/www/html/tests/cookie_consent_test.php
+RUN php -l /var/www/html/tests/cookie_consent_test.php && php /var/www/html/tests/cookie_consent_test.php
+
+# Internal AML/CTF pilot: explicit migration, no live money calls.
+COPY deployment/AmlCenter.php /var/www/html/src/AmlCenter.php
+COPY deployment/aml-center.js /var/www/html/public/static/aml-center.js
+COPY deployment/aml-panel.html deployment/aml_patch.php /tmp/
+COPY deployment/aml_test.php /var/www/html/tests/aml_test.php
+COPY deployment/aml_worker.php /usr/local/share/argus/aml_worker.php
+RUN php -l /var/www/html/src/AmlCenter.php && php -l /tmp/aml_patch.php \
+ && php /tmp/aml_patch.php && php -l /var/www/html/src/Gateway.php && php -l /var/www/html/src/Admin.php \
+ && php -l /usr/local/share/argus/aml_worker.php && php -l /var/www/html/tests/aml_test.php \
+ && ARGUS_DB_DRIVER=sqlite php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 /var/www/html/tests/aml_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
@@ -1498,4 +1533,4 @@ WORKDIR /var/www/html
 EXPOSE 10000
 STOPSIGNAL SIGWINCH
 ENTRYPOINT ["docker-php-entrypoint"]
-CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; (until timeout 60 php /usr/local/share/argus/argus_growth_migrate.php; do sleep 30; done) & (while true; do timeout 60 php /usr/local/share/argus/argus_growth_worker.php || true; sleep 30; done) & (while true; do timeout 90 php /usr/local/share/argus/argus_growth_delivery.php || true; sleep 10; done) & if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]
+CMD ["/bin/bash", "-c", "php /usr/local/share/argus/storage_probe.php; (until timeout 60 php /usr/local/share/argus/argus_growth_migrate.php; do sleep 30; done) & (while true; do timeout 60 php /usr/local/share/argus/argus_growth_worker.php || true; sleep 30; done) & (while true; do timeout 90 php /usr/local/share/argus/argus_growth_delivery.php || true; sleep 10; done) & if [ \"${ARGUS_NOTIFICATIONS_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 45 php /usr/local/share/argus/notify_worker.php || true; sleep 25; done) & fi; if [ \"${ARGUS_AML_ENABLED:-no}\" = \"yes\" ] && [ \"${ARGUS_AML_WORKER_ENABLED:-no}\" = \"yes\" ]; then (while true; do timeout 300 php /usr/local/share/argus/aml_worker.php || true; sleep 3600; done) & fi; exec /bin/bash /var/www/html/start-render.sh"]

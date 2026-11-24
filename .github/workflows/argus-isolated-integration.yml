@@ -1,7 +1,7 @@
 name: ArgusPay isolated integration tests
 on:
   push:
-    branches: [argus-payments-deploy]
+    branches: [argus-payments-deploy, argus-compliance-lgpd-audit]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +17,8 @@ jobs:
         run: |
           find deployment -name '*.php' -print0 | xargs -0 -n1 php -l
           find deployment -name '*.js' -print0 | xargs -0 -n1 node --check
+      - name: Cookie preference opt-in and expiry tests
+        run: node deployment/cookie-consent-test.cjs
       - name: Simulated mobile share capability tests
         run: node deployment/receipt-share-test.cjs
       - name: History pagination concurrency tests
@@ -55,6 +57,20 @@ jobs:
             -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
             argus-offline-test -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 \
             /var/www/html/tests/argus_growth_test.php
+          docker run --rm --network argus-ci-network --entrypoint php \
+            -e ARGUS_OFFLINE_PG_FIXTURE=yes -e ARGUS_DB_DRIVER=pgsql \
+            -e ARGUS_PGSQL_SHARED=true -e ARGUS_PGSQL_SCHEMA=argus_payments_b2b \
+            -e ARGUS_PGSQL_URL="$pgurl" \
+            -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
+            argus-offline-test -d display_errors=1 -d zend.exception_ignore_args=1 \
+            /var/www/html/tests/compliance_journal_test.php
+          docker run --rm --network argus-ci-network --entrypoint php \
+            -e ARGUS_OFFLINE_PG_FIXTURE=yes -e ARGUS_DB_DRIVER=pgsql \
+            -e ARGUS_PGSQL_SHARED=true -e ARGUS_PGSQL_SCHEMA=argus_payments_b2b \
+            -e ARGUS_PGSQL_URL="$pgurl" \
+            -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
+            argus-offline-test -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 \
+            /var/www/html/tests/aml_test.php
       - name: Validate health route over real HTTP
         shell: bash
         run: |
