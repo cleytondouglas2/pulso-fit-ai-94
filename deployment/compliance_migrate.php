@@ -15,6 +15,7 @@ try{
  }
  \ArgusPayments\LegalAcceptance::install($db);
  \ArgusPayments\TransactionJournal::install($db);
+ \ArgusPayments\AmlCenter::install($db);
  $pdo->commit();
  echo "PASS: compliance migration installed; future transitions only\n";
 }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}

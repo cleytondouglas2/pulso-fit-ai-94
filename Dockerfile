@@ -1508,6 +1508,17 @@ RUN php -l /var/www/html/src/LegalAcceptance.php && php -l /var/www/html/src/Tra
 COPY deployment/cookie_consent_test.php /var/www/html/tests/cookie_consent_test.php
 RUN php -l /var/www/html/tests/cookie_consent_test.php && php /var/www/html/tests/cookie_consent_test.php
 
+# Internal AML/CTF pilot: explicit migration, no live money calls.
+COPY deployment/AmlCenter.php /var/www/html/src/AmlCenter.php
+COPY deployment/aml-center.js /var/www/html/public/static/aml-center.js
+COPY deployment/aml-panel.html deployment/aml_patch.php /tmp/
+COPY deployment/aml_test.php /var/www/html/tests/aml_test.php
+COPY deployment/aml_worker.php /usr/local/share/argus/aml_worker.php
+RUN php -l /var/www/html/src/AmlCenter.php && php -l /tmp/aml_patch.php \
+ && php /tmp/aml_patch.php && php -l /var/www/html/src/Gateway.php && php -l /var/www/html/src/Admin.php \
+ && php -l /usr/local/share/argus/aml_worker.php && php -l /var/www/html/tests/aml_test.php \
+ && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/aml_test.php
+
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /
 ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
