@@ -72,6 +72,12 @@ try {
   Notifications::dispatch($db,$event,function($sub,$payload)use(&$tags,$key){$tags[$key]=json_decode($payload,true)['tag'];return ['accepted'=>true];},1);
  }
  if($tags['tag-1']===$tags['tag-2'])throw new RuntimeException('Different events overwrite notification');
+ $retryEvent=Notifications::record($db,'portal','client-b','announcement','earlier-batch-fail','Fixture','Private');
+ $count=0;
+ $report=Notifications::dispatch($db,$retryEvent,function($sub,$payload)use(&$count){if(++$count===1)throw new RuntimeException('Synthetic failure');return ['accepted'=>true];});
+ if($report['status']!=='continuation'||$report['failed']!==1)throw new RuntimeException('First batch failed fixture');
+ $report=Notifications::dispatch($db,$retryEvent,static fn()=>['accepted'=>true]);
+ if($report['deferred']||(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_deliveries WHERE event_id=? AND delivered_at IS NOT NULL',[$retryEvent])['n']!==12)throw new RuntimeException('Earlier failed device lost');
  $db->pdo()->exec('DROP TABLE argus_portal_accounts');
  $report=Notifications::dispatch($db,$first,static function(){throw new RuntimeException('No send when validation unavailable');});
  if(!$report['deferred']||$report['status']!=='validation_unavailable'||$report['attempted']!==0)throw new RuntimeException('Database error misclassified as inactive account');

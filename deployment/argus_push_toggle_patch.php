@@ -6,7 +6,7 @@ foreach(['admin.html','client.html'] as $file){
   $path=$dir.$file;
   $html=file_get_contents($path);
   $old='notifications-ui.js?v=push-20261123-v2';
-  $new='notifications-ui.js?v=push-toggle-20261123-v3';
+  $new='notifications-ui.js?v=push-queue-20261123-v4';
   if(!is_string($html)||substr_count($html,$old)!==1||
      substr_count($html,'</head>')!==1)
     throw new RuntimeException('Push-toggle asset anchor missing in '.$file);

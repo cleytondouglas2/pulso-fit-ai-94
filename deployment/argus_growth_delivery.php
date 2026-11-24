@@ -10,6 +10,7 @@ try{
  $lock=$pg?$pdo->query("SELECT CASE WHEN pg_try_advisory_lock(hashtext(current_schema()||':argus-growth-delivery')) THEN 1 ELSE 0 END")->fetchColumn():$pdo->query("SELECT GET_LOCK(CONCAT(DATABASE(),':argus-growth-delivery'),0)")->fetchColumn();
  if((int)$lock!==1)exit(0);
  G::saveCursor($db,'notice_start',(string)time());
+ G::drainNoticeOutbox($db);
  G::expandBroadcasts($db);
  G::retryAdvisories($db);
  G::saveCursor($db,'notice_complete',(string)time());

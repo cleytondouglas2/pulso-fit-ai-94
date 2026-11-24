@@ -42,6 +42,10 @@ final class Notifications
             body VARCHAR(350) NOT NULL, amount_cents BIGINT,
             link VARCHAR(120) NOT NULL, created_at VARCHAR(32) NOT NULL,
             read_at VARCHAR(32))");
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_notice_outbox (
+            event_id VARCHAR(64) PRIMARY KEY,created_at BIGINT NOT NULL,expires_at BIGINT NOT NULL)");
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_notice_campaign_events (
+            event_id VARCHAR(64) PRIMARY KEY,campaign_id VARCHAR(64) NOT NULL)");
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_notice_deliveries (
             event_id VARCHAR(64) NOT NULL, endpoint_hash VARCHAR(64) NOT NULL,
             delivered_at VARCHAR(32), attempt_at VARCHAR(32),
@@ -178,14 +182,22 @@ final class Notifications
         }
         self::fail('Rota de notificações inexistente',404);
     }
-    public static function record(Database $db,string $type,string $id,string $category,string $eventKey,string $title,string $body,?int $amount=null,string $link='/conta'): ?string {
+    public static function record(Database $db,string $type,string $id,string $category,string $eventKey,string $title,string $body,?int $amount=null,string $link='/conta',?string $campaignId=null,bool $queue=true): ?string {
         self::install($db);
         if(!self::enabled(self::settings($db,$type,$id),$category))return null;
-        $eid='ntf_'.bin2hex(random_bytes(12));
-        try{$db->run('INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',
-            [$eid,hash('sha256',$eventKey.'|'.$type.'|'.$id),$type,$id,$category,mb_substr($title,0,150),mb_substr($body,0,320),$amount,$link,Database::stamp()]);
-        }catch(\PDOException $e){if(in_array((string)$e->getCode(),['23000','23505'],true))return null;throw $e;}
-        return $eid;
+        $eid='ntf_'.bin2hex(random_bytes(12));$pdo=$db->pdo();$own=!$pdo->inTransaction();
+        if($own)$pdo->beginTransaction();
+        try{
+            $sql='INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)';
+            $args=[$eid,hash('sha256',$eventKey.'|'.$type.'|'.$id),$type,$id,$category,mb_substr($title,0,150),mb_substr($body,0,320),$amount,$link,Database::stamp()];
+            if($db->driver()==='mysql')$db->run($sql.' ON DUPLICATE KEY UPDATE unique_key=argus_notice_events.unique_key',$args);
+            else $db->run($sql.' ON CONFLICT(unique_key) DO NOTHING',$args);
+            $created=$db->one('SELECT id FROM argus_notice_events WHERE id=?',[$eid]);
+            if(!$created){if($own)$pdo->commit();return null;}
+            if($campaignId!==null)$db->run('INSERT INTO argus_notice_campaign_events(event_id,campaign_id) VALUES (?,?)',[$eid,$campaignId]);
+            if($queue){$now=time();$db->run('INSERT INTO argus_notice_outbox(event_id,created_at,expires_at) VALUES (?,?,?)',[$eid,$now,$now+($campaignId===null?3600:86400)]);}
+            if($own)$pdo->commit();return $eid;
+        }catch(\Throwable $e){if($own&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
     public static function pixReceived(Database $db,string $merchantId,string $chargeId,int $amount):void {
         self::install($db);
@@ -228,6 +240,11 @@ final class Notifications
             ArgusGrowth::queueAdvisory($db,'','','',$event);
         }catch(\Throwable $e){error_log('ARGUS notification queue unavailable; inbox retained: '.get_class($e));}
     }
+    private static function campaignAllowed(Database $db,string $eventId):bool{
+        $mapping=$db->one('SELECT campaign_id FROM argus_notice_campaign_events WHERE event_id=?',[$eventId]);
+        if(!$mapping)return true;
+        return (bool)$db->one("SELECT c.id FROM argus_growth_broadcasts c JOIN admin_users a ON a.id=c.actor_id WHERE c.id=? AND c.state IN ('queued','expanded') AND a.status='active' AND a.role='superadmin'",[$mapping['campaign_id']]);
+    }
     public static function audienceActive(Database $db,string $type,string $id,string $category):bool{
         try{
             if($type==='admin')return (bool)$db->one("SELECT id FROM admin_users WHERE id=? AND status='active'",[$id]);
@@ -246,6 +263,7 @@ final class Notifications
         $event=$db->one('SELECT * FROM argus_notice_events WHERE id=?',[$eventId]);
         if(!$event){$result['status']='missing_event';return $result;}
         $type=$event['audience_type'];$id=$event['audience_id'];$category=$event['category'];
+        try{if(!self::campaignAllowed($db,$eventId)){$result['status']='campaign_revoked';return $result;}}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
         try{$active=self::audienceActive($db,$type,$id,$category);}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
         if(!$active){$result['status']='inactive_account';return $result;}
         if(!self::enabled(self::settings($db,$type,$id),$category)){$result['status']='disabled';return $result;}
@@ -275,7 +293,7 @@ final class Notifications
         }
         foreach($list as $sub){
             // Revalidate account, consent and exact subscription binding immediately before transport.
-            try{$active=self::audienceActive($db,$type,$id,$category);}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
+            try{if(!self::campaignAllowed($db,$eventId)){$result['status']='campaign_revoked';return $result;}$active=self::audienceActive($db,$type,$id,$category);}catch(\Throwable $e){$result['deferred']=true;$result['status']='validation_unavailable';return $result;}
             if(!$active||!self::enabled(self::settings($db,$type,$id),$category)){$result['skipped']++;continue;}
             $current=$db->one('SELECT * FROM argus_notice_subscriptions WHERE endpoint_hash=? AND audience_type=? AND audience_id=?',[$sub['endpoint_hash'],$type,$id]);
             if(!$current||!hash_equals($sub['p256dh'],$current['p256dh'])||!hash_equals($sub['auth'],$current['auth'])||!hash_equals($sub['endpoint'],$current['endpoint'])||$sub['created_at']!==$current['created_at']){$result['skipped']++;continue;}
@@ -296,14 +314,22 @@ final class Notifications
                 // Do not overwrite a prior accepted result with a failed concurrent result.
                 if($db->driver()==='mysql')$db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE attempt_at=VALUES(attempt_at),delivered_at=COALESCE(argus_notice_deliveries.delivered_at,VALUES(delivered_at))',$args);
                 else $db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON CONFLICT(event_id,endpoint_hash) DO UPDATE SET attempt_at=excluded.attempt_at,delivered_at=COALESCE(argus_notice_deliveries.delivered_at,excluded.delivered_at)',$args);
-            }catch(\Throwable $ex){$result['failed']++;error_log('ARGUS push delivery exception: '.get_class($ex));}
+            }catch(\Throwable $ex){
+                $result['failed']++;error_log('ARGUS push delivery exception: '.get_class($ex));
+                // Record even thrown transport failures, so the next batch can reach untouched devices.
+                $args=[$eventId,$current['endpoint_hash'],Database::stamp(),null];
+                if($db->driver()==='mysql')$db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE attempt_at=VALUES(attempt_at)',$args);
+                else $db->run('INSERT INTO argus_notice_deliveries(event_id,endpoint_hash,attempt_at,delivered_at) VALUES (?,?,?,?) ON CONFLICT(event_id,endpoint_hash) DO UPDATE SET attempt_at=excluded.attempt_at',$args);
+            }
         }
         // First pass through all devices is continuation, not a failed retry.
         $unseen=(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions s LEFT JOIN argus_notice_deliveries d ON d.endpoint_hash=s.endpoint_hash AND d.event_id=? WHERE s.audience_type=? AND s.audience_id=? AND d.event_id IS NULL',[$eventId,$type,$id])['n'];
         if($unseen>0&&$result['attempted']+$result['expired']>0){
             $result['deferred']=true;$result['status']='continuation';return $result;
         }
-        $result['deferred']=$result['failed']>0;
+        // The current batch can succeed while earlier devices still need recovery.
+        $remaining=(int)$db->one('SELECT COUNT(*) AS n FROM argus_notice_subscriptions s LEFT JOIN argus_notice_deliveries d ON d.endpoint_hash=s.endpoint_hash AND d.event_id=? WHERE s.audience_type=? AND s.audience_id=? AND d.delivered_at IS NULL',[$eventId,$type,$id])['n'];
+        $result['deferred']=$result['failed']>0||($remaining>0&&$result['attempted']+$result['expired']>0);
         $result['status']=$result['deferred']?'partial_or_failed':(($result['accepted']+$result['previously_accepted'])>0?'processed':'no_delivery');
         return $result;
     }

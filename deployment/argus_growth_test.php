@@ -248,5 +248,14 @@ $campaign=G::enqueueBroadcast($db,$a,'team','Fixture broadcast','Synthetic annou
 if($campaign['state']!=='queued'||!$db->one("SELECT id FROM argus_growth_broadcasts WHERE id=? AND state='queued'",[$campaign['campaign_id']]))throw new RuntimeException('Campaign not queued');
 G::expandBroadcasts($db,$clock);
 $row=$db->one('SELECT state FROM argus_growth_broadcasts WHERE id=?',[$campaign['campaign_id']]);
-if($row['state']!=='expanded')throw new RuntimeException('Small campaign not expanded');
+if($row['state']!=='revoked')throw new RuntimeException('Unauthorized campaign expanded');
 echo "PASS: continuation without retry exhaustion, transient validation backoff and durable asynchronous campaign expansion.\n";
+
+$orphanNotice=\ArgusPayments\Notifications::record($db,'admin',$a,'announcement','outbox-fixture-'.bin2hex(random_bytes(8)),'Fixture','Synthetic');
+if(!$orphanNotice||!$db->one('SELECT event_id FROM argus_notice_outbox WHERE event_id=?',[$orphanNotice]))throw new RuntimeException('Durable intent missing');
+G::drainNoticeOutbox($db,time());G::drainNoticeOutbox($db,time());
+if((int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_notice_retry WHERE event_id=?',[$orphanNotice])['n']!==1||$db->one('SELECT event_id FROM argus_notice_outbox WHERE event_id=?',[$orphanNotice]))throw new RuntimeException('Outbox recovery failed');
+$linked=\ArgusPayments\Notifications::record($db,'admin',$a,'announcement','campaign-fixture-'.bin2hex(random_bytes(8)),'Fixture','Synthetic',null,'/admin',$campaign['campaign_id']);
+$report=\ArgusPayments\Notifications::dispatch($db,$linked,static function(){throw new RuntimeException('Revoked campaign sent');});
+if($report['status']!=='campaign_revoked'||$report['attempted']!==0)throw new RuntimeException('Revoked campaign dispatched');
+echo "PASS: durable notification outbox, idempotent recovery and revoked campaign send prevention.\n";

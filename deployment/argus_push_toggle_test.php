@@ -27,7 +27,7 @@ if(!str_contains($css,'#an-activate.an-toggle-active'))
  throw new RuntimeException('Disabled styling missing');
 foreach(['admin.html','client.html'] as $file){
  $html=(string)file_get_contents($dir.$file);
- if(substr_count($html,'notifications-ui.js?v=push-toggle-20261123-v3')!==1||
+ if(substr_count($html,'notifications-ui.js?v=push-queue-20261123-v4')!==1||
     substr_count($html,'notifications-toggle.css?v=20261123-v3')!==1)
   throw new RuntimeException('Missing single-toggle assets in '.$file);
 }

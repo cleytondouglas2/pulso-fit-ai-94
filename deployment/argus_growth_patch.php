@@ -30,7 +30,7 @@ growthReplace($root.'/src/Admin.php',"        if(\$method==='GET'&&\$path==='/ap
 $d=$root.'/public/static/';
 foreach(['admin.html','client.html'] as $f){
  growthReplace($d.$f,'</head>','<link rel="stylesheet" href="/static/argus-growth.css?v=1"></head>');
- growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=11"></script></body>');
+ growthReplace($d.$f,'</body>','<script defer src="/static/argus-growth.js?v=12"></script></body>');
 }
 // A suggested amount is only a prefill; the normal quote and buyer confirmation are mandatory.
 $prefill=<<<'JS'
