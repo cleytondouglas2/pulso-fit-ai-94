@@ -81,7 +81,7 @@ RUN php -l /tmp/argus_notification_patch.php \
  && php -l /var/www/html/src/Portal.php \
  && php -l /var/www/html/src/LivePix.php \
  && php /var/www/html/tests/ui_contract.php \
- && php /var/www/html/tests/notifications_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/notifications_test.php \
  && php -l /usr/local/share/argus/notify_worker.php
 RUN php -l src/Integrations/MisticPayFinance.php && php -l src/Security2FA.php && php -l src/Integrations/MisticPayPayout.php && php -l src/Admin.php && php -l src/Gateway.php && php -l src/LivePix.php && php tests/finance_qr_unit.php && php tests/security_2fa_unit.php && php tests/shared_pgsql_unit.php && php tests/b2b_unit.php && php tests/live_pix_unit.php && php tests/admin_http.php && php tests/ui_contract.php
 # ARGUS IA: Groq is optional. Aggregated insights/heuristic alerts work without a paid API.
@@ -98,7 +98,7 @@ RUN php -l /var/www/html/src/AI.php \
  && php -l /usr/local/share/argus/notify_worker.php \
  && php /var/www/html/tests/ai_test.php \
  && php /var/www/html/tests/ui_contract.php \
- && php /var/www/html/tests/notifications_test.php
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/notifications_test.php
 # Validity checks and Pix authentication probes are read-only; only the original payment provider creates charges.
 COPY deployment/DocumentValidation.php deployment/PixDiagnostics.php /var/www/html/src/
 COPY deployment/pix-diagnostics.js /var/www/html/public/static/
@@ -113,7 +113,7 @@ RUN php -l /var/www/html/src/DocumentValidation.php \
  && php -l /var/www/html/src/Gateway.php \
  && php /var/www/html/tests/document_validation_test.php \
  && php /var/www/html/tests/ui_contract.php \
- && php /var/www/html/tests/notifications_test.php
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/notifications_test.php
 # Reject legacy MisticPay pk/sk or ci/cs from being misused as MisticPay Finance QR credentials.
 COPY deployment/argus_finance_guard_patch.php /tmp/argus_finance_guard_patch.php
 COPY deployment/finance_credential_guard_test.php /var/www/html/tests/finance_credential_guard_test.php
@@ -1176,8 +1176,8 @@ RUN php -l /var/www/html/src/Notifications.php \
  && php -l /tmp/argus_push_delivery_patch.php \
  && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /tmp/argus_push_delivery_patch.php \
  && php -l /var/www/html/tests/argus_push_delivery_test.php \
- && php /var/www/html/tests/argus_push_delivery_test.php \
- && php /var/www/html/tests/notifications_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/argus_push_delivery_test.php \
+ && php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr /var/www/html/tests/notifications_test.php \
  && php /var/www/html/tests/security_regression_test.php
 
 

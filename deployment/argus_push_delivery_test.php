@@ -18,9 +18,14 @@ foreach([
 ] as $needle){
  if(!str_contains($js,$needle))throw new RuntimeException('Push UI regression '.$needle);
 }
-foreach(['dispatch(Database $db,string $eventId):array','delivery',
+require_once '/var/www/html/src/Notifications.php';
+$dispatch=new ReflectionMethod(\ArgusPayments\Notifications::class,'dispatch');
+$params=$dispatch->getParameters();
+if(!$dispatch->isPublic()||!$dispatch->isStatic()||$dispatch->getNumberOfRequiredParameters()!==2||count($params)!==3||!$params[2]->isOptional()||(string)$dispatch->getReturnType()!=='array')
+ throw new RuntimeException('Push dispatch contract regression');
+foreach(['delivery',
           "'accepted'=>","self::pushConfigured()",
-          'sendOneNotification','isSubscriptionExpired()'] as $needle){
+          'sendOneNotification','isSubscriptionExpired()', 'audienceActive', "'connect_timeout'=>2,'timeout'=>4,'allow_redirects'=>false", 'Fixture only'] as $needle){
  if(!str_contains($backend,$needle))throw new RuntimeException('Push backend regression '.$needle);
 }
 foreach(['sw-admin.js','sw-revenda.js'] as $p){
