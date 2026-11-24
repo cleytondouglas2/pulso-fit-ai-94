@@ -53,6 +53,17 @@ jobs:
             -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
             argus-offline-test -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 \
             /var/www/html/tests/argus_growth_test.php
-      - name: Validate health route in isolated image
+      - name: Validate health route over real HTTP
+        shell: bash
         run: |
-          docker run --rm --entrypoint bash argus-offline-test -c 'test "$(cat /var/www/html/public/healthz)" = ARGUS_OK'
+          set -euo pipefail
+          docker run -d --name argus-ci-http --network none -e PORT=10000 -e ARGUS_DB_DRIVER=sqlite -e ARGUS_MISTICPAY_MODE=disabled -e ARGUS_NOTIFICATIONS_WORKER_ENABLED=no -e ARGUS_PAYOUTS_ENABLED=no argus-offline-test
+          trap 'docker rm -f argus-ci-http >/dev/null 2>&1 || true' EXIT
+          for n in $(seq 1 45); do
+            if docker exec argus-ci-http php -r 'exit(trim((string)@file_get_contents("http://127.0.0.1:10000/healthz"))==="ARGUS_OK"?0:1);'; then
+              echo "PASS: running Apache returned ARGUS_OK over loopback HTTP"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs --tail 30 argus-ci-http
+          exit 1

@@ -56,7 +56,9 @@ final class ArgusGrowth {
         self::index($db,'argus_growth_metrics_cache','argus_growth_cache_time_idx','computed_at');
         $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_scan_retry(job VARCHAR(24) NOT NULL,subject VARCHAR(160) NOT NULL,attempts INTEGER NOT NULL,next_at BIGINT NOT NULL,PRIMARY KEY(job,subject))");
         self::index($db,'argus_growth_scan_retry','argus_growth_scan_due_idx','job,next_at');
-        self::saveCursor($db,'schema_version','5');
+        $db->pdo()->exec("CREATE TABLE IF NOT EXISTS argus_growth_failed_jobs(id VARCHAR(64) PRIMARY KEY,kind VARCHAR(12) NOT NULL,job VARCHAR(24) NOT NULL,subject VARCHAR(160) NOT NULL,attempts INTEGER NOT NULL,reason VARCHAR(32) NOT NULL,failed_at BIGINT NOT NULL,state VARCHAR(16) NOT NULL,reviewed_by VARCHAR(80),reviewed_at BIGINT)");
+        self::index($db,'argus_growth_failed_jobs','argus_growth_failed_state_idx','state,failed_at,id');
+        self::saveCursor($db,'schema_version','6');
         self::$installed[$key]=$db->pdo();
     }
     /** Transactional mutex, independent of financial tables. */
@@ -69,7 +71,7 @@ final class ArgusGrowth {
     public static function ready(Database $db):void{
         $key=spl_object_id($db->pdo());if(isset(self::$ready[$key]))return;
         try{$v=self::cursor($db,'schema_version');}catch(\Throwable $e){self::fail('Módulos de gestão aguardando migração.',503);}
-        if($v!=='5')self::fail('Módulos de gestão aguardando migração.',503);
+        if($v!=='6')self::fail('Módulos de gestão aguardando migração.',503);
         self::$ready[$key]=$db->pdo();
     }
     public static function cursor(Database $db,string $job):string{
@@ -349,12 +351,53 @@ final class ArgusGrowth {
         return ['messages'=>array_reverse($rows),'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
     }
     /** Optional existing notification worker; informational and consent-aware. */
+    private static function failureId(string $kind,string $job,string $subject):string{return hash('sha256',$kind.'|'.$job.'|'.$subject);}
+    public static function failJob(Database $db,string $kind,string $job,string $subject,int $attempts,string $reason,int $now):void{
+        $id=self::failureId($kind,$job,$subject);
+        $args=[$id,$kind,$job,$subject,$attempts,$reason,$now,'pending'];
+        if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE attempts=VALUES(attempts),reason=VALUES(reason),failed_at=VALUES(failed_at),state=VALUES(state),reviewed_by=NULL,reviewed_at=NULL',$args);
+        else $db->run('INSERT INTO argus_growth_failed_jobs(id,kind,job,subject,attempts,reason,failed_at,state) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET attempts=excluded.attempts,reason=excluded.reason,failed_at=excluded.failed_at,state=excluded.state,reviewed_by=NULL,reviewed_at=NULL',$args);
+    }
+    public static function failedJobs(Database $db,?string $cursor=null):array{
+        $where=" WHERE state='pending'";$args=[];
+        if($cursor!==null&&$cursor!==''){
+            $anchor=$db->one("SELECT failed_at,id FROM argus_growth_failed_jobs WHERE id=?",[$cursor]);
+            if(!$anchor)self::fail('Cursor inválido.',422);
+            $where.=" AND (failed_at<? OR (failed_at=? AND id<?))";$args=[$anchor['failed_at'],$anchor['failed_at'],$cursor];
+        }
+        // Expose operational IDs only, never notification content or device endpoints.
+        $rows=$db->all('SELECT id,kind,job,subject,attempts,reason,failed_at FROM argus_growth_failed_jobs'.$where.' ORDER BY failed_at DESC,id DESC LIMIT 51',$args);
+        $more=count($rows)>50;if($more)array_pop($rows);
+        return ['items'=>$rows,'next_cursor'=>$more?$rows[count($rows)-1]['id']:null];
+    }
+    public static function recoverJob(Database $db,string $id,string $actor,?int $clock=null):array{
+        if(!preg_match('/^[a-f0-9]{64}$/D',$id))self::fail('Identificador inválido.');
+        $now=$clock??time();$pdo=$db->pdo();$pdo->beginTransaction();
+        try{
+            self::mutex($db,'failed-job:'.$id);
+            $row=$db->one("SELECT * FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$id]);
+            if(!$row)self::fail('Falha já tratada ou inexistente.',409);
+            if($row['kind']==='notice'){
+                $event=$db->one("SELECT id,category,created_at FROM argus_notice_events WHERE id=?",[$row['subject']]);
+                if(!$event||$event['category']!=='announcement'||self::timestamp($event['created_at'])<$now-86400)self::fail('Alerta antigo ou inválido. Não será reenviado.',409);
+                $changed=$db->run('UPDATE argus_growth_notice_retry SET attempts=0,next_at=?,expires_at=? WHERE event_id=? AND attempts>=5',[$now,$now+3600,$row['subject']]);
+                if($changed->rowCount()!==1)self::fail('Fila indisponível ou já em processamento.',409);
+            }elseif($row['kind']==='scan'){
+                if(!in_array($row['job'],['flow','ai_admin','ai_portal'],true))self::fail('Tipo de automação inválido.');
+                $changed=$db->run('UPDATE argus_growth_scan_retry SET attempts=0,next_at=? WHERE job=? AND subject=? AND attempts>=8',[$now,$row['job'],$row['subject']]);
+                if($changed->rowCount()!==1)self::fail('Conta já em processamento.',409);
+            }else self::fail('Tipo de falha inválido.');
+            $db->run("UPDATE argus_growth_failed_jobs SET state='requeued',reviewed_by=?,reviewed_at=? WHERE id=?",[$actor,$now,$id]);
+            $pdo->commit();return ['ok'=>true,'financial_effect'=>false];
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+    }
     public static function deferScan(Database $db,string $job,string $subject,?int $clock=null):void{
         $now=$clock??time();
         $row=$db->one('SELECT attempts FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);
-        $attempt=min(20,1+(int)($row['attempts']??0));$next=$now+min(1800,30*(2**min(6,$attempt-1)));
+        $attempt=min(8,1+(int)($row['attempts']??0));$next=$now+min(1800,30*(2**min(6,$attempt-1)));
         if($db->driver()==='mysql')$db->run('INSERT INTO argus_growth_scan_retry(job,subject,attempts,next_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE attempts=VALUES(attempts),next_at=VALUES(next_at)',[$job,$subject,$attempt,$next]);
         else $db->run('INSERT INTO argus_growth_scan_retry(job,subject,attempts,next_at) VALUES (?,?,?,?) ON CONFLICT(job,subject) DO UPDATE SET attempts=excluded.attempts,next_at=excluded.next_at',[$job,$subject,$attempt,$next]);
+        if($attempt>=8)self::failJob($db,'scan',$job,$subject,$attempt,'scan_exhausted',$now);
     }
     public static function scanAccount(Database $db,string $job,string $subject,callable $process,?int $clock=null):bool{
         try{$process($subject);$db->run('DELETE FROM argus_growth_scan_retry WHERE job=? AND subject=?',[$job,$subject]);return true;}
@@ -362,7 +405,7 @@ final class ArgusGrowth {
     }
     public static function retryScans(Database $db,string $job,callable $process,?int $clock=null):void{
         $now=$clock??time();$start=microtime(true);
-        $rows=$db->all('SELECT subject FROM argus_growth_scan_retry WHERE job=? AND next_at<=? ORDER BY next_at,subject LIMIT 10',[$job,$now]);
+        $rows=$db->all('SELECT subject FROM argus_growth_scan_retry WHERE job=? AND attempts<8 AND next_at<=? ORDER BY next_at,subject LIMIT 10',[$job,$now]);
         foreach($rows as $row){if(microtime(true)-$start>3)break;self::scanAccount($db,$job,$row['subject'],$process,$now);}
     }
     public static function heartbeat(Database $db,string $phase,?int $clock=null):void{
@@ -375,7 +418,9 @@ final class ArgusGrowth {
         $state=!$enabled?'not_supported':($error>$complete?'error':($complete&&$now-$complete<=180?'healthy':($start&&$now-$start<=90?'running':'stale')));
         return ['status'=>$state,'last_started_at'=>$start?gmdate('c',$start):null,'last_completed_at'=>$complete?gmdate('c',$complete):null,'last_error_at'=>$error?gmdate('c',$error):null,
             'pending_advisories'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>?',[$now])['n'],
-            'deferred_accounts'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_scan_retry')['n']];
+            'deferred_accounts'=>(int)$db->one('SELECT COUNT(*) AS n FROM argus_growth_scan_retry WHERE attempts<8')['n'],
+            'failed_jobs'=>(int)$db->one("SELECT COUNT(*) AS n FROM argus_growth_failed_jobs WHERE state='pending'")['n'],
+            'notice_last_completed_at'=>($n=(int)self::cursor($db,'notice_complete'))?gmdate('c',$n):null];
     }
     public static function worker(Database $db):void{
         if(getenv('ARGUS_GROWTH_ALERTS_ENABLED')!=='yes'||!in_array($db->driver(),['pgsql','mysql'],true))return;
@@ -463,7 +508,7 @@ final class ArgusGrowth {
     }
     public static function retryAdvisories(Database $db,?callable $transport=null,?int $clock=null):void{
         $now=$clock??time();
-        $rows=$db->all('SELECT event_id,attempts,expires_at FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>? AND next_at<=? ORDER BY next_at,event_id LIMIT 8',[$now,$now]);
+        $rows=$db->all('SELECT event_id,attempts,expires_at FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at>? AND next_at<=? ORDER BY next_at,event_id LIMIT '.($transport?8:1),[$now,$now]);
         foreach($rows as $row){
             // Claim before dispatch; accepted devices are skipped by Notifications::dispatch.
             $next=(int)$row['attempts']+1;$delay=min(900,60*(2**($next-1)));
@@ -471,7 +516,8 @@ final class ArgusGrowth {
             if($claimed->rowCount()!==1)continue;
             try{$result=$transport?$transport($row['event_id']):Notifications::dispatch($db,$row['event_id']);
                 if(self::deliveryComplete($result))$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=?',[$row['event_id']]);
-            }catch(\Throwable $e){error_log('ARGUS advisory delivery deferred');}
+                elseif($next>=5)self::failJob($db,'notice','advisory',$row['event_id'],$next,'delivery_exhausted',$now);
+            }catch(\Throwable $e){if($next>=5)self::failJob($db,'notice','advisory',$row['event_id'],$next,'delivery_exception',$now);error_log('ARGUS advisory delivery deferred');}
         }
     }
     public static function maintenance(Database $db,?int $clock=null):array{
@@ -479,12 +525,31 @@ final class ArgusGrowth {
         $expired=$db->all('SELECT token_hash FROM argus_growth_verify WHERE expires_at<? ORDER BY expires_at LIMIT 500',[gmdate('Y-m-d H:i:s',$now)]);
         if($expired){$hashes=array_column($expired,'token_hash');$db->run('DELETE FROM argus_growth_verify WHERE token_hash IN ('.implode(',',array_fill(0,count($hashes),'?')).') AND expires_at<?',[...$hashes,gmdate('Y-m-d H:i:s',$now)]);}
         $db->run('DELETE FROM argus_growth_metrics_cache WHERE computed_at<?',[$now-86400]);
-        // Keep terminal queue entries for two days so daily deduplication persists.
-        $db->run('DELETE FROM argus_growth_notice_retry WHERE expires_at<?',[$now-172800]);
+        // Expired unfinished notices go to the manual queue, never disappear silently.
+        $expiredNotices=$db->all('SELECT event_id,attempts FROM argus_growth_notice_retry WHERE attempts<5 AND expires_at<=? ORDER BY expires_at LIMIT 100',[$now]);
+        foreach($expiredNotices as $n){
+            $claim=$db->run('UPDATE argus_growth_notice_retry SET attempts=5 WHERE event_id=? AND attempts<5 AND expires_at<=?',[$n['event_id'],$now]);
+            if($claim->rowCount()===1)self::failJob($db,'notice','advisory',$n['event_id'],(int)$n['attempts'],'delivery_expired',$now);
+        }
+        // Previous completed jobs are retained for daily deduplication. Unresolved jobs remain for review.
+        $db->run("DELETE FROM argus_growth_notice_retry WHERE expires_at<? AND event_id NOT IN (SELECT subject FROM argus_growth_failed_jobs WHERE kind='notice' AND state='pending')",[$now-172800]);
         return ['expired_tokens'=>count($expired)];
+    }
+    public static function readSnapshot(Database $db,callable $read):mixed{
+        $pdo=$db->pdo();
+        if($pdo->inTransaction())return $read();
+        if($db->driver()==='mysql')$pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+        $pdo->beginTransaction();
+        try{
+            if($db->driver()==='pgsql'){$pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');$pdo->exec("SET LOCAL statement_timeout='8s'");}
+            $value=$read();$pdo->commit();return $value;
+        }catch(\Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
     }
     public static function metrics(Database $db,string $scope,string $owner,?int $clock=null):array{
         self::ready($db);
+        return self::readSnapshot($db,static fn()=>self::metricsSnapshot($db,$scope,$owner,$clock));
+    }
+    private static function metricsSnapshot(Database $db,string $scope,string $owner,?int $clock=null):array{
         $now=$clock??time();$tz=new \DateTimeZone('America/Sao_Paulo');
         $today=(new \DateTimeImmutable('@'.$now))->setTimezone($tz)->setTime(0,0);
         $first=$today->modify('-29 days');$start=$first->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');$end=gmdate('Y-m-d H:i:s',$now+1);
@@ -580,6 +645,13 @@ final class ArgusGrowth {
         if($method==='GET'&&$scope==='admin'&&$path===$base.'/worker-health'){SecurityShield::rate($db,'growth_health_owner',$owner,30,60);self::out(self::workerHealth($db));}
         if($method==='GET'&&$path===$base.'/metrics'){SecurityShield::rate($db,'growth_metrics_owner',$scope.':'.$owner,30,60);self::out(self::cachedMetrics($db,$scope,$owner));}
         if($method==='POST')SecurityShield::rate($db,'growth_write_'.$scope,$owner,90,3600);
+        if($scope==='admin'&&$method==='GET'&&$path===$base.'/failed-jobs'){
+            $cursor=$_GET['cursor']??null;if($cursor!==null&&(!is_string($cursor)||!preg_match('/^[a-f0-9]{64}$/D',$cursor)))self::fail('Cursor inválido.');
+            self::out(self::failedJobs($db,$cursor));
+        }
+        if($scope==='admin'&&$method==='POST'&&$path===$base.'/retry-job'){
+            $id=$body['id']??null;if(!is_string($id))self::fail('Identificador inválido.');self::out(self::recoverJob($db,$id,$owner));
+        }
         if($method==='GET'&&$scope==='admin'&&$path===$base.'/inbox'){
             $cursor=$_GET['cursor']??null;if($cursor!==null&&!is_string($cursor))self::fail('Cursor inválido.');self::out(self::inbox($db,$cursor));
         }

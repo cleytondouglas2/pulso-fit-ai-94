@@ -119,3 +119,33 @@ G::heartbeat($db,'start',$clock);G::heartbeat($db,'complete',$clock+1);$health=G
 if(!$health['last_completed_at']||$health['status']!==($db->driver()==='pgsql'?'healthy':'not_supported'))throw new RuntimeException('Heartbeat invalid');
 if($db->driver()==='pgsql'&&G::workerHealth($db,$clock+400)['status']!=='stale')throw new RuntimeException('Stale worker undetected');
 echo "PASS: delivery deferral, durable account retry, heartbeat and isolated database driver=".$db->driver().".\n";
+
+$dead='ntf_dead_'.bin2hex(random_bytes(8));$clock=time();
+$db->run('INSERT INTO argus_notice_events(id,unique_key,audience_type,audience_id,category,title,body,amount_cents,link,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)',[$dead,hash('sha256',$dead),'admin',$a,'announcement','Fixture','Synthetic',null,'/admin',Database::stamp()]);
+G::queueAdvisory($db,'admin',$a,'dead',$dead);
+$fail=static fn($eid)=>['failed'=>1,'deferred'=>true];foreach([0,61,182,423,904] as $seconds)G::retryAdvisories($db,$fail,$clock+$seconds);
+$deadId=hash('sha256','notice|advisory|'.$dead);
+if(!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$deadId]))throw new RuntimeException('Exhausted notification lost');
+G::recoverJob($db,$deadId,$a,$clock+905);
+if((int)$db->one('SELECT attempts FROM argus_growth_notice_retry WHERE event_id=?',[$dead])['attempts']!==0)throw new RuntimeException('Manual notification recovery failed');
+try{G::recoverJob($db,$deadId,$a,$clock+906);throw new RuntimeException('Duplicate recovery accepted');}catch(ApiError $e){}
+G::retryAdvisories($db,static fn($eid)=>['failed'=>0],$clock+905);
+$subject='portal|fixture-terminal';for($i=0;$i<8;$i++)G::deferScan($db,'flow',$subject,$clock);
+$scanId=hash('sha256','scan|flow|'.$subject);
+$tries=0;G::retryScans($db,'flow',function($s)use(&$tries){$tries++;},$clock+3600);
+if($tries!==0||!$db->one("SELECT id FROM argus_growth_failed_jobs WHERE id=? AND state='pending'",[$scanId]))throw new RuntimeException('Terminal scan still active or lost');
+G::recoverJob($db,$scanId,$a,$clock+3601);G::retryScans($db,'flow',function($s)use(&$tries){$tries++;},$clock+3601);
+if($tries!==1)throw new RuntimeException('Manual account recovery failed');
+if($db->driver()==='pgsql'){
+ $other=new Database(require '/var/www/html/config.php');
+ $owner='snapshot-'.bin2hex(random_bytes(8));$record='qpx_'.bin2hex(random_bytes(16));
+ $counts=G::readSnapshot($db,function()use($db,$other,$owner,$record){
+  $before=(int)$db->one('SELECT COUNT(*) AS n FROM admin_quick_pix WHERE actor_id=?',[$owner])['n'];
+  $stamp=Database::stamp();$other->run('INSERT INTO admin_quick_pix(id,actor_id,idempotency_hash,body_hash,amount_cents,description,provider_id,qr_copy,status,created_at,checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[$record,$owner,hash('sha256','idem'.$record),hash('sha256','body'.$record),100,'Snapshot fixture','fixture_'.$record,null,'paid',$stamp,$stamp]);
+  $after=(int)$db->one('SELECT COUNT(*) AS n FROM admin_quick_pix WHERE actor_id=?',[$owner])['n'];
+  return [$before,$after];
+ });
+ if($counts!==[0,0]||G::metrics($db,'admin',$owner)['confirmed_count']!==1)throw new RuntimeException('Repeatable-read snapshot failed');
+ echo "PASS: PostgreSQL read-only repeatable snapshot under independent committed write.\n";
+}
+echo "PASS: exhausted alerts, terminal account scans, audited manual recovery and duplicate recovery protection.\n";

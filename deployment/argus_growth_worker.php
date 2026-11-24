@@ -14,7 +14,6 @@ try{
  ArgusGrowth::ready($db);
  ArgusGrowth::heartbeat($db,'start');
  ArgusGrowth::maintenance($db);
- ArgusGrowth::retryAdvisories($db);
  ArgusGrowth::worker($db);ArgusAI::worker($db);
  ArgusGrowth::heartbeat($db,'complete');error_log('ARGUS_GROWTH_WORKER status=healthy');
 }catch(\Throwable $e){if(isset($db,$locked)&&(int)$locked===1){try{ArgusGrowth::heartbeat($db,'error');}catch(\Throwable $ignored){}}error_log('ARGUS_GROWTH_WORKER status=unavailable class='.get_class($e));exit(1);}
