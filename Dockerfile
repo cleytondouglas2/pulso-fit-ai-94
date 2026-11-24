@@ -1517,7 +1517,7 @@ COPY deployment/aml_worker.php /usr/local/share/argus/aml_worker.php
 RUN php -l /var/www/html/src/AmlCenter.php && php -l /tmp/aml_patch.php \
  && php /tmp/aml_patch.php && php -l /var/www/html/src/Gateway.php && php -l /var/www/html/src/Admin.php \
  && php -l /usr/local/share/argus/aml_worker.php && php -l /var/www/html/tests/aml_test.php \
- && ARGUS_DB_DRIVER=sqlite php /var/www/html/tests/aml_test.php
+ && ARGUS_DB_DRIVER=sqlite php -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 /var/www/html/tests/aml_test.php
 
 FROM scratch AS argus_flat_runtime
 COPY --from=0 / /

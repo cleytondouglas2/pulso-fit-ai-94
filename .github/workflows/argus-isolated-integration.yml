@@ -69,7 +69,7 @@ jobs:
             -e ARGUS_PGSQL_SHARED=true -e ARGUS_PGSQL_SCHEMA=argus_payments_b2b \
             -e ARGUS_PGSQL_URL="$pgurl" \
             -e ARGUS_PAYOUTS_ENABLED=no -e ARGUS_HYBRID_PAYOUT_LIVE=no -e ARGUS_MISTICPAY_MODE=disabled \
-            argus-offline-test -d display_errors=1 -d zend.exception_ignore_args=1 \
+            argus-offline-test -d display_errors=1 -d log_errors=1 -d error_log=/dev/stderr -d zend.exception_ignore_args=1 \
             /var/www/html/tests/aml_test.php
       - name: Validate health route over real HTTP
         shell: bash
