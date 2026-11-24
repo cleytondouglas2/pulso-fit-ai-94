@@ -16,3 +16,9 @@ foreach([['bad-source',$id],['admin-deposit','bad/id'],['admin-deposit','missing
 try{Compliance::trace($db,['role'=>'reseller'],'admin-deposit',$id);throw new RuntimeException('Cross-role trace exposed');}catch(ApiError $expected){}
 foreach(['privacy-lgpd.html','terms-of-use.html'] as $f){$s=file_get_contents('/var/www/html/public/static/'.$f);if(!str_contains($s,'MINUTA')||!str_contains($s,'não vigente'))throw new RuntimeException('Unreviewed legal text misrepresented');}
 echo "PASS: superadmin-only read-only trace, synthetic record and legal draft labeling\n";
+
+// Structured API responses must round-trip without emitting HTML metacharacters.
+$probe=['provider_reference'=>"</script><svg onload=alert(1)>&'\"",'status'=>'pending'];
+$encoded=Compliance::encodeJson($probe);
+if(strpbrk($encoded,"<>&'")!==false||json_decode($encoded,true,512,JSON_THROW_ON_ERROR)!==$probe)throw new RuntimeException('Unsafe JSON encoding or lost audit data');
+echo "PASS: XSS-safe JSON response encoding and exact data round-trip\n";

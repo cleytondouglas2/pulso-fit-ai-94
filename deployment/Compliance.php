@@ -39,7 +39,19 @@ final class Compliance {
         $source=$_GET['source']??'';$id=$_GET['id']??'';
         if(!is_string($source)||!is_string($id))throw new ApiError('Consulta inválida.',422);
         $data=self::trace($db,$actor,$source,$id);
-        header('Content-Type: application/json; charset=utf-8');header('Cache-Control: private, no-store');header('X-Content-Type-Options: nosniff');
-        echo json_encode($data,JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);exit;
+        self::respondJson($data);
+    }
+    /** Encode structured JSON for a non-HTML response. Hex escapes prevent HTML
+     * metacharacters from being interpreted even if a client embeds the JSON. */
+    public static function encodeJson(array $data):string {
+        return json_encode($data,JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR);
+    }
+    private static function respondJson(array $data):never {
+        $body=self::encodeJson($data);
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'");
+        echo $body;exit;
     }
 }
